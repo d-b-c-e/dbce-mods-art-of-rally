@@ -208,8 +208,11 @@ namespace ArtOfSimRally.Testing
 
             var getInput = AccessTools.Method(typeof(AxisCarController), "GetInput");
             _harmony.Patch(getInput, postfix: new HarmonyMethod(typeof(SessionTape), nameof(AfterCarInput)) { priority = Priority.Last });
-            _harmony.Patch(AccessTools.Method(typeof(CarDynamics), "FixedUpdate"),
-                postfix: new HarmonyMethod(typeof(SessionTape), nameof(AfterCarStep)) { priority = Priority.Last });
+            // CarController.Update reads input once per rendered frame; FixedUpdate
+            // smooths the *Input fields into steering/throttle/brake each physics
+            // step. Tape and replay those fields at the start of every step.
+            _harmony.Patch(AccessTools.Method(typeof(CarController), "FixedUpdate"),
+                prefix: new HarmonyMethod(typeof(SessionTape), nameof(BeforeCarStep)) { priority = Priority.Last });
 
             // SplashScreenControl is the game's only Rewired input-event delegate
             // (ButtonJustReleased); getter substitution can't reach it.
@@ -296,28 +299,25 @@ namespace ArtOfSimRally.Testing
                 result = _playing.TryGetValue(key, out var v) ? float.Parse(v, CultureInfo.InvariantCulture) : 0f;
         }
 
-        // Last postfix, after the shipping mod's wheel override.
+        // Replay only: keep the per-frame read consistent with the taped step.
         private static void AfterCarInput(ref float throttleInput, ref float brakeInput, ref float steerInput,
             ref float handbrakeInput, ref float clutchInput, ref bool startEngineInput)
         {
-            if (_mode == Mode.Record)
-            {
-                _carPlaying = new CarRow { Steer = steerInput, Throttle = throttleInput, Brake = brakeInput,
-                    Handbrake = handbrakeInput, Clutch = clutchInput, StartEngine = startEngineInput };
-            }
-            else if (_mode == Mode.Replay)
-            {
-                if (!_carActive) { throttleInput = brakeInput = steerInput = handbrakeInput = clutchInput = 0; startEngineInput = false; return; }
-                steerInput = _carPlaying.Steer; throttleInput = _carPlaying.Throttle; brakeInput = _carPlaying.Brake;
-                handbrakeInput = _carPlaying.Handbrake; clutchInput = _carPlaying.Clutch; startEngineInput = _carPlaying.StartEngine;
-            }
+            if (_mode != Mode.Replay) return;
+            if (!_carActive) { throttleInput = brakeInput = steerInput = handbrakeInput = clutchInput = 0; startEngineInput = false; return; }
+            steerInput = _carPlaying.Steer; throttleInput = _carPlaying.Throttle; brakeInput = _carPlaying.Brake;
+            handbrakeInput = _carPlaying.Handbrake; clutchInput = _carPlaying.Clutch; startEngineInput = _carPlaying.StartEngine;
         }
 
-        private static void AfterCarStep(CarDynamics __instance)
+        private static bool _correcting;
+
+        private static void BeforeCarStep(CarController __instance)
         {
             try
             {
-                if (_mode == Mode.Off || !IsPlayerCar(__instance)) return;
+                if (_mode == Mode.Off) return;
+                var dynamics = __instance.GetComponent<CarDynamics>();
+                if (dynamics == null || !IsPlayerCar(dynamics)) return;
                 var body = __instance.GetComponent<Rigidbody>();
                 var drivetrain = __instance.GetComponent<Drivetrain>();
                 if (body == null || drivetrain == null) return;
@@ -325,10 +325,10 @@ namespace ArtOfSimRally.Testing
                 _fixedStep++;
                 if (_mode == Mode.Record)
                 {
-                    var r = _carPlaying;
+                    var c = __instance;
                     var p = body.position; var q = body.rotation; var v = body.velocity; var w = body.angularVelocity;
-                    _carWriter.WriteLine(string.Join("\t", new[] { _fixedStep.ToString(CultureInfo.InvariantCulture), marker.ToString(CultureInfo.InvariantCulture),
-                        N(r.Steer), N(r.Throttle), N(r.Brake), N(r.Handbrake), N(r.Clutch), r.StartEngine ? "1" : "0",
+                    _carWriter.WriteLine(string.Join("	", new[] { _fixedStep.ToString(CultureInfo.InvariantCulture), marker.ToString(CultureInfo.InvariantCulture),
+                        N(c.steerInput), N(c.throttleInput), N(c.brakeInput), N(c.handbrakeInput), N(c.clutchInput), c.startEngineInput ? "1" : "0",
                         drivetrain.gear.ToString(CultureInfo.InvariantCulture), N(p.x), N(p.y), N(p.z), N(q.x), N(q.y), N(q.z), N(q.w),
                         N(v.x), N(v.y), N(v.z), N(w.x), N(w.y), N(w.z) }));
                     if (marker != _lastCarMarker) { _lastCarMarker = marker; Event("car segment " + MarkerText(marker) + " car=" + __instance.gameObject.name); }
@@ -336,14 +336,26 @@ namespace ArtOfSimRally.Testing
                 }
                 _carActive = _car.Next(marker, out _carPlaying);
                 if (!_carActive) return;
-                if (drivetrain.gear != _carPlaying.Gear) { drivetrain.Shift(_carPlaying.Gear, true); _gearSets++; }
-                float error = Vector3.Distance(body.position, _carPlaying.Position);
+                var r = _carPlaying;
+                __instance.steerInput = r.Steer; __instance.throttleInput = r.Throttle; __instance.brakeInput = r.Brake;
+                __instance.handbrakeInput = r.Handbrake; __instance.clutchInput = r.Clutch; __instance.startEngineInput = r.StartEngine;
+                if (drivetrain.gear != r.Gear && !drivetrain.changingGear) { drivetrain.Shift(r.Gear, true); _gearSets++; }
+                float error = Vector3.Distance(body.position, r.Position);
                 if (error > _maxPoseError) _maxPoseError = error;
-                if (_poseThreshold > 0 && error > _poseThreshold)
+                // Ease back onto the taped line instead of teleporting, so the
+                // camera doesn't jump: start past the threshold, stop well inside it.
+                // Only while the player drives: the game places the car itself in
+                // cinematics, the countdown and the finish animation.
+                bool driving = (EventManagerField?.GetValue(null) as EventManager)?.status == EventStatusEnums.EventStatus.UNDERWAY;
+                if (!driving) { _correcting = false; return; }
+                if (_poseThreshold > 0 && !_correcting && error > _poseThreshold) { _correcting = true; _poseCorrections++; }
+                if (_correcting)
                 {
-                    body.position = _carPlaying.Position; body.rotation = _carPlaying.Rotation;
-                    body.velocity = _carPlaying.Velocity; body.angularVelocity = _carPlaying.AngularVelocity;
-                    _poseCorrections++;
+                    body.position = Vector3.Lerp(body.position, r.Position, 0.15f);
+                    body.rotation = Quaternion.Slerp(body.rotation, r.Rotation, 0.15f);
+                    body.velocity = Vector3.Lerp(body.velocity, r.Velocity, 0.3f);
+                    body.angularVelocity = Vector3.Lerp(body.angularVelocity, r.AngularVelocity, 0.3f);
+                    if (error < _poseThreshold * 0.25f) _correcting = false;
                 }
             }
             catch (Exception ex) { Fail("car step: " + ex.Message); }
