@@ -1,75 +1,99 @@
-# Whole-session recording and replay
+# Session recording, playback and force analysis
 
-Records a session from game launch (intro, menus, stage choice, the drive, quitting) and
-replays it into the game for automated testing. Developer probe only
-(`tools/testing/Recorder`, installed with `tools/testing/Install-Recorder.ps1`). Release
-packages never include it.
+Install the optional **SessionTools** release archive separately from the normal
+mod. Close the game before installing or removing this developer probe.
 
 ```powershell
-.\tools\testing\Session.ps1 -Record -Name <name>    # arms the probe, launches the game
-.\tools\testing\Session.ps1 -Stop                    # optional; quitting the game also ends it
-.\tools\testing\Session.ps1 -Replay -Name <name>    # strict replay; exit 0 passed, 1 failed, 2 aborted
-.\tools\testing\Session.ps1 -Replay -Name <name> -Assist   # eases drift back onto the taped line
+./tools/testing/Install-Recorder.ps1 -SkipBuild  # omit -SkipBuild in a source checkout
+./tools/testing/Session.ps1 -Record -Name japan-test
+./tools/testing/Session.ps1 -Stop               # save before quitting
+./tools/testing/Session.ps1 -Replay -Name japan-test
 ```
 
-The owner asks for a recorded session. Claude runs `-Record`, launching the game the way the
-Stream Deck button does, and tells the owner how to finish (normally: quit from the game's
-menu). Claude then checks the tape. There is no record button in the mod.
+Record from launch, choose a stage, drive, then stop. Normal recording retains
+the owner's physical output settings. Add `-MuteOutputs` to mute the wheel and
+SimHub while recording requested force and telemetry. Replay always mutes those
+outputs for the entire process, including after failure or F12 takeover.
+`-Stop` cancels playback; raw F12 returns input control. The launcher closes the
+game after playback and restores its saved environment. `-KeepGameOpen` leaves
+restoration pending until the game closes.
 
-## What is taped (format 2)
+## Three distinct uses
 
-| Layer | Hook | Unit |
-|---|---|---|
-| Menus, game buttons, paddles | Rewired `Player` getters (`GetButton*`, `GetNegativeButton*`, `GetAxis*`, `GetAnyButton*`); last value read in the frame | rendered frame |
-| Intro "press any key", keys, mouse buttons | the game's global `Input` wrapper | rendered frame |
-| Splash screen end | `SplashScreenControl.EndSplashScreen`, the game's only Rewired input-event consumer | rendered frame |
-| Mod manager window open/closed | UMM UI state; it opens at startup and blocks stock menus | rendered frame |
-| Car input | `CarController` input fields at the start of `FixedUpdate` | physics tick |
-| Gear shifts | every `Drivetrain.Shift` call, with the tick `Drivetrain.FixedUpdate` first acts on it | physics tick |
-| Car pose | rigidbody position, rotation, velocity (for measuring divergence) | physics tick |
+| Mode | What it proves |
+|---|---|
+| Default trajectory playback | Recreates the recorded car route, gear/RPM presentation and menu progression using a kinematic body, like the native replay. |
+| Offline signal replay | Evaluates FFB against original physics samples and reports force, motion, collision and encoded telemetry data. No game or device needed. |
+| `-Playback input-diagnostic` | Re-simulates input and fails on divergence. Unity physics is not promised deterministic. Only the first stage's starting state is restored in this diagnostic. |
 
-Each frame and tick carries a marker: `scene | top menu panel | event status`. The resolved
-scenario (scene, car, weather) is taped at the countdown. Files go in
-`results/sessions/<name>/`: `session.txt`, `input.tape`, `car.tape`, `shifts.tape`,
-`markers.tsv`, `events.log`, `shots/` (one screenshot per new marker) and
-`playerprefs-at-start.reg`. Files are created exclusively, and a write error marks the tape
-`incomplete.txt`, which replay refuses.
+Trajectory playback suppresses stock wheel/dynamics updates, reset teleports and
+kinematic handoff while it owns the player body. A next-physics-tick position
+check detects competing writes. Use the original physics signals for tuning;
+forces generated from the kinematic playback are not new physics measurements.
 
-## Replay
+```powershell
+# Source checkout, .NET 8 SDK:
+dotnet run --project tools/testing/Replay -c Release -- --replay results/sessions/japan-test
+# Optional archive, .NET 8 runtime:
+dotnet analysis/Replay.dll --replay results/sessions/japan-test
 
-- **Strict by default.** The car gets the taped input fields and shifts on the taped ticks;
-  every other shift of the player car (physical shifter, paddles, the game's auto
-  first/reverse) is blocked. The car's pose isn't touched. `divergence.tsv` and the result
-  report the max and final pose error, the first tick it exceeds 5 cm, and gear mismatches.
-  `-Assist` eases the car back once it drifts past 2 m, while underway only.
-- Menus play one marker segment at a time, waiting up to 120 s (real time) for the live game
-  to reach the next marker. The first few frames of the next segment are played early,
-  because a transition's own input is taped there.
-- **Force feedback and telemetry are muted from arming until the game exits**, whatever the
-  result. Telemetry is muted so SimHub-driven shakers don't react.
-- **Passed** means every frame row played, the live game was seen on the final segment, the
-  car reached its last segment, and no taped driving row was skipped. A stop or exit
-  earlier than about two seconds before the end of the final segment is **aborted**.
-  `result.txt` is written last.
-- The scenario is checked before driving; a different scene, car or weather fails the replay.
-- Output in `results/sessions/<name>/replay-<time>/`: `result.txt`, `replay.log`,
-  `divergence.tsv` and `shots/`.
+# Offline trial: omitted values retain the captured tune. Game settings are untouched.
+'{"gain":0.5,"referenceN":11500,"smoothing":0.2}' | Set-Content trial.json
+dotnet analysis/Replay.dll --trial results/sessions/japan-test trial.json results/trial-1
+```
 
-## Known limits
+Trials require a new output directory, validate the baseline first, preserve
+reset epochs and source/config hashes, and save baseline and candidate requests.
+Reports include RMS, absolute percentiles and saturation. Native acceptance is
+not measured wheel torque. Compare matching scenarios and speeds across games.
 
-- **Randomness is pinned on purpose.** The game rolls custom-event stage, weather and car with
-  `Random.Range`. The probe re-seeds Unity's generator from the screen name at every screen
-  change, while recording and replaying alike. Recordings therefore aren't fully natural
-  play, and repeated visits to the same screen reuse a seed.
-- Mouse pointer position and mod settings edits aren't taped. Use buttons in menus while
-  recording (closing the mod manager window with the mouse is fine).
-- The save data (Steam Cloud `cloud\` folder) isn't restored; the scenario check catches a
-  different selection.
-- Format-1 tapes (before 2026-10-04 evening) replay in legacy mode: no shift log, so gears
-  are forced from the taped gear column and divergence is expected.
-- Recording writes text on the game thread; don't use a session to judge stutter until
-  capture moves to a background writer.
-- Reviewed in [reviews/2026-10-04-session-replay-review.md](reviews/2026-10-04-session-replay-review.md);
-  R1, R2, R4 (scenario check), R5, R7, R8, the frame-count timeout and the multiple-read
-  issue are addressed. Moving this into a shared toolkit coordinator waits until a second
-  game needs it.
+## Format 3 and preservation
+
+Sessions live under `results/sessions/<name>`:
+
+- `input.tape`, `car.tape`, `shifts.tape`, `markers.tsv`: rendered-frame menu
+  events and physics-tick input/pose samples. Menu events identify buttons.
+- `load-NNNN.json`: resolved stage/weather/car/season selections at each load,
+  avoiding frame-dependent random selection. The same game build is required.
+- `environment-at-start`: explicit game preferences, custom-rally progress and
+  mod settings. Replay backs up the current owner environment first and restores
+  that backup after the game closes.
+- `forces.csv`, `signals.csv`, `collisions.csv`, `manifest.xml`: original force
+  inputs, normalized/native requests, motion/contact and collision observations.
+- `telemetry.tsv`: 324-byte Forza packets before network suppression. Velocity
+  and acceleration use SI units. Dashboard speed retains the game's 0.6 HUD
+  scale and is labelled separately in analysis.
+- `effects.tsv`: requested play/update effect arguments before muting. These are
+  commands, not physical waveforms or a complete stop/duration timeline.
+- `end.txt`, `complete.tsv`: counts and hashes written after background writers
+  close. Truncated, modified or incomplete tapes are refused. Queue overflow
+  invalidates the tape rather than silently dropping rows.
+
+Replay writes a separate timestamped directory. Success requires all driving
+rows, the final recorded frame state and valid trajectory application. Faster
+loads/cinematics may skip transient menu or non-driving rows; counts are reported.
+If restoration is pending, close the game and use `Session.ps1 -RestoreEnvironment`
+with the explicit `replay-*/owner-environment` backup. Keep that backup until its
+restoration receipt exists. Preference import is restricted to the game key.
+
+## Evidence and limits
+
+October 4: owner session 5 completed automatically through all 13,428 driving
+poses, finish, results and final menu. An independent 12-second synthetic physics
+capture also completed format-3 replay: 721 driving poses, zero reported position
+application error. Its 721 force samples passed 27,453 offline checks with no
+native-magnitude mismatches. Identity and zero-gain trials passed. See the
+[validation record](reviews/2026-10-04-playback-validation.md).
+
+Legacy formats 1/2 lack semantic buttons, completion seals, exact RPM and resolved
+scene snapshots; their menus depend on preferences and controlled random seeds.
+Use fresh captures for reusable cases. Settings edits, arbitrary pointer motion
+and every third-party mod are not covered. This adapter seeds randomness at state
+changes, so these are instrumented sessions. Wider stage/car, restart and
+multi-stage coverage is not established by the tested cases. Synthetic drives
+are labelled separately from owner drives. Force CSV capture requires the normal
+FFB calculation path enabled and ready; physical muting preserves that path.
+
+The shared `Dbce.Wheel.Playback` core owns ordering, bounded writing, seals and
+statistics. This adapter owns Unity hooks, scene snapshots, units and restoration.
+Its separate version/provenance in `lib/playback` does not replace the native pin.

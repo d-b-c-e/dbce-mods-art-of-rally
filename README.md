@@ -80,6 +80,10 @@ SimHub with the same UDP port. No extra SimHub helper is required.
 
 ## Getting help
 
+Developers can record and replay drives with the optional SessionTools asset.
+See [recording, playback and offline force analysis](docs/SESSION-REPLAY.md).
+It is installed separately; ordinary play does not record sessions.
+
 For a recurring problem: enable **Log detail for support**, reproduce briefly,
 pause, then use **Help → Create support file**. Turn detail off afterward. Ordinary
 errors/settings can be collected without detailed logging.

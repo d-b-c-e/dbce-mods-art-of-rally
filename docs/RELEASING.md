@@ -177,7 +177,11 @@ tests. This creates a new attended checklist; `-Final` does not mark it passed.
 
 `dotnet test ArtOfSimRally.sln` runs no tests; the explicit executable runners in
 the RC script are the automated evidence. Native/telemetry source suites live in
-the toolkit. No automated path in this repo recreates a Unity playthrough.
+the toolkit. The optional SessionTools adapter now recreates recorded trajectories
+in Unity; its live evidence is separate from this offline gate and physical acceptance.
+Package it with `tools/package/session-tools.ps1 -Version X.Y.Z` from the same
+clean source. Publish its ZIP/checksum as a separate optional asset; never add
+probe dependencies to the player mod. Preserve original captures privately.
 
 ## Channels
 

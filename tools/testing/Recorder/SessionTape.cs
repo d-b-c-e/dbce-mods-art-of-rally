@@ -8,6 +8,7 @@ using System.Text;
 using HarmonyLib;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using Dbce.Wheel.Playback;
 
 namespace ArtOfSimRally.Testing
 {
@@ -23,8 +24,8 @@ namespace ArtOfSimRally.Testing
     /// physics tick: the <c>CarController</c> input fields at the start of
     /// <c>FixedUpdate</c>, plus every <c>Drivetrain.Shift</c> call with the tick
     /// the drivetrain first acts on it. Replay feeds the same values on the same
-    /// ticks and blocks every other shift, so strict replay needs no pose
-    /// correction; divergence from the taped pose is measured and reported.
+    /// ticks in input-diagnostic mode. Default trajectory playback owns the
+    /// kinematic player body and applies recorded poses; it is not physics resimulation.
     ///
     /// Frames carry a state marker (scene | top menu panel | event status);
     /// replay plays one marker segment at a time and waits for the live game to
@@ -35,8 +36,16 @@ namespace ArtOfSimRally.Testing
     {
         private enum Mode { Off, Record, Replay }
 
-        internal const int Format = 2;
+        internal const int Format = 3;
         private const string HarmonyId = "ArtOfSimRally.DevRecorder.SessionTape";
+        private static readonly Harmony OutputHarmony = new Harmony(HarmonyId + ".Outputs");
+        private static readonly VehiclePlayback Vehicle = new VehiclePlayback();
+        private static bool _trajectory;
+        private static bool _semanticMenus;
+        private static readonly ScenePlayback Scenes = new ScenePlayback();
+        private static bool _sceneSelections;
+        private static int _clicksInFrame;
+        private static CaptureDriver _captureDriver;
 
         internal static string RequestPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "ArtOfSimRally", "session-request.txt");
@@ -50,13 +59,15 @@ namespace ArtOfSimRally.Testing
 
         // Recording.
         private static readonly Dictionary<string, string> _frameValues = new Dictionary<string, string>();
-        private static StreamWriter _inputWriter, _carWriter, _shiftWriter, _eventWriter;
+        private static TextWriter _inputWriter, _carWriter, _shiftWriter;
+        private static StreamWriter _eventWriter;
         private static string _incomplete;
         private static int _drivetrainTick = int.MinValue;
 
         private static int _frame, _fixedStep;
         private static readonly Dictionary<string, int> _markerIds = new Dictionary<string, int>();
         private static int _lastMarker = -1, _lastCarMarker = -1;
+        private static int _lastObservedMarker = -1;
 
         // Replay.
         private static SessionAligner<Dictionary<string, string>> _frames;
@@ -66,9 +77,10 @@ namespace ArtOfSimRally.Testing
         private static CarRow _carPlaying;
         private static bool _carActive, _legacy, _replayShifting, _scenarioChecked;
         private static int _liveTick = int.MinValue;
+        private static int _finishedStageSegment = -1;
         private static Dictionary<int, List<KeyValuePair<int, bool>>> _shiftsByTick = new Dictionary<int, List<KeyValuePair<int, bool>>>();
         private static float _poseThreshold;
-        private static int _poseCorrections, _shiftsReplayed, _shiftsBlocked, _gearMismatchSteps, _firstDivergenceRow = -1;
+        private static int _shiftsReplayed, _shiftsBlocked, _gearMismatchSteps, _firstDivergenceRow = -1;
         private static float _maxPoseError, _lastPoseError;
         private static string _result, _expectedScenario;
         private static StreamWriter _divergenceWriter;
@@ -86,6 +98,7 @@ namespace ArtOfSimRally.Testing
             public int Gear;
             public Vector3 Position, Velocity, AngularVelocity;
             public Quaternion Rotation;
+            public float ResolvedSteer, ResolvedThrottle, ResolvedBrake, Rpm;
         }
 
         internal static bool Replaying => _mode == Mode.Replay;
@@ -97,7 +110,8 @@ namespace ArtOfSimRally.Testing
                   " carRows=" + _car.Consumed + "/" + _car.Total + " (skipped " + _car.Skipped + ")" +
                   " shifts=" + _shiftsReplayed + " blockedShifts=" + _shiftsBlocked + " gearMismatchSteps=" + _gearMismatchSteps +
                   " maxPoseError=" + F2(_maxPoseError) + " lastPoseError=" + F2(_lastPoseError) + " firstDivergenceRow=" + _firstDivergenceRow +
-                  " poseCorrections=" + _poseCorrections + (_legacy ? " legacyTape" : "")
+                  " mode=" + (_trajectory ? "trajectory" : "input-diagnostic") +
+                  " posesApplied=" + Vehicle.Applied + " maxApplicationError=" + F2(Vehicle.MaxApplicationError) + (_legacy ? " legacyTape" : "")
                 : "") + (_incomplete != null ? " INCOMPLETE: " + _incomplete : "");
 
         /// <summary>Reads and consumes a request written before launch.</summary>
@@ -119,18 +133,28 @@ namespace ArtOfSimRally.Testing
             bool replay = string.Equals(mode, "replay", StringComparison.OrdinalIgnoreCase);
             // Outputs stay muted for this whole launch once a replay was asked for,
             // even if arming below fails.
-            if (replay) _muteOutputs = true;
+            if (replay || request.ContainsKey("captureDriver") || (request.TryGetValue("muteOutputs", out var mute) && mute == "1")) _muteOutputs = true;
             try
             {
-                if (request.TryGetValue("expiresUtc", out var expires) &&
-                    DateTime.TryParse(expires, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var until) &&
+                if (_muteOutputs) PatchOutputs();
+                if (!request.TryGetValue("expiresUtc", out var expires) ||
+                    !DateTime.TryParse(expires, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var until) ||
                     DateTime.UtcNow > until)
                     throw new InvalidDataException("request expired at " + expires);
                 request.TryGetValue("tape", out _dir);
                 if (string.IsNullOrEmpty(_dir)) throw new InvalidDataException("tape= is required");
                 if (request.TryGetValue("poseThreshold", out var threshold))
                     float.TryParse(threshold, NumberStyles.Float, CultureInfo.InvariantCulture, out _poseThreshold);
+                if (_poseThreshold != 0) throw new InvalidDataException("Assisted physics playback was replaced by trajectory playback.");
+                _trajectory = !request.TryGetValue("playback", out var playback) || playback == "trajectory";
+                if (!_trajectory && playback != "input-diagnostic") throw new InvalidDataException("unknown playback mode");
                 _harmony = new Harmony(HarmonyId);
+                if (request.TryGetValue("captureDriver", out var driverSource))
+                {
+                    if (replay) throw new InvalidDataException("capture driver is only valid for recording");
+                    PatchOutputs();
+                    _captureDriver = new CaptureDriver(driverSource, 12f);
+                }
                 if (replay) { PatchOutputs(); LoadReplay(request.TryGetValue("out", out var o) && o.Length > 0 ? o : Path.Combine(_dir, "replay-" + DateTime.Now.ToString("yyyyMMdd-HHmmss"))); }
                 else if (string.Equals(mode, "record", StringComparison.OrdinalIgnoreCase)) OpenRecording();
                 else throw new InvalidDataException("mode must be record or replay");
@@ -138,14 +162,20 @@ namespace ArtOfSimRally.Testing
                 _mode = replay ? Mode.Replay : Mode.Record;
                 Event(replay ? "replay started: " + _frames.Total + " frames, " + _car.Total + " car rows, " + _frames.SegmentCount +
                                " segments, " + _shiftsByTick.Values.Sum(l => l.Count) + " shifts; force and telemetry muted; " +
-                               (_poseThreshold > 0 ? "assisted (pose correction past " + F2(_poseThreshold) + " m)" : "strict (no pose correction)")
+                               (_trajectory ? "trajectory playback (recorded poses)" : "input diagnostic (physics divergence checked)")
                              : "record started (format " + Format + ")");
             }
             catch (Exception ex)
             {
                 // Remove input hooks; keep the output mutes if they went in.
-                try { _harmony?.UnpatchAll(HarmonyId); if (_muteOutputs) PatchOutputs(); } catch { }
+                try { _harmony?.UnpatchAll(HarmonyId); if (_muteOutputs) PatchOutputs(); } catch (Exception muteError) { _log?.Invoke("OUTPUT MUTE FAILURE: " + muteError); }
                 _mode = Mode.Off;
+                _inputWriter?.Dispose(); _carWriter?.Dispose(); _shiftWriter?.Dispose();
+                if (replay && request.TryGetValue("out", out var failedOut))
+                {
+                    Directory.CreateDirectory(failedOut);
+                    File.WriteAllText(Path.Combine(failedOut, "result.txt"), "failed: arm: " + ex.Message + "\n");
+                }
                 _log?.Invoke("Session tape not armed: " + ex.Message + (replay ? " (force and telemetry stay muted this launch)" : ""));
             }
         }
@@ -157,22 +187,37 @@ namespace ArtOfSimRally.Testing
         {
             Directory.CreateDirectory(Path.Combine(_dir, "shots"));
             if (File.Exists(Path.Combine(_dir, "input.tape"))) throw new IOException("tape already exists: " + _dir);
-            _inputWriter = Create(Path.Combine(_dir, "input.tape"));
-            _carWriter = Create(Path.Combine(_dir, "car.tape"));
-            _shiftWriter = Create(Path.Combine(_dir, "shifts.tape"));
+            _inputWriter = new BufferedTapeWriter(Path.Combine(_dir, "input.tape"));
+            _carWriter = new BufferedTapeWriter(Path.Combine(_dir, "car.tape"));
+            _shiftWriter = new BufferedTapeWriter(Path.Combine(_dir, "shifts.tape"));
             _eventWriter = Create(Path.Combine(_dir, "events.log"));
-            _carWriter.WriteLine("step\tmarker\tsteer\tthrottle\tbrake\thandbrake\tclutch\tstart\tgear\tpx\tpy\tpz\tqx\tqy\tqz\tqw\tvx\tvy\tvz\tavx\tavy\tavz\ttick");
+            _carWriter.WriteLine("step\tmarker\tsteer\tthrottle\tbrake\thandbrake\tclutch\tstart\tgear\tpx\tpy\tpz\tqx\tqy\tqz\tqw\tvx\tvy\tvz\tavx\tavy\tavz\ttick\tresolvedSteer\tresolvedThrottle\tresolvedBrake\trpm");
             _shiftWriter.WriteLine("tick\tgear\tchangeTarget\tphase");
             File.WriteAllText(Path.Combine(_dir, "session.txt"),
                 "format=" + Format + "\ngame=" + Application.version + "\nunity=" + Application.unityVersion +
-                "\nfixedDeltaTime=" + N(Time.fixedDeltaTime) + "\nstartedUtc=" + DateTime.UtcNow.ToString("o") + "\n");
+                "\nfixedDeltaTime=" + N(Time.fixedDeltaTime) + "\nstartedUtc=" + DateTime.UtcNow.ToString("o") +
+                "\nsceneSelections=1\ncaptureSource=" + (_captureDriver == null ? "player" : "synthetic-integration") + "\nphysicalOutput=" + (!_muteOutputs).ToString().ToLowerInvariant() + "\n");
+            RecorderMain.StartSessionSignals(_dir, !_muteOutputs, _captureDriver != null);
         }
 
         private static void LoadReplay(string output)
         {
             var session = File.ReadAllLines(Path.Combine(_dir, "session.txt")).Select(l => l.Split(new[] { '=' }, 2)).Where(p => p.Length == 2)
                 .ToDictionary(p => p[0], p => p[1]);
-            _legacy = !session.TryGetValue("format", out var format) || format != Format.ToString(CultureInfo.InvariantCulture);
+            if (!session.TryGetValue("format", out var format) || !int.TryParse(format, out var version) || version < 1 || version > Format)
+                throw new InvalidDataException("unsupported session format");
+            _legacy = version < 2;
+            _semanticMenus = version >= 3;
+            _sceneSelections = session.TryGetValue("sceneSelections", out var selections) && selections == "1";
+            if (version >= 3)
+            {
+                var required = new List<string> { "session.txt", "markers.tsv", "input.tape", "car.tape", "shifts.tape", "end.txt" };
+                if (_sceneSelections) required.AddRange(Directory.GetFiles(_dir, "load-*.json").Select(Path.GetFileName));
+                ArtifactSeal.Verify(_dir, required.ToArray());
+            }
+            if (!session.TryGetValue("fixedDeltaTime", out var fixedDelta) ||
+                Math.Abs(float.Parse(fixedDelta, CultureInfo.InvariantCulture) - Time.fixedDeltaTime) > 0.000001f)
+                throw new InvalidDataException("physics timestep differs from recording");
             if (session.TryGetValue("game", out var game) && game != Application.version)
                 throw new InvalidDataException("tape is from game " + game + ", running " + Application.version);
             if (File.Exists(Path.Combine(_dir, "incomplete.txt")))
@@ -187,6 +232,8 @@ namespace ArtOfSimRally.Testing
             foreach (var line in File.ReadLines(Path.Combine(_dir, "input.tape")))
             {
                 var parts = line.Split('\t');
+                if (parts.Length < 2 || int.Parse(parts[0], CultureInfo.InvariantCulture) != frames.Count)
+                    throw new InvalidDataException("input frame sequence is truncated or out of order");
                 var values = new Dictionary<string, string>();
                 for (int i = 2; i < parts.Length; i++)
                 {
@@ -199,6 +246,9 @@ namespace ArtOfSimRally.Testing
             foreach (var line in File.ReadLines(Path.Combine(_dir, "car.tape")).Skip(1))
             {
                 var p = line.Split('\t');
+                if (p.Length != (version >= 3 ? 27 : version == 2 ? 23 : 22) ||
+                    int.Parse(p[0], CultureInfo.InvariantCulture) != car.Count + 1)
+                    throw new InvalidDataException("car row has wrong shape or sequence");
                 float F(int i)
                 {
                     float v = float.Parse(p[i], CultureInfo.InvariantCulture);
@@ -211,10 +261,19 @@ namespace ArtOfSimRally.Testing
                     StartEngine = p[7] == "1", Gear = int.Parse(p[8], CultureInfo.InvariantCulture),
                     Position = new Vector3(F(9), F(10), F(11)), Rotation = new Quaternion(F(12), F(13), F(14), F(15)),
                     Velocity = new Vector3(F(16), F(17), F(18)), AngularVelocity = new Vector3(F(19), F(20), F(21)),
-                    Tick = p.Length > 22 ? int.Parse(p[22], CultureInfo.InvariantCulture) : int.MinValue
+                    Tick = p.Length > 22 ? int.Parse(p[22], CultureInfo.InvariantCulture) : int.MinValue,
+                    ResolvedSteer = p.Length > 23 ? F(23) : F(2),
+                    ResolvedThrottle = p.Length > 24 ? F(24) : F(3),
+                    ResolvedBrake = p.Length > 25 ? F(25) : F(4), Rpm = p.Length > 26 ? F(26) : -1
                 }));
             }
             if (frames.Count == 0 || car.Count == 0 || markers.Count == 0) throw new InvalidDataException("tape has an empty stream");
+            if (version >= 3)
+            {
+                var end = File.ReadAllLines(Path.Combine(_dir, "end.txt")).Select(l => l.Split(new[] { '=' }, 2)).ToDictionary(p => p[0], p => p[1]);
+                if (int.Parse(end["frames"], CultureInfo.InvariantCulture) != frames.Count || int.Parse(end["steps"], CultureInfo.InvariantCulture) != car.Count)
+                    throw new InvalidDataException("completion counts differ from streams");
+            }
             var shifts = Path.Combine(_dir, "shifts.tape");
             if (File.Exists(shifts))
                 foreach (var line in File.ReadLines(shifts).Skip(1))
@@ -225,7 +284,8 @@ namespace ArtOfSimRally.Testing
                     list.Add(new KeyValuePair<int, bool>(int.Parse(p[1], CultureInfo.InvariantCulture), p[2] == "1"));
                 }
             _frames = new SessionAligner<Dictionary<string, string>>(frames, markers, "frames", () => Time.realtimeSinceStartup);
-            _car = new SessionAligner<CarRow>(car, markers, "car", () => Time.realtimeSinceStartup, earlyLimit: 0);
+            _car = new SessionAligner<CarRow>(car, markers, "car", () => Time.realtimeSinceStartup, earlyLimit: 0,
+                required: m => m.EndsWith("|UNDERWAY"));
             _out = output;
             Directory.CreateDirectory(Path.Combine(_out, "shots"));
             _eventWriter = Create(Path.Combine(_out, "replay.log"));
@@ -248,7 +308,14 @@ namespace ArtOfSimRally.Testing
             Mute(native, "UpdateCondition", nameof(MuteFloat1));
             // SimHub-driven shakers would react to replayed telemetry.
             var pump = AccessTools.TypeByName("ArtOfSimRally.Mod.TelemetryPump") ?? throw new MissingMemberException("TelemetryPump");
-            Patch(AccessTools.Method(pump, "SendFrame"), prefix: nameof(SkipWhenMuted));
+            OutputHarmony.Patch(AccessTools.Method(pump, "SendFrame"), prefix: new HarmonyMethod(typeof(SessionTape), nameof(SkipWhenMuted)));
+            // Playback must not submit a simulated result, achievement or career save.
+            foreach (var name in new[] { "UploadScore", "UnlockAchievement", "IncrementStat", "ForceStatUpload",
+                "SaveLocalSaveGame", "SaveLocalCareer", "SaveLocalLeaderboards", "SaveLocalGhosts", "SaveCustomCollectables" })
+                foreach (var method in typeof(PlatformSteam).GetMethods().Where(m => m.Name == name))
+                    OutputHarmony.Patch(method, prefix: new HarmonyMethod(typeof(SessionTape), nameof(SkipWhenMuted)));
+            OutputHarmony.Patch(AccessTools.Method(typeof(PlatformSteam), "GetOnlineLeaderboardsActive"),
+                prefix: new HarmonyMethod(typeof(SessionTape), nameof(OfflineReplay)));
             _outputsPatched = true;
         }
 
@@ -293,6 +360,24 @@ namespace ArtOfSimRally.Testing
             Patch(AccessTools.Method(typeof(Drivetrain), "FixedUpdate"), prefix: nameof(BeforeDrivetrainStep), postfix: nameof(AfterDrivetrainStep));
             // The game's only Rewired input-event consumer; getters can't reach it.
             Patch(AccessTools.Method(typeof(SplashScreenControl), "EndSplashScreen"), prefix: nameof(BeforeSplashEnd));
+            Patch(AccessTools.Method(typeof(PlayerManager), "DisableKinematic"), prefix: nameof(BeforeDisableKinematic));
+            Patch(AccessTools.Method(typeof(OutOfBoundsManager), "FixedUpdate"), prefix: nameof(BeforeOutOfBounds));
+            Patch(AccessTools.Method(typeof(PlayerManager), "Update"), prefix: nameof(BeforePlayerUpdate));
+            Patch(AccessTools.Method(typeof(CarDynamics), "FixedUpdate"), prefix: nameof(BeforeDynamicsStep), last: true);
+            Patch(AccessTools.Method(typeof(Wheel), "FixedUpdate"), prefix: nameof(BeforeWheelStep), last: true);
+            Patch(AccessTools.Method(typeof(UnityEngine.UI.Button), "Press"), prefix: nameof(BeforeButtonPress));
+            Patch(AccessTools.Method(typeof(SceneLoader), "LoadLevel"), prefix: nameof(BeforeSceneLoad));
+        }
+
+        private static bool BeforeSceneLoad(ref int aLevelIndex)
+        {
+            try
+            {
+                if (_mode == Mode.Record || (_mode == Mode.Replay && _sceneSelections))
+                    Scenes.BeforeLoad(_dir, _mode == Mode.Record, ref aLevelIndex);
+                return true;
+            }
+            catch (Exception ex) { Fail("scene selection: " + ex.Message); return false; }
         }
 
         private static void Patch(MethodBase target, string prefix = null, string postfix = null, bool last = false)
@@ -307,13 +392,20 @@ namespace ArtOfSimRally.Testing
         {
             var methods = type.GetMethods(BindingFlags.Public | BindingFlags.Static).Where(m => m.Name == name).ToList();
             if (methods.Count == 0) throw new MissingMethodException(type.Name + "." + name);
-            foreach (var method in methods) Patch(method, prefix: prefix);
+            foreach (var method in methods) OutputHarmony.Patch(method, prefix: new HarmonyMethod(typeof(SessionTape), prefix));
         }
         private static void MuteInt0(ref int __0) { if (_muteOutputs) __0 = 0; }
         private static void MuteFloat1(ref float __1) { if (_muteOutputs) __1 = 0f; }
         private static bool SkipWhenMuted() => !_muteOutputs;
+        private static bool OfflineReplay(ref bool __result) { if (!_muteOutputs) return true; __result = false; return false; }
 
         // ---- input layer -----------------------------------------------------
+        private static bool BeforeButtonPress(UnityEngine.UI.Button __instance)
+        {
+            if (_mode == Mode.Record && __instance.IsActive() && __instance.IsInteractable())
+                _frameValues["E.Click." + _clicksInFrame++] = MenuPlayback.Path(__instance.transform);
+            return !(_mode == Mode.Replay && _semanticMenus);
+        }
 
         // Keys: R<player>.<method>.<action>, I.<member>[.<arg>].
         private static void BoolRewiredBoolInt(Rewired.Player __instance, MethodBase __originalMethod, int __0, ref bool __result)
@@ -338,11 +430,13 @@ namespace ArtOfSimRally.Testing
         // The last value read in a frame is the one taped.
         private static void Bool(string key, ref bool result)
         {
+            if (_mode == Mode.Record && _captureDriver != null) result = _captureDriver.Values.TryGetValue(key, out var scripted) && scripted == "1";
             if (_mode == Mode.Record) { if (result) _frameValues[key] = "1"; else _frameValues.Remove(key); }
             else if (_mode == Mode.Replay) result = _playing.TryGetValue(key, out var v) && v == "1";
         }
         private static void Float(string key, ref float result)
         {
+            if (_mode == Mode.Record && _captureDriver != null) result = _captureDriver.Values.TryGetValue(key, out var scripted) ? float.Parse(scripted, CultureInfo.InvariantCulture) : 0;
             if (_mode == Mode.Record) { if (result != 0f) _frameValues[key] = N(result); else _frameValues.Remove(key); }
             else if (_mode == Mode.Replay)
                 result = _playing.TryGetValue(key, out var v) ? float.Parse(v, CultureInfo.InvariantCulture) : 0f;
@@ -383,31 +477,65 @@ namespace ArtOfSimRally.Testing
             c.StartCoroutine((System.Collections.IEnumerator)CinematicFinish.Invoke(c, null));
         }
 
-        private static bool _splashEnded;
-        private static void BeforeSplashEnd()
+        private static bool _splashEnded, _endingSplash;
+        private static bool BeforeSplashEnd()
         {
+            if ((_mode == Mode.Replay || _captureDriver != null) && !_endingSplash) return false;
             if (_mode == Mode.Record) _frameValues["E.SplashEnd"] = "1";
             _splashEnded = true;
+            return true;
         }
 
         private static void EndSplashIfTaped(string liveMarker)
         {
             if (_splashEnded || !liveMarker.Contains("|IntroSplashScreen|")) return;
-            if (!(_playing.ContainsKey("E.SplashEnd") || _frames.PlayedOut)) return;
+            if (!(_playing.ContainsKey("E.SplashEnd") || _frames?.PlayedOut == true)) return;
             var splash = UnityEngine.Object.FindObjectOfType<SplashScreenControl>();
             if (splash == null) return;
             Event("ending splash screen as taped");
-            splash.EndSplashScreen();
+            _endingSplash = true;
+            try { splash.EndSplashScreen(); } finally { _endingSplash = false; }
         }
 
         // ---- car layer -------------------------------------------------------
 
         private static int LiveTick => Mathf.RoundToInt(Time.fixedTime / Time.fixedDeltaTime);
+        private static bool BeforeDisableKinematic() => !(_mode == Mode.Replay && _trajectory && Vehicle.Active);
+        private static bool BeforeDynamicsStep(CarDynamics __instance)
+        {
+            if (!(_mode == Mode.Replay && _trajectory && Vehicle.Active && IsPlayer(__instance))) return true;
+            __instance.velo = _carPlaying.Velocity.magnitude;
+            return false;
+        }
+        private static bool BeforeWheelStep(Wheel __instance)
+        {
+            if (!(_mode == Mode.Replay && _trajectory && Vehicle.Active)) return true;
+            var car = __instance.GetComponentInParent<CarDynamics>();
+            if (!IsPlayer(car)) return true;
+            __instance.angularVelocity = _carPlaying.Velocity.magnitude / Mathf.Max(0.05f, __instance.radius);
+            __instance.steering = _carPlaying.ResolvedSteer;
+            return false;
+        }
+        private static void BeforePlayerUpdate(ref bool isReplay)
+        { if (_mode == Mode.Replay && _trajectory && Vehicle.Active) isReplay = true; }
+        private static readonly MethodInfo ClosestWaypoint = AccessTools.Method(typeof(OutOfBoundsManager), "FindClosestWaypointToCar");
+        private static readonly FieldInfo CurrentWaypoint = AccessTools.Field(typeof(OutOfBoundsManager), "CurrentWaypointIndex");
+        private static readonly MethodInfo Progress = AccessTools.Method(typeof(OutOfBoundsManager), "UpdateStageProgress");
+        private static bool BeforeOutOfBounds(OutOfBoundsManager __instance)
+        {
+            if (!(_mode == Mode.Replay && _trajectory && Vehicle.Active)) return true;
+            // Preserve presentation; reset animations/teleports are already represented by the tape.
+            try { CurrentWaypoint.SetValue(__instance, ClosestWaypoint.Invoke(__instance, null)); Progress.Invoke(__instance, null); }
+            catch (Exception ex) { Fail("playback progress: " + ex.Message); }
+            return false;
+        }
 
         // Replay only: keep the per-frame read consistent with the taped tick.
         private static void AfterCarInput(ref float throttleInput, ref float brakeInput, ref float steerInput,
             ref float handbrakeInput, ref float clutchInput, ref bool startEngineInput)
         {
+            if (_mode == Mode.Record && _captureDriver != null)
+            { _captureDriver.Input(ref throttleInput, ref brakeInput, ref steerInput, ref handbrakeInput, ref clutchInput, ref startEngineInput); return; }
             if (_mode != Mode.Replay) return;
             if (!_carActive) { throttleInput = brakeInput = steerInput = handbrakeInput = clutchInput = 0; startEngineInput = false; return; }
             steerInput = _carPlaying.Steer; throttleInput = _carPlaying.Throttle; brakeInput = _carPlaying.Brake;
@@ -429,6 +557,14 @@ namespace ArtOfSimRally.Testing
             if (tick == _liveTick) return;
             _liveTick = tick;
             _fixedStep++;
+            if (_trajectory && _car.PlayedOut && _finishedStageSegment != _car.Segment &&
+                MarkerText(_car.CurrentMarker).EndsWith("|UNDERWAY") && MarkerText(_car.NextMarker).EndsWith("|FINISHING_STAGE_ANIMATION"))
+            {
+                _finishedStageSegment = _car.Segment;
+                var manager = EventManagerField?.GetValue(null) as EventManager;
+                if (manager != null && manager.status == EventStatusEnums.EventStatus.UNDERWAY)
+                { Event("recorded finish boundary reached; invoking the game's finish gate"); manager.GiveControlToPlayer(true, true); }
+            }
             int before = _car.Consumed;
             _carActive = _car.Next(MarkerId(Marker()), out _carPlaying);
             if (!_carActive || _car.Consumed == before) return;
@@ -458,7 +594,8 @@ namespace ArtOfSimRally.Testing
                     _carWriter.WriteLine(string.Join("\t", new[] { _fixedStep.ToString(CultureInfo.InvariantCulture), marker.ToString(CultureInfo.InvariantCulture),
                         N(c.steerInput), N(c.throttleInput), N(c.brakeInput), N(c.handbrakeInput), N(c.clutchInput), c.startEngineInput ? "1" : "0",
                         drivetrain.gear.ToString(CultureInfo.InvariantCulture), N(p.x), N(p.y), N(p.z), N(q.x), N(q.y), N(q.z), N(q.w),
-                        N(v.x), N(v.y), N(v.z), N(w.x), N(w.y), N(w.z), LiveTick.ToString(CultureInfo.InvariantCulture) }));
+                        N(v.x), N(v.y), N(v.z), N(w.x), N(w.y), N(w.z), LiveTick.ToString(CultureInfo.InvariantCulture),
+                        N(c.steering), N(c.throttle), N(c.brake), N(drivetrain.rpm) }));
                     if (marker != _lastCarMarker)
                     {
                         _lastCarMarker = marker;
@@ -475,9 +612,10 @@ namespace ArtOfSimRally.Testing
                 BeginReplayTick();
                 if (!_carActive) return;
                 var r = _carPlaying;
+                if (r.Gear < 0 || r.Gear >= drivetrain.gearRatios.Length) throw new InvalidDataException("taped gear out of range");
                 // One-time starting state at the first stage tick, at the same hook
                 // the recording saved it from; strict from there on.
-                if (!_startStateDone && MarkerText(r.Marker).EndsWith("|UNDERWAY"))
+                if (!_trajectory && !_startStateDone && MarkerText(r.Marker).EndsWith("|UNDERWAY"))
                 {
                     _startStateDone = true;
                     var path = Path.Combine(_dir, "start-state.tsv");
@@ -487,7 +625,13 @@ namespace ArtOfSimRally.Testing
                 __instance.steerInput = r.Steer; __instance.throttleInput = r.Throttle; __instance.brakeInput = r.Brake;
                 __instance.handbrakeInput = r.Handbrake; __instance.clutchInput = r.Clutch; __instance.startEngineInput = r.StartEngine;
                 if (_legacy && drivetrain.gear != r.Gear && !drivetrain.changingGear) Shift(drivetrain, r.Gear, true);
-                Measure(body, drivetrain, r);
+                if (_trajectory)
+                {
+                    if (MarkerText(r.Marker).EndsWith("|UNDERWAY") || MarkerText(r.Marker).EndsWith("|FINISHING_STAGE_ANIMATION"))
+                        Vehicle.Apply(__instance, r);
+                    else Vehicle.Release();
+                }
+                else Measure(body, drivetrain, r);
             }
             catch (Exception ex) { Fail("car step: " + ex.Message); }
         }
@@ -496,25 +640,16 @@ namespace ArtOfSimRally.Testing
         {
             float error = Vector3.Distance(body.position, r.Position);
             bool driving = (EventManagerField?.GetValue(null) as EventManager)?.status == EventStatusEnums.EventStatus.UNDERWAY;
-            if (!driving) { _correcting = false; return; }
+            if (!driving) return;
             _lastPoseError = error;
             if (error > _maxPoseError) _maxPoseError = error;
             if (error > 0.05f && _firstDivergenceRow < 0) { _firstDivergenceRow = _car.Consumed; Event("first divergence > 5 cm at car row " + _car.Consumed); }
             if (drivetrain.gear != r.Gear) _gearMismatchSteps++;
             if (_car.Consumed % 30 == 0)
                 _divergenceWriter?.WriteLine(_car.Consumed + "\t" + r.Marker + "\t" + N(error) + "\t" + drivetrain.gear + "\t" + r.Gear);
-            // Assisted mode only: ease back onto the taped line.
-            if (_poseThreshold > 0 && !_correcting && error > _poseThreshold) { _correcting = true; _poseCorrections++; }
-            if (_correcting)
-            {
-                body.position = Vector3.Lerp(body.position, r.Position, 0.15f);
-                body.rotation = Quaternion.Slerp(body.rotation, r.Rotation, 0.15f);
-                body.velocity = Vector3.Lerp(body.velocity, r.Velocity, 0.3f);
-                body.angularVelocity = Vector3.Lerp(body.angularVelocity, r.AngularVelocity, 0.3f);
-                if (error < _poseThreshold * 0.25f) _correcting = false;
-            }
+            if (error > 2f) { Fail("input replay diverged by " + F2(error) + " m at car row " + _car.Consumed); return; }
         }
-        private static bool _correcting, _startStateDone;
+        private static bool _startStateDone;
 
         // Record: tape each player shift with the tick Drivetrain.FixedUpdate first
         // sees it. Replay: only the replayer may shift the player car.
@@ -535,17 +670,24 @@ namespace ArtOfSimRally.Testing
             return true;
         }
 
-        private static void BeforeDrivetrainStep(Drivetrain __instance)
+        private static bool BeforeDrivetrainStep(Drivetrain __instance)
         {
             try
             {
-                if (_mode != Mode.Replay || _legacy || !IsPlayer(__instance)) return;
+                if (_mode != Mode.Replay || !IsPlayer(__instance)) return true;
                 BeginReplayTick();
-                if (!_carActive) return;
+                if (!_carActive) return true;
+                if (_trajectory && (MarkerText(_carPlaying.Marker).EndsWith("|UNDERWAY") || MarkerText(_carPlaying.Marker).EndsWith("|FINISHING_STAGE_ANIMATION")))
+                {
+                    VehiclePlayback.ApplyDrivetrain(__instance, _carPlaying);
+                    return false;
+                }
+                if (_legacy) return true;
                 if (_shiftsByTick.TryGetValue(_carPlaying.Tick, out var shifts))
                     foreach (var s in shifts) Shift(__instance, s.Key, s.Value);
             }
             catch (Exception ex) { Fail("drivetrain step: " + ex.Message); }
+            return true;
         }
         private static void AfterDrivetrainStep(Drivetrain __instance)
         {
@@ -585,8 +727,19 @@ namespace ArtOfSimRally.Testing
             try
             {
                 int marker = MarkerId(Marker());
+                if (_mode == Mode.Replay && marker != _lastObservedMarker)
+                { _lastObservedMarker = marker; Event("live state " + MarkerText(marker)); }
                 if (_mode == Mode.Record)
                 {
+                    if (_captureDriver != null)
+                    {
+                        if (_captureDriver.Tick(MarkerText(marker))) { Stop("synthetic integration capture completed"); return; }
+                        _playing = _captureDriver.Values;
+                        var driverUmm = UnityModManagerNet.UnityModManager.UI.Instance;
+                        if (driverUmm != null && driverUmm.Opened != _playing.ContainsKey("U.Open")) driverUmm.ToggleWindow(_playing.ContainsKey("U.Open"));
+                        EndSplashIfTaped(MarkerText(marker));
+                        if (_playing.ContainsKey("E.CinematicSkip")) ReplayCinematicSkip(MarkerText(marker));
+                    }
                     // UMM's window opens at startup and blocks stock menus while open;
                     // it's often closed with the mouse, which isn't taped. Tape its state.
                     if (UnityModManagerNet.UnityModManager.UI.Instance?.Opened == true) _frameValues["U.Open"] = "1";
@@ -596,6 +749,7 @@ namespace ArtOfSimRally.Testing
                     foreach (var pair in _frameValues) line.Append('\t').Append(pair.Key).Append('=').Append(pair.Value);
                     _inputWriter.WriteLine(line.ToString());
                     _frameValues.Clear();
+                    _clicksInFrame = 0;
                     if (marker != _lastMarker) { _lastMarker = marker; Reseed(marker); Event("segment " + MarkerText(marker)); Shot(_dir, marker); }
                     if (_frame % 60 == 0) { _inputWriter.Flush(); _carWriter.Flush(); _shiftWriter.Flush(); _eventWriter.Flush(); }
                 }
@@ -606,6 +760,9 @@ namespace ArtOfSimRally.Testing
                     int before = _frames.Segment;
                     if (!_frames.Next(marker, out var playing)) playing = Empty;
                     _playing = playing;
+                    if (_semanticMenus)
+                        foreach (var click in _playing.Where(p => p.Key.StartsWith("E.Click.")).OrderBy(p => int.Parse(p.Key.Substring(8), CultureInfo.InvariantCulture)))
+                            MenuPlayback.Click(click.Value);
                     var umm = UnityModManagerNet.UnityModManager.UI.Instance;
                     bool wantOpen = _playing.ContainsKey("U.Open");
                     if (umm != null && umm.Opened != wantOpen) { umm.ToggleWindow(wantOpen); Event((wantOpen ? "opened" : "closed") + " the mod manager window as taped"); }
@@ -615,7 +772,8 @@ namespace ArtOfSimRally.Testing
                     if (_frames.Segment != before) { Event("segment " + _frames.Segment + " " + MarkerText(marker)); Shot(_out, marker); }
                     if (_frames.Failed != null) Fail(_frames.Failed);
                     else if (_car.Failed != null) Fail(_car.Failed);
-                    else if (_frames.Finished && _car.InLastSegment) Finish(Verdict("all frames played"));
+                    else if (_frames.Finished && _car.SkippedWhere(m => m.EndsWith("|UNDERWAY")) == 0)
+                        Finish(Verdict("final menu state reached and all driving rows played; unused non-driving rows=" + _car.SkippedWhere(m => !m.EndsWith("|UNDERWAY"))));
                     if (_frame % 60 == 0) { _eventWriter?.Flush(); _divergenceWriter?.Flush(); }
                 }
                 _frame++;
@@ -626,6 +784,7 @@ namespace ArtOfSimRally.Testing
         internal static string Command(string command)
         {
             if (command == "SESSION-STATUS") return "OK " + Describe;
+            if (command == "SESSION-UI") return "OK " + MenuPlayback.Describe();
             if (command == "SESSION-STOP") { Stop("stopped by command"); return "OK " + Describe; }
             return null;
         }
@@ -635,20 +794,34 @@ namespace ArtOfSimRally.Testing
             if (_mode == Mode.Record)
             {
                 Event("record stopped: " + why + (_incomplete != null ? "; INCOMPLETE: " + _incomplete : ""));
+                try { RecorderMain.StopSessionSignals(_dir); }
+                catch (Exception ex) { MarkIncomplete("signal capture: " + ex.Message); }
                 try { _inputWriter?.Dispose(); _carWriter?.Dispose(); _shiftWriter?.Dispose(); _eventWriter?.Dispose(); }
                 catch (Exception ex) { MarkIncomplete("closing files: " + ex.Message); }
-                _inputWriter = _carWriter = _shiftWriter = _eventWriter = null;
+                _inputWriter = _carWriter = _shiftWriter = null; _eventWriter = null;
+                if (_incomplete == null)
+                {
+                    try
+                    {
+                        File.WriteAllText(Path.Combine(_dir, "end.txt"), "reason=" + why + "\nframes=" + _frame + "\nsteps=" + _fixedStep + "\n");
+                        var sealedFiles = Directory.GetFiles(_dir).Select(Path.GetFileName).Where(n => n != "complete.tsv" && !n.EndsWith(".tmp")).ToList();
+                        var environment = Path.Combine(_dir, "environment-at-start");
+                        if (Directory.Exists(environment)) sealedFiles.AddRange(Directory.GetFiles(environment).Select(p => "environment-at-start/" + Path.GetFileName(p)));
+                        ArtifactSeal.Complete(_dir, sealedFiles.ToArray());
+                    }
+                    catch (Exception ex) { MarkIncomplete("completion seal: " + ex.Message); }
+                }
                 _mode = Mode.Off;
             }
             else if (_mode == Mode.Replay && _result == null)
-                Finish(_frames.InLastSegment && _frames.RemainingInSegment <= 120 && _car.InLastSegment ? Verdict(why + " during the final segment") : "aborted: " + why);
+                Finish(_frames.Finished && _car.SkippedWhere(m => m.EndsWith("|UNDERWAY")) == 0 ? Verdict(why) : "aborted: " + why);
         }
 
         /// <summary>Probe unload: stop, then remove every session hook except the output mutes.</summary>
         internal static void Unload()
         {
             Stop("probe unloaded");
-            try { _harmony?.UnpatchAll(HarmonyId); _outputsPatched = false; if (_muteOutputs) PatchOutputs(); }
+            try { _harmony?.UnpatchAll(HarmonyId); if (_muteOutputs) PatchOutputs(); }
             catch (Exception ex) { _log?.Invoke("Session tape unload: " + ex.Message); }
         }
 
@@ -658,12 +831,16 @@ namespace ArtOfSimRally.Testing
         {
             int driving = _car.SkippedWhere(m => m.EndsWith("|UNDERWAY"));
             if (driving > 0) return "failed: " + driving + " taped driving rows skipped (" + how + ")";
-            return "passed (" + how + (_poseThreshold > 0 ? ", assisted" : ", strict") + ")";
+            if (!_trajectory && (_maxPoseError > 0.5f || _gearMismatchSteps > 0))
+                return "failed: input replay diverged; max error " + F2(_maxPoseError) + " m, gear mismatches " + _gearMismatchSteps;
+            if (_trajectory && (Vehicle.Applied == 0 || Vehicle.MaxApplicationError > 0.01f)) return "failed: trajectory application";
+            return "passed (" + how + (_trajectory ? ", trajectory playback" : ", input diagnostic") + ")";
         }
 
         private static void Finish(string result)
         {
             _result = result;
+            Vehicle.Release();
             Event("replay " + result + "; " + Describe);
             Shot(_out, -1);
             try
@@ -686,6 +863,7 @@ namespace ArtOfSimRally.Testing
             try { File.WriteAllText(Path.Combine(_dir, "incomplete.txt"), why + "\n"); } catch { }
             _log?.Invoke("Session tape recording INCOMPLETE: " + why);
         }
+        internal static void CaptureError(string why) => MarkIncomplete(why);
 
         private static void Fail(string why)
         {

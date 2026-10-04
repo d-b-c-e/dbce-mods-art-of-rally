@@ -14,7 +14,7 @@ while ($cursor) {
     if ((Test-Path -LiteralPath $cursor) -and ((Get-Item -LiteralPath $cursor -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw "Reparse path is not supported: $cursor" }
     $cursor=Split-Path -Parent $cursor
 }
-$files=@('ArtOfSimRally.DevRecorder.dll','Info.json')
+$files=@('ArtOfSimRally.DevRecorder.dll','Info.json','Dbce.Wheel.Playback.dll')
 if ($Uninstall) {
     foreach ($name in $files) {
         $target=Join-Path $destination $name
@@ -28,7 +28,7 @@ if (-not $SkipBuild) {
     & dotnet build (Join-Path $PSScriptRoot 'Recorder/Recorder.csproj') -c Release --nologo -warnaserror
     if ($LASTEXITCODE -ne 0) { throw 'Developer probe build failed.' }
 }
-$sources=@((Join-Path $PSScriptRoot 'Recorder/bin/Release/net48/ArtOfSimRally.DevRecorder.dll'), (Join-Path $PSScriptRoot 'Recorder/Info.json'))
+$sources=@((Join-Path $PSScriptRoot 'Recorder/bin/Release/net48/ArtOfSimRally.DevRecorder.dll'), (Join-Path $PSScriptRoot 'Recorder/Info.json'), (Join-Path $root 'lib/playback/Dbce.Wheel.Playback.dll'))
 foreach ($source in $sources) { if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { throw "Missing probe file: $source" } }
 New-Item -ItemType Directory -Path $destination -Force | Out-Null
 for ($i=0; $i -lt $files.Count; $i++) { Copy-Item -LiteralPath $sources[$i] -Destination (Join-Path $destination $files[$i]) -Force }

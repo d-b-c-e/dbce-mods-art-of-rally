@@ -109,6 +109,7 @@ static class Program
             signals = schema >= 3 ? SignalAnalysis.Read(directory, manifest, forceRows) : new { available = false, reason = "legacy capture has no motion/contact observations" },
             collisions = schema >= 4 ? CollisionAnalysis.Read(directory, manifest, forceRows) : new { available = false, reason = "legacy capture has no body-collision observations" },
             forceRows = forces.Length - 1,
+            recordedOutputs = RecordedOutputs.Read(directory, manifest, forceRows),
             drivingFrames = timings.Count,
             p95FrameMs = timings[(int)((timings.Count - 1) * .95)],
             maxFrameMs = timings[^1],
@@ -136,9 +137,10 @@ static class Program
         {
             object detail;
             if (args.Length == 2 && args[0] == "--replay") detail = Replay(Path.GetFullPath(args[1]));
+            else if (args.Length == 4 && args[0] == "--trial") { Replay(Path.GetFullPath(args[1])); detail = ForceTrial.Run(Path.GetFullPath(args[1]), Path.GetFullPath(args[2]), Path.GetFullPath(args[3])); }
             else if (args.Length == 2 && args[0] == "--verify-release") detail = VerifyRelease(args[1]);
             else if (args.Length == 2 && args[0] == "--corpus") detail = Corpus(args[1]);
-            else throw new ArgumentException("Use --replay <capture>, --corpus <index.json>, or --verify-release <mod.dll>");
+            else throw new ArgumentException("Use --replay <capture>, --trial <capture> <tune.json> <new-output>, --corpus <index.json>, or --verify-release <mod.dll>");
             Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions, detail })); return 0;
         }
         catch (Exception ex) { Console.Error.WriteLine(ex); return 1; }

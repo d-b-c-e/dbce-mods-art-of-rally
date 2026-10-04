@@ -5,6 +5,8 @@ using System.Linq;
 using HarmonyLib;
 using UnityEngine;
 using UnityModManagerNet;
+using Dbce.Wheel.Telemetry;
+using Dbce.Wheel.Playback;
 
 namespace ArtOfSimRally.Testing
 {
@@ -19,6 +21,10 @@ namespace ArtOfSimRally.Testing
         private static int device;
         private static CarDynamics motionCar;
         private static Rigidbody motionBody;
+        private static BufferedTapeWriter packetWriter;
+        private static BufferedTapeWriter effectWriter;
+        private static readonly byte[] packetBuffer = new byte[ForzaPacket.Size];
+        private static int packetCount;
         private const string PatchId = "ArtOfSimRally.DevRecorder";
         private struct Step { public bool Valid; public ForceSample Sample; }
 
@@ -48,7 +54,12 @@ namespace ArtOfSimRally.Testing
             subject = new SubjectAccess(mod, force);
             patches = new Harmony(PatchId);
             patches.Patch(subject.Drive, prefix: Hook(nameof(BeforeForce)), postfix: Hook(nameof(AfterForce)));
-            patches.Patch(subject.Send, prefix: Hook(nameof(BeforeSend)), postfix: Hook(nameof(AfterSend)));
+            patches.Patch(subject.Send, prefix: new HarmonyMethod(typeof(RecorderMain), nameof(BeforeSend)) { priority = Priority.First }, postfix: Hook(nameof(AfterSend)));
+            patches.Patch(AccessTools.Method(mod.GetType("ArtOfSimRally.Mod.TelemetryPump", true), "SendFrame"),
+                prefix: new HarmonyMethod(typeof(RecorderMain), nameof(ObservePacket)) { priority = Priority.First });
+            var native = force.GetType("Dbce.Wheel.Ffb.WheelFfbNative", true);
+            foreach (var method in native.GetMethods().Where(m => new[] { "UpdatePeriodic", "PlayConstantBurst", "PlayPeriodicBurst", "PlayShapedPeriodicBurst", "UpdateCondition" }.Contains(m.Name)))
+                patches.Patch(method, prefix: new HarmonyMethod(typeof(RecorderMain), nameof(ObserveEffect)) { priority = Priority.First });
             patches.Patch(subject.Reset, postfix: Hook(nameof(Reset)));
             patches.Patch(subject.Update, postfix: Hook(nameof(Frame)));
             patches.Patch(subject.Shutdown, postfix: Hook(nameof(Shutdown)));
@@ -56,6 +67,54 @@ namespace ArtOfSimRally.Testing
             if (includeCollision) patches.Patch(subject.Collision, prefix: Hook(nameof(BeforeCollision)));
         }
         private static HarmonyMethod Hook(string name) => new HarmonyMethod(typeof(RecorderMain), name);
+        internal static void StartSessionSignals(string directory, bool physicalOutput, bool synthetic)
+        {
+            var identity = subject.Identity(Application.version, Application.unityVersion);
+            identity.SetAttributeValue("physicalOutput", physicalOutput);
+            identity.SetAttributeValue("captureSource", synthetic ? "synthetic-integration" : "player");
+            identity.SetAttributeValue("forceUnits", "signed-normalized-request; device column uses nominal +/-10000 units, not measured torque");
+            identity.SetAttributeValue("deliveryMeaning", physicalOutput ? "native-api-acceptance" : "muted-native-api-acceptance");
+            if (!Session.Start(false, identity, Path.Combine(directory, "signals"))) throw new InvalidOperationException(Session.Status);
+            packetCount = 0;
+            packetWriter = new BufferedTapeWriter(Path.Combine(directory, "telemetry.tsv"));
+            packetWriter.WriteLine("sample\ttime_s\tforza_horizon324_base64");
+            effectWriter = new BufferedTapeWriter(Path.Combine(directory, "effects.tsv"));
+            effectWriter.WriteLine("time_s\tphysics_time_s\tmethod\trequested_arguments_before_mute");
+        }
+        internal static void StopSessionSignals(string directory)
+        {
+            packetWriter?.Dispose(); packetWriter = null;
+            effectWriter?.Dispose(); effectWriter = null;
+            if (!Session.Pending) return;
+            if (!Session.Stop(false)) throw new IOException(Session.Status);
+            var receipt = System.Xml.Linq.XDocument.Load(Path.Combine(Session.SavedDirectory, "manifest.xml"));
+            if ((string)receipt.Root.Attribute("complete") != "true") throw new IOException("Signal capture is incomplete: " + receipt.Root.Element("error")?.Value);
+            // A flat, sealed analysis bundle beside the trajectory. Existing offline tools accept it directly.
+            foreach (var file in Directory.GetFiles(Session.SavedDirectory))
+                File.Copy(file, Path.Combine(directory, Path.GetFileName(file)), false);
+        }
+        private static void ObservePacket(TelemetryFrame __0)
+        {
+            if (packetWriter == null) return;
+            try
+            {
+                ForzaPacket.Write(__0, packetBuffer);
+                packetWriter.WriteLine(packetCount++ + "\t" + Time.realtimeSinceStartup.ToString("R", System.Globalization.CultureInfo.InvariantCulture) + "\t" + Convert.ToBase64String(packetBuffer));
+            }
+            catch (Exception ex) { SessionTape.CaptureError("telemetry: " + ex.Message); Session.Incomplete("telemetry: " + ex.Message); }
+        }
+        private static void ObserveEffect(System.Reflection.MethodBase __originalMethod, object[] __args)
+        {
+            if (effectWriter == null) return;
+            try
+            {
+                var parameters = __originalMethod.GetParameters();
+                string args = string.Join(";", __args.Select((value, i) => parameters[i].Name + "=" + Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture)));
+                effectWriter.WriteLine(Time.realtimeSinceStartup.ToString("R", System.Globalization.CultureInfo.InvariantCulture) + "\t" +
+                    Time.fixedTime.ToString("R", System.Globalization.CultureInfo.InvariantCulture) + "\t" + __originalMethod.Name + "\t" + args);
+            }
+            catch (Exception ex) { SessionTape.CaptureError("effect requests: " + ex.Message); Session.Incomplete("effect requests: " + ex.Message); }
+        }
         private static string Command(string command)
         {
             var tape = SessionTape.Command(command);

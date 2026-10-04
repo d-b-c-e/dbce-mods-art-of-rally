@@ -1,11 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
-<PropertyGroup><TargetFramework>net48</TargetFramework><LangVersion>latest</LangVersion><AssemblyName>ArtOfSimRally.DevRecorder</AssemblyName><Version>0.3.0</Version><TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+<PropertyGroup><TargetFramework>net48</TargetFramework><LangVersion>latest</LangVersion><AssemblyName>ArtOfSimRally.DevRecorder</AssemblyName><Version>0.4.0</Version><TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 <GameDir Condition="'$(GameDir)' == ''">D:\Program Files (x86)\Steam\steamapps\common\artofrally</GameDir><ManagedDir>$(GameDir)\artofrally_Data\Managed</ManagedDir></PropertyGroup>
 <ItemGroup>
+<Reference Include="Dbce.Wheel.Playback"><HintPath>../../../lib/playback/Dbce.Wheel.Playback.dll</HintPath><Private>true</Private></Reference>
+<Reference Include="Dbce.Wheel.Telemetry"><HintPath>../../../lib/toolkit/dotnet/Dbce.Wheel.Telemetry.dll</HintPath><Private>false</Private></Reference>
 <Compile Include="../Common/ArtifactHash.cs" Link="ArtifactHash.cs" />
 <Compile Include="../../../src/ArtOfSimRally.Mod/NativeDiagnostics.cs" Link="NativeDiagnostics.cs" />
 <Reference Include="Assembly-CSharp"><HintPath>$(ManagedDir)/Assembly-CSharp.dll</HintPath><Private>false</Private></Reference>
 <Reference Include="UnityEngine.CoreModule"><HintPath>$(ManagedDir)/UnityEngine.CoreModule.dll</HintPath><Private>false</Private></Reference>
+<Reference Include="UnityEngine.JSONSerializeModule"><HintPath>$(ManagedDir)/UnityEngine.JSONSerializeModule.dll</HintPath><Private>false</Private></Reference>
+<Reference Include="UnityEngine.UI"><HintPath>$(ManagedDir)/UnityEngine.UI.dll</HintPath><Private>false</Private></Reference>
 <Reference Include="UnityEngine.PhysicsModule"><HintPath>$(ManagedDir)/UnityEngine.PhysicsModule.dll</HintPath><Private>false</Private></Reference>
 <Reference Include="UnityEngine"><HintPath>$(ManagedDir)/UnityEngine.dll</HintPath><Private>false</Private></Reference>
 <Reference Include="Assembly-CSharp-firstpass"><HintPath>$(ManagedDir)/Assembly-CSharp-firstpass.dll</HintPath><Private>false</Private></Reference>

@@ -23,6 +23,19 @@ One mod for art of rally: wheel, FFB, telemetry, cameras and triple screens.
 
 Wheel, FFB, telemetry and camera behavior are unchanged from 0.2.7.
 
+### Optional developer SessionTools
+
+- Replays recorded car trajectories through menus, driving, finish and results;
+  isolates kinematic playback from stock physics/reset writers and verifies each
+  previous pose on the next physics tick. Input resimulation remains diagnostic.
+- New captures retain resolved scene/car/weather choices, sealed background-written
+  streams, original force/motion/collision samples and telemetry before output muting.
+- Separate offline force trials and unit-labelled statistics preserve original
+  captures and owner tuning. Wheel/SimHub output stays muted during playback.
+- A shared, separately pinned playback core provides ordering, completion hashes,
+  bounded writing and statistics for other game adapters. The player ZIP stays
+  independent of this optional probe.
+
 ## [0.2.7] - 2026-09-30
 
 Promotes the 0.2.7-rc.2 behavior to the regular release. USB Bind now keeps

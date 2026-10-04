@@ -109,6 +109,17 @@ try {
     $result = Run 'replay' 'dotnet' @('run','--project','tools/testing/Replay/Replay.csproj','-c','Release','--','--replay',$recorder.syntheticCapture)
     $replay = $result | Select-Object -Last 1 | ConvertFrom-Json
     Checkpoint 'replay' $replay.assertions
+    $identityTune = Join-Path $run 'identity-trial.json'
+    Set-Content -LiteralPath $identityTune -Value '{}' -Encoding UTF8
+    $result = Run 'trial-identity' 'dotnet' @('run','--no-build','--project','tools/testing/Replay/Replay.csproj','-c','Release','--','--trial',$recorder.syntheticCapture,$identityTune,(Join-Path $run 'identity-trial'))
+    $trial = $result | Select-Object -Last 1 | ConvertFrom-Json
+    Assert ($trial.detail.changedRows -eq 0 -and $trial.detail.physicalOutput -eq $false) 'Identity trial changed the baseline'
+    $zeroTune = Join-Path $run 'zero-trial.json'
+    Set-Content -LiteralPath $zeroTune -Value '{"gain":0}' -Encoding UTF8
+    $result = Run 'trial-zero' 'dotnet' @('run','--no-build','--project','tools/testing/Replay/Replay.csproj','-c','Release','--','--trial',$recorder.syntheticCapture,$zeroTune,(Join-Path $run 'zero-trial'))
+    $trial = $result | Select-Object -Last 1 | ConvertFrom-Json
+    Assert ($trial.detail.candidate.Rms -eq 0 -and $trial.detail.rows -gt 0) 'Zero gain trial did not produce zero requests'
+    Checkpoint 'force-trials' 2
     # Tampering or missing completion receipts must fail, not become a short pass.
     $badCapture = Join-Path $run 'tampered-capture'
     Copy-Item -LiteralPath $recorder.syntheticCapture -Destination $badCapture -Recurse
@@ -210,7 +221,9 @@ try {
     $modHash = (Get-FileHash -LiteralPath (Join-Path $mod 'ArtOfSimRally.Mod.dll')).Hash
     $null = Run 'probe-install' $shell @('-NoProfile','-File',$probeInstaller,'-GameDir',$game,'-SkipBuild')
     $probe = Join-Path $game 'Mods/ArtOfSimRally.DevRecorder'
-    Assert (@(Get-ChildItem -LiteralPath $probe -File).Count -eq 2) 'Probe copied unexpected dependencies'
+    $probeFiles = @('ArtOfSimRally.DevRecorder.dll','Info.json','Dbce.Wheel.Playback.dll')
+    Assert (@(Compare-Object @($probeFiles | Sort-Object) @((Get-ChildItem -LiteralPath $probe -File).Name | Sort-Object)).Count -eq 0) 'Probe payload differs from explicit allowlist'
+    Assert ((Get-FileHash (Join-Path $probe 'Dbce.Wheel.Playback.dll')).Hash -eq (Get-FileHash (Join-Path $root 'lib/playback/Dbce.Wheel.Playback.dll')).Hash) 'Probe playback dependency differs from pin'
     Set-Content -LiteralPath (Join-Path $probe 'user-notes.txt') -Value 'keep'
     $null = Run 'probe-uninstall' $shell @('-NoProfile','-File',$probeInstaller,'-GameDir',$game,'-Uninstall')
     Assert (-not (Test-Path -LiteralPath (Join-Path $probe 'ArtOfSimRally.DevRecorder.dll'))) 'Probe uninstall left recorder DLL'
