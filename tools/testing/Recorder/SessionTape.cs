@@ -447,6 +447,12 @@ namespace ArtOfSimRally.Testing
                 {
                     int marker = MarkerId(Marker());
                     _fixedStep++;
+                    if (!_startStateDone && MarkerText(marker).EndsWith("|UNDERWAY"))
+                    {
+                        _startStateDone = true;
+                        try { StartState.Save(__instance.gameObject, Path.Combine(_dir, "start-state.tsv")); Event("start state saved at the first stage tick"); }
+                        catch (Exception ex) { MarkIncomplete("start state: " + ex.Message); }
+                    }
                     var c = __instance;
                     var p = body.position; var q = body.rotation; var v = body.velocity; var w = body.angularVelocity;
                     _carWriter.WriteLine(string.Join("\t", new[] { _fixedStep.ToString(CultureInfo.InvariantCulture), marker.ToString(CultureInfo.InvariantCulture),
@@ -469,6 +475,15 @@ namespace ArtOfSimRally.Testing
                 BeginReplayTick();
                 if (!_carActive) return;
                 var r = _carPlaying;
+                // One-time starting state at the first stage tick, at the same hook
+                // the recording saved it from; strict from there on.
+                if (!_startStateDone && MarkerText(r.Marker).EndsWith("|UNDERWAY"))
+                {
+                    _startStateDone = true;
+                    var path = Path.Combine(_dir, "start-state.tsv");
+                    if (File.Exists(path)) Event("start state restored: " + StartState.Restore(__instance.gameObject, path, m => Event(m)) + " values");
+                    else Event("no start state on this tape; the launch will differ");
+                }
                 __instance.steerInput = r.Steer; __instance.throttleInput = r.Throttle; __instance.brakeInput = r.Brake;
                 __instance.handbrakeInput = r.Handbrake; __instance.clutchInput = r.Clutch; __instance.startEngineInput = r.StartEngine;
                 if (_legacy && drivetrain.gear != r.Gear && !drivetrain.changingGear) Shift(drivetrain, r.Gear, true);
@@ -499,7 +514,7 @@ namespace ArtOfSimRally.Testing
                 if (error < _poseThreshold * 0.25f) _correcting = false;
             }
         }
-        private static bool _correcting;
+        private static bool _correcting, _startStateDone;
 
         // Record: tape each player shift with the tick Drivetrain.FixedUpdate first
         // sees it. Replay: only the replayer may shift the player car.
