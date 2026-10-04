@@ -11,6 +11,8 @@ $customRally = Join-Path $env:USERPROFILE 'AppData/LocalLow/Funselektor Labs/Art
 function Assert-GameClosed { if (Get-Process artofrally -ErrorAction SilentlyContinue) { throw 'Close art of rally first.' } }
 . (Join-Path $PSScriptRoot 'SessionEnvironment.ps1')
 Assert-GameClosed
+$other = Get-Process -Name 'Super Woden Rally Edge','DRIVE Rally','iRacingArcade' -ErrorAction SilentlyContinue
+if ($other) { throw ('Another game owns the desktop test slot: ' + (($other | Select-Object -ExpandProperty ProcessName) -join ', ')) }
 $source = Join-Path $root "results/sessions/$Seed"
 $tape = Join-Path $root "results/sessions/$Name"
 if (Test-Path -LiteralPath $tape) { throw 'Integration capture already exists.' }

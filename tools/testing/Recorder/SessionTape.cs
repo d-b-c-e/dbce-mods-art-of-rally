@@ -195,6 +195,7 @@ namespace ArtOfSimRally.Testing
             _shiftWriter.WriteLine("tick\tgear\tchangeTarget\tphase");
             File.WriteAllText(Path.Combine(_dir, "session.txt"),
                 "format=" + Format + "\ngame=" + Application.version + "\nunity=" + Application.unityVersion +
+                "\ngameAssemblySha256=" + ArtifactHash.FileHash(typeof(CarDynamics).Assembly.Location) +
                 "\nfixedDeltaTime=" + N(Time.fixedDeltaTime) + "\nstartedUtc=" + DateTime.UtcNow.ToString("o") +
                 "\nsceneSelections=1\ncaptureSource=" + (_captureDriver == null ? "player" : "synthetic-integration") + "\nphysicalOutput=" + (!_muteOutputs).ToString().ToLowerInvariant() + "\n");
             RecorderMain.StartSessionSignals(_dir, !_muteOutputs, _captureDriver != null);
@@ -206,6 +207,9 @@ namespace ArtOfSimRally.Testing
                 .ToDictionary(p => p[0], p => p[1]);
             if (!session.TryGetValue("format", out var format) || !int.TryParse(format, out var version) || version < 1 || version > Format)
                 throw new InvalidDataException("unsupported session format");
+            if (session.TryGetValue("gameAssemblySha256", out var gameHash) &&
+                !string.Equals(gameHash, ArtifactHash.FileHash(typeof(CarDynamics).Assembly.Location), StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("recorded game assembly differs from this installation");
             _legacy = version < 2;
             _semanticMenus = version >= 3;
             _sceneSelections = session.TryGetValue("sceneSelections", out var selections) && selections == "1";

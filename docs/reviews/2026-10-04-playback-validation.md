@@ -56,3 +56,18 @@ These establish trajectory and arithmetic behavior for the stated cases.
 They do not establish physical torque, input-physics determinism, every car/stage,
 camera mode, restart or multi-stage transition. Existing hardware/UI issues,
 including KI-44, remain open. No force tune or SimHub profile was changed.
+
+## Packaging and failure-path follow-up
+
+The RC8 clean-source build passed all 19 automated suites. The new force-trial
+suite initially exposed a stale manual-checklist name allowlist; that validator
+was corrected and its six regressions pass. The optional SessionTools RC9 ZIP
+was extracted, its completion seal checked, its analysis runner passed the same
+27,453 capture checks, and its packaged installer/uninstaller ran against an
+isolated game layout. This does not replace final-artifact live validation.
+
+The recorder now follows the shipping force path's focus/settings gates. A
+deliberate zero/release while unfocused is not a normal force-model sample.
+New captures retain the game assembly hash, checked on playback; older tapes
+without it retain their existing compatibility limitations. The synthetic
+fixture checks for competing games before changing any owner preferences.

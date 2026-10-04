@@ -141,7 +141,8 @@ namespace ArtOfSimRally.Testing
             __state = default; observing = false; sent = false;
             try
             {
-                if (!Session.Active || !subject.Enabled() || !subject.Driving() || !subject.ForceEnabled() || !subject.Ready()) return;
+                if (!Session.Active || !subject.Enabled() || !subject.Driving() || !subject.ForceEnabled() || !subject.Ready() ||
+                    subject.SettingsVisible() || !subject.Focused()) return;
                 var front = __0.axles?.frontAxle;
                 if (front?.leftWheel == null || front.rightWheel == null) return;
                 var left = front.leftWheel; var right = front.rightWheel; var tune = subject.ReadTune();

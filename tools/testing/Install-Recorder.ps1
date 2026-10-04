@@ -1,4 +1,4 @@
-<# Installs/removes a LOCAL developer probe. Never included in release packages.
+<# Installs/removes the optional developer probe. Excluded from the normal player ZIP.
    Build references use the project's GameDir default; destination can be an isolated test layout. #>
 [CmdletBinding()]
 param([string]$GameDir='D:/Program Files (x86)/Steam/steamapps/common/artofrally', [switch]$Uninstall, [switch]$SkipBuild)
@@ -8,7 +8,7 @@ $GameDir=[IO.Path]::GetFullPath($GameDir)
 if (Get-Process -Name artofrally -ErrorAction SilentlyContinue) { throw 'Close art of rally before changing the developer probe.' }
 if (-not (Test-Path -LiteralPath (Join-Path $GameDir 'artofrally.exe') -PathType Leaf)) { throw 'Not an art of rally installation.' }
 $destination=Join-Path $GameDir 'Mods/ArtOfSimRally.DevRecorder'
-# A junction could redirect even these two known files into another installation.
+# A junction could redirect these known files into another installation.
 $cursor=$destination
 while ($cursor) {
     if ((Test-Path -LiteralPath $cursor) -and ((Get-Item -LiteralPath $cursor -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw "Reparse path is not supported: $cursor" }
@@ -32,4 +32,4 @@ $sources=@((Join-Path $PSScriptRoot 'Recorder/bin/Release/net48/ArtOfSimRally.De
 foreach ($source in $sources) { if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { throw "Missing probe file: $source" } }
 New-Item -ItemType Directory -Path $destination -Force | Out-Null
 for ($i=0; $i -lt $files.Count; $i++) { Copy-Item -LiteralPath $sources[$i] -Destination (Join-Path $destination $files[$i]) -Force }
-Write-Output "Developer probe installed in $destination. Pause before using Record-Drive.ps1 -Command Start."
+Write-Output "Developer probe installed in $destination. Use Session.ps1 -Record/-Replay for whole-session tooling."

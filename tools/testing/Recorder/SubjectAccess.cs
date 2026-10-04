@@ -20,7 +20,7 @@ namespace ArtOfSimRally.Testing
         private const BindingFlags Flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static;
         public readonly Assembly Mod;
         public readonly MethodInfo Drive, Reset, Update, Shutdown, Send, Exit, Collision;
-        public readonly Func<bool> Enabled, Driving, ForceEnabled, Ready, Direct, Restarting;
+        public readonly Func<bool> Enabled, Driving, ForceEnabled, Ready, Direct, Restarting, Focused, SettingsVisible;
         public readonly Func<object> PlayerBody;
         public readonly Func<float> Smoothed;
         public readonly Func<Tune> ReadTune;
@@ -61,6 +61,8 @@ namespace ArtOfSimRally.Testing
                         Expression.Condition(Expression.Equal(player, Expression.Constant(null, player.Type)), nothing,
                             Expression.Convert(Expression.PropertyOrField(player, "playerRigidBody"), typeof(object))))))).Compile();
             Enabled = Getter<bool>(main, "Enabled"); Driving = Getter<bool>(state, "IsDriving");
+            Focused = Expression.Lambda<Func<bool>>(Expression.Call(Method(main, "HasFocus"))).Compile();
+            SettingsVisible = Getter<bool>(main, "SettingsVisible");
             Ready = Getter<bool>(native, "Ready"); Direct = Getter<bool>(input, "Enabled");
             Smoothed = Expression.Lambda<Func<float>>(Expression.Field(null, controller.GetField("_smoothed", Flags))).Compile();
             var cfg = Expression.Property(null, main.GetProperty("Settings", Flags));
