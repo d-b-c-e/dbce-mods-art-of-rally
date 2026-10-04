@@ -21,6 +21,26 @@ Severity is about the effect on driving, not on how annoying it looks:
 
 ## Open
 
+### KI-44 — Open game bindings locks up the game again (0.4.0-rc.3)
+
+**Owner-reported 2026-10-04, blocking for that route; KI-42 regression.** In
+0.4.0-rc.3, with triple screens in separate-displays mode and the developer probe
+installed, pressing **Open game bindings** in Wheel settings locked up the game.
+The owner had to close it. Player.log has no exception and no GameBindings warning.
+That session also logged "Failed to change display to ExclusiveFullscreen…
+reverting to FullscreenWindow" and switched from Windowed to FullScreenWindow.
+
+Lead, not confirmed: `GameBindings.Tick` defers the hand-off through
+`MenuInputBarrier.Blocks(…, Application.isFocused, …)`. If the game window never
+regains focus, the hand-off waits forever with the panel closed and no menu
+input. In separate-displays mode, `SideWindowFocusRestorer` raises the side
+windows (SWP_NOACTIVATE), so focus may sit on the wrong window. KI-42 was fixed
+and tested without the merged triple code.
+
+Next: reproduce with triple screens off and then on. If focus is the cause, time
+out the hand-off and report "click the game window" instead of waiting forever.
+Workaround: use the game's own Options → Controls.
+
 ### KI-43 — 0.2.6 binding and calibration may not capture a separate TSS handbrake
 
 **T300/TSS user report, 2026-09-29; major, unconfirmed root cause.** Existing

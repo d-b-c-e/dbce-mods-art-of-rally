@@ -31,7 +31,8 @@ namespace ArtOfSimRally.Testing
                 Attach(assemblies.Single(a => a.GetName().Name == "ArtOfSimRally.Mod"),
                     assemblies.Single(a => a.GetName().Name == "Dbce.Wheel.Ffb"));
                 server = new ControlServer("ArtOfSimRally.DevRecorder." + Process.GetCurrentProcess().Id);
-                entry.OnUpdate = (mod, delta) => server?.Pump(Command);
+                SessionTape.TryArm(m => entry.Logger.Log(m));
+                entry.OnUpdate = (mod, delta) => { server?.Pump(Command); SessionTape.Tick(); };
                 entry.OnUnload = Unload;
                 entry.Logger.Log("Developer capture probe ready. Use tools/testing/Record-Drive.ps1; no recording starts automatically.");
                 return true;
@@ -57,6 +58,8 @@ namespace ArtOfSimRally.Testing
         private static HarmonyMethod Hook(string name) => new HarmonyMethod(typeof(RecorderMain), name);
         private static string Command(string command)
         {
+            var tape = SessionTape.Command(command);
+            if (tape != null) return tape;
             if (command == "STATUS") return "OK " + Session.Describe;
             if (command == "START")
             {
@@ -186,12 +189,14 @@ namespace ArtOfSimRally.Testing
         // Runs after the shipping watchdog has released all force/input resources.
         private static void Shutdown()
         {
+            SessionTape.Stop("game shutdown");
             if (Session.Pending) { Session.Stop(false); log?.Invoke(Session.Status); }
             if (!Session.Pending) { server?.Dispose(); server = null; }
             motionCar = null; motionBody = null;
         }
         private static bool BeforeGameExit()
         {
+            SessionTape.Stop("game exit");
             bool allow = Session.BeforeProcessExit(() => subject.Shutdown.Invoke(null, new object[] { false }));
             if (!allow) log?.Invoke(Session.Status);
             return allow;
