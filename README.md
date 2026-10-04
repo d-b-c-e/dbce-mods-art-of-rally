@@ -2,14 +2,16 @@
 
 Drive [art of rally](https://store.steampowered.com/app/550320/) with a racing
 wheel, pedals and a shifter. Adds force feedback from the game's tyre forces,
-direct USB controls, bonnet/bumper cameras and telemetry for SimHub.
+direct USB controls, bonnet/bumper cameras, telemetry for SimHub, and
+angle-correct triple screens (one wide display or three separate displays).
 
 **[Download 0.2.7](https://github.com/d-b-c-e/art-of-sim-rally/releases/latest)** ·
 [Setup guide](docs/SETUP.md) · [Troubleshooting](docs/TROUBLESHOOTING.md) ·
 [Changelog](CHANGELOG.md)
 
-Version 0.2.7 has five settings pages—Controls, FFB, Cameras, Telemetry and Help—
-with Simple and Advanced views. Press **F6** to open Wheel settings. Pause before
+Version 0.4.0 merges the separate triple-screen mod into this one; its settings are on
+the Cameras page. There are five settings pages (Controls, FFB, Cameras, Telemetry and
+Help) with Simple and Advanced views. Press **F6** to open Wheel settings. Pause before
 changing bindings or devices; the game simulation does not pause automatically.
 
 ## Install

@@ -2,10 +2,10 @@
   "Id": "ArtOfSimRally",
   "DisplayName": "art of sim rally",
   "Author": "d-b-c-e",
-  "Version": "0.2.7",
+  "Version": "0.4.0",
   "ManagerVersion": "0.27.0",
   "AssemblyName": "ArtOfSimRally.Mod.dll",
   "EntryMethod": "ArtOfSimRally.Mod.Main.Load",
-  "HomePage": "https://github.com/d-b-c-e/art-of-sim-rally",
-  "Repository": "https://github.com/d-b-c-e/art-of-sim-rally"
+  "HomePage": "https://github.com/d-b-c-e/dbce-mods-art-of-rally",
+  "Repository": "https://github.com/d-b-c-e/dbce-mods-art-of-rally"
 }

@@ -6,6 +6,7 @@ using HarmonyLib;
 using UnityEngine;
 using Rewired;
 using UnityModManagerNet;
+using ArtOfSimRally.Mod.Triple;
 
 namespace ArtOfSimRally.Mod
 {
@@ -81,6 +82,7 @@ namespace ArtOfSimRally.Mod
             modEntry.OnHideGUI   = entry => { SettingsPanel.CancelPendingEdit(); CameraTuner.SuppressUntilRelease(); FlushUiSettings(true); };
             modEntry.OnToggle    = OnToggle;
             modEntry.OnUnload    = OnUnload;
+            modEntry.OnUpdate    = (entry, dt) => TripleScreen.Update();
 
             FfbNative.Load(modEntry.Path);
             if (Settings.ForceFeedbackEnabled)
@@ -115,6 +117,10 @@ namespace ArtOfSimRally.Mod
             // ticking. See ModWatchdog.
             ModWatchdog.Install();
 
+            // Rendering only; it cannot affect wheel, FFB or telemetry.
+            try { TripleScreen.Load(modEntry); }
+            catch (Exception ex) { ModLog.Warning("Triple screens failed to load: " + ex.Message); }
+
             ModLog.Info(
                 $"Loaded - directSteering={Settings.DirectSteering}, " +
                 $"ffb={Settings.ForceFeedbackEnabled}, telemetry={Settings.TelemetryEnabled}");
@@ -124,6 +130,7 @@ namespace ArtOfSimRally.Mod
         private static bool OnToggle(UnityModManager.ModEntry modEntry, bool value)
         {
             Enabled = value;
+            TripleScreen.Toggle(value);
             if (value && Settings.ForceFeedbackEnabled && !FfbNative.Ready) ForceReconnect.Request();
             if (!value)
             {
@@ -156,6 +163,7 @@ namespace ArtOfSimRally.Mod
         private static bool OnUnload(UnityModManager.ModEntry modEntry)
         {
             Enabled = false;
+            TripleScreen.Unload();
             CameraKeys.Cancel();
             GameBindings.CancelPending();
             ModWatchdog.Shutdown(unloading: true);
@@ -216,6 +224,7 @@ namespace ArtOfSimRally.Mod
             {
                 if (Settings == null || _modEntry == null) return false;
                 Settings.Save(_modEntry);
+                TripleScreen.Save();
                 _uiDirty = false; SettingsSaveStatus = "Saved";
                 return true;
             }

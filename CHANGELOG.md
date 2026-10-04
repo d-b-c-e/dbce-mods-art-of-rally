@@ -5,6 +5,24 @@ Notable changes to art of sim rally.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - unreleased
+
+One mod for art of rally: wheel, FFB, telemetry, cameras and triple screens.
+
+### Changed
+
+- Triple screens, previously the separate "DBCE triple-screen for art of rally"
+  mod (last 0.3.12), are now part of this mod. Its settings are on the Cameras
+  page under **Triple screens** and are saved in `TripleScreen.xml`. The
+  rendering code is the owner-accepted 0.3.12 unchanged.
+- The installer copies the old mod's `Settings.xml` and `desired-layout.json`
+  across (never overwriting), then moves the old mod folder to
+  `Mods-retired` so Unity Mod Manager stops loading it. If the old mod is
+  still loaded anyway, triple rendering stays off and the settings page says so.
+- Version jumps to 0.4.0, above both previous mods (wheel 0.2.7, triple 0.3.12).
+
+Wheel, FFB, telemetry and camera behavior are unchanged from 0.2.7.
+
 ## [0.2.7] - 2026-09-30
 
 Promotes the 0.2.7-rc.2 behavior to the regular release. USB Bind now keeps

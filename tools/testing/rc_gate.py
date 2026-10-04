@@ -4,7 +4,7 @@ import hashlib
 import json
 from pathlib import Path
 
-AUTOMATED = {"build", "telemetry-loopback", "regression", "lifecycle", "dev-recorder", "replay", "replay-rejection", "release-gate", "vector", "native-exports", "package", "no-recorder", "dev-installer", "installer", "installer-rejection", "source-stability"}
+AUTOMATED = {"build", "telemetry-loopback", "triple-screen", "regression", "lifecycle", "dev-recorder", "replay", "replay-rejection", "release-gate", "vector", "native-exports", "package", "no-recorder", "dev-installer", "installer", "installer-rejection", "source-stability"}
 CASES = {
     "camera": "Cycle all stock views before/after bonnet+bumper; finish cinematic; replay; pause; restart; disable/re-enable mod. Rebind tuning keys without numpad, test cancel/duplicates/reset and bumper-only setup; panel/capture/chords must not move the camera. Adjust a mount, switch to stock, pause and restart to verify saved edits. Repeat with PS5 controller attached and absent when available; inspect ChangeCamera binding.",
     "stutter": "Capture cold stage first 15s, same-stage restart, and a different stage. Compare warm/cold runs and a mod-disabled run if stutter persists. Note any 100ms+ hitches and rig settings.",

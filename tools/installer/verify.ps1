@@ -1,7 +1,8 @@
 # Shared by packaging, the installer, and the RC gate. Integrity, not a signature.
 $PayloadFiles = @(
     'ArtOfSimRally/ArtOfSimRally.Mod.dll', 'ArtOfSimRally/Dbce.Wheel.Telemetry.dll', 'ArtOfSimRally/Dbce.Wheel.Ffb.dll',
-    'ArtOfSimRally/UnityForceFeedback.dll', 'ArtOfSimRally/Info.json', 'ArtOfSimRally/build.json',
+    'ArtOfSimRally/UnityForceFeedback.dll', 'ArtOfSimRally/Dbce.TripleScreen.Core.dll', 'ArtOfSimRally/Dbce.TripleScreen.Protocol.dll',
+    'ArtOfSimRally/Info.json', 'ArtOfSimRally/build.json',
     'LICENSE', 'README.txt', 'Install.bat', 'Uninstall.bat', 'install.ps1', 'verify.ps1'
 )
 

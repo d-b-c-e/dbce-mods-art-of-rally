@@ -39,7 +39,30 @@ third-party binaries, nothing that would force the repo private.
 | `docs/DEVELOPMENT-CAPTURE.md` | Separate probe schema, motion/contact units, standalone analysis and interpretation limits. |
 | `docs/` | FINDINGS, FORCE-FEEDBACK, TELEMETRY, CONTROLS, CAMERA, ROADMAP, RELEASING |
 
-## Status (2026-09-09) — do not overstate this
+## Status (2026-10-04)
+
+Owner-accepted on 2026-10-01 (MOZA R12, three 2560×1440 panels in Surround): wheel 0.2.7,
+FFB, telemetry and triple screens 0.3.12. art of rally is close to done.
+
+**0.4.0 (branch `claude/unified-mod`)** merges the triple-screen mod (history imported from
+the archived `dbce-triple-mod-art-of-rally`) into this one:
+`src/ArtOfSimRally.Mod/Triple/` (game-side rendering, the accepted 0.3.12 code),
+`src/Dbce.TripleScreen.Core` (projection math), `src/Dbce.TripleScreen.Protocol` (optimizer
+layout/status contract), `tests/TripleScreen` (66 geometry assertions), `docs/triple/`.
+`Triple/TripleScreen.cs` is driven from `Main.cs` and drawn on the Cameras page; its
+settings live in `TripleScreen.xml` (XML root `<Settings>`, so the old file loads as-is).
+Codex's later triple commit f8b0f81 (FOV/handoff refactor, never driven) is in history but
+**not** in the build. All 17 offline gates pass; it's waiting for a drive at the rig.
+
+Follow-ups: the triple-screen optimizer still looks for `Mods/DbceTripleScreenArtOfRally`
+for its status view; `Dbce.TripleScreen.Core` here is older than the triple toolkit's (no
+bezel gap); the Triple card uses plain IMGUI, not the panel's card styling; adopt the
+portfolio numpad camera layout; build a recorded session for automated tests.
+
+Older status notes and the component table below are from 2026-09-09 (Codex era); trust
+the code and the 2026-10-01 acceptance over them.
+
+## Earlier status (2026-09-09)
 
 Published stable remains **0.2.4**. Current development is **0.2.5**: strict USB
 axis/shifter identity and idle reader recovery (KI-21/KI-23), last-session

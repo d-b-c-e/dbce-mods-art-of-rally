@@ -81,6 +81,8 @@ $bin = Join-Path $root 'src\ArtOfSimRally.Mod\bin\Release'
 Copy-Item (Join-Path $bin 'ArtOfSimRally.Mod.dll')       $modDir
 Copy-Item (Join-Path $bin 'Dbce.Wheel.Telemetry.dll') $modDir
 Copy-Item (Join-Path $bin 'Dbce.Wheel.Ffb.dll') $modDir
+Copy-Item (Join-Path $bin 'Dbce.TripleScreen.Core.dll') $modDir
+Copy-Item (Join-Path $bin 'Dbce.TripleScreen.Protocol.dll') $modDir
 Copy-Item (Join-Path $root 'src\ArtOfSimRally.Mod\Info.json') $modDir
 Copy-Item (Join-Path $toolkit 'native\WheelFfb.dll') (Join-Path $modDir 'UnityForceFeedback.dll')   # the file name the mod P/Invokes
 Copy-Item (Join-Path $root 'LICENSE') $stage

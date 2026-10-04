@@ -120,4 +120,41 @@
     </Reference>
   </ItemGroup>
 
+  <!--
+    Triple screens (formerly the DbceTripleScreenArtOfRally mod, 0.3.12). Core is
+    the projection math, Protocol the optimizer layout/status contract; both
+    ship beside the mod. Triple/ holds the game-side rendering code.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\Dbce.TripleScreen.Core\Dbce.TripleScreen.Core.csproj" />
+    <ProjectReference Include="..\Dbce.TripleScreen.Protocol\Dbce.TripleScreen.Protocol.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="UnityEngine.UIModule">
+      <HintPath>$(ManagedDir)\UnityEngine.UIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.JSONSerializeModule">
+      <HintPath>$(ManagedDir)\UnityEngine.JSONSerializeModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Assembly-CSharp-firstpass">
+      <HintPath>$(ManagedDir)\Assembly-CSharp-firstpass.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.Postprocessing.Runtime">
+      <HintPath>$(ManagedDir)\Unity.Postprocessing.Runtime.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="AwesomeTechnologies.VegetationStudioPro.Runtime">
+      <HintPath>$(ManagedDir)\AwesomeTechnologies.VegetationStudioPro.Runtime.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>$(ManagedDir)\Newtonsoft.Json.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
 </Project>

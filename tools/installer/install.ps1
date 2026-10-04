@@ -128,7 +128,8 @@ if ($ummInstalled) { Ok "Unity Mod Manager present" }
 
 $modDir    = Join-Path $GameDir 'Mods\ArtOfSimRally'
 $nativeDir = Join-Path $GameDir 'artofrally_Data\Plugins\x86_64'
-$modFiles = 'ArtOfSimRally.Mod.dll', 'Dbce.Wheel.Telemetry.dll', 'Dbce.Wheel.Ffb.dll', 'UnityForceFeedback.dll', 'Info.json', 'build.json'
+$modFiles = 'ArtOfSimRally.Mod.dll', 'Dbce.Wheel.Telemetry.dll', 'Dbce.Wheel.Ffb.dll', 'UnityForceFeedback.dll',
+    'Dbce.TripleScreen.Core.dll', 'Dbce.TripleScreen.Protocol.dll', 'Info.json', 'build.json'
 
 # Do not follow a junction/symlink while replacing or removing installed files.
 foreach ($target in @($modDir, $nativeDir)) {
@@ -197,6 +198,23 @@ try {
     New-Item -ItemType Directory -Force -Path $modDir | Out-Null
     foreach ($name in $modFiles) { Copy-Item -LiteralPath (Join-Path $source $name) -Destination $modDir -Force }
     Ok "Mod installed to $modDir"
+
+    # Triple screens used to be a separate mod. Carry its settings and layout
+    # over (never overwriting), then move it out of Mods so UMM stops loading
+    # it. Nothing is deleted; Mods-retired can be removed by hand.
+    $legacyDir = Join-Path $GameDir 'Mods\DbceTripleScreenArtOfRally'
+    if (Test-Path -LiteralPath $legacyDir -PathType Container) {
+        foreach ($pair in @(@('Settings.xml', 'TripleScreen.xml'), @('desired-layout.json', 'desired-layout.json'))) {
+            $from = Join-Path $legacyDir $pair[0]; $to = Join-Path $modDir $pair[1]
+            if ((Test-Path -LiteralPath $from) -and -not (Test-Path -LiteralPath $to)) { Copy-Item -LiteralPath $from -Destination $to }
+        }
+        $retired = Join-Path $GameDir 'Mods-retired'
+        New-Item -ItemType Directory -Force -Path $retired | Out-Null
+        $target = Join-Path $retired 'DbceTripleScreenArtOfRally'
+        if (Test-Path -LiteralPath $target) { $target += '-' + (Get-Date -Format 'yyyyMMdd-HHmmss') }
+        Move-Item -LiteralPath $legacyDir -Destination $target
+        Ok "Triple-screen settings carried over; old triple-screen mod moved to $target"
+    }
 
     # The native plugin goes in both places on purpose. The mod loads it by
     # absolute path from its own folder, but the game's own (unused) force

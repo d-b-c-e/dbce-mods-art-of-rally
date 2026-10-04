@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>TripleScreen.Tests</AssemblyName>
+    <RootNamespace>Dbce.TripleScreen.Tests</RootNamespace>
+    <Nullable>disable</Nullable>
+    <GameDir Condition="'$(GameDir)' == ''">D:\Program Files (x86)\Steam\steamapps\common\artofrally</GameDir>
+    <ManagedDir>$(GameDir)\artofrally_Data\Managed</ManagedDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Dbce.TripleScreen.Core\Dbce.TripleScreen.Core.csproj" />
+    <ProjectReference Include="..\..\src\Dbce.TripleScreen.Protocol\Dbce.TripleScreen.Protocol.csproj" />
+    <Compile Include="..\..\src\ArtOfSimRally.Mod\Triple\AdapterConstants.cs" Link="AdapterConstants.cs" />
+    <Compile Include="..\..\src\ArtOfSimRally.Mod\Triple\FovPreference.cs" Link="FovPreference.cs" />
+    <Compile Include="..\..\src\ArtOfSimRally.Mod\Triple\LayoutSource.cs" Link="LayoutSource.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>$(ManagedDir)\Newtonsoft.Json.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+</Project>

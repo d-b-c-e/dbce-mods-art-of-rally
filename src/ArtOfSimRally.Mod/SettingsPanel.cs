@@ -327,6 +327,10 @@ namespace ArtOfSimRally.Mod
         }
         private static void Cameras(Settings c)
         {
+            BeginCard("Triple screens");
+            Triple.TripleScreen.DrawSettings();
+            EndCard();
+            GUILayout.Space(8 * SettingsPresentation.Scale);
             if (Main.OtherCameraModLoaded) { Help(BonnetCamera.ExternalCameraHelp); return; }
             c.BonnetCameraEnabled = Toggle(c.BonnetCameraEnabled, "Bonnet");
             c.BumperCameraEnabled = Toggle(c.BumperCameraEnabled, "Bumper");
