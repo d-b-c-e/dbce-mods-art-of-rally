@@ -179,6 +179,7 @@ static class Program
             Check(ArtifactHash.FileHash(Path.Combine(path, "manifest.xml")) == item.GetProperty("manifestSha256").GetString(), "Corpus receipt changed: " + id);
             var receipt = XDocument.Load(Path.Combine(path, "manifest.xml")).Root!;
             Check((string?)receipt.Attribute("origin") == "game", "Corpus case is not a recorded game session: " + id);
+            Check((string?)receipt.Attribute("captureSource") != "synthetic-integration", "Synthetic integration captures are not owner regression corpus cases: " + id);
             Check((int?)receipt.Attribute("schema") is 2 or 3 or 4, "Corpus requires continuous schema-2/3/4 recordings: " + id);
             reports.Add(new { id, result = Replay(path) });
         }

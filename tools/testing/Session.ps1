@@ -87,7 +87,7 @@ switch ($PSCmdlet.ParameterSetName) {
     'Restore' { Restore-SessionEnvironment ([IO.Path]::GetFullPath($RestoreEnvironment)); Write-Output 'Saved owner environment restored.' }
     'Record' {
         $tape = Join-Path $sessions $Name
-        if (Test-Path -LiteralPath (Join-Path $tape 'input.tape')) { throw "Session '$Name' already exists: $tape" }
+        if (Test-Path -LiteralPath $tape) { throw "Session '$Name' already exists: $tape" }
         Assert-GameClosed
         Assert-TestSlot
         New-Item -ItemType Directory -Force -Path $tape | Out-Null
