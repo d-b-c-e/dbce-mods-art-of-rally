@@ -52,10 +52,10 @@ namespace ArtOfSimRally.Testing
         // Replay state.
         private static Aligner<Dictionary<string, string>> _frames;
         private static Aligner<CarRow> _car;
+        private static readonly Dictionary<string, string> Empty = new Dictionary<string, string>();
         private static Dictionary<string, string> _playing = Empty;
         private static CarRow _carPlaying;
         private static bool _carActive;
-        private static readonly Dictionary<string, string> Empty = new Dictionary<string, string>();
         private static float _poseThreshold = 2f;
         private static int _poseCorrections, _gearSets;
         private static float _maxPoseError;
@@ -211,6 +211,11 @@ namespace ArtOfSimRally.Testing
             _harmony.Patch(AccessTools.Method(typeof(CarDynamics), "FixedUpdate"),
                 postfix: new HarmonyMethod(typeof(SessionTape), nameof(AfterCarStep)) { priority = Priority.Last });
 
+            // SplashScreenControl is the game's only Rewired input-event delegate
+            // (ButtonJustReleased); getter substitution can't reach it.
+            _harmony.Patch(AccessTools.Method(typeof(SplashScreenControl), "EndSplashScreen"),
+                prefix: new HarmonyMethod(typeof(SessionTape), nameof(BeforeSplashEnd)));
+
             if (_mode == Mode.Replay)
             {
                 var native = AccessTools.TypeByName("Dbce.Wheel.Ffb.WheelFfbNative");
@@ -221,6 +226,23 @@ namespace ArtOfSimRally.Testing
                 Mute(native, "PlayShapedPeriodicBurst", nameof(MuteFloat1));
                 Mute(native, "UpdateCondition", nameof(MuteFloat1));
             }
+        }
+
+        private static bool _splashEnded;
+        private static void BeforeSplashEnd()
+        {
+            if (_mode == Mode.Record) _frameValues["E.SplashEnd"] = "1";
+            _splashEnded = true;
+        }
+
+        private static void EndSplashIfTaped(string liveMarker)
+        {
+            if (_splashEnded || !liveMarker.Contains("|IntroSplashScreen|")) return;
+            if (!(_playing.ContainsKey("E.SplashEnd") || _frames.PlayedOut)) return;
+            var splash = UnityEngine.Object.FindObjectOfType<SplashScreenControl>();
+            if (splash == null) return;
+            Event("ending splash screen as taped");
+            splash.EndSplashScreen();
         }
 
         private static void Mute(Type type, string name, string prefix)
@@ -343,18 +365,27 @@ namespace ArtOfSimRally.Testing
                 int marker = MarkerId(Marker());
                 if (_mode == Mode.Record)
                 {
+                    // UMM's window opens at startup and blocks stock menus while open;
+                    // it's often closed with the mouse, which isn't taped. Tape its state.
+                    if (UnityModManagerNet.UnityModManager.UI.Instance?.Opened == true) _frameValues["U.Open"] = "1";
                     var line = new StringBuilder();
                     line.Append(_frame.ToString(CultureInfo.InvariantCulture)).Append('\t').Append(marker.ToString(CultureInfo.InvariantCulture));
                     foreach (var pair in _frameValues) line.Append('\t').Append(pair.Key).Append('=').Append(pair.Value);
                     _inputWriter.WriteLine(line.ToString());
                     _frameValues.Clear();
-                    if (marker != _lastMarker) { _lastMarker = marker; Event("segment " + MarkerText(marker)); Shot(_dir, marker); }
+                    if (marker != _lastMarker) { _lastMarker = marker; Reseed(marker); Event("segment " + MarkerText(marker)); Shot(_dir, marker); }
                     if (_frame % 60 == 0) { _inputWriter.Flush(); _carWriter.Flush(); _eventWriter.Flush(); }
                 }
                 else
                 {
                     int before = _frames.Segment;
-                    if (!_frames.Next(marker, out _playing)) _playing = Empty;
+                    if (!_frames.Next(marker, out var playing)) playing = Empty;
+                    _playing = playing;
+                    var umm = UnityModManagerNet.UnityModManager.UI.Instance;
+                    bool wantOpen = _playing.ContainsKey("U.Open");
+                    if (umm != null && umm.Opened != wantOpen) { umm.ToggleWindow(wantOpen); Event((wantOpen ? "opened" : "closed") + " the mod manager window as taped"); }
+                    EndSplashIfTaped(MarkerText(marker));
+                    if (marker != _lastMarker) { _lastMarker = marker; Reseed(marker); }
                     if (_frames.Segment != before) { Event("segment " + _frames.Segment + " " + MarkerText(marker)); Shot(_out, marker); }
                     if (_frames.Failed != null) Fail(_frames.Failed);
                     else if (_car.Failed != null) Fail(_car.Failed);
@@ -429,6 +460,17 @@ namespace ArtOfSimRally.Testing
         }
         private static string MarkerText(int id) => _markerIds.FirstOrDefault(p => p.Value == id).Key ?? id.ToString(CultureInfo.InvariantCulture);
 
+        // The game randomizes custom-event stage, weather and car (StageGenerator,
+        // Random.Range). Re-seed Unity's generator from the screen name whenever
+        // the screen changes, in recording and replay alike, so the same presses
+        // roll the same stage.
+        private static void Reseed(int marker)
+        {
+            int seed = 17;
+            foreach (char c in MarkerText(marker)) seed = unchecked(seed * 31 + c);
+            UnityEngine.Random.InitState(seed);
+        }
+
         private static void Shot(string dir, int marker)
         {
             try
@@ -456,7 +498,8 @@ namespace ArtOfSimRally.Testing
             private readonly List<int> _markers = new List<int>();
             private readonly Dictionary<int, string> _names;
             private readonly string _label;
-            private int _segment = -1, _index, _waiting;
+            private int _segment = -1, _index, _waiting, _early;
+            private const int EarlyLimit = 10;
             private const int WaitLimit = 60 * 120;   // two minutes at 60 fps
 
             internal Aligner(List<KeyValuePair<int, T>> rows, Dictionary<int, string> names, string label)
@@ -470,6 +513,7 @@ namespace ArtOfSimRally.Testing
             }
             internal int Segment => _segment;
             internal int SegmentCount => _segments.Count;
+            internal bool PlayedOut => _segment >= 0 && _index >= _segments[_segment].Count;
             internal bool Finished => _segment == _segments.Count - 1 && _index >= _segments[_segment].Count;
             internal string Failed { get; private set; }
 
@@ -477,15 +521,25 @@ namespace ArtOfSimRally.Testing
             {
                 value = default;
                 if (_segments.Count == 0 || Failed != null) return false;
-                if (_segment >= 0 && _markers[_segment] == liveMarker && _index < _segments[_segment].Count)
-                { value = _segments[_segment][_index++]; _waiting = 0; return true; }
+                // The input that causes a transition is often taped in the first
+                // frames of the next segment (the marker changes the same frame).
+                // Once a segment has played out, play up to EarlyLimit frames of
+                // the next one before the live game has arrived there.
+                if (_segment >= 0 && _index < _segments[_segment].Count)
+                {
+                    if (_markers[_segment] == liveMarker) { _early = 0; _waiting = 0; value = _segments[_segment][_index++]; return true; }
+                    if (_early > 0 && _early < EarlyLimit && _segment > 0 && _markers[_segment - 1] == liveMarker)
+                    { _early++; value = _segments[_segment][_index++]; return true; }
+                }
                 if (_segment + 1 < _segments.Count && _markers[_segment + 1] == liveMarker)
-                { _segment++; _index = 0; value = _segments[_segment][_index++]; _waiting = 0; return true; }
-                if (_segment >= 0 && _markers[_segment] == liveMarker) return false;   // segment played out; live game still here
+                { _segment++; _index = 0; _early = 0; _waiting = 0; value = _segments[_segment][_index++]; return true; }
+                if (_segment >= 0 && _index >= _segments[_segment].Count && _markers[_segment] == liveMarker && _segment + 1 < _segments.Count)
+                { _segment++; _index = 0; _early = 1; value = _segments[_segment][_index++]; return true; }
                 if (Finished) return false;
                 if (++_waiting > WaitLimit)
                 {
-                    string expected = _segment + 1 < _segments.Count && _names.TryGetValue(_markers[_segment + 1], out var n) ? n : "?";
+                    int next = _early > 0 ? _segment : _segment + 1;
+                    string expected = next < _segments.Count && _names.TryGetValue(_markers[next], out var n) ? n : "?";
                     Failed = _label + " waited 2 min for '" + expected + "'";
                 }
                 return false;

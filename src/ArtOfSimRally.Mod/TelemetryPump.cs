@@ -172,7 +172,10 @@ namespace ArtOfSimRally.Mod
 
                 PositionX = t.position.x, PositionY = t.position.y, PositionZ = t.position.z,
 
-                Speed  = speed,
+                // The game's HUD shows 0.6x the physics speed (HudManager.HandleSpeedometer:
+                // velo * unit factor * 0.6). Report what the player sees, so a dashboard
+                // agrees with the on-screen speedometer. Motion uses velocity/acceleration.
+                Speed  = speed * HudSpeedScale,
                 Torque = _drivetrain != null ? _drivetrain.torque : 0f,
                 // Power = torque * angular velocity, in watts.
                 Power  = _drivetrain != null
@@ -215,6 +218,9 @@ namespace ArtOfSimRally.Mod
         // Forza's arrays are front-left, front-right, rear-left, rear-right. The
         // game exposes the same corners via frontAxle/rearAxle, so map explicitly
         // rather than trusting allWheels ordering.
+        /// <summary>The game's on-screen speedometer scale; see HudManager.HandleSpeedometer.</summary>
+        internal const float HudSpeedScale = 0.6f;
+
         private static void FillWheels(ref TelemetryFrame frame, Axles axles, float speed)
         {
             var fl = axles.frontAxle?.leftWheel;
