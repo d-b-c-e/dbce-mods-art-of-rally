@@ -73,4 +73,11 @@ SessionAligner<int> Make(params int[] markers)
     Check(a.SkippedWhere(m => m == "B") == 0, "no menu rows skipped");
 }
 
+// A short taped state the live game never stops in: jump ahead, count the rows.
+{
+    var a = Make(0, 0, 1, 1, 2, 2);
+    Check(a.Next(1, out var v) && v == 2, "starts at B, skipping A's two rows");
+    Check(a.Skipped == 2, "two rows counted as skipped");
+}
+
 Console.WriteLine("{\"status\":\"passed\",\"assertions\":" + assertions + "}");

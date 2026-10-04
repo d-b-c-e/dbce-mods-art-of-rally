@@ -15,6 +15,7 @@ namespace ArtOfSimRally.Testing
         private float _waitingSince = -1;
         private readonly Func<float> _clock;
         internal const int EarlyLimit = 10;
+        internal const int SkipLimit = 3;
         internal const float WaitSeconds = 120f;
 
         internal SessionAligner(List<KeyValuePair<int, T>> rows, Dictionary<int, string> names, string label, Func<float> clock)
@@ -58,6 +59,7 @@ namespace ArtOfSimRally.Testing
                 total += _segments[_segment].Count - _index;
             return total;
         }
+        internal int CurrentMarker => _segment >= 0 ? _markers[_segment] : -1;
         internal int RemainingInSegment => _segment >= 0 ? _segments[_segment].Count - _index : 0;
         internal bool InLastSegment => _segments.Count > 0 && _segment == _segments.Count - 1;
 
@@ -73,7 +75,14 @@ namespace ArtOfSimRally.Testing
                 // EarlyLimit of them before the live game arrives.
                 if (_early > 0 && _early < EarlyLimit && _segment > 0 && _markers[_segment - 1] == liveMarker) { _early++; return Take(out value); }
             }
-            if (_segment + 1 < _segments.Count && _markers[_segment + 1] == liveMarker) { Advance(); _early = 0; return Take(out value); }
+            // The live game may pass through a short taped state without
+            // stopping there: jump up to SkipLimit segments, counting the rows.
+            for (int ahead = 1; ahead <= SkipLimit && _segment + ahead < _segments.Count; ahead++)
+                if (_markers[_segment + ahead] == liveMarker)
+                {
+                    for (int i = 0; i < ahead; i++) Advance();
+                    _early = 0; return Take(out value);
+                }
             if (_segment >= 0 && PlayedOut && _markers[_segment] == liveMarker && _segment + 1 < _segments.Count) { Advance(); _early = 1; return Take(out value); }
             if (Finished) return false;
             if (_waitingSince < 0) _waitingSince = _clock();

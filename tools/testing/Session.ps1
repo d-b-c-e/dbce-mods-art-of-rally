@@ -30,6 +30,9 @@ $ErrorActionPreference = 'Stop'
 $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 $sessions = Join-Path $root 'results/sessions'
 $request = Join-Path $env:LOCALAPPDATA 'ArtOfSimRally/session-request.txt'
+# Custom rally progress lives outside the Steam Cloud folder; it decides which
+# menus appear, so a replay needs the recorded copy.
+$customRally = Join-Path ([Environment]::GetFolderPath('UserProfile')) 'AppData/LocalLow/Funselektor Labs/Art of Rally/customrally'
 
 function Send-Probe([string]$Command) {
     $game = Get-Process artofrally -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -77,6 +80,8 @@ switch ($PSCmdlet.ParameterSetName) {
         New-Item -ItemType Directory -Force -Path $tape | Out-Null
         # Reference copy of the game's local preferences (stage/car choices may live here).
         & reg export 'HKCU\Software\Funselektor Labs\art of rally' (Join-Path $tape 'playerprefs-at-start.reg') /y | Out-Null
+        if (Test-Path -LiteralPath $customRally) { Copy-Item -LiteralPath $customRally (Join-Path $tape 'customrally-at-start') }
+        else { New-Item -ItemType File (Join-Path $tape 'customrally-absent-at-start') | Out-Null }
         Write-Request @{ mode = 'record'; tape = $tape }
         Start-Game
         Write-Output "Recording session '$Name' from launch into $tape"
@@ -92,6 +97,14 @@ switch ($PSCmdlet.ParameterSetName) {
         Assert-GameClosed
         $out = Join-Path $tape ('replay-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
         $threshold = if ($Assist) { $PoseThreshold } else { 0 }
+        New-Item -ItemType Directory -Force -Path $out | Out-Null
+        $ownerRally = Join-Path $out 'customrally-before-replay'
+        $hadRally = Test-Path -LiteralPath $customRally
+        if ($hadRally) { Copy-Item -LiteralPath $customRally $ownerRally }
+        $taped = Join-Path $tape 'customrally-at-start'
+        if (Test-Path -LiteralPath $taped) { Copy-Item -LiteralPath $taped $customRally -Force }
+        elseif (Test-Path -LiteralPath (Join-Path $tape 'customrally-absent-at-start')) { Remove-Item -LiteralPath $customRally -ErrorAction SilentlyContinue }
+        else { Write-Warning 'Tape predates custom rally snapshots; replaying with the current custom rally state.' }
         Write-Request @{ mode = 'replay'; tape = $tape; out = $out; poseThreshold = $threshold.ToString([Globalization.CultureInfo]::InvariantCulture) }
         Start-Game
         Write-Output "Replaying '$Name' into $out"
@@ -108,6 +121,9 @@ switch ($PSCmdlet.ParameterSetName) {
             $game = Get-Process artofrally -ErrorAction SilentlyContinue
             if ($game) { $null = $game.CloseMainWindow(); if (-not $game.WaitForExit(20000)) { Write-Warning 'Game did not close; leaving it running.' } }
         }
+        if (Get-Process artofrally -ErrorAction SilentlyContinue) { Write-Warning "Game still running; your custom rally file is saved at $ownerRally" }
+        elseif ($hadRally) { Copy-Item -LiteralPath $ownerRally $customRally -Force }
+        else { Remove-Item -LiteralPath $customRally -ErrorAction SilentlyContinue }
         Write-Output "Evidence: $out"
         # 0 passed, 1 failed, 2 aborted.
         if ($result[0] -like 'passed*') { exit 0 } elseif ($result[0] -like 'aborted*') { exit 2 } else { exit 1 }

@@ -348,6 +348,41 @@ namespace ArtOfSimRally.Testing
                 result = _playing.TryGetValue(key, out var v) ? float.Parse(v, CultureInfo.InvariantCulture) : 0f;
         }
 
+        // StageIntroCinematic skips on any press, but only while it's running;
+        // tape when it starts finishing and trigger the same finish on replay.
+        private static readonly FieldInfo CinematicFinishing = typeof(StageIntroCinematic).GetField("isFinishingCinematic", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static readonly MethodInfo CinematicFinish = typeof(StageIntroCinematic).GetMethod("FinishCinematic", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static StageIntroCinematic _cinematic;
+        private static bool _cinematicWasFinishing;
+
+        private static StageIntroCinematic Cinematic(string liveMarker)
+        {
+            if (!liveMarker.EndsWith("|INTRO_CINEMATIC")) { _cinematic = null; _cinematicWasFinishing = false; return null; }
+            if (_cinematic == null) _cinematic = UnityEngine.Object.FindObjectOfType<StageIntroCinematic>();
+            return _cinematic;
+        }
+
+        private static void TapeCinematicSkip(string liveMarker)
+        {
+            var c = Cinematic(liveMarker);
+            if (c == null || CinematicFinishing == null) return;
+            bool finishing = (bool)CinematicFinishing.GetValue(c);
+            if (finishing && !_cinematicWasFinishing) _frameValues["E.CinematicSkip"] = "1";
+            _cinematicWasFinishing = finishing;
+        }
+
+        private static void ReplayCinematicSkip(string liveMarker)
+        {
+            var c = Cinematic(liveMarker);
+            if (c == null || CinematicFinishing == null || CinematicFinish == null || (bool)CinematicFinishing.GetValue(c)) return;
+            if (!(_playing.ContainsKey("E.CinematicSkip") || (_frames.PlayedOut && MarkerText(_frames.CurrentMarker).EndsWith("|INTRO_CINEMATIC")))) return;
+            Event("skipping the intro cinematic as taped");
+            CinematicFinishing.SetValue(c, true);
+            c.StopAllCoroutines();
+            LeanTween.cancelAll();
+            c.StartCoroutine((System.Collections.IEnumerator)CinematicFinish.Invoke(c, null));
+        }
+
         private static bool _splashEnded;
         private static void BeforeSplashEnd()
         {
@@ -540,6 +575,7 @@ namespace ArtOfSimRally.Testing
                     // UMM's window opens at startup and blocks stock menus while open;
                     // it's often closed with the mouse, which isn't taped. Tape its state.
                     if (UnityModManagerNet.UnityModManager.UI.Instance?.Opened == true) _frameValues["U.Open"] = "1";
+                    TapeCinematicSkip(MarkerText(marker));
                     var line = new StringBuilder();
                     line.Append(_frame.ToString(CultureInfo.InvariantCulture)).Append('\t').Append(marker.ToString(CultureInfo.InvariantCulture));
                     foreach (var pair in _frameValues) line.Append('\t').Append(pair.Key).Append('=').Append(pair.Value);
@@ -550,6 +586,8 @@ namespace ArtOfSimRally.Testing
                 }
                 else
                 {
+                    // Owner takeover: raw Unity input isn't replayed, so F12 still works.
+                    if (UnityEngine.Input.GetKeyDown(KeyCode.F12)) { Finish("aborted: owner took over (F12)"); return; }
                     int before = _frames.Segment;
                     if (!_frames.Next(marker, out var playing)) playing = Empty;
                     _playing = playing;
@@ -557,6 +595,7 @@ namespace ArtOfSimRally.Testing
                     bool wantOpen = _playing.ContainsKey("U.Open");
                     if (umm != null && umm.Opened != wantOpen) { umm.ToggleWindow(wantOpen); Event((wantOpen ? "opened" : "closed") + " the mod manager window as taped"); }
                     EndSplashIfTaped(MarkerText(marker));
+                    ReplayCinematicSkip(MarkerText(marker));
                     if (marker != _lastMarker) { _lastMarker = marker; Reseed(marker); }
                     if (_frames.Segment != before) { Event("segment " + _frames.Segment + " " + MarkerText(marker)); Shot(_out, marker); }
                     if (_frames.Failed != null) Fail(_frames.Failed);
