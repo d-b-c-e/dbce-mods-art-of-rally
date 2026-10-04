@@ -225,7 +225,7 @@ namespace ArtOfSimRally.Testing
                     list.Add(new KeyValuePair<int, bool>(int.Parse(p[1], CultureInfo.InvariantCulture), p[2] == "1"));
                 }
             _frames = new SessionAligner<Dictionary<string, string>>(frames, markers, "frames", () => Time.realtimeSinceStartup);
-            _car = new SessionAligner<CarRow>(car, markers, "car", () => Time.realtimeSinceStartup);
+            _car = new SessionAligner<CarRow>(car, markers, "car", () => Time.realtimeSinceStartup, earlyLimit: 0);
             _out = output;
             Directory.CreateDirectory(Path.Combine(_out, "shots"));
             _eventWriter = Create(Path.Combine(_out, "replay.log"));

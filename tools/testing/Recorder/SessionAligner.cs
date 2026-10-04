@@ -14,13 +14,14 @@ namespace ArtOfSimRally.Testing
         private int _segment = -1, _index, _early;
         private float _waitingSince = -1;
         private readonly Func<float> _clock;
+        private readonly int _earlyLimit;
         internal const int EarlyLimit = 10;
         internal const int SkipLimit = 3;
         internal const float WaitSeconds = 120f;
 
-        internal SessionAligner(List<KeyValuePair<int, T>> rows, Dictionary<int, string> names, string label, Func<float> clock)
+        internal SessionAligner(List<KeyValuePair<int, T>> rows, Dictionary<int, string> names, string label, Func<float> clock, int earlyLimit = EarlyLimit)
         {
-            _names = names; _label = label; _clock = clock;
+            _names = names; _label = label; _clock = clock; _earlyLimit = earlyLimit;
             foreach (var row in rows)
             {
                 if (_markers.Count == 0 || _markers[_markers.Count - 1] != row.Key) { _markers.Add(row.Key); _segments.Add(new List<T>()); }
@@ -73,7 +74,7 @@ namespace ArtOfSimRally.Testing
                 // A transition's input is taped in the next segment's first
                 // frames (the marker changes that frame): play up to
                 // EarlyLimit of them before the live game arrives.
-                if (_early > 0 && _early < EarlyLimit && _segment > 0 && _markers[_segment - 1] == liveMarker) { _early++; return Take(out value); }
+                if (_early > 0 && _early < _earlyLimit && _segment > 0 && _markers[_segment - 1] == liveMarker) { _early++; return Take(out value); }
             }
             // The live game may pass through a short taped state without
             // stopping there: jump up to SkipLimit segments, counting the rows.
@@ -83,7 +84,7 @@ namespace ArtOfSimRally.Testing
                     for (int i = 0; i < ahead; i++) Advance();
                     _early = 0; return Take(out value);
                 }
-            if (_segment >= 0 && PlayedOut && _markers[_segment] == liveMarker && _segment + 1 < _segments.Count) { Advance(); _early = 1; return Take(out value); }
+            if (_earlyLimit > 0 && _segment >= 0 && PlayedOut && _markers[_segment] == liveMarker && _segment + 1 < _segments.Count) { Advance(); _early = 1; return Take(out value); }
             if (Finished) return false;
             if (_waitingSince < 0) _waitingSince = _clock();
             else if (_clock() - _waitingSince > WaitSeconds)

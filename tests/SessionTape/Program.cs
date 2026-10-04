@@ -80,4 +80,12 @@ SessionAligner<int> Make(params int[] markers)
     Check(a.Skipped == 2, "two rows counted as skipped");
 }
 
+// The car stream never plays ahead: it waits for the live marker.
+{
+    var a = new SessionAligner<int>(new[] { 1, 1, 2, 2 }.Select((m, i) => new KeyValuePair<int, int>(m, i)).ToList(), names, "car", () => now, earlyLimit: 0);
+    a.Next(1, out _); a.Next(1, out _);
+    Check(!a.Next(1, out _), "no row while live is still in the previous state");
+    Check(a.Next(2, out var v) && v == 2, "first row of the next state once live arrives");
+}
+
 Console.WriteLine("{\"status\":\"passed\",\"assertions\":" + assertions + "}");
