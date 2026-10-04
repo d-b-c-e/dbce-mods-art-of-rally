@@ -61,6 +61,10 @@ try {
     $tripleLine = [string]($result | Select-Object -Last 1)
     Assert ($tripleLine -match '^PASS: (\d+) ') 'Triple-screen runner did not pass'
     Checkpoint 'triple-screen' ([int]$Matches[1])
+    $result = Run 'session-tape' 'dotnet' @('run','--project','tests/SessionTape/SessionTape.csproj','-c','Release')
+    $session = $result | Select-Object -Last 1 | ConvertFrom-Json
+    Assert ($session.status -eq 'passed' -and $session.assertions -gt 0) 'Session tape runner ran no assertions'
+    Checkpoint 'session-tape' $session.assertions
     $result = Run 'game-bindings' 'dotnet' @('run','--project','tests/GameBindings/GameBindings.csproj','-c','Release')
     $gameBindings = $result | Select-Object -Last 1 | ConvertFrom-Json
     Assert ($gameBindings.status -eq 'passed' -and $gameBindings.assertions -gt 0) 'Game binding route runner ran no assertions'

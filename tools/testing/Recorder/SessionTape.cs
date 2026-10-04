@@ -15,24 +15,28 @@ namespace ArtOfSimRally.Testing
     /// Whole-session recording and replay, from game launch: menus, stage
     /// choice and the drive. Developer probe only; armed from outside the game
     /// by a request file that the probe reads (and consumes) when it loads.
+    /// See docs/SESSION-REPLAY.md.
     /// </summary>
     /// <remarks>
-    /// Three layers are taped. Menus and game buttons come from Rewired action
-    /// getters and the game's global <c>Input</c> wrapper (intro "press any
-    /// key"), keyed per rendered frame. The car is taped after the shipping
-    /// mod's wheel override, as the final <c>AxisCarController.GetInput</c>
-    /// values plus gear and pose per physics step. Replay overrides the same
-    /// points, so the physical wheel, pedals and keyboard are ignored.
+    /// Menus and game buttons are taped per rendered frame from Rewired action
+    /// getters and the game's global <c>Input</c> wrapper. The car is taped per
+    /// physics tick: the <c>CarController</c> input fields at the start of
+    /// <c>FixedUpdate</c>, plus every <c>Drivetrain.Shift</c> call with the tick
+    /// the drivetrain first acts on it. Replay feeds the same values on the same
+    /// ticks and blocks every other shift, so strict replay needs no pose
+    /// correction; divergence from the taped pose is measured and reported.
     ///
-    /// Frames carry a state marker (scene | top menu panel | event status).
-    /// Replay plays one marker segment at a time and waits for the live game to
-    /// reach the next segment's marker, so load-time differences don't shift
-    /// the inputs. A segment that never arrives fails the replay with a
-    /// screenshot. All force output is muted during replay.
+    /// Frames carry a state marker (scene | top menu panel | event status);
+    /// replay plays one marker segment at a time and waits for the live game to
+    /// reach the next one. Force output and telemetry stay muted from arming
+    /// until the process exits, whatever the replay result.
     /// </remarks>
     internal static class SessionTape
     {
         private enum Mode { Off, Record, Replay }
+
+        internal const int Format = 2;
+        private const string HarmonyId = "ArtOfSimRally.DevRecorder.SessionTape";
 
         internal static string RequestPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "ArtOfSimRally", "session-request.txt");
@@ -41,27 +45,34 @@ namespace ArtOfSimRally.Testing
         private static string _dir, _out;
         private static Action<string> _log;
         private static Harmony _harmony;
+        // Set when a replay is armed and never cleared in this process.
+        private static bool _muteOutputs;
 
-        // Frame layer.
+        // Recording.
         private static readonly Dictionary<string, string> _frameValues = new Dictionary<string, string>();
-        private static StreamWriter _inputWriter, _carWriter, _eventWriter;
+        private static StreamWriter _inputWriter, _carWriter, _shiftWriter, _eventWriter;
+        private static string _incomplete;
+        private static int _drivetrainTick = int.MinValue;
+
         private static int _frame, _fixedStep;
         private static readonly Dictionary<string, int> _markerIds = new Dictionary<string, int>();
         private static int _lastMarker = -1, _lastCarMarker = -1;
 
-        // Replay state.
-        private static Aligner<Dictionary<string, string>> _frames;
-        private static Aligner<CarRow> _car;
+        // Replay.
+        private static SessionAligner<Dictionary<string, string>> _frames;
+        private static SessionAligner<CarRow> _car;
         private static readonly Dictionary<string, string> Empty = new Dictionary<string, string>();
         private static Dictionary<string, string> _playing = Empty;
         private static CarRow _carPlaying;
-        private static bool _carActive;
-        private static float _poseThreshold = 2f;
-        private static int _poseCorrections, _gearSets;
-        private static float _maxPoseError;
-        private static string _result;
+        private static bool _carActive, _legacy, _replayShifting, _scenarioChecked;
+        private static int _liveTick = int.MinValue;
+        private static Dictionary<int, List<KeyValuePair<int, bool>>> _shiftsByTick = new Dictionary<int, List<KeyValuePair<int, bool>>>();
+        private static float _poseThreshold;
+        private static int _poseCorrections, _shiftsReplayed, _shiftsBlocked, _gearMismatchSteps, _firstDivergenceRow = -1;
+        private static float _maxPoseError, _lastPoseError;
+        private static string _result, _expectedScenario;
+        private static StreamWriter _divergenceWriter;
 
-        // Marker inputs, cached so a frame does not search the scene.
         private static PanelManager _panels;
         private static int _panelsCheckedFrame = -1000;
         private static readonly FieldInfo PanelStackField = typeof(PanelManager).GetField("panelStack", BindingFlags.Instance | BindingFlags.NonPublic);
@@ -69,7 +80,7 @@ namespace ArtOfSimRally.Testing
 
         internal struct CarRow
         {
-            public int Marker;
+            public int Marker, Tick;
             public float Steer, Throttle, Brake, Handbrake, Clutch;
             public bool StartEngine;
             public int Gear;
@@ -77,65 +88,98 @@ namespace ArtOfSimRally.Testing
             public Quaternion Rotation;
         }
 
-        internal static bool Active => _mode != Mode.Off;
         internal static bool Replaying => _mode == Mode.Replay;
-        internal static string Describe => _mode == Mode.Off ? "session tape off" :
-            _mode + " frame=" + _frame + " step=" + _fixedStep + (_mode == Mode.Replay
+        internal static string Describe => _mode == Mode.Off && _result == null ? "session tape off" :
+            (_result != null ? "Replay result=" + _result + " " : _mode + " ") + "frame=" + _frame + " step=" + _fixedStep +
+            (_frames != null
                 ? " segment=" + _frames.Segment + "/" + _frames.SegmentCount + " carSegment=" + _car.Segment + "/" + _car.SegmentCount +
-                  " poseCorrections=" + _poseCorrections + " maxPoseError=" + _maxPoseError.ToString("0.00", CultureInfo.InvariantCulture) +
-                  (_result != null ? " result=" + _result : "")
-                : "");
+                  " frameRows=" + _frames.Consumed + "/" + _frames.Total + " (skipped " + _frames.Skipped + ")" +
+                  " carRows=" + _car.Consumed + "/" + _car.Total + " (skipped " + _car.Skipped + ")" +
+                  " shifts=" + _shiftsReplayed + " blockedShifts=" + _shiftsBlocked + " gearMismatchSteps=" + _gearMismatchSteps +
+                  " maxPoseError=" + F2(_maxPoseError) + " lastPoseError=" + F2(_lastPoseError) + " firstDivergenceRow=" + _firstDivergenceRow +
+                  " poseCorrections=" + _poseCorrections + (_legacy ? " legacyTape" : "")
+                : "") + (_incomplete != null ? " INCOMPLETE: " + _incomplete : "");
 
         /// <summary>Reads and consumes a request written before launch.</summary>
         internal static void TryArm(Action<string> log)
         {
             _log = log;
+            Dictionary<string, string> request;
             try
             {
                 if (!File.Exists(RequestPath)) return;
-                var request = File.ReadAllLines(RequestPath)
+                request = File.ReadAllLines(RequestPath)
                     .Select(l => l.Split(new[] { '=' }, 2)).Where(p => p.Length == 2)
                     .ToDictionary(p => p[0].Trim(), p => p[1].Trim(), StringComparer.OrdinalIgnoreCase);
                 File.Move(RequestPath, RequestPath + "." + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".taken");
-                request.TryGetValue("mode", out var mode);
+            }
+            catch (Exception ex) { _log?.Invoke("Session tape request unreadable: " + ex.Message); return; }
+
+            request.TryGetValue("mode", out var mode);
+            bool replay = string.Equals(mode, "replay", StringComparison.OrdinalIgnoreCase);
+            // Outputs stay muted for this whole launch once a replay was asked for,
+            // even if arming below fails.
+            if (replay) _muteOutputs = true;
+            try
+            {
+                if (request.TryGetValue("expiresUtc", out var expires) &&
+                    DateTime.TryParse(expires, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var until) &&
+                    DateTime.UtcNow > until)
+                    throw new InvalidDataException("request expired at " + expires);
                 request.TryGetValue("tape", out _dir);
+                if (string.IsNullOrEmpty(_dir)) throw new InvalidDataException("tape= is required");
                 if (request.TryGetValue("poseThreshold", out var threshold))
                     float.TryParse(threshold, NumberStyles.Float, CultureInfo.InvariantCulture, out _poseThreshold);
-                if (string.IsNullOrEmpty(_dir)) throw new InvalidDataException("tape= is required");
-                if (string.Equals(mode, "record", StringComparison.OrdinalIgnoreCase)) StartRecording();
-                else if (string.Equals(mode, "replay", StringComparison.OrdinalIgnoreCase))
-                {
-                    request.TryGetValue("out", out _out);
-                    StartReplay(string.IsNullOrEmpty(_out) ? Path.Combine(_dir, "replay-" + DateTime.Now.ToString("yyyyMMdd-HHmmss")) : _out);
-                }
+                _harmony = new Harmony(HarmonyId);
+                if (replay) { PatchOutputs(); LoadReplay(request.TryGetValue("out", out var o) && o.Length > 0 ? o : Path.Combine(_dir, "replay-" + DateTime.Now.ToString("yyyyMMdd-HHmmss"))); }
+                else if (string.Equals(mode, "record", StringComparison.OrdinalIgnoreCase)) OpenRecording();
                 else throw new InvalidDataException("mode must be record or replay");
-                Patch();
+                PatchInputs();
+                _mode = replay ? Mode.Replay : Mode.Record;
+                Event(replay ? "replay started: " + _frames.Total + " frames, " + _car.Total + " car rows, " + _frames.SegmentCount +
+                               " segments, " + _shiftsByTick.Values.Sum(l => l.Count) + " shifts; force and telemetry muted; " +
+                               (_poseThreshold > 0 ? "assisted (pose correction past " + F2(_poseThreshold) + " m)" : "strict (no pose correction)")
+                             : "record started (format " + Format + ")");
             }
             catch (Exception ex)
             {
+                // Remove input hooks; keep the output mutes if they went in.
+                try { _harmony?.UnpatchAll(HarmonyId); if (_muteOutputs) PatchOutputs(); } catch { }
                 _mode = Mode.Off;
-                _log?.Invoke("Session tape not armed: " + ex.Message);
+                _log?.Invoke("Session tape not armed: " + ex.Message + (replay ? " (force and telemetry stay muted this launch)" : ""));
             }
         }
 
-        private static void StartRecording()
+        private static StreamWriter Create(string path) =>
+            new StreamWriter(new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.Read), new UTF8Encoding(false));
+
+        private static void OpenRecording()
         {
             Directory.CreateDirectory(Path.Combine(_dir, "shots"));
-            _inputWriter = new StreamWriter(Path.Combine(_dir, "input.tape"), false, new UTF8Encoding(false));
-            _carWriter = new StreamWriter(Path.Combine(_dir, "car.tape"), false, new UTF8Encoding(false));
-            _eventWriter = new StreamWriter(Path.Combine(_dir, "events.log"), false, new UTF8Encoding(false));
-            _carWriter.WriteLine("step\tmarker\tsteer\tthrottle\tbrake\thandbrake\tclutch\tstart\tgear\tpx\tpy\tpz\tqx\tqy\tqz\tqw\tvx\tvy\tvz\tavx\tavy\tavz");
+            if (File.Exists(Path.Combine(_dir, "input.tape"))) throw new IOException("tape already exists: " + _dir);
+            _inputWriter = Create(Path.Combine(_dir, "input.tape"));
+            _carWriter = Create(Path.Combine(_dir, "car.tape"));
+            _shiftWriter = Create(Path.Combine(_dir, "shifts.tape"));
+            _eventWriter = Create(Path.Combine(_dir, "events.log"));
+            _carWriter.WriteLine("step\tmarker\tsteer\tthrottle\tbrake\thandbrake\tclutch\tstart\tgear\tpx\tpy\tpz\tqx\tqy\tqz\tqw\tvx\tvy\tvz\tavx\tavy\tavz\ttick");
+            _shiftWriter.WriteLine("tick\tgear\tchangeTarget\tphase");
             File.WriteAllText(Path.Combine(_dir, "session.txt"),
-                "game=" + Application.version + "\nunity=" + Application.unityVersion + "\nstartedUtc=" + DateTime.UtcNow.ToString("o") + "\n");
-            _mode = Mode.Record;
-            Event("record started");
+                "format=" + Format + "\ngame=" + Application.version + "\nunity=" + Application.unityVersion +
+                "\nfixedDeltaTime=" + N(Time.fixedDeltaTime) + "\nstartedUtc=" + DateTime.UtcNow.ToString("o") + "\n");
         }
 
-        private static void StartReplay(string output)
+        private static void LoadReplay(string output)
         {
-            _out = output;
-            Directory.CreateDirectory(Path.Combine(_out, "shots"));
-            var markers = File.ReadAllLines(Path.Combine(_dir, "markers.tsv")).Select(l => l.Split('\t'))
+            var session = File.ReadAllLines(Path.Combine(_dir, "session.txt")).Select(l => l.Split(new[] { '=' }, 2)).Where(p => p.Length == 2)
+                .ToDictionary(p => p[0], p => p[1]);
+            _legacy = !session.TryGetValue("format", out var format) || format != Format.ToString(CultureInfo.InvariantCulture);
+            if (session.TryGetValue("game", out var game) && game != Application.version)
+                throw new InvalidDataException("tape is from game " + game + ", running " + Application.version);
+            if (File.Exists(Path.Combine(_dir, "incomplete.txt")))
+                throw new InvalidDataException("tape is marked incomplete: " + File.ReadAllText(Path.Combine(_dir, "incomplete.txt")).Trim());
+            session.TryGetValue("scenario", out _expectedScenario);
+
+            var markers = File.ReadAllLines(Path.Combine(_dir, "markers.tsv")).Where(l => l.Length > 0).Select(l => l.Split('\t'))
                 .ToDictionary(p => int.Parse(p[0], CultureInfo.InvariantCulture), p => p[1]);
             foreach (var pair in markers) _markerIds[pair.Value] = pair.Key;
 
@@ -155,117 +199,121 @@ namespace ArtOfSimRally.Testing
             foreach (var line in File.ReadLines(Path.Combine(_dir, "car.tape")).Skip(1))
             {
                 var p = line.Split('\t');
-                float F(int i) => float.Parse(p[i], CultureInfo.InvariantCulture);
-                var row = new CarRow
+                float F(int i)
+                {
+                    float v = float.Parse(p[i], CultureInfo.InvariantCulture);
+                    if (float.IsNaN(v) || float.IsInfinity(v)) throw new InvalidDataException("non-finite value in car.tape");
+                    return v;
+                }
+                car.Add(new KeyValuePair<int, CarRow>(int.Parse(p[1], CultureInfo.InvariantCulture), new CarRow
                 {
                     Marker = int.Parse(p[1], CultureInfo.InvariantCulture), Steer = F(2), Throttle = F(3), Brake = F(4), Handbrake = F(5), Clutch = F(6),
                     StartEngine = p[7] == "1", Gear = int.Parse(p[8], CultureInfo.InvariantCulture),
                     Position = new Vector3(F(9), F(10), F(11)), Rotation = new Quaternion(F(12), F(13), F(14), F(15)),
-                    Velocity = new Vector3(F(16), F(17), F(18)), AngularVelocity = new Vector3(F(19), F(20), F(21))
-                };
-                car.Add(new KeyValuePair<int, CarRow>(row.Marker, row));
+                    Velocity = new Vector3(F(16), F(17), F(18)), AngularVelocity = new Vector3(F(19), F(20), F(21)),
+                    Tick = p.Length > 22 ? int.Parse(p[22], CultureInfo.InvariantCulture) : int.MinValue
+                }));
             }
-            _frames = new Aligner<Dictionary<string, string>>(frames, markers, "frames");
-            _car = new Aligner<CarRow>(car, markers, "car");
-            _eventWriter = new StreamWriter(Path.Combine(_out, "replay.log"), false, new UTF8Encoding(false));
-            _mode = Mode.Replay;
-            Event("replay started: " + frames.Count + " frames, " + car.Count + " car steps, " + _frames.SegmentCount + " segments; force output muted");
+            if (frames.Count == 0 || car.Count == 0 || markers.Count == 0) throw new InvalidDataException("tape has an empty stream");
+            var shifts = Path.Combine(_dir, "shifts.tape");
+            if (File.Exists(shifts))
+                foreach (var line in File.ReadLines(shifts).Skip(1))
+                {
+                    var p = line.Split('\t');
+                    int tick = int.Parse(p[0], CultureInfo.InvariantCulture);
+                    if (!_shiftsByTick.TryGetValue(tick, out var list)) _shiftsByTick[tick] = list = new List<KeyValuePair<int, bool>>();
+                    list.Add(new KeyValuePair<int, bool>(int.Parse(p[1], CultureInfo.InvariantCulture), p[2] == "1"));
+                }
+            _frames = new SessionAligner<Dictionary<string, string>>(frames, markers, "frames", () => Time.realtimeSinceStartup);
+            _car = new SessionAligner<CarRow>(car, markers, "car", () => Time.realtimeSinceStartup);
+            _out = output;
+            Directory.CreateDirectory(Path.Combine(_out, "shots"));
+            _eventWriter = Create(Path.Combine(_out, "replay.log"));
+            _divergenceWriter = Create(Path.Combine(_out, "divergence.tsv"));
+            _divergenceWriter.WriteLine("row\tmarker\tpose_error_m\tlive_gear\ttape_gear");
         }
 
         // ---- patches -------------------------------------------------------
 
-        private static void Patch()
+        private static bool _outputsPatched;
+        private static void PatchOutputs()
         {
-            _harmony = new Harmony("ArtOfSimRally.DevRecorder.SessionTape");
+            if (_outputsPatched) return;
+            var native = AccessTools.TypeByName("Dbce.Wheel.Ffb.WheelFfbNative") ?? throw new MissingMemberException("WheelFfbNative");
+            Mute(native, "SetForce", nameof(MuteInt0));
+            Mute(native, "UpdatePeriodic", nameof(MuteFloat1));
+            Mute(native, "PlayConstantBurst", nameof(MuteFloat1));
+            Mute(native, "PlayPeriodicBurst", nameof(MuteFloat1));
+            Mute(native, "PlayShapedPeriodicBurst", nameof(MuteFloat1));
+            Mute(native, "UpdateCondition", nameof(MuteFloat1));
+            // SimHub-driven shakers would react to replayed telemetry.
+            var pump = AccessTools.TypeByName("ArtOfSimRally.Mod.TelemetryPump") ?? throw new MissingMemberException("TelemetryPump");
+            Patch(AccessTools.Method(pump, "SendFrame"), prefix: nameof(SkipWhenMuted));
+            _outputsPatched = true;
+        }
+
+        private static void PatchInputs()
+        {
             var player = typeof(Rewired.Player);
             foreach (var name in new[] { "GetButton", "GetButtonDown", "GetButtonUp", "GetNegativeButton", "GetNegativeButtonDown", "GetNegativeButtonUp" })
             {
-                PatchBool(player.GetMethod(name, new[] { typeof(int) }), "RewiredBoolInt");
-                PatchBool(player.GetMethod(name, new[] { typeof(string) }), "RewiredBoolString");
+                Patch(player.GetMethod(name, new[] { typeof(int) }), postfix: nameof(BoolRewiredBoolInt));
+                Patch(player.GetMethod(name, new[] { typeof(string) }), postfix: nameof(BoolRewiredBoolString));
             }
             foreach (var name in new[] { "GetAxis", "GetAxisRaw" })
             {
-                PatchFloat(player.GetMethod(name, new[] { typeof(int) }), "RewiredFloatInt");
-                PatchFloat(player.GetMethod(name, new[] { typeof(string) }), "RewiredFloatString");
+                Patch(player.GetMethod(name, new[] { typeof(int) }), postfix: nameof(FloatRewiredFloatInt));
+                Patch(player.GetMethod(name, new[] { typeof(string) }), postfix: nameof(FloatRewiredFloatString));
             }
-            PatchBool(player.GetMethod("GetAnyButton", Type.EmptyTypes), "RewiredBoolNone");
-            PatchBool(player.GetMethod("GetAnyButtonDown", Type.EmptyTypes), "RewiredBoolNone");
+            Patch(player.GetMethod("GetAnyButton", Type.EmptyTypes), postfix: nameof(BoolRewiredBoolNone));
+            Patch(player.GetMethod("GetAnyButtonDown", Type.EmptyTypes), postfix: nameof(BoolRewiredBoolNone));
 
             // The game's global Input wrapper (not UnityEngine.Input).
             var input = typeof(global::Input);
-            PatchBool(input.GetProperty("anyKey").GetGetMethod(), "InputBoolNone");
-            PatchBool(input.GetProperty("anyKeyDown").GetGetMethod(), "InputBoolNone");
+            Patch(input.GetProperty("anyKey").GetGetMethod(), postfix: nameof(BoolInputBoolNone));
+            Patch(input.GetProperty("anyKeyDown").GetGetMethod(), postfix: nameof(BoolInputBoolNone));
             foreach (var name in new[] { "GetKey", "GetKeyDown", "GetKeyUp" })
             {
-                PatchBool(input.GetMethod(name, new[] { typeof(KeyCode) }), "InputBoolKey");
-                PatchBool(input.GetMethod(name, new[] { typeof(string) }), "InputBoolString");
+                Patch(input.GetMethod(name, new[] { typeof(KeyCode) }), postfix: nameof(BoolInputBoolKey));
+                Patch(input.GetMethod(name, new[] { typeof(string) }), postfix: nameof(BoolInputBoolString));
             }
             foreach (var name in new[] { "GetMouseButton", "GetMouseButtonDown", "GetMouseButtonUp" })
             {
                 var method = input.GetMethod(name, new[] { typeof(int) });
-                if (method != null) PatchBool(method, "InputBoolInt");
+                if (method != null) Patch(method, postfix: nameof(BoolInputBoolInt));
             }
 
-            var getInput = AccessTools.Method(typeof(AxisCarController), "GetInput");
-            _harmony.Patch(getInput, postfix: new HarmonyMethod(typeof(SessionTape), nameof(AfterCarInput)) { priority = Priority.Last });
+            Patch(AccessTools.Method(typeof(AxisCarController), "GetInput"), postfix: nameof(AfterCarInput), last: true);
             // CarController.Update reads input once per rendered frame; FixedUpdate
-            // smooths the *Input fields into steering/throttle/brake each physics
-            // step. Tape and replay those fields at the start of every step.
-            _harmony.Patch(AccessTools.Method(typeof(CarController), "FixedUpdate"),
-                prefix: new HarmonyMethod(typeof(SessionTape), nameof(BeforeCarStep)) { priority = Priority.Last });
-
-            // SplashScreenControl is the game's only Rewired input-event delegate
-            // (ButtonJustReleased); getter substitution can't reach it.
-            _harmony.Patch(AccessTools.Method(typeof(SplashScreenControl), "EndSplashScreen"),
-                prefix: new HarmonyMethod(typeof(SessionTape), nameof(BeforeSplashEnd)));
-
-            if (_mode == Mode.Replay)
-            {
-                var native = AccessTools.TypeByName("Dbce.Wheel.Ffb.WheelFfbNative");
-                Mute(native, "SetForce", nameof(MuteInt0));
-                Mute(native, "UpdatePeriodic", nameof(MuteFloat1));
-                Mute(native, "PlayConstantBurst", nameof(MuteFloat1));
-                Mute(native, "PlayPeriodicBurst", nameof(MuteFloat1));
-                Mute(native, "PlayShapedPeriodicBurst", nameof(MuteFloat1));
-                Mute(native, "UpdateCondition", nameof(MuteFloat1));
-            }
+            // smooths the *Input fields each tick. Tape and replay those fields
+            // at the start of every tick.
+            Patch(AccessTools.Method(typeof(CarController), "FixedUpdate"), prefix: nameof(BeforeCarStep), last: true);
+            // Shift() only queues a change; Drivetrain.FixedUpdate acts on it.
+            Patch(AccessTools.Method(typeof(Drivetrain), "Shift"), prefix: nameof(BeforeShift));
+            Patch(AccessTools.Method(typeof(Drivetrain), "FixedUpdate"), prefix: nameof(BeforeDrivetrainStep), postfix: nameof(AfterDrivetrainStep));
+            // The game's only Rewired input-event consumer; getters can't reach it.
+            Patch(AccessTools.Method(typeof(SplashScreenControl), "EndSplashScreen"), prefix: nameof(BeforeSplashEnd));
         }
 
-        private static bool _splashEnded;
-        private static void BeforeSplashEnd()
+        private static void Patch(MethodBase target, string prefix = null, string postfix = null, bool last = false)
         {
-            if (_mode == Mode.Record) _frameValues["E.SplashEnd"] = "1";
-            _splashEnded = true;
-        }
-
-        private static void EndSplashIfTaped(string liveMarker)
-        {
-            if (_splashEnded || !liveMarker.Contains("|IntroSplashScreen|")) return;
-            if (!(_playing.ContainsKey("E.SplashEnd") || _frames.PlayedOut)) return;
-            var splash = UnityEngine.Object.FindObjectOfType<SplashScreenControl>();
-            if (splash == null) return;
-            Event("ending splash screen as taped");
-            splash.EndSplashScreen();
+            if (target == null) throw new MissingMethodException("hook target for " + (prefix ?? postfix));
+            _harmony.Patch(target,
+                prefix: prefix == null ? null : new HarmonyMethod(typeof(SessionTape), prefix) { priority = last ? Priority.Last : Priority.Normal },
+                postfix: postfix == null ? null : new HarmonyMethod(typeof(SessionTape), postfix) { priority = last ? Priority.Last : Priority.Normal });
         }
 
         private static void Mute(Type type, string name, string prefix)
         {
-            foreach (var method in type.GetMethods(BindingFlags.Public | BindingFlags.Static).Where(m => m.Name == name))
-                _harmony.Patch(method, prefix: new HarmonyMethod(typeof(SessionTape), prefix));
+            var methods = type.GetMethods(BindingFlags.Public | BindingFlags.Static).Where(m => m.Name == name).ToList();
+            if (methods.Count == 0) throw new MissingMethodException(type.Name + "." + name);
+            foreach (var method in methods) Patch(method, prefix: prefix);
         }
-        private static void MuteInt0(ref int __0) { if (Replaying) __0 = 0; }
-        private static void MuteFloat1(ref float __1) { if (Replaying) __1 = 0f; }
+        private static void MuteInt0(ref int __0) { if (_muteOutputs) __0 = 0; }
+        private static void MuteFloat1(ref float __1) { if (_muteOutputs) __1 = 0f; }
+        private static bool SkipWhenMuted() => !_muteOutputs;
 
-        private static void PatchBool(MethodInfo method, string keyKind)
-        {
-            if (method == null) throw new MissingMethodException("input getter for " + keyKind);
-            _harmony.Patch(method, postfix: new HarmonyMethod(typeof(SessionTape), "Bool" + keyKind));
-        }
-        private static void PatchFloat(MethodInfo method, string keyKind)
-        {
-            if (method == null) throw new MissingMethodException("input getter for " + keyKind);
-            _harmony.Patch(method, postfix: new HarmonyMethod(typeof(SessionTape), "Float" + keyKind));
-        }
+        // ---- input layer -----------------------------------------------------
 
         // Keys: R<player>.<method>.<action>, I.<member>[.<arg>].
         private static void BoolRewiredBoolInt(Rewired.Player __instance, MethodBase __originalMethod, int __0, ref bool __result)
@@ -287,19 +335,41 @@ namespace ArtOfSimRally.Testing
         private static void BoolInputBoolInt(MethodBase __originalMethod, int __0, ref bool __result)
             => Bool("I." + __originalMethod.Name + "." + __0.ToString(CultureInfo.InvariantCulture), ref __result);
 
+        // The last value read in a frame is the one taped.
         private static void Bool(string key, ref bool result)
         {
-            if (_mode == Mode.Record) { if (result) _frameValues[key] = "1"; }
+            if (_mode == Mode.Record) { if (result) _frameValues[key] = "1"; else _frameValues.Remove(key); }
             else if (_mode == Mode.Replay) result = _playing.TryGetValue(key, out var v) && v == "1";
         }
         private static void Float(string key, ref float result)
         {
-            if (_mode == Mode.Record) { if (result != 0f) _frameValues[key] = result.ToString("R", CultureInfo.InvariantCulture); }
+            if (_mode == Mode.Record) { if (result != 0f) _frameValues[key] = N(result); else _frameValues.Remove(key); }
             else if (_mode == Mode.Replay)
                 result = _playing.TryGetValue(key, out var v) ? float.Parse(v, CultureInfo.InvariantCulture) : 0f;
         }
 
-        // Replay only: keep the per-frame read consistent with the taped step.
+        private static bool _splashEnded;
+        private static void BeforeSplashEnd()
+        {
+            if (_mode == Mode.Record) _frameValues["E.SplashEnd"] = "1";
+            _splashEnded = true;
+        }
+
+        private static void EndSplashIfTaped(string liveMarker)
+        {
+            if (_splashEnded || !liveMarker.Contains("|IntroSplashScreen|")) return;
+            if (!(_playing.ContainsKey("E.SplashEnd") || _frames.PlayedOut)) return;
+            var splash = UnityEngine.Object.FindObjectOfType<SplashScreenControl>();
+            if (splash == null) return;
+            Event("ending splash screen as taped");
+            splash.EndSplashScreen();
+        }
+
+        // ---- car layer -------------------------------------------------------
+
+        private static int LiveTick => Mathf.RoundToInt(Time.fixedTime / Time.fixedDeltaTime);
+
+        // Replay only: keep the per-frame read consistent with the taped tick.
         private static void AfterCarInput(ref float throttleInput, ref float brakeInput, ref float steerInput,
             ref float handbrakeInput, ref float clutchInput, ref bool startEngineInput)
         {
@@ -309,64 +379,154 @@ namespace ArtOfSimRally.Testing
             handbrakeInput = _carPlaying.Handbrake; clutchInput = _carPlaying.Clutch; startEngineInput = _carPlaying.StartEngine;
         }
 
-        private static bool _correcting;
+        private static bool IsPlayer(Component component)
+        {
+            var manager = EventManagerField?.GetValue(null) as EventManager;
+            var player = manager?.playerManager;
+            return player != null && player.carDynamics != null && component != null && component.gameObject == player.carDynamics.gameObject;
+        }
+
+        // Replay: the first player-car callback of a tick takes that tick's row,
+        // whichever of CarController/Drivetrain Unity runs first.
+        private static void BeginReplayTick()
+        {
+            int tick = LiveTick;
+            if (tick == _liveTick) return;
+            _liveTick = tick;
+            _fixedStep++;
+            int before = _car.Consumed;
+            _carActive = _car.Next(MarkerId(Marker()), out _carPlaying);
+            if (!_carActive || _car.Consumed == before) return;
+            if (!_scenarioChecked) CheckScenario();
+        }
 
         private static void BeforeCarStep(CarController __instance)
         {
             try
             {
-                if (_mode == Mode.Off) return;
-                var dynamics = __instance.GetComponent<CarDynamics>();
-                if (dynamics == null || !IsPlayerCar(dynamics)) return;
+                if (_mode == Mode.Off || !IsPlayer(__instance)) return;
                 var body = __instance.GetComponent<Rigidbody>();
                 var drivetrain = __instance.GetComponent<Drivetrain>();
                 if (body == null || drivetrain == null) return;
-                int marker = MarkerId(Marker());
-                _fixedStep++;
                 if (_mode == Mode.Record)
                 {
+                    int marker = MarkerId(Marker());
+                    _fixedStep++;
                     var c = __instance;
                     var p = body.position; var q = body.rotation; var v = body.velocity; var w = body.angularVelocity;
-                    _carWriter.WriteLine(string.Join("	", new[] { _fixedStep.ToString(CultureInfo.InvariantCulture), marker.ToString(CultureInfo.InvariantCulture),
+                    _carWriter.WriteLine(string.Join("\t", new[] { _fixedStep.ToString(CultureInfo.InvariantCulture), marker.ToString(CultureInfo.InvariantCulture),
                         N(c.steerInput), N(c.throttleInput), N(c.brakeInput), N(c.handbrakeInput), N(c.clutchInput), c.startEngineInput ? "1" : "0",
                         drivetrain.gear.ToString(CultureInfo.InvariantCulture), N(p.x), N(p.y), N(p.z), N(q.x), N(q.y), N(q.z), N(q.w),
-                        N(v.x), N(v.y), N(v.z), N(w.x), N(w.y), N(w.z) }));
-                    if (marker != _lastCarMarker) { _lastCarMarker = marker; Event("car segment " + MarkerText(marker) + " car=" + __instance.gameObject.name); }
+                        N(v.x), N(v.y), N(v.z), N(w.x), N(w.y), N(w.z), LiveTick.ToString(CultureInfo.InvariantCulture) }));
+                    if (marker != _lastCarMarker)
+                    {
+                        _lastCarMarker = marker;
+                        Event("car segment " + MarkerText(marker));
+                        if (MarkerText(marker).EndsWith("|WAITING_TO_BEGIN") && !_scenarioChecked)
+                        {
+                            _scenarioChecked = true;
+                            File.AppendAllText(Path.Combine(_dir, "session.txt"), "scenario=" + Scenario() + "\n");
+                            Event("scenario " + Scenario());
+                        }
+                    }
                     return;
                 }
-                _carActive = _car.Next(marker, out _carPlaying);
+                BeginReplayTick();
                 if (!_carActive) return;
                 var r = _carPlaying;
                 __instance.steerInput = r.Steer; __instance.throttleInput = r.Throttle; __instance.brakeInput = r.Brake;
                 __instance.handbrakeInput = r.Handbrake; __instance.clutchInput = r.Clutch; __instance.startEngineInput = r.StartEngine;
-                if (drivetrain.gear != r.Gear && !drivetrain.changingGear) { drivetrain.Shift(r.Gear, true); _gearSets++; }
-                float error = Vector3.Distance(body.position, r.Position);
-                if (error > _maxPoseError) _maxPoseError = error;
-                // Ease back onto the taped line instead of teleporting, so the
-                // camera doesn't jump: start past the threshold, stop well inside it.
-                // Only while the player drives: the game places the car itself in
-                // cinematics, the countdown and the finish animation.
-                bool driving = (EventManagerField?.GetValue(null) as EventManager)?.status == EventStatusEnums.EventStatus.UNDERWAY;
-                if (!driving) { _correcting = false; return; }
-                if (_poseThreshold > 0 && !_correcting && error > _poseThreshold) { _correcting = true; _poseCorrections++; }
-                if (_correcting)
-                {
-                    body.position = Vector3.Lerp(body.position, r.Position, 0.15f);
-                    body.rotation = Quaternion.Slerp(body.rotation, r.Rotation, 0.15f);
-                    body.velocity = Vector3.Lerp(body.velocity, r.Velocity, 0.3f);
-                    body.angularVelocity = Vector3.Lerp(body.angularVelocity, r.AngularVelocity, 0.3f);
-                    if (error < _poseThreshold * 0.25f) _correcting = false;
-                }
+                if (_legacy && drivetrain.gear != r.Gear && !drivetrain.changingGear) Shift(drivetrain, r.Gear, true);
+                Measure(body, drivetrain, r);
             }
             catch (Exception ex) { Fail("car step: " + ex.Message); }
         }
 
-        private static bool IsPlayerCar(CarDynamics car)
+        private static void Measure(Rigidbody body, Drivetrain drivetrain, CarRow r)
+        {
+            float error = Vector3.Distance(body.position, r.Position);
+            bool driving = (EventManagerField?.GetValue(null) as EventManager)?.status == EventStatusEnums.EventStatus.UNDERWAY;
+            if (!driving) { _correcting = false; return; }
+            _lastPoseError = error;
+            if (error > _maxPoseError) _maxPoseError = error;
+            if (error > 0.05f && _firstDivergenceRow < 0) { _firstDivergenceRow = _car.Consumed; Event("first divergence > 5 cm at car row " + _car.Consumed); }
+            if (drivetrain.gear != r.Gear) _gearMismatchSteps++;
+            if (_car.Consumed % 30 == 0)
+                _divergenceWriter?.WriteLine(_car.Consumed + "\t" + r.Marker + "\t" + N(error) + "\t" + drivetrain.gear + "\t" + r.Gear);
+            // Assisted mode only: ease back onto the taped line.
+            if (_poseThreshold > 0 && !_correcting && error > _poseThreshold) { _correcting = true; _poseCorrections++; }
+            if (_correcting)
+            {
+                body.position = Vector3.Lerp(body.position, r.Position, 0.15f);
+                body.rotation = Quaternion.Slerp(body.rotation, r.Rotation, 0.15f);
+                body.velocity = Vector3.Lerp(body.velocity, r.Velocity, 0.3f);
+                body.angularVelocity = Vector3.Lerp(body.angularVelocity, r.AngularVelocity, 0.3f);
+                if (error < _poseThreshold * 0.25f) _correcting = false;
+            }
+        }
+        private static bool _correcting;
+
+        // Record: tape each player shift with the tick Drivetrain.FixedUpdate first
+        // sees it. Replay: only the replayer may shift the player car.
+        private static bool BeforeShift(Drivetrain __instance, int m_gear, bool ChangeTargetGear)
+        {
+            if (_mode == Mode.Off || !IsPlayer(__instance)) return true;
+            if (_mode == Mode.Replay)
+            {
+                if (_replayShifting) return true;
+                if (!_legacy) { _shiftsBlocked++; return false; }
+                return true;
+            }
+            int tick = LiveTick;
+            bool inStep = Time.inFixedTimeStep;
+            int effective = inStep && _drivetrainTick != tick ? tick : tick + 1;
+            _shiftWriter.WriteLine(effective.ToString(CultureInfo.InvariantCulture) + "\t" + m_gear.ToString(CultureInfo.InvariantCulture) + "\t" +
+                                   (ChangeTargetGear ? "1" : "0") + "\t" + (inStep ? "fixed" : "update"));
+            return true;
+        }
+
+        private static void BeforeDrivetrainStep(Drivetrain __instance)
+        {
+            try
+            {
+                if (_mode != Mode.Replay || _legacy || !IsPlayer(__instance)) return;
+                BeginReplayTick();
+                if (!_carActive) return;
+                if (_shiftsByTick.TryGetValue(_carPlaying.Tick, out var shifts))
+                    foreach (var s in shifts) Shift(__instance, s.Key, s.Value);
+            }
+            catch (Exception ex) { Fail("drivetrain step: " + ex.Message); }
+        }
+        private static void AfterDrivetrainStep(Drivetrain __instance)
+        {
+            if (_mode == Mode.Record && IsPlayer(__instance)) _drivetrainTick = LiveTick;
+        }
+
+        private static void Shift(Drivetrain drivetrain, int gear, bool changeTarget)
+        {
+            _replayShifting = true;
+            try { drivetrain.Shift(gear, changeTarget); _shiftsReplayed++; }
+            finally { _replayShifting = false; }
+        }
+
+        private static string Scenario()
         {
             var manager = EventManagerField?.GetValue(null) as EventManager;
-            var player = manager?.playerManager;
-            return player != null && player.carDynamics == car;
+            string car = manager?.playerManager?.carDynamics != null ? manager.playerManager.carDynamics.gameObject.name : "?";
+            string weather = manager?.sceneryManager != null ? manager.sceneryManager.Weather.ToString() : "?";
+            return SceneManager.GetActiveScene().name + "|" + car + "|" + weather;
         }
+
+        private static void CheckScenario()
+        {
+            if (!MarkerText(_carPlaying.Marker).EndsWith("|WAITING_TO_BEGIN")) return;
+            _scenarioChecked = true;
+            string live = Scenario();
+            Event("scenario " + live + (_expectedScenario != null ? " (taped " + _expectedScenario + ")" : " (not taped)"));
+            if (_expectedScenario != null && live != _expectedScenario) Fail("scenario differs: live " + live + ", taped " + _expectedScenario);
+        }
+
+        // ---- frame tick --------------------------------------------------------
 
         /// <summary>Once per rendered frame, from the probe's OnUpdate.</summary>
         internal static void Tick()
@@ -386,7 +546,7 @@ namespace ArtOfSimRally.Testing
                     _inputWriter.WriteLine(line.ToString());
                     _frameValues.Clear();
                     if (marker != _lastMarker) { _lastMarker = marker; Reseed(marker); Event("segment " + MarkerText(marker)); Shot(_dir, marker); }
-                    if (_frame % 60 == 0) { _inputWriter.Flush(); _carWriter.Flush(); _eventWriter.Flush(); }
+                    if (_frame % 60 == 0) { _inputWriter.Flush(); _carWriter.Flush(); _shiftWriter.Flush(); _eventWriter.Flush(); }
                 }
                 else
                 {
@@ -401,8 +561,8 @@ namespace ArtOfSimRally.Testing
                     if (_frames.Segment != before) { Event("segment " + _frames.Segment + " " + MarkerText(marker)); Shot(_out, marker); }
                     if (_frames.Failed != null) Fail(_frames.Failed);
                     else if (_car.Failed != null) Fail(_car.Failed);
-                    else if (_frames.Finished && _result == null) Finish("passed");
-                    if (_frame % 60 == 0) _eventWriter.Flush();
+                    else if (_frames.Finished && _car.InLastSegment) Finish(Verdict("all frames played"));
+                    if (_frame % 60 == 0) { _eventWriter?.Flush(); _divergenceWriter?.Flush(); }
                 }
                 _frame++;
             }
@@ -420,30 +580,64 @@ namespace ArtOfSimRally.Testing
         {
             if (_mode == Mode.Record)
             {
-                Event("record stopped: " + why);
-                File.WriteAllLines(Path.Combine(_dir, "markers.tsv"),
-                    _markerIds.OrderBy(p => p.Value).Select(p => p.Value.ToString(CultureInfo.InvariantCulture) + "\t" + p.Key));
-                _inputWriter?.Dispose(); _carWriter?.Dispose(); _eventWriter?.Dispose();
-                _inputWriter = _carWriter = _eventWriter = null;
+                Event("record stopped: " + why + (_incomplete != null ? "; INCOMPLETE: " + _incomplete : ""));
+                try { _inputWriter?.Dispose(); _carWriter?.Dispose(); _shiftWriter?.Dispose(); _eventWriter?.Dispose(); }
+                catch (Exception ex) { MarkIncomplete("closing files: " + ex.Message); }
+                _inputWriter = _carWriter = _shiftWriter = _eventWriter = null;
                 _mode = Mode.Off;
             }
             else if (_mode == Mode.Replay && _result == null)
-                Finish(_frames.Segment == _frames.SegmentCount - 1 ? "passed (" + why + " in the final recorded segment)" : "stopped: " + why);
+                Finish(_frames.InLastSegment && _frames.RemainingInSegment <= 120 && _car.InLastSegment ? Verdict(why + " during the final segment") : "aborted: " + why);
+        }
+
+        /// <summary>Probe unload: stop, then remove every session hook except the output mutes.</summary>
+        internal static void Unload()
+        {
+            Stop("probe unloaded");
+            try { _harmony?.UnpatchAll(HarmonyId); _outputsPatched = false; if (_muteOutputs) PatchOutputs(); }
+            catch (Exception ex) { _log?.Invoke("Session tape unload: " + ex.Message); }
+        }
+
+        // Strict: no taped driving rows may be skipped. Menu frames skipped at a
+        // transition, and the car's post-stage tail, are reported, not failed.
+        private static string Verdict(string how)
+        {
+            int driving = _car.SkippedWhere(m => m.EndsWith("|UNDERWAY"));
+            if (driving > 0) return "failed: " + driving + " taped driving rows skipped (" + how + ")";
+            return "passed (" + how + (_poseThreshold > 0 ? ", assisted" : ", strict") + ")";
         }
 
         private static void Finish(string result)
         {
             _result = result;
-            Event("replay " + result + "; poseCorrections=" + _poseCorrections + " maxPoseError=" + _maxPoseError.ToString("0.00", CultureInfo.InvariantCulture) +
-                  " gearSets=" + _gearSets + " frames=" + _frame + " steps=" + _fixedStep);
+            Event("replay " + result + "; " + Describe);
             Shot(_out, -1);
-            File.WriteAllText(Path.Combine(_out, "result.txt"), result + "\n" + Describe + "\n");
-            _eventWriter?.Flush();
-            _mode = Mode.Off;
+            try
+            {
+                _divergenceWriter?.Dispose(); _divergenceWriter = null;
+                var tmp = Path.Combine(_out, "result.txt.tmp");
+                File.WriteAllText(tmp, result + "\n" + Describe + "\n");
+                File.Move(tmp, Path.Combine(_out, "result.txt"));
+            }
+            catch (Exception ex) { _log?.Invoke("Session tape result not written: " + ex.Message); }
             _eventWriter?.Dispose(); _eventWriter = null;
+            // Inputs return to the player; force and telemetry stay muted.
+            _mode = Mode.Off;
         }
 
-        private static void Fail(string why) { if (_mode == Mode.Replay && _result == null) Finish("failed: " + why); }
+        private static void MarkIncomplete(string why)
+        {
+            if (_incomplete != null) return;
+            _incomplete = why;
+            try { File.WriteAllText(Path.Combine(_dir, "incomplete.txt"), why + "\n"); } catch { }
+            _log?.Invoke("Session tape recording INCOMPLETE: " + why);
+        }
+
+        private static void Fail(string why)
+        {
+            if (_mode == Mode.Record) MarkIncomplete(why);
+            else if (_mode == Mode.Replay && _result == null) Finish("failed: " + why);
+        }
 
         // ---- markers ---------------------------------------------------------
 
@@ -472,10 +666,11 @@ namespace ArtOfSimRally.Testing
         }
         private static string MarkerText(int id) => _markerIds.FirstOrDefault(p => p.Value == id).Key ?? id.ToString(CultureInfo.InvariantCulture);
 
-        // The game randomizes custom-event stage, weather and car (StageGenerator,
-        // Random.Range). Re-seed Unity's generator from the screen name whenever
-        // the screen changes, in recording and replay alike, so the same presses
-        // roll the same stage.
+        // Deliberate, in recording and replay alike: the game rolls custom-event
+        // stage, weather and car with Random.Range (StageGenerator). Re-seeding
+        // Unity's generator from the screen name at each screen change makes the
+        // same presses roll the same stage. The resolved scenario is taped and
+        // checked before driving.
         private static void Reseed(int marker)
         {
             int seed = 17;
@@ -497,65 +692,11 @@ namespace ArtOfSimRally.Testing
         private static void Event(string text)
         {
             string line = DateTime.Now.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture) + " f" + _frame + " s" + _fixedStep + " " + text;
-            _eventWriter?.WriteLine(line);
+            try { _eventWriter?.WriteLine(line); } catch (Exception ex) { if (_mode == Mode.Record) MarkIncomplete("event log: " + ex.Message); }
             _log?.Invoke("Session tape: " + text);
         }
 
         private static string N(float value) => value.ToString("R", CultureInfo.InvariantCulture);
-
-        /// <summary>Plays a tape segment by segment, gated on the live marker.</summary>
-        private sealed class Aligner<T>
-        {
-            private readonly List<List<T>> _segments = new List<List<T>>();
-            private readonly List<int> _markers = new List<int>();
-            private readonly Dictionary<int, string> _names;
-            private readonly string _label;
-            private int _segment = -1, _index, _waiting, _early;
-            private const int EarlyLimit = 10;
-            private const int WaitLimit = 60 * 120;   // two minutes at 60 fps
-
-            internal Aligner(List<KeyValuePair<int, T>> rows, Dictionary<int, string> names, string label)
-            {
-                _names = names; _label = label;
-                foreach (var row in rows)
-                {
-                    if (_markers.Count == 0 || _markers[_markers.Count - 1] != row.Key) { _markers.Add(row.Key); _segments.Add(new List<T>()); }
-                    _segments[_segments.Count - 1].Add(row.Value);
-                }
-            }
-            internal int Segment => _segment;
-            internal int SegmentCount => _segments.Count;
-            internal bool PlayedOut => _segment >= 0 && _index >= _segments[_segment].Count;
-            internal bool Finished => _segment == _segments.Count - 1 && _index >= _segments[_segment].Count;
-            internal string Failed { get; private set; }
-
-            internal bool Next(int liveMarker, out T value)
-            {
-                value = default;
-                if (_segments.Count == 0 || Failed != null) return false;
-                // The input that causes a transition is often taped in the first
-                // frames of the next segment (the marker changes the same frame).
-                // Once a segment has played out, play up to EarlyLimit frames of
-                // the next one before the live game has arrived there.
-                if (_segment >= 0 && _index < _segments[_segment].Count)
-                {
-                    if (_markers[_segment] == liveMarker) { _early = 0; _waiting = 0; value = _segments[_segment][_index++]; return true; }
-                    if (_early > 0 && _early < EarlyLimit && _segment > 0 && _markers[_segment - 1] == liveMarker)
-                    { _early++; value = _segments[_segment][_index++]; return true; }
-                }
-                if (_segment + 1 < _segments.Count && _markers[_segment + 1] == liveMarker)
-                { _segment++; _index = 0; _early = 0; _waiting = 0; value = _segments[_segment][_index++]; return true; }
-                if (_segment >= 0 && _index >= _segments[_segment].Count && _markers[_segment] == liveMarker && _segment + 1 < _segments.Count)
-                { _segment++; _index = 0; _early = 1; value = _segments[_segment][_index++]; return true; }
-                if (Finished) return false;
-                if (++_waiting > WaitLimit)
-                {
-                    int next = _early > 0 ? _segment : _segment + 1;
-                    string expected = next < _segments.Count && _names.TryGetValue(_markers[next], out var n) ? n : "?";
-                    Failed = _label + " waited 2 min for '" + expected + "'";
-                }
-                return false;
-            }
-        }
+        private static string F2(float value) => value.ToString("0.00", CultureInfo.InvariantCulture);
     }
 }

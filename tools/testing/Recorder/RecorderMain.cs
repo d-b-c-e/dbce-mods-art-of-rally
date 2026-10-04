@@ -73,6 +73,7 @@ namespace ArtOfSimRally.Testing
         }
         private static bool Unload(UnityModManager.ModEntry entry)
         {
+            SessionTape.Unload();
             if (Session.Pending && !Session.Stop(subject.Driving())) { entry.Logger.Warning(Session.Status); return false; }
             patches?.UnpatchAll(PatchId); server?.Dispose(); server = null; return true;
         }
