@@ -43,3 +43,19 @@ The earlier Art capture hangs must not be conclusively blamed on the added
 native-effect observers: those hooks were withdrawn, but the overlapping GPU
 timeouts provide another unresolved explanation. Preserve both failed captures
 and the successful session-5/format-3 evidence separately.
+
+## Post-reboot artifact recovery
+
+At the next offline build, the newly generated shared core 0.2 DLL on disk was
+35,328 zero bytes. Its SHA-256 was
+`0E180F0DFE2D5F69DA5BB563E71BD387982C02A2D5A30D7BD40B18FFEA594021`.
+It had been copied into the three uninstalled candidates after reboot. Their
+compilers rejected it; no package containing it was installed or published.
+The zeroed file is retained with the private incident evidence.
+
+A full rebuild from clean shared source
+`50b6b679e3c6e01025b6a50f8dd0f3eb85d9d4bb` restored the pre-restart hash
+`2F987D570616742D259422324734F7BD3DC15D68B1359CF0154290A235E718A4` and passed
+54 core assertions. Consumer pins were corrected and now check managed assembly
+metadata as well as hashes. Art uses the separately pinned core 0.1 and was not
+affected; both RC10 ZIP hashes and extracted optional analysis were rechecked.

@@ -71,3 +71,23 @@ deliberate zero/release while unfocused is not a normal force-model sample.
 New captures retain the game assembly hash, checked on playback; older tapes
 without it retain their existing compatibility limitations. The synthetic
 fixture checks for competing games before changing any owner preferences.
+
+## RC10 checkpoint
+
+Clean source `dcacff43595101bb293714b86b272afc8e284f08` passed all 19 automated
+gates for `0.4.0-rc.10`. Both the normal ZIP and optional SessionTools ZIP were
+built from that source. Archive SHA-256 values:
+
+- Normal: `84FD75B561D22771CE37BA4DA69387A33F22538744FDDBA8634849067B363A05`.
+- SessionTools: `0246F0C063CBA25E1BDE1B52EA56843A928A943296EA06883947C4B020D31CEC`.
+
+After the owner restarted the PC, the extracted optional archive passed its seal,
+managed-assembly checks, three-file fixture install/removal and 27,453 original
+capture analysis checks. No game ran. Private receipts:
+`results/rc-0.4.0-rc.10-b258d6c4f0b84f89b168437e884ea648/automated.json` and
+`results/session-tools-rc10-post-reboot/verification.json`.
+
+RC10 has not been installed or tested live and is not published. The installed
+shipping mod remains RC4; owner settings retain their protected hash. See the
+[graphics incident](2026-10-04-graphics-hang.md). The release draft remains
+conditional on the final current-build capture/replay check.
