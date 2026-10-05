@@ -60,7 +60,7 @@ function Assert-GameClosed {
 }
 function Assert-TestSlot {
     # These games share the rig. Do not launch a test over another active game.
-    $other = Get-Process -Name 'Super Woden Rally Edge','DRIVE Rally','iRacingArcade' -ErrorAction SilentlyContinue
+    $other = Get-Process -Name 'Super Woden Rally Edge','DRIVERally','iracing-arcade' -ErrorAction SilentlyContinue
     if ($other) { throw ('Another game owns the desktop test slot: ' + (($other | Select-Object -ExpandProperty ProcessName) -join ', ')) }
 }
 
