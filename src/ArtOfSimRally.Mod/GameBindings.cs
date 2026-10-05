@@ -10,6 +10,7 @@ namespace ArtOfSimRally.Mod
         private static readonly MenuInputBarrier Handoff = new MenuInputBarrier();
         private static PanelManager _pendingManager;
         private static global::Panel _pendingTarget;
+        private static float _pendingUntil;
         internal static string Status { get; private set; } = "";
         internal static void Open()
         {
@@ -40,6 +41,7 @@ namespace ArtOfSimRally.Mod
                 if (Main.SettingsVisible) return;
                 _pendingManager = manager;
                 _pendingTarget = target;
+                _pendingUntil = Time.realtimeSinceStartup + 5f;
                 Handoff.Capture();
                 Status = "Opening game controls; release the mouse and keyboard.";
             }
@@ -56,6 +58,16 @@ namespace ArtOfSimRally.Mod
             if (_pendingTarget == null) return;
             if (Main.SettingsVisible)
             { CancelPending(); Status = "Opening game controls cancelled."; return; }
+            // A missing focus handoff must not leave the settings panel hidden
+            // indefinitely. Use unscaled time because this route runs paused.
+            if (Time.realtimeSinceStartup >= _pendingUntil)
+            {
+                CancelPending();
+                Status = "Game controls did not open. Click the main game window, release the controls, then retry; or use Options → Controls.";
+                ModLog.Warning(Status);
+                Main.ToggleSettings();
+                return;
+            }
             bool held = StockUiInput.HandoffHeld();
             if (Handoff.Blocks(false, Application.isFocused, held, Time.frameCount)) return;
             var manager = _pendingManager;
@@ -80,6 +92,7 @@ namespace ArtOfSimRally.Mod
         {
             _pendingManager = null;
             _pendingTarget = null;
+            _pendingUntil = 0;
             Handoff.Reset();
         }
     }

@@ -142,6 +142,7 @@ switch ($PSCmdlet.ParameterSetName) {
         if (Test-Path -LiteralPath $taped) { Copy-Item -LiteralPath $taped $customRally -Force }
         elseif (Test-Path -LiteralPath (Join-Path $tape 'customrally-absent-at-start')) { Remove-Item -LiteralPath $customRally -ErrorAction SilentlyContinue }
         else { Write-Warning 'Tape predates custom rally snapshots; replaying with the current custom rally state.' }
+        Restore-SessionPresentation $ownerState
         Write-Request @{ mode = 'replay'; playback = $Playback; tape = $tape; out = $out; poseThreshold = $threshold.ToString([Globalization.CultureInfo]::InvariantCulture) }
         Start-Game
         Write-Output "Replaying '$Name' into $out"

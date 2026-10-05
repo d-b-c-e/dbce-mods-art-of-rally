@@ -26,6 +26,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Could not set seed preferences.' }
     if (Test-Path -LiteralPath (Join-Path $source 'customrally-at-start')) { Copy-Item -LiteralPath (Join-Path $source 'customrally-at-start') -Destination $customRally -Force }
     elseif (Test-Path -LiteralPath (Join-Path $source 'customrally-absent-at-start')) { Remove-Item -LiteralPath $customRally -ErrorAction SilentlyContinue }
+    Restore-SessionPresentation $backup
     & (Join-Path $PSScriptRoot 'Session.ps1') -Record -Name $Name -ScriptedFrom $Seed
     $deadline = [DateTime]::UtcNow.AddMinutes(3)
     while (-not (Test-Path -LiteralPath (Join-Path $tape 'complete.tsv'))) {

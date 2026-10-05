@@ -65,6 +65,10 @@ try {
     $session = $result | Select-Object -Last 1 | ConvertFrom-Json
     Assert ($session.status -eq 'passed' -and $session.assertions -gt 0) 'Session tape runner ran no assertions'
     Checkpoint 'session-tape' $session.assertions
+    $result = Run 'session-environment' $shell @('-NoProfile','-File','tools/testing/Test-SessionEnvironment.ps1')
+    $environment = $result | Select-Object -Last 1 | ConvertFrom-Json
+    Assert ($environment.status -eq 'passed' -and $environment.assertions -gt 0) 'Session environment restoration failed'
+    Checkpoint 'session-environment' $environment.assertions
     $result = Run 'game-bindings' 'dotnet' @('run','--project','tests/GameBindings/GameBindings.csproj','-c','Release')
     $gameBindings = $result | Select-Object -Last 1 | ConvertFrom-Json
     Assert ($gameBindings.status -eq 'passed' -and $gameBindings.assertions -gt 0) 'Game binding route runner ran no assertions'

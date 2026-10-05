@@ -37,8 +37,12 @@ input. In separate-displays mode, `SideWindowFocusRestorer` raises the side
 windows (SWP_NOACTIVATE), so focus may sit on the wrong window. KI-42 was fixed
 and tested without the merged triple code.
 
-Next: reproduce with triple screens off and then on. If focus is the cause, time
-out the hand-off and report "click the game window" instead of waiting forever.
+October 4 follow-up: the handoff now has a five-second unscaled deadline. If
+focus or a held control prevents it, the request is cancelled and Wheel settings
+reopens with recovery instructions. Regression tests cover focus loss, a held
+control, no delayed opening after timeout, and a successful retry. The original
+runtime trigger and a live triple-screen retest remain open; this bounds the
+known indefinite-wait path without claiming the graphics lockup is diagnosed.
 Workaround: use the game's own Options → Controls.
 
 ### KI-43 — 0.2.6 binding and calibration may not capture a separate TSS handbrake

@@ -41,6 +41,28 @@ static class Program
             Host.SettingsVisible=true;GameBindings.Tick();Host.SettingsVisible=false;
             UnityEngine.Time.frameCount+=3;GameBindings.Tick();
             Check(manager.Adds==1&&GameBindings.Status.Contains("cancelled"),"reopened UMM did not cancel pending route");
+            foreach (bool focused in new[] { false, true })
+            {
+                Host.SettingsVisible=true;
+                UnityEngine.Time.realtimeSinceStartup=10;
+                UnityEngine.Application.isFocused=focused;
+                StockUiInput.HandoffIsHeld=focused;
+                GameBindings.Open();
+                UnityEngine.Time.realtimeSinceStartup=14.9f;
+                GameBindings.Tick();
+                Check(!Host.SettingsVisible&&manager.Adds==1,"handoff timed out prematurely");
+                UnityEngine.Time.realtimeSinceStartup=15;
+                GameBindings.Tick();
+                Check(Host.SettingsVisible&&manager.Adds==1&&GameBindings.Status.Contains("did not open"),"blocked handoff did not restore settings");
+                Host.SettingsVisible=false;
+                StockUiInput.HandoffIsHeld=false;
+                UnityEngine.Application.isFocused=true;
+                for(int i=0;i<4;i++){UnityEngine.Time.frameCount++;GameBindings.Tick();}
+                Check(manager.Adds==1,"timed-out request unexpectedly opened controls later");
+            }
+            Host.SettingsVisible=true;GameBindings.Open();
+            for(int i=0;i<4;i++){UnityEngine.Time.frameCount++;GameBindings.Tick();}
+            Check(manager.Adds==2,"retry after a timed-out handoff failed");
             Console.WriteLine(JsonSerializer.Serialize(new{status="passed",assertions,liveUi=false}));return 0;
         }
         catch(Exception ex){Console.Error.WriteLine(ex);return 1;}
@@ -55,7 +77,7 @@ namespace UnityEngine
         public static T[] FindObjectsOfType<T>() where T:Object=>All.OfType<T>().ToArray();
     }
     public static class Application { public static bool isFocused=true; }
-    public static class Time { public static int frameCount; }
+    public static class Time { public static int frameCount; public static float realtimeSinceStartup; }
 }
 public class GameObject { public bool activeInHierarchy=true; }
 public class Panel:UnityEngine.Object { public string name="ControlsSettings";public GameObject gameObject=new(); }
@@ -73,7 +95,7 @@ public class PanelManager:UnityEngine.Object
 }
 namespace ArtOfSimRally.Mod
 {
-    public static class Main { public static bool SettingsVisible=true;public static void CloseSettings()=>SettingsVisible=false; }
+    public static class Main { public static bool SettingsVisible=true;public static void CloseSettings()=>SettingsVisible=false;public static void ToggleSettings()=>SettingsVisible=!SettingsVisible; }
     public static class GameState { public static bool IsDriving; }
     public static class SettingsPanel { public static bool Editing; }
     public static class WheelInput

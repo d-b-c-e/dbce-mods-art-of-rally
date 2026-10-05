@@ -76,6 +76,14 @@ If restoration is pending, close the game and use `Session.ps1 -RestoreEnvironme
 with the explicit `replay-*/owner-environment` backup. Keep that backup until its
 restoration receipt exists. Preference import is restricted to the game key.
 
+Playback retains the current rig's resolution, fullscreen mode, monitor, frame
+cap, VSync and triple-screen settings while restoring the recorded stage/car
+preferences. New environment backups include `TripleScreen.xml`; legacy backups
+leave that file alone. Playback does not need a smaller display resolution.
+Use an owner-driven reference route for visual acceptance. The synthetic capture
+fixture exercises saving and original-signal capture; its test inputs can leave
+the road and are not a reference racing line.
+
 ## Evidence and limits
 
 October 4: owner session 5 completed automatically through all 13,428 driving
