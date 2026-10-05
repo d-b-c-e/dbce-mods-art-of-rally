@@ -322,3 +322,13 @@ names plus the whole P/Invoke table are readable from metadata with
 `GetMetadataReader()` → enumerate `TypeDefinitions`; `MethodDefinition.GetImport()`
 gives the `DllImport` module and entry point. That is how the missing DLL was
 found. Method *bodies* need a decompiler: `ilspycmd` is installed and used for that (see above).
+
+## Toolkit standards
+
+At the start of every session, compare the wheel toolkit's ledger
+(`E:\Source\toolkits\dbce-wheel-mod-toolkit\STANDARDS.md`) with this repo's
+`TOOLKIT-ADOPTION.md`. Report any entry that is `pending`, `unchecked` or missing
+from the adoption file, and bring it in when your work touches that area. When you
+adopt one (or find it does not apply), update `TOOLKIT-ADOPTION.md` in the same
+commit. When you set a new family-wide standard, append it to the toolkit ledger
+and commit it in the same turn; do not leave it only in an uncommitted file.
