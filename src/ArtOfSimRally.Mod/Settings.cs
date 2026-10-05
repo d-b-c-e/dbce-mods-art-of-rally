@@ -150,22 +150,30 @@ namespace ArtOfSimRally.Mod
 
         public bool CameraTuningKeys = true;
 
-        // Rates for the hotkeys. Not drawn: tuning the tuner is a rabbit hole, and
-        // these only matter if the defaults feel wrong.
-        public float TuneMoveSpeed  = 0.4f;
-        public float TuneAngleSpeed = 20f;
+        // Per-press shortcut steps (toolkit STD-006: 0.02 m, 1 deg tilt, 2 deg FOV).
+        // Holding a key repeats the step at a bounded rate (CameraTuner). These
+        // replace the old held speeds TuneMoveSpeed/TuneAngleSpeed; a stale field
+        // in an old Settings.xml is ignored by the XML reader.
+        public float CameraMoveStep = 0.02f;
+        public float CameraTiltStep = 1f;
+        public float CameraFovStep  = 2f;
 
-        public KeyCode KeyUp        = KeyCode.Keypad8;
-        public KeyCode KeyDown      = KeyCode.Keypad2;
-        public KeyCode KeyForward   = KeyCode.Keypad9;
-        public KeyCode KeyBack      = KeyCode.Keypad7;
+        // Family numpad layout (toolkit STD-005): 8/2 forward/back, 9/3 up/down,
+        // 4/6 left/right, 7/1 tilt forward (look down) / back (look up), +/- FOV,
+        // 5 reset. A larger pitch looks down (BonnetCamera: Euler X), so
+        // KeyPitchDown raises pitch and sits on 7. Older untouched default sets are
+        // moved here on load by CameraKeys.MigratePreviousDefaults.
+        public KeyCode KeyUp        = KeyCode.Keypad9;
+        public KeyCode KeyDown      = KeyCode.Keypad3;
+        public KeyCode KeyForward   = KeyCode.Keypad8;
+        public KeyCode KeyBack      = KeyCode.Keypad2;
         public KeyCode KeyLeft      = KeyCode.Keypad4;
         public KeyCode KeyRight     = KeyCode.Keypad6;
-        public KeyCode KeyPitchDown = KeyCode.Keypad1;
-        public KeyCode KeyPitchUp   = KeyCode.Keypad3;
+        public KeyCode KeyPitchDown = KeyCode.Keypad7;
+        public KeyCode KeyPitchUp   = KeyCode.Keypad1;
         public KeyCode KeyFovUp     = KeyCode.KeypadPlus;
         public KeyCode KeyFovDown   = KeyCode.KeypadMinus;
-        public KeyCode KeyReset     = KeyCode.Keypad0;
+        public KeyCode KeyReset     = KeyCode.Keypad5;
 
         // ---- Shifter --------------------------------------------------------
 
@@ -241,6 +249,12 @@ namespace ArtOfSimRally.Mod
         public string TelemetryHost = "127.0.0.1";
 
         public int TelemetryPort = 8000;
+
+        public void ResetCameraSteps()
+        {
+            var defaults = new Settings();
+            CameraMoveStep = defaults.CameraMoveStep; CameraTiltStep = defaults.CameraTiltStep; CameraFovStep = defaults.CameraFovStep;
+        }
 
         public void ResetCameraMount(bool bumper)
         {

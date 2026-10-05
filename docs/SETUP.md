@@ -155,12 +155,18 @@ These are external mounts; the cars do not have modelled cockpit interiors.
 
 | Default numpad keys | Action |
 |---|---|
-| 8 / 2 | Up / down |
-| 7 / 9 | Back / forward |
+| 8 / 2 | Forward / back |
+| 9 / 3 | Up / down |
 | 4 / 6 | Left / right |
-| 1 / 3 | Tilt |
-| + / - | Field of view |
-| 0 | Reset active mount |
+| 7 / 1 | Tilt forward (look down) / tilt back (look up) |
+| + / - | Widen / narrow field of view |
+| 5 | Reset active mount |
+
+Each press moves one step (default 2 cm, 1° tilt, 2° field of view); hold a key
+to repeat. Change the steps in **Advanced → Cameras**; **Default steps** puts
+them back. If your saved keys were exactly the old defaults (8/2 up-down, 9/7
+forward-back, 1/3 tilt, 0 reset), they move to this layout on the next launch;
+keys you changed yourself are kept.
 
 No numpad? Use **Cameras → Show adjustment bindings** to bind keyboard keys or
 separate USB buttons. Choose keys that

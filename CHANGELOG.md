@@ -5,6 +5,20 @@ Notable changes to art of sim rally.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- Camera shortcuts use the family numpad layout: 8/2 forward/back, 9/3 up/down,
+  4/6 left/right, 7/1 tilt forward (look down) / back (look up), +/- field of
+  view, 5 reset. Saved keys that exactly match the old defaults move to the new
+  layout on load (logged and shown under adjustment bindings); any key you
+  changed keeps your whole set.
+- Camera shortcuts move one step per press (default 2 cm, 1° tilt, 2° field of
+  view) and repeat while held, instead of moving at a held speed. The steps are
+  in Advanced → Cameras with a **Default steps** button. The old shortcut speed
+  settings are no longer used.
+
 ## [0.4.0] - 2026-10-05
 
 One mod for art of rally: wheel, FFB, telemetry, cameras and triple screens.

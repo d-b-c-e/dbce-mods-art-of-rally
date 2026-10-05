@@ -21,10 +21,11 @@ static class Program
     static void Bindings()
     {
         Host.Settings = new Settings(); var cfg = Host.Settings;
-        var defaults = new[] { KeyCode.Keypad8, KeyCode.Keypad2, KeyCode.Keypad9, KeyCode.Keypad7,
-            KeyCode.Keypad4, KeyCode.Keypad6, KeyCode.Keypad1, KeyCode.Keypad3, KeyCode.KeypadPlus,
-            KeyCode.KeypadMinus, KeyCode.Keypad0 };
-        Check(CameraKeys.Bindings.Select(b => b.Get(cfg)).SequenceEqual(defaults), "legacy defaults changed");
+        // STD-005 family layout in Bindings order.
+        var defaults = new[] { KeyCode.Keypad9, KeyCode.Keypad3, KeyCode.Keypad8, KeyCode.Keypad2,
+            KeyCode.Keypad4, KeyCode.Keypad6, KeyCode.Keypad7, KeyCode.Keypad1, KeyCode.KeypadPlus,
+            KeyCode.KeypadMinus, KeyCode.Keypad5 };
+        Check(CameraKeys.Bindings.Select(b => b.Get(cfg)).SequenceEqual(defaults), "family defaults changed");
         using (var xml = new StringReader("<Settings><BonnetHeight>1.25</BonnetHeight></Settings>"))
         {
             var legacy = (Settings)new XmlSerializer(typeof(Settings)).Deserialize(xml);
@@ -46,7 +47,7 @@ static class Program
             KeyCode.AltGr, KeyCode.LeftCommand, KeyCode.RightWindows, KeyCode.Mouse0, KeyCode.JoystickButton0, (KeyCode)9999 })
             Check(CameraKeys.HandleKey(cfg, key, false) && CameraKeys.Listening == 0 && cfg.KeyUp == defaults[0], "invalid/modifier/device key accepted: " + key);
         Check(CameraKeys.HandleKey(cfg, KeyCode.F10, true) && CameraKeys.Listening == 0 && cfg.KeyUp == defaults[0], "chord stored as bare key");
-        Check(CameraKeys.HandleKey(cfg, KeyCode.Keypad2, false) && CameraKeys.Status.Contains("Down") && cfg.KeyUp == defaults[0], "duplicate silently replaced mapping");
+        Check(CameraKeys.HandleKey(cfg, KeyCode.Keypad3, false) && CameraKeys.Status.Contains("Down") && cfg.KeyUp == defaults[0], "duplicate silently replaced mapping");
         for (int i = 0; i < CustomKeys.Length; i++)
         {
             CameraKeys.Begin(i);
@@ -72,12 +73,12 @@ static class Program
             CameraKeys.Begin(0);CameraKeys.HandleKey(cfg,KeyCode.U,false);
             Check(CameraKeys.Listening==0&&cfg.KeyUp==KeyCode.None&&CameraKeys.Status.Contains("Could not save"),"failed rebind became effective");
             CameraKeys.Cancel();CameraKeys.Clear(cfg,1);
-            Check(cfg.KeyDown==KeyCode.Keypad2,"failed Clear changed effective camera key");
+            Check(cfg.KeyDown==KeyCode.Keypad3,"failed Clear changed effective camera key");
             CameraKeys.Reset(cfg);
             Check(CameraKeys.Bindings.Select(b=>b.Get(cfg)).SequenceEqual(beforeReset),"failed reset changed effective camera keys");
         }
         Check(File.ReadAllText(Host.Path)==beforeFile,"failed binding writes changed stored file");
-        CameraKeys.Reset(cfg);Check(cfg.KeyUp==KeyCode.Keypad8&&Saved().KeyUp==KeyCode.Keypad8,"reset retry did not persist");
+        CameraKeys.Reset(cfg);Check(cfg.KeyUp==KeyCode.Keypad9&&Saved().KeyUp==KeyCode.Keypad9,"reset retry did not persist");
         for (int i = 0; i < CustomKeys.Length; i++) { CameraKeys.Begin(i); CameraKeys.HandleKey(cfg, CustomKeys[i], false); }
         cfg.BonnetCameraEnabled = false; cfg.BumperCameraEnabled = true;
         Check(CameraKeys.Available(cfg), "bumper-only setup cannot rebind");
@@ -104,12 +105,12 @@ static class Program
         entry.actionId = 43;
         CameraKeys.HandleKey(cfg, KeyCode.Z, false);
         Check(CameraKeys.Status.Contains("Handbrake"), "map edit used stale action name");
-        entry.keyCode = KeyCode.Keypad0; // Last default: reject entire batch.
+        entry.keyCode = KeyCode.Keypad5; // Last default: reject entire batch.
         CameraKeys.Reset(cfg);
         Check(CameraKeys.Status.Contains("Handbrake") && CameraKeys.Bindings.Select(b => b.Get(cfg)).SequenceEqual(beforeKeys) && Host.Saves == saves,
             "default batch partially applied before later native-key conflict");
         entry.actionId = 999;
-        Check(!NativeKeyboardBindings.Available(KeyCode.Keypad0, out string unknown) && unknown.Contains("#999"), "unknown native action accepted");
+        Check(!NativeKeyboardBindings.Available(KeyCode.Keypad5, out string unknown) && unknown.Contains("#999"), "unknown native action accepted");
         gameMap.AllMaps.Clear();
         maps.Throw = true;
         CameraKeys.Begin(0); CameraKeys.HandleKey(cfg, KeyCode.Z, false);
@@ -130,6 +131,98 @@ static class Program
     static float[] MountValues(Settings s, bool bumper) => bumper
         ? new[] { s.BumperHeight, s.BumperForward, s.BumperSide, s.BumperPitch, s.BumperFOV }
         : new[] { s.BonnetHeight, s.BonnetForward, s.BonnetSide, s.BonnetPitch, s.BonnetFOV };
+    static float Step(Settings s, int index) => index < 6 ? s.CameraMoveStep : index < 8 ? s.CameraTiltStep : s.CameraFovStep;
+    static KeyCode[] KeysOf(Settings s) => CameraKeys.Bindings.Select(b => b.Get(s)).ToArray();
+    static readonly string[] KeyFields = { "KeyUp", "KeyDown", "KeyForward", "KeyBack", "KeyLeft", "KeyRight",
+        "KeyPitchDown", "KeyPitchUp", "KeyFovUp", "KeyFovDown", "KeyReset" };
+    static Settings LoadKeys(KeyCode[] keys)
+    {
+        string xml = "<Settings><BonnetHeight>1.25</BonnetHeight>" +
+            string.Concat(keys.Select((k, i) => "<" + KeyFields[i] + ">" + k + "</" + KeyFields[i] + ">")) + "</Settings>";
+        using var reader = new StringReader(xml);
+        return (Settings)new XmlSerializer(typeof(Settings)).Deserialize(reader);
+    }
+    static void Migration()
+    {
+        var current = KeysOf(new Settings());
+        var layout1 = new[] { KeyCode.Keypad8, KeyCode.Keypad2, KeyCode.Keypad9, KeyCode.Keypad7, KeyCode.Keypad4,
+            KeyCode.Keypad6, KeyCode.Keypad1, KeyCode.Keypad3, KeyCode.KeypadPlus, KeyCode.KeypadMinus, KeyCode.Keypad0 };
+        var swapped = (KeyCode[])layout1.Clone(); (swapped[6], swapped[7]) = (swapped[7], swapped[6]);
+        var layout2 = new[] { KeyCode.Keypad9, KeyCode.Keypad3, KeyCode.Keypad8, KeyCode.Keypad2, KeyCode.KeypadDivide,
+            KeyCode.KeypadMultiply, KeyCode.Keypad6, KeyCode.Keypad4, KeyCode.KeypadPlus, KeyCode.KeypadMinus, KeyCode.Keypad5 };
+        foreach (var old in new[] { layout1, swapped, layout2 })
+        {
+            var cfg = LoadKeys(old);
+            Check(KeysOf(cfg).SequenceEqual(old), "fixture XML did not load saved keys");
+            Check(CameraKeys.MigratePreviousDefaults(cfg) && KeysOf(cfg).SequenceEqual(current) && cfg.BonnetHeight == 1.25f,
+                "untouched earlier default set not migrated, or other settings touched");
+            Check(CameraKeys.Status.Contains("7/1"), "migration not announced in the bindings panel");
+            Check(!CameraKeys.MigratePreviousDefaults(cfg) && KeysOf(cfg).SequenceEqual(current), "migration not idempotent");
+        }
+        // One customised key keeps the whole set, including the earlier layout's other keys.
+        for (int i = 0; i < layout1.Length; i++)
+        {
+            var custom = (KeyCode[])layout1.Clone(); custom[i] = KeyCode.F2;
+            var cfg = LoadKeys(custom);
+            Check(!CameraKeys.MigratePreviousDefaults(cfg) && KeysOf(cfg).SequenceEqual(custom), "customised set was migrated (index " + i + ")");
+        }
+        var cleared = (KeyCode[])layout1.Clone(); cleared[10] = KeyCode.None;
+        var c2 = LoadKeys(cleared);
+        Check(!CameraKeys.MigratePreviousDefaults(c2) && KeysOf(c2).SequenceEqual(cleared), "cleared key treated as default");
+        // Settings saved before any key fields get the current layout from the field initialisers.
+        using (var xml = new StringReader("<Settings><BonnetHeight>1.25</BonnetHeight></Settings>"))
+        {
+            var legacy = (Settings)new XmlSerializer(typeof(Settings)).Deserialize(xml);
+            Check(KeysOf(legacy).SequenceEqual(current) && !CameraKeys.MigratePreviousDefaults(legacy), "keyless settings not on current layout");
+        }
+        // Never migrate a camera key onto the Settings key.
+        var clash = LoadKeys(layout1); clash.SettingsKey = KeyCode.Keypad5;
+        Check(!CameraKeys.MigratePreviousDefaults(clash) && KeysOf(clash).SequenceEqual(layout1), "migration created a Settings-key conflict");
+        // Tilt forward (look down) raises pitch and is numpad 7.
+        Check(CameraKeys.Bindings[6].Label.Contains("look down") && new Settings().KeyPitchDown == KeyCode.Keypad7, "tilt forward not on numpad 7");
+        CameraKeys.Cancel();
+    }
+    static void Steps()
+    {
+        var d = new Settings();
+        Check(d.CameraMoveStep == .02f && d.CameraTiltStep == 1 && d.CameraFovStep == 2, "STD-006 default steps changed");
+        d.CameraMoveStep = .1f; d.CameraTiltStep = 4; d.CameraFovStep = 7; d.ResetCameraSteps();
+        Check(d.CameraMoveStep == .02f && d.CameraTiltStep == 1 && d.CameraFovStep == 2 && d.BonnetHeight == new Settings().BonnetHeight,
+            "Default steps did not restore steps or touched the mount");
+        var r = new CameraRepeat();
+        Check(r.Tick(true, 0) && !r.Tick(true, .2f) && !r.Tick(true, .34f), "press did not step once before the repeat delay");
+        Check(r.Tick(true, .35f) && !r.Tick(true, .4f) && r.Tick(true, .45f), "held key did not repeat at the bounded interval");
+        Check(r.Tick(true, 5f) && !r.Tick(true, 5.01f) && !r.Tick(true, 5.09f) && r.Tick(true, 5.1f), "stall replayed missed steps");
+        Check(!r.Tick(false, 5.2f) && r.Tick(true, 5.21f), "release and press did not step at once");
+        // Held for one second: 1 press + repeats at .35, .45 ... .95, whatever the frame rate.
+        foreach (float fps in new[] { 30f, 60f, 144f })
+        {
+            var h = new CameraRepeat(); int steps = 0;
+            for (int f = 0; f / fps <= 1.0001f; f++) if (h.Tick(true, f / fps)) steps++;
+            Check(steps >= 7 && steps <= 8, "held repeat depends on frame rate: " + fps + " fps gave " + steps);
+        }
+        Check(CameraRepeat.Bounded(float.NaN, .005f, .25f, .02f) == .02f && CameraRepeat.Bounded(9, .005f, .25f, .02f) == .25f, "step bounds");
+
+        // Through the tuner: hold Up for 2 s; height moves only in whole steps.
+        var cfg = Host.Settings; Keys.Release(); CameraTuner.Update(BonnetCamera.View.Bonnet);
+        float start = cfg.BonnetHeight, last = start; int changes = 0;
+        Keys.Held.Add(cfg.KeyUp);
+        for (int i = 0; i <= 100; i++)
+        {
+            Clock.unscaledTime = 100 + i * .02f; CameraTuner.Update(BonnetCamera.View.Bonnet);
+            if (cfg.BonnetHeight != last)
+            {
+                changes++; Check(Math.Abs(cfg.BonnetHeight - last - cfg.CameraMoveStep) < .00001f, "held step size wrong"); last = cfg.BonnetHeight;
+            }
+        }
+        Check(changes >= 17 && changes <= 18, "2 s hold gave " + changes + " steps, expected 1 + about 17 repeats");
+        Keys.Release(); CameraTuner.Update(BonnetCamera.View.Bonnet);
+        cfg.CameraTiltStep = 2.5f; float pitch = cfg.BonnetPitch;
+        Keys.Held.Add(cfg.KeyPitchDown); CameraTuner.Update(BonnetCamera.View.Bonnet); Keys.Release(); CameraTuner.Update(BonnetCamera.View.Bonnet);
+        Check(Math.Abs(cfg.BonnetPitch - pitch - 2.5f) < .00001f, "tilt forward did not raise pitch (look down) by the tilt step");
+        cfg.ResetCameraSteps(); cfg.BonnetHeight = start; cfg.BonnetPitch = pitch; Host.Settings.ResetCameraMount(false);
+        CameraTuner.Flush(shutdown: true);
+    }
     static void KeyEffects()
     {
         var cfg = Host.Settings;
@@ -146,7 +239,7 @@ static class Program
                 var after = MountValues(cfg, bumper);
                 for (int field = 0; field < before.Length; field++)
                 {
-                    float delta = field == targets[i] ? directions[i] * Clock.unscaledDeltaTime * (i < 6 ? cfg.TuneMoveSpeed : cfg.TuneAngleSpeed) : 0;
+                    float delta = field == targets[i] ? directions[i] * Step(cfg, i) : 0;
                     Check(Math.Abs(after[field] - before[field] - delta) < .00001f, "mapped key changed wrong mount field");
                 }
                 Check(MountValues(cfg, !bumper).SequenceEqual(other), "key affected inactive mount");
@@ -188,7 +281,7 @@ static class Program
     {
         SettingsPersistence.Write(Host.Settings, Host.Path);
         string before = File.ReadAllText(Host.Path);
-        GameState.IsDriving = true; Keys.Held.Add(KeyCode.Keypad8);
+        GameState.IsDriving = true; Keys.Held.Add(KeyCode.Keypad9);
         for (int i = 0; i < 100; i++)
         {
             Clock.unscaledTime = i * .02f;
@@ -239,7 +332,7 @@ static class Program
                 var before=MountValues(cfg,bumper);var other=MountValues(cfg,!bumper);
                 WheelInput.Held.Add(WheelInput.CameraChannel(i));CameraTuner.Update(view);WheelInput.Held.Clear();
                 var after=MountValues(cfg,bumper);
-                for(int f=0;f<5;f++)Check(Math.Abs(after[f]-before[f]-(f==targets[i]?directions[i]*Clock.unscaledDeltaTime*(i<6?cfg.TuneMoveSpeed:cfg.TuneAngleSpeed):0))<.00001f,"USB camera adjustment mapping wrong");
+                for(int f=0;f<5;f++)Check(Math.Abs(after[f]-before[f]-(f==targets[i]?directions[i]*Step(cfg,i):0))<.00001f,"USB camera adjustment mapping wrong");
                 Check(MountValues(cfg,!bumper).SequenceEqual(other),"USB adjustment moved inactive mount");
             }
         }
@@ -261,7 +354,7 @@ static class Program
         {
             var directory = Path.GetFullPath(Path.Combine("results", "camera-tuning-" + Guid.NewGuid().ToString("N")));
             Directory.CreateDirectory(directory); Host.Path = Path.Combine(directory, "Settings.xml");
-            Saves(); Bindings(); NativeKeyboardConflicts(); KeyEffects();UsbCameraButtons();
+            Saves(); Bindings(); Migration(); NativeKeyboardConflicts(); KeyEffects(); UsbCameraButtons(); Steps();
             Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
         }
         catch (Exception ex) { Console.Error.WriteLine(ex); return 1; }

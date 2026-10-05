@@ -84,6 +84,24 @@ the mod's settings UI with force feedback and telemetry.
 same day; both are in the game's own view rotation with a numpad tuner, and both
 are verified on the owner's rig.
 
+## Numpad layout and steps
+
+Defaults follow the family layout (toolkit STD-005): 8/2 forward/back, 9/3
+up/down, 4/6 left/right, 7/1 tilt forward (look down) / back (look up), +/−
+field of view, 5 reset. A larger `BonnetPitch`/`BumperPitch` looks down, so
+`KeyPitchDown` is on 7. Up to 0.4.0 the mod shipped 8/2 up-down, 9/7
+forward-back, 1/3 tilt and 0 reset. On load, `CameraKeys.MigratePreviousDefaults`
+moves a saved set that exactly equals that set (either tilt order) or the
+family's interim set to the current layout, logs it and shows it once under
+adjustment bindings; one changed key keeps the whole saved set.
+
+Each press moves one step (STD-006): `CameraMoveStep` 0.02 m, `CameraTiltStep`
+1°, `CameraFovStep` 2°, set in Advanced → Cameras with **Default steps**.
+Holding repeats after 0.35 s every 0.1 s on real time (`CameraRepeat`), at most
+one step per frame, without replaying steps after a stall. This replaced the
+held speeds `TuneMoveSpeed` (0.4 m/s) and `TuneAngleSpeed` (20°/s); those XML
+fields are now ignored. Feel at the rig is not yet confirmed.
+
 ## Keys without a numpad
 
 The **0.2.4 release** implements in-panel keyboard remapping for all 11 actions:

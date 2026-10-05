@@ -74,6 +74,12 @@ namespace ArtOfSimRally.Mod
                 }
                 catch (Exception ex) { ModLog.Warning("Handbrake migration deferred; original binding kept: " + ex.Message); }
             }
+            if (CameraKeys.MigratePreviousDefaults(Settings))
+            {
+                ModLog.Info("Camera keys were an earlier default set; moved to the numpad layout " +
+                    "8/2 forward/back, 9/3 up/down, 4/6 left/right, 7/1 tilt, +/- FOV, 5 reset.");
+                MarkSettingsDirty();
+            }
             WheelInput.LoadBindings();
             FrameHealthPersistence.Initialize();
 

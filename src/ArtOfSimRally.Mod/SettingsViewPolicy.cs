@@ -26,7 +26,7 @@ namespace ArtOfSimRally.Mod
         public static bool CustomCamera(Settings c) => c.BonnetHeight != .95f || c.BonnetForward != 1f || c.BonnetSide != 0 ||
             c.BonnetPitch != 3 || c.BonnetFOV != 75 || c.BonnetLean != .1f || c.BumperHeight != .45f ||
             c.BumperForward != 1.9f || c.BumperSide != 0 || c.BumperPitch != 2 || c.BumperFOV != 80 ||
-            c.TuneMoveSpeed != .4f || c.TuneAngleSpeed != 20;
+            c.CameraMoveStep != .02f || c.CameraTiltStep != 1 || c.CameraFovStep != 2;
     }
 
     internal sealed class ConnectionEdit

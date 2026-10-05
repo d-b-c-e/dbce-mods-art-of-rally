@@ -384,8 +384,11 @@ namespace ArtOfSimRally.Mod
                 c.BumperFOV = Slider(c.BumperFOV, 40, 120, 80, "Field of view", 1, "°");
             }
             c.BonnetLean = Slider(c.BonnetLean, 0, 1, .1f, "Corner lean (both views)", 100, "%");
-            c.TuneMoveSpeed = Slider(c.TuneMoveSpeed, .05f, 2, .4f, "Shortcut movement speed", 1, " m/s");
-            c.TuneAngleSpeed = Slider(c.TuneAngleSpeed, 1, 60, 20, "Shortcut angle speed", 1, "°/s");
+            Help("Shortcut steps: one step per press; holding repeats about ten steps a second.");
+            c.CameraMoveStep = Mathf.Round(Slider(c.CameraMoveStep, .005f, .25f, .02f, "Move per press", 100, " cm") * 1000f) / 1000f;
+            c.CameraTiltStep = Mathf.Round(Slider(c.CameraTiltStep, .1f, 10, 1, "Tilt per press", 1, "°") * 10f) / 10f;
+            c.CameraFovStep = Mathf.Round(Slider(c.CameraFovStep, .5f, 10, 2, "Field of view per press", 1, "°") * 10f) / 10f;
+            if (RightButton("Default steps", 150)) { c.ResetCameraSteps(); Main.MarkSettingsDirty(); }
         }
         private static void Telemetry(Settings c)
         {

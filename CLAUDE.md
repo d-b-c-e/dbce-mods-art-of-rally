@@ -56,8 +56,9 @@ Codex's later triple commit f8b0f81 (FOV/handoff refactor, never driven) is in h
 
 Follow-ups: the triple-screen optimizer still looks for `Mods/DbceTripleScreenArtOfRally`
 for its status view; `Dbce.TripleScreen.Core` here is older than the triple toolkit's (no
-bezel gap); the Triple card uses plain IMGUI, not the panel's card styling; adopt the
-portfolio numpad camera layout; build a recorded session for automated tests.
+bezel gap); the Triple card uses plain IMGUI, not the panel's card styling; the
+numpad camera layout and per-press steps (STD-005/006, branch `claude/camera-standards`)
+need a feel check at the rig; build a recorded session for automated tests.
 
 Older status notes and the component table below are from 2026-09-09 (Codex era); trust
 the code and the 2026-10-01 acceptance over them.
