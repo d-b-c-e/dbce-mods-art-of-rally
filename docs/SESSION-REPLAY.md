@@ -76,6 +76,12 @@ If restoration is pending, close the game and use `Session.ps1 -RestoreEnvironme
 with the explicit `replay-*/owner-environment` backup. Keep that backup until its
 restoration receipt exists. Preference import is restricted to the game key.
 
+New environment snapshots retain every preference's original type and bytes in
+`playerprefs-raw.json`, verify the names/count and hash before restoration, then
+read back every restored value. Windows `reg export` was observed omitting 21
+of 58 values without an error, so the `.reg` reference copy alone is not treated
+as a complete new-format backup. Older captures retain their legacy limitations.
+
 Playback retains the current rig's resolution, fullscreen mode, monitor, frame
 cap, VSync and triple-screen settings while restoring the recorded stage/car
 preferences. New environment backups include `TripleScreen.xml`; legacy backups
