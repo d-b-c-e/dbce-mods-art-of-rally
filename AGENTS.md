@@ -8,6 +8,21 @@
 
 ## Repository Purpose
 
+**October 4 recording/playback handoff:** the owner accepted RC10 session-5
+playback at 20:50 local and explicitly requested shipping 0.4.0. The accepted
+run is `results/sessions/2026-10-04-owner-session-5/replay-20261004-204543`:
+13,455 driving/finish poses, zero detected position application error, finish,
+results, final menu and normal close. Preserve this case; do not substitute the
+synthetic capture's off-road test trajectory for visual acceptance. Physical
+outputs stay muted while original force/telemetry streams remain available.
+The final artifact/install/publication receipt will supersede the historical
+0.2.7 installation below; see `docs/reviews/2026-10-04-playback-validation.md`.
+`Test-Rc.ps1` now has 20 gates, including session environment restoration.
+Root source on this release branch includes `lib/playback`, `tests/SessionTape`,
+`tools/testing/Session.ps1` and optional `tools/package/session-tools.ps1`.
+Remote main has a concurrent component-layout migration; preserve its work.
+Do not rebuild the accepted runtime from that different layout without validation.
+
 **Current stable release and local install: 0.2.7**, clean source
 `255c6f94d1e5ffeea3a6c95d5c7f3828231c3b3d`, installed 2026-09-30
 04:40:57 UTC after all 16 final local gates passed. The GitHub ZIP and checksum

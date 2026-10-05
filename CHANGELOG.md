@@ -5,7 +5,7 @@ Notable changes to art of sim rally.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.4.0] - unreleased
+## [0.4.0] - 2026-10-05
 
 One mod for art of rally: wheel, FFB, telemetry, cameras and triple screens.
 
@@ -22,6 +22,13 @@ One mod for art of rally: wheel, FFB, telemetry, cameras and triple screens.
 - Version jumps to 0.4.0, above both previous mods (wheel 0.2.7, triple 0.3.12).
 
 Wheel, FFB, telemetry and camera behavior are unchanged from 0.2.7.
+
+### Fixed
+
+- A stalled Open game bindings handoff returns to Wheel settings after five
+  seconds instead of waiting indefinitely for focus or held-input release.
+- Session playback retains the rig's display preferences and triple-screen
+  settings while restoring the recorded stage/car environment.
 
 ### Optional developer SessionTools
 

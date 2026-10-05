@@ -87,7 +87,39 @@ capture analysis checks. No game ran. Private receipts:
 `results/rc-0.4.0-rc.10-b258d6c4f0b84f89b168437e884ea648/automated.json` and
 `results/session-tools-rc10-post-reboot/verification.json`.
 
-RC10 has not been installed or tested live and is not published. The installed
+At that checkpoint RC10 had not been installed or tested live and was not published. The installed
 shipping mod remains RC4; owner settings retain their protected hash. See the
 [graphics incident](2026-10-04-graphics-hang.md). The release draft remains
 conditional on the final current-build capture/replay check.
+
+## Evening owner acceptance (supersedes the checkpoint above)
+
+RC10 and its exact matching optional probe were installed at 20:39 local, with
+eight packaged payloads verified and six protected files unchanged. Backup and
+receipt: `results/session-rc10-install-20261004-203934`.
+
+Fresh synthetic roundtrip7 completed 721 force rows, 1,210 encoded packets,
+three collision entries and two effect requests. Offline analysis passed 26,665
+assertions with zero force delta and zero native-magnitude mismatches. Replay
+`204130` completed all 721 driving poses with zero position application error.
+The owner correctly objected to using that off-road synthetic trajectory as the
+visual test. It is storage/signal evidence, not acceptance of a racing line.
+
+The temporary small-window test also used the wrong fullscreen enum (0 means
+exclusive, not false/windowed). It caused failed exclusive switching/fallback.
+The override was removed. Playback now preserves owner display preferences and
+TripleScreen.xml separately from the recorded scenario. No display topology or
+wheel/SimHub tune was changed. The broader GPU incident remains unexplained.
+
+The original owner session5 `replay-20261004-204543` completed automatically:
+13,455 driving/finish poses, zero detected position error, finish/results/final
+menu, normal close and restoration receipt. Triple rendering reported three
+active cameras at 2560x1440. The owner confirmed "Yes, this looks right", then
+"everything looks great" and explicitly requested shipping and moving to iRacing.
+That is scoped owner acceptance, not a passed full hardware matrix.
+
+The final source adds a five-second recovery for a blocked game-bindings handoff
+(26 route assertions) and environment preservation (15 isolated assertions).
+The first final-labelled artifact passed all 20 suites but checklist generation
+rejected the added suite name. Its archive/evidence is preserved; the validator
+allowlist is corrected before the replacement clean-source release build.
