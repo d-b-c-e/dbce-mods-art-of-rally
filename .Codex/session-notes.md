@@ -1,45 +1,48 @@
-# Session Notes
-<!-- Overwritten each session; previous handoffs remain in git history. -->
+# Session notes - 2026-10-05 UTC (October 4 local)
 
-- Date: 2026-09-13 UTC
-- Branch: main
+Art 0.4.0 is published and installed. Source/tag: 30d421b26eccebc564cd50bf0733c1ed6a82d849 / v0.4.0.
+The normal and optional SessionTools ZIPs were downloaded from GitHub and matched.
+All 20 final gates passed; exact final owner-session-5 replay 210753 passed 13,455
+poses with zero detected position error, finish/results/menu, normal close and
+owner environment restoration. The owner accepted preceding RC10 replay 204543
+visually and explicitly requested shipping and moving to iRacing.
 
-## Work completed
+## Start playback without conversation history
 
-- Prior task published/installed stable 0.2.5 from c6242a0, official toolkit
-  v0.13.0; owner accepted RC8 wheel/shaker testing and default-on landing at 5.
-  Saved owner enabled/20 and built-in SimHub 30 Hz profile/gains are retained.
-- Current owner request: audit/simplify documentation and installation, then
-  commit and push. README is now a short entry point; SETUP, docs index and
-  BUILDING separate player setup from development/history.
-- Updated stale version/default/toolkit references, clear USB handbrake/logging/
-  camera/SimHub help, install/update/remove/custom paths and load verification.
-- Standalone ZIP readme is tools/installer/README.txt; no absent local-doc links.
-- Fixed KI-33: uninstall without UMM, literal paths, batch arguments/exit codes,
-  Windows PowerShell module path; clearer verification/copy recovery messages.
-- Test-Installer passes 37 assertions through real batch/Windows PowerShell
-  entry points in isolated fake game folders, now included in Test-Rc.
+From E:/Source/games/dbce-mods-art-of-rally on codex/session-playback, game closed:
+`pwsh -NoProfile -File tools/testing/Session.ps1 -Replay -Name 2026-10-04-owner-session-5 -TimeoutMinutes 8`
+Use the original recording, not synthetic-roundtrip fixtures. The frozen optional
+archive is extracted at results/session-tools-040-final. Toolkit default master
+has docs/RECORDING-PLAYBACK-RUNBOOK.md and knowledge/RECORDING-PLAYBACK-LESSONS.md,
+linked from AGENTS.md and CLAUDE.md. No transcript reconstruction is required.
 
-## Decisions and limits
+## Evidence and constraints
 
-- No game/force code changed. Installed stable 0.2.5 and published ZIP stay intact;
-  installer/template changes go into the next package. No deployment is needed
-  for source documentation and installer-only work.
-- No SimHub helper, new gain, game launch or recorder session. Full hardware
-  matrix/third-party wheel and TSS checks remain pending.
-- Existing installer isn't transactional; successful full retry is required
-  after a mid-copy failure. Recovery guidance is explicit.
+See docs/reviews/2026-10-05-release-0.4.0.md and docs/LOCAL-DEPLOYMENT.md for exact
+hashes, reports and backups. The final source fixed raw game-preference backup:
+reg export silently omitted 21/58 values. Raw snapshot hashes, types/bytes, count
+and restored readback are verified. Preserve current display layout and settings;
+no more small-resolution test overrides. Final log used native borderless mode.
 
-## Validation / evidence
+Keep physical output muted while retaining original force/telemetry producers.
+Kinematic presentation is not deterministic input physics or fresh force evidence.
+The NVIDIA timeout/hard-restart cause remains unknown; owner authorized controlled
+live tests after reboot. Computer Use native pipe is unavailable. Owner watches
+and handles menus when necessary. Stop on new display/input failure.
 
-- All 16 local gates pass for 0.2.5-rc.10 from 5a3c369, including actual Mono,
-  real corpus, package and 37 new batch installer assertions. Source links pass;
-  19 local-only evidence links are classified separately.
-- Full results: results/rc-0.2.5-rc.10-aa83235524f04114a3e1b09dac4614be/automated.json.
-  RC10 is validation-only, not published/installed. Final record is
-  docs/reviews/2026-09-13-docs-install-audit.md. Owner requested commit/push.
-- Preliminary fixture: results/docs-install-audit-53e42121af294e20ba7ee8e6a7849ac4.
-- Installer: results/installer-31d066ecb4b04776bceb5375e3525efe/report.json.
-- GitHub has only unchanged issue #1; no open PRs or new replies sent.
-- Release/deployment identities: docs/LOCAL-DEPLOYMENT.md and
-  docs/reviews/2026-09-13-release-0.2.5.md.
+## Integration / next work
+
+This branch contains the tested release. Concurrent origin/main has a different
+component-layout migration. Do not reset it, overwrite it or equate its builds
+with this release. Integrate only with new validation; the published tag is fixed.
+
+User authorized continuing iRacing first, then Woden and DRIVE. Isolated checkouts
+are under C:/Users/antho/.codex/worktrees/session-playback/. Their docs/STAGE-PLAYBACK.md
+record status and limitations; Art success does not qualify the other adapters.
+Do not overwrite concurrent triple-screen source or owner bindings. New iRacing
+candidate includes Claude's fc35102 camera/triple work. Preserve its previously
+installed unreceipted plugin before deployment. Runtime qualification is ongoing;
+read the latest iRacing notes before launching any other game on this shared rig.
+
+KI-44 bounded handoff recovery has offline coverage but exact live retest remains
+open. Broader hardware, stage/car and camera transition cases stay pending.

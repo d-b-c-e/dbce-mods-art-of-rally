@@ -123,3 +123,10 @@ The final source adds a five-second recovery for a blocked game-bindings handoff
 The first final-labelled artifact passed all 20 suites but checklist generation
 rejected the added suite name. Its archive/evidence is preserved; the validator
 allowlist is corrected before the replacement clean-source release build.
+
+## Final release
+
+0.4.0 is now published and installed from clean source 30d421b. All 20 final
+gates passed (environment suite now 18 assertions); exact final session-5 replay
+210753 passed all 13,455 poses and environment restoration. Published downloads
+match. See [the final release evidence](2026-10-05-release-0.4.0.md).

@@ -59,3 +59,13 @@ A full rebuild from clean shared source
 54 core assertions. Consumer pins were corrected and now check managed assembly
 metadata as well as hashes. Art uses the separately pinned core 0.1 and was not
 affected; both RC10 ZIP hashes and extracted optional analysis were rechecked.
+
+## Later controlled resumption
+
+The owner explicitly authorized resuming tests and attended the rig. RC10's
+original session-5 replay was visually accepted; the exact final 0.4.0 package
+then passed run 210753 with 13,455 poses and normal close/restoration. The final
+launch used native 2560x1440 borderless presentation without an exclusive-mode
+fallback. See [release evidence](2026-10-05-release-0.4.0.md). These observations
+supersede the temporary live-test hold above, not the unresolved GPU diagnosis.
+Do not claim the cause of the garbled desktop has been identified or repaired.

@@ -6,7 +6,36 @@ feature or bug fix. After its candidate or final artifact passes the complete
 local automated gate, deploy it for testing without asking again. Public release
 publication and attended sign-off remain separate.
 
-## Current installation and stable release — 0.2.7
+## Current installation and stable release — 0.4.0
+
+Installed 2026-10-05 02:07:52 UTC and published 02:13:18 UTC from clean source
+`30d421b26eccebc564cd50bf0733c1ed6a82d849`, tag `v0.4.0`. The normal unified
+mod and separately opted-in SessionTools probe are installed. The owner accepted
+the original session-5 route and requested release. The exact final artifact
+then completed that route through finish/results/menu and closed normally.
+
+- All 20 final gates: `results/rc-0.4.0-5e45855793444a9b8ac1c4e24a4d4d09/automated.json`.
+- Normal ZIP SHA-256: `C498F8139FD64D13DD395CC036DE71C50614087C216280A17AA3A4724A96B3CA`.
+- Optional ZIP SHA-256: `08DA5536F641E7ADAF7B8414DD3C45205A40A90F6F3A43629B14F2B5C8476C94`.
+- Backup/receipt: `results/release-040-install-20261004-2107/receipt.json`.
+  Eight normal payloads and the second native copy verified; six protected
+  settings/game files retained their hashes. Optional seal and launcher matched.
+- Final run: `results/sessions/2026-10-04-owner-session-5/replay-20261004-210753`.
+  13,455 poses, zero detected position error, exit code 0; environment restored
+  02:12:32 UTC. All 58 preferences retain their original types/bytes. Player.log
+  reports native 2560x1440 FullScreenWindow, with no exclusive-mode fallback.
+- [Published release](https://github.com/d-b-c-e/dbce-mods-art-of-rally/releases/tag/v0.4.0).
+  Both archives and both checksum files independently downloaded and matched:
+  `results/release-040-published-download/verified.json`.
+- Physical output was muted during playback; original-signal analysis remains
+  available. Owner visual acceptance is scoped to this route. KI-44's exact
+  binding handoff, physical forces and broader hardware/layout cases stay open.
+
+The release comes from `codex/session-playback`. Concurrent remote `main` has a
+different component-layout migration; it is not the tested release source and
+was not overwritten. Use tag `v0.4.0` or the exact published archives for recovery.
+
+## Previous installation and stable release — 0.2.7
 
 Published and installed **2026-09-30 04:40:57 UTC** with the game closed. This
 final-labelled release promotes RC2's runtime behavior. The USB Bind recovery,
