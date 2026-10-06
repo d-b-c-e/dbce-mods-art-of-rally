@@ -1,5 +1,66 @@
 # User feedback and support follow-up
 
+## T300/TSS follow-up — received 2026-10-05 (0.2.6 support file, 0.2.7-rc.2 shift cue)
+
+Same T300 RS + TSS handbrake reporter (Reddit). Support file generated
+2026-09-30 on 0.2.6, Germany Holzerath, Group A Subaru, ended in a crash.
+
+- **Rotation:** settled on 620° in the Thrustmaster panel (700 felt too slow,
+  540 too sensitive). Preference only; no defect.
+- **Crashes not felt** (Crash strength 50, steering Strength 40). 56 accepted
+  cues; the last was a full 0.5 pulse with steering output at 0. New KI-38
+  evidence; see there.
+- **Understeer / "steering assist 20":** the trace's corner shows steering
+  held at 0.80 while front slip ran to 41–44° against an ideal of about 9°, with
+  the wheel going light. That is overdriven fronts, not an input cap. The
+  game's on/off steer-assist limiter does not apply to a recognised T300.
+  Which option "20" means is unknown; 0.4.1-rc.1 support files will show it
+  (KI-17, FINDINGS 2026-10-05).
+- **Logging "on by default":** it was saved on from an earlier support
+  request; the default has always been off. Fixed in 0.4.1-rc.1 (KI-45).
+- **0.2.7-rc.2 shift cue:** "work very well... adds immersion". The user tried
+  it at maximum ("100%"; the slider tops out at 20%) and prefers the default
+  5%. First positive feel report for the cue, on a T300.
+- Other support-file facts: FFB, landing (3 accepted at 40) and alt-tab
+  re-acquire all normal. Frame health clean (KI-19 data point). Autocentre
+  `0x800700AA` is harmless (FINDINGS). The game's own bindings show Clutch and
+  Handbrake on "Accelerator -" on the T300. That is probably inert (the
+  handbrake runs through Wheel input on the TSS), but unconfirmed.
+
+**Unsent reply draft:**
+
+> Thanks for the log and the details. 620° sounds like a good spot!
+>
+> **Steering:** everything in your log looks normal. FFB was running, alt-tab
+> recovery worked and frame times were smooth. In the corner your log caught,
+> you had about 80% lock in, and the front tyres were sliding at roughly 40° when
+> they grip best near 9°. That is the car understeering because the fronts were
+> overloaded, not the mod limiting your steering. The wheel going light is the
+> FFB telling you exactly that. More lock makes it worse at that point, so
+> brake a bit earlier, or ease off the lock or throttle until the wheel weighs
+> up again. Which setting is the "20"? The game has steering sensitivity,
+> steering deadzone, steer assist (on/off), stability assist and steer
+> correction. The game's steer-assist limiter doesn't act on a recognised wheel
+> like the T300 anyway. Stability assist (100% by default) adds a yaw torque
+> that resists slides, so it's worth an experiment if the car won't rotate.
+> If it's the steering *deadzone* at 20%, set that to 0%.
+>
+> **Crashes:** your log shows they fired, 56 of them, all accepted by the
+> wheel. The big one at the end was the strongest possible at your setting,
+> with no steering force on top. So I believe you that it's too subtle. I've
+> seen the same on my own wheel and I'm working on a stronger, longer kick.
+>
+> **Logging:** good catch. It was still switched on from when you made a log
+> for me before. The next build turns it off by itself every time the game
+> starts. It also trims the FFB log file, which on your PC had grown to 90 MB
+> (`%LOCALAPPDATA%\ArtOfSimRally\ffb.log`, safe to delete).
+>
+> **Shift cue:** great to hear, and thanks for testing the RC. Good to know
+> the default strength feels right on a T300.
+
+Before sending: confirm the "stronger, longer kick" wording matches what the
+owner decides for KI-38, and point to whichever build carries the logging fix.
+
 **2026-09-29 T300/TSS report on 0.2.6:** the new UI is much easier to use.
 Existing wheel/pedal/TSS bindings carried over; the inverted TSS handbrake
 showed an analog 0–100% preview. After experimenting with Bind, the handbrake

@@ -18,6 +18,20 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   view) and repeat while held, instead of moving at a held speed. The steps are
   in Advanced → Cameras with a **Default steps** button. The old shortcut speed
   settings are no longer used.
+- **Log detail for support** switches itself off each time the game starts.
+  It used to stay on after a support request until you remembered to untick it.
+
+### Added
+
+- The support file lists art of rally's own steering options (steering
+  sensitivity, steering deadzone, steer assist, stability assist, steer
+  correction) as the game's menu shows them.
+
+### Fixed
+
+- The force feedback log (`%LOCALAPPDATA%\ArtOfSimRally\ffb.log`) never
+  shrank; one user's had reached 90 MB. Over 8 MB it is now kept as
+  `ffb.previous.log` at startup and a fresh log begins.
 
 ## [0.4.0] - 2026-10-05
 

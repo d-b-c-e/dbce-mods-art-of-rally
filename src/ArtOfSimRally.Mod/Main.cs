@@ -74,6 +74,11 @@ namespace ArtOfSimRally.Mod
                 }
                 catch (Exception ex) { ModLog.Warning("Handbrake migration deferred; original binding kept: " + ex.Message); }
             }
+            if (SettingsMigration.EndSessionOnlySettings(Settings))
+            {
+                ModLog.Info("Log detail for support was left on from an earlier session; it starts off each launch.");
+                MarkSettingsDirty();
+            }
             if (CameraKeys.MigratePreviousDefaults(Settings))
             {
                 ModLog.Info("Camera keys were an earlier default set; moved to the numpad layout " +

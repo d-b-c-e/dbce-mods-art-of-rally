@@ -21,6 +21,21 @@ Severity is about the effect on driving, not on how annoying it looks:
 
 ## Open
 
+### KI-45 — "Log detail for support" stays on across launches
+
+**Reported 2026-10-05 by the T300/TSS user on 0.2.6; fixed in 0.4.1-rc.1,
+awaiting one launch.** The user found the toggle already on before they wanted
+a log. The default has always been off (checked at every tag from v0.1.0), but
+the setting was saved, so turning it on for an earlier support request kept FFB
+trace lines going to the UMM log five times a second for every later session.
+Their native `ffb.log` had also reached 89.9 MB, mostly force traces written by
+toolkit builds before KI-37's fix, because nothing ever trims it.
+
+0.4.1-rc.1 turns the toggle off at every launch (logged once when it was left
+on) and its help says so. `ffb.log` over 8 MB is kept as `ffb.previous.log` at
+startup. SettingsUi and Support suites cover both. Not yet confirmed in game.
+Severity: cosmetic (disk use and log noise; this user's frame health was clean).
+
 ### KI-44 — Open game bindings locks up the game again (0.4.0-rc.3)
 
 **Owner-reported 2026-10-04, blocking for that route; KI-42 regression.** In
@@ -132,6 +147,19 @@ the attended checklist has passed. Game action binding retains the native
 Rewired UI; Raw Input-unreadable devices need keyboard/pad for those actions.
 
 ### KI-38 — Accepted RC3/RC4 crash commands have no distinct felt effect
+
+**T300 at 50%, 2026-10-05 (0.2.6 support file).** First report at the new
+default: Crash strength 50, steering Strength 40, T300 RS (single-axis effect).
+56 crash cues, all driver-accepted, no rejections, one early stop. The user
+"doesn't feel the crashes". The final cue (28.5 m/s normal speed, intensity 1,
+magnitude 0.5000, 120 ms constant pulse, stopped after 134 ms) began with the
+steering command at exactly 0, because the front wheels were off the ground. So
+neither a low saved strength nor steering masking or saturation explains that one.
+Earlier mid-corner cues (0.23, 0.37) overlapped steering commands of about
+-0.2, which a fixed +X pulse partly cancels. Leads for an owner rig comparison,
+not yet tried: a longer pulse (250–300 ms), a two-sided knock, and a direction
+taken from the impact or opposing the current steering force. Wheel-side
+filtering and real torque are still unmeasured.
 
 **Current lead, 2026-09-29:** the latest installed 0.2.7-rc.1 game log shows
 five accepted crash cues with ordinary expiry at roughly 121–130 ms. The
@@ -409,6 +437,11 @@ the reports or claim that camera saves, telemetry or another mod caused this one
 The owner's later RC4 drive exposed KI-20. That is a candidate explanation to
 investigate, not proof of the same cause on the T300 user's system.
 
+2026-10-05 data point from the same user (0.2.6, detail logging on throughout):
+6,152 measured driving intervals, maximum 24.2 ms, none at 33 ms or above.
+The previous session had 21,213 frames, maximum 50.5 ms, two above 33 ms, all in
+its first 15 s, none at 100 ms. No slowdown was reported for these sessions.
+
 0.2.4 adds opt-in aggregate frame-hitch counters (foreground driving only), bounded
 recent log reads, recent native errors, loaded-mod versions and cached input values
 to support files. No per-frame log/file writes or recorder timeline are added by
@@ -441,6 +474,17 @@ isolation, not simultaneous operation of both camera editors. See the
 [feedback review](reviews/2026-09-08-feedback-review.md).
 
 ### KI-17 — Legacy steering-assist checkbox is not a live numeric override
+
+**2026-10-05:** the game's own options are now mapped in
+[FINDINGS](FINDINGS.md#steering-options-and-autocentre-addendum--2026-10-05).
+The game's on/off Steer assist limiter is skipped while a recognised wheel is
+the last controller used. A "20" can only be a 0–20 index (steering sensitivity
+or deadzone) or a "20%" label (those two, or stability assist). 0.4.1-rc.1
+support files print all five options as the menu shows them. The T300 user's
+understeer trace (2026-10-05) shows steering held at 0.80 while front slip rose
+to 41–44° against an ideal of about 9°, with the force going light as designed.
+That reads as overdriven fronts, not a capped input. It rules out a cap in
+that corner only; it does not explain every corner the user means.
 
 **Confirmed behavior; help corrected, legacy limitation remains.** The mod sets
 `CarController.steerAssistance=false` only in its Start postfix, only when Direct

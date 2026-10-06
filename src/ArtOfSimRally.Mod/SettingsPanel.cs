@@ -430,7 +430,7 @@ namespace ArtOfSimRally.Mod
             if (!SettingsViewPolicy.Advanced(c))
             { if (LinkButton("Diagnostic details in Advanced >", 220)) Select(c, true, 4); return; }
             c.DiagnosticLogging = Toggle(c.DiagnosticLogging, "Log detail for support");
-            Help("Enable, reproduce briefly, pause, create the support file, then turn detail logging off.");
+            Help("Enable, reproduce briefly, pause, then create the support file. Detail logging switches itself off the next time the game starts.");
             Panel.DrawInputStatus();
         }
         private static bool CommandRow(string guidance, string label, float width)

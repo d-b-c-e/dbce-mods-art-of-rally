@@ -61,6 +61,7 @@ namespace ArtOfSimRally.Mod
                 FrameHealth.Current.Append(sb);
                 FrameHealthPersistence.AppendPrevious(sb);
                 WriteRuntimeInputs(sb);
+                WriteGameControls(sb);
                 WriteControllers(sb);
                 WriteBindings(sb);
                 WriteFfbLog(sb);
@@ -184,6 +185,19 @@ namespace ArtOfSimRally.Mod
             }
             catch { sb.AppendLine("live car state unavailable"); }
             sb.AppendLine("DisableSteerAssist is a legacy spawn-only boolean override, not a saved numeric assist value.");
+            sb.AppendLine();
+        }
+
+        // Users describe these by their menu value ("steering assist 20"); the
+        // file should answer which option that was without another round trip.
+        private static void WriteGameControls(StringBuilder sb)
+        {
+            try
+            {
+                if (Platform.Get().IsSaveGameLoaded()) SupportLogs.AppendGameControls(sb, SaveGame.GetInt);
+                else sb.AppendLine("--- game control options ---").AppendLine("game save not loaded yet");
+            }
+            catch (Exception ex) { sb.AppendLine("game control options unavailable: " + ex.Message); }
             sb.AppendLine();
         }
 

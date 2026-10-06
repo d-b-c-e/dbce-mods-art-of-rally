@@ -41,8 +41,11 @@ namespace ArtOfSimRally.Mod
                 ModLog.Error("Native toolkit unavailable: " + Status);
                 return false;
             }
-            WheelFfbNative.LogTo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "ArtOfSimRally", "ffb.log"));
+            string log = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "ArtOfSimRally", "ffb.log");
+            if (LogFiles.RotateIfLarge(log))
+                ModLog.Info("Force feedback log was over " + LogFiles.RotateBytes / (1024 * 1024) + " MB; kept as ffb.previous.log.");
+            WheelFfbNative.LogTo(log);
             return true;
         }
 

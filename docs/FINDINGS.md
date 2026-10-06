@@ -8,6 +8,34 @@ Nothing in this document is inferred from forum posts. Where something is
 Re-deriving these costs an hour of assembly spelunking, so treat this file as
 the source of truth and don't repeat the work.
 
+## Steering options and autocentre addendum — 2026-10-05
+
+Read with `ilspycmd` from the installed game (1.5.8b, build 17584229) to answer
+a T300 user's "steering assist 20" question. These are the game's own options:
+
+| Menu option | Saved key | Index → label | Default | What the code does |
+|---|---|---|---|---|
+| Steering sensitivity | `SETTINGS_STEERING_SENSITIVITY` | 0–20 → 0–100% in 5% steps | 10 (50%) | Scales `Modifier`'s steering yaw helper 0.85×–1.5×: torque on the car body proportional to the raw steering axis, all wheels on the ground. Nothing else reads it in this build. |
+| Steering deadzone | `SETTINGS_STEERING_DEADZONE` | 0–20 → 0–100% | 0 | Hard deadzone of 0.75 × index/20 on the steering axis (100% ignores input below 0.75). |
+| Steer assist | `SETTINGS_STEER_ASSIST` | off/on | on | `CarController.steerAssistance`: the speed/slip steering limiter in `SmoothSteer`. |
+| Stability assist | `SETTINGS_STABILITY_ASSIST` | 0–10 → 0–100% | 10 (100%) | Counter-slide yaw torque on the car body, proportional to lateral slip. |
+| Steer correction | `SETTINGS_STEER_CORRECTION` | 0–9 → 80…280% | 4 (160%) | `SetSteerCorrectionFactor`; speeds up counter-steer in gamepad smoothing. |
+
+`SmoothSteer` returns before its limiter, and ignores steer correction and the
+smoothing times, whenever Rewired's **last active controller** has an
+`IRacingWheelTemplate`. A recognised wheel (T300 RS, G29) therefore never gets
+the steer-assist limiter while it is the last controller used. The private
+`SteerAssistance()` method is never called. The yaw helpers act for every
+controller, so they remain the game's real assists for a wheel; they are game
+settings, not something this mod changes.
+
+`SetProperty(DIPROP_AUTOCENTER) -> 0x800700AA` in `ffb.log` after
+`initialised OK` is `DIERR_ACQUIRED` (`HRESULT_FROM_WIN32(ERROR_BUSY)`): the
+mod's post-init `AutoCentre(false)` runs on an acquired device. It is harmless:
+the native init already turns autocentre off before `Acquire`. Seen on the
+MOZA R12 and a T300 RS; the support header's "native last error:
+SetAutoCenter failed" comes from the same call.
+
 ## Gear-shift signal addendum — 2026-09-29
 
 The installed game's `Drivetrain.DoGearShifting` sets neutral partway through

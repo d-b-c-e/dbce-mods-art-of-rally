@@ -82,12 +82,36 @@ static class Program
         h.Observe(false,false,now+101);h.Observe(true,true,now+102);
         Check(h.FirstFive.Frames==0&&h.NextTen.Frames==0&&h.Later.Frames==0,"old detailed counters survive a new diagnostic window");
     }
+    static void Rotation(string root)
+    {
+        string path=Path.Combine(root,"rotate","ffb.log"), previous=Path.Combine(root,"rotate","ffb.previous.log");
+        Directory.CreateDirectory(Path.GetDirectoryName(path));
+        Check(!LogFiles.RotateIfLarge(path,16),"missing log rotated");
+        File.WriteAllText(path,"small"); File.WriteAllText(previous,"older");
+        Check(!LogFiles.RotateIfLarge(path,16)&&File.ReadAllText(path)=="small","small log rotated");
+        File.WriteAllText(path,new string('x',17));
+        Check(LogFiles.RotateIfLarge(path,16)&&!File.Exists(path)&&File.ReadAllText(previous).Length==17,"large log not kept as previous");
+        using(var held=new FileStream(previous,FileMode.Open,FileAccess.Read,FileShare.Read))
+        {
+            File.WriteAllText(path,new string('y',17));
+            Check(!LogFiles.RotateIfLarge(path,16)&&File.Exists(path),"locked previous log threw or lost the current log");
+        }
+    }
+    static void GameControls()
+    {
+        var saved=new Dictionary<string,int>{["SETTINGS_STEERING_SENSITIVITY"]=4,["SETTINGS_STABILITY_ASSIST"]=2,["SETTINGS_STEER_CORRECTION"]=12};
+        var text=new StringBuilder(); SupportLogs.AppendGameControls(text,(key,fallback)=>saved.TryGetValue(key,out int v)?v:fallback);
+        string s=text.ToString();
+        Check(s.Contains("steering sensitivity: 20% (")&&s.Contains("stability assist: 20% ("),"menu percentages not shown as the game labels them");
+        Check(s.Contains("steering deadzone: 0% (")&&s.Contains("steer assist: on ("),"unsaved options did not use game defaults");
+        Check(s.Contains("steer correction: saved value 12"),"out-of-range option mislabelled");
+    }
     static int Main()
     {
         try
         {
             string root=Path.GetFullPath(Path.Combine("results","support-"+Guid.NewGuid().ToString("N")));
-            Directory.CreateDirectory(root); Logs(root); Timing(); assertions+=FrameHealthRetentionTests.Run(root);
+            Directory.CreateDirectory(root); Logs(root); Rotation(root); GameControls(); Timing(); assertions+=FrameHealthRetentionTests.Run(root);
             Console.WriteLine(JsonSerializer.Serialize(new{status="passed",assertions,scope="bounded real log files; zero-allocation frame aggregates"})); return 0;
         }
         catch(Exception ex) { Console.Error.WriteLine(ex); return 1; }

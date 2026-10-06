@@ -18,3 +18,7 @@ Audited 2026-10-04 (read-only standards audit); statuses below are from that aud
 | STD-008 | Display changes: game applies once | partial | no SetResolution; Surround size not added to the game list; separate-display mode calls Display.Activate (needs watchdog test) |
 | STD-009 | Dashboard telemetry matches the HUD | partial | HUD = 0.6 x physics; fixed in b5c8e46 (v0.4.0, codex/session-playback) but not on main, ignores speedo type, unverified at rig; docs\TELEMETRY.md:93 stale |
 | STD-010 | Install the latest build for testing | adopted | owner Stream Deck target (not re-verified in audit) |
+| STD-011 | Work lands on main | unchecked | added 2026-10-05; remote still has codex/* side branches to review |
+| STD-012 | Reproduce the route and preserve original signals | unchecked | added 2026-10-05; session playback (v0.4.0) is the likely fit |
+| STD-013 | The installed build launches plainly | unchecked | added 2026-10-05 |
+| STD-014 | Request reciprocal review when progress stalls | unchecked | added 2026-10-05; process standard |

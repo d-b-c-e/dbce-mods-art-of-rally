@@ -2,6 +2,7 @@
   <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>disable</Nullable><TreatWarningsAsErrors>true</TreatWarningsAsErrors></PropertyGroup>
   <ItemGroup>
     <Compile Include="../../src/ArtOfSimRally.Mod/SupportLogs.cs" Link="SupportLogs.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/LogFiles.cs" Link="LogFiles.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/FrameHealth.cs" Link="FrameHealth.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/FrameHealthStore.cs" Link="FrameHealthStore.cs" />
   </ItemGroup>

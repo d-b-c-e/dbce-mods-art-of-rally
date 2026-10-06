@@ -58,6 +58,10 @@ static class Program
         c.HandbrakeBinding=$"TSS|4|axis:2|65535|0|guid:{Wheel}";string axis=c.HandbrakeBinding;SettingsMigration.SplitHandbrake(c);
         Check(c.HandbrakeBinding==axis&&c.HandbrakeButtonBinding==legacy,"axis/button coexistence migrated incorrectly");
         Check(Read(Xml(c)).HandbrakeButtonBinding==legacy,"button XML persistence failed");
+        c.DiagnosticLogging=true;var leftOn=Read(Xml(c));
+        Check(leftOn.DiagnosticLogging&&SettingsMigration.EndSessionOnlySettings(leftOn)&&!leftOn.DiagnosticLogging,"saved support logging survived launch");
+        Check(!SettingsMigration.EndSessionOnlySettings(leftOn)&&leftOn.HandbrakeBinding==axis&&leftOn.Smoothing==c.Smoothing&&leftOn.HandbrakeButtonBinding==legacy,"logging reset reported again or touched other settings");
+        c.DiagnosticLogging=false;
         c.BonnetHeight=1.9f;c.BumperHeight=1.2f;c.LandingStrength=20;c.KeyUp=KeyCode.U;
         c.ResetCameraMount(false);
         Check(c.BonnetHeight==.95f&&c.BumperHeight==1.2f&&c.LandingStrength==20&&c.KeyUp==KeyCode.U,"camera reset escaped selected pose");

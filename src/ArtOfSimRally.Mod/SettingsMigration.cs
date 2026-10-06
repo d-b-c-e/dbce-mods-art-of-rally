@@ -10,5 +10,14 @@ namespace ArtOfSimRally.Mod
             cfg.HandbrakeButtonBinding = cfg.HandbrakeBinding;
             cfg.HandbrakeBinding = "";
         }
+
+        // Support detail logging is for one reproduction. Left saved on, it kept
+        // writing FFB traces for weeks after a user's support request (2026-10-05).
+        public static bool EndSessionOnlySettings(Settings cfg)
+        {
+            if (!cfg.DiagnosticLogging) return false;
+            cfg.DiagnosticLogging = false;
+            return true;
+        }
     }
 }

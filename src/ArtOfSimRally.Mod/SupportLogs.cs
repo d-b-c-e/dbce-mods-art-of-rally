@@ -49,6 +49,30 @@ namespace ArtOfSimRally.Mod
             }
         }
 
+        // art of rally's own control options as its settings menu shows them.
+        // Keys, defaults and labels from the game's SettingsSelectable and
+        // SettingsManager (1.5.8b). Users name these by their on-screen value.
+        private static readonly string[] SteerCorrectionLabels =
+            { "80%", "100%", "120%", "140%", "160%", "180%", "200%", "240%", "260%", "280%" };
+        internal static void AppendGameControls(StringBuilder output, Func<string, int, int> read)
+        {
+            output.AppendLine("--- game control options (art of rally's own settings, read-only) ---");
+            output.AppendLine("steering sensitivity: " + Step(read("SETTINGS_STEERING_SENSITIVITY", 10), 5, 20) + " (game default 50%)");
+            output.AppendLine("steering deadzone: " + Step(read("SETTINGS_STEERING_DEADZONE", 0), 5, 20) + " (game default 0%)");
+            int assist = read("SETTINGS_STEER_ASSIST", 1);
+            output.AppendLine("steer assist: " + (assist == 1 ? "on" : assist == 0 ? "off" : "saved value " + assist) + " (game default on)");
+            output.AppendLine("stability assist: " + Step(read("SETTINGS_STABILITY_ASSIST", 10), 10, 10) + " (game default 100%)");
+            int correction = read("SETTINGS_STEER_CORRECTION", 4);
+            output.AppendLine("steer correction: " + (correction >= 0 && correction < SteerCorrectionLabels.Length
+                ? SteerCorrectionLabels[correction] : "saved value " + correction) + " (game default 160%)");
+            output.AppendLine("While a wheel Rewired recognises is the last controller used, the game skips steer correction, " +
+                "steering smoothing and the steer-assist limiter. Steering sensitivity scales a steering yaw helper " +
+                "and stability assist a counter-slide yaw helper on the car body.");
+        }
+        private static string Step(int index, int percentPerStep, int maxIndex)
+            => index >= 0 && index <= maxIndex ? (index * percentPerStep).ToString(CultureInfo.InvariantCulture) + "%"
+                : "saved value " + index.ToString(CultureInfo.InvariantCulture);
+
         internal static void AppendWindow(StringBuilder output, Snapshot snapshot)
             => output.AppendLine("Recent log window: " + snapshot.ReadBytes + " bytes read of " + snapshot.FileBytes +
                 "; " + snapshot.Lines.Length + " retained lines; truncated=" + snapshot.Truncated + ".");
