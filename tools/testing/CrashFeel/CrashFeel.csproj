@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Developer tool for the owner's rig. Not in the solution, never packaged. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType><TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms><PlatformTarget>x64</PlatformTarget>
+    <ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Dbce.Wheel.Ffb"><HintPath>../../../lib/toolkit/dotnet/Dbce.Wheel.Ffb.dll</HintPath></Reference>
+    <None Include="../../../lib/toolkit/native/WheelFfb.dll" Link="WheelFfb.dll" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

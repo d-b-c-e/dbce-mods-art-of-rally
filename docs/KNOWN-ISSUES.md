@@ -161,6 +161,14 @@ not yet tried: a longer pulse (250–300 ms), a two-sided knock, and a direction
 taken from the impact or opposing the current steering force. Wheel-side
 filtering and real torque are still unmeasured.
 
+Owner chose a standalone comparison first (2026-10-05):
+[`tools/testing/CrashFeel`](../tools/testing/CrashFeel/README.md) plays the
+current pulse and six alternatives (longer pulses, knock, 12 Hz crunch, push +
+rattle, in-steering push), with or without a ±20% cornering load. It uses only
+existing toolkit calls and records 1–4 ratings to a CSV. It has been built,
+self-tested and opened without a wheel. No force has been applied yet, so
+nothing about feel is known.
+
 **Current lead, 2026-09-29:** the latest installed 0.2.7-rc.1 game log shows
 five accepted crash cues with ordinary expiry at roughly 121–130 ms. The
 strongest was a full-intensity 25.4 m/s normal-speed contact, but the owner's
