@@ -6,7 +6,22 @@ feature or bug fix. After its candidate or final artifact passes the complete
 local automated gate, deploy it for testing without asking again. Public release
 publication and attended sign-off remain separate.
 
-## Current installation — 0.4.1-rc.1
+## Current installation — 0.4.1-rc.2
+
+Installed 2026-10-06 04:01:39 UTC with the game closed, from clean source
+`ddabadaccb02f43a93a6492b0fb647555133b33e` (not yet pushed or tagged). Same as
+rc.1 plus the crash push + 25 Hz rattle chosen in the owner's CrashFeel run (KI-38).
+
+- All 20 gates: `results/rc-0.4.1-rc.2-6f0e4ac0732d445f873d660c3afe5388/automated.json`.
+- ZIP SHA-256: `506CA6C062DC3300639133B5582BBA764838ADD5F2ACCFE452980B491DE62111`.
+- Backup/receipt: `results/rc-041-rc2-install-20261005-2301/receipt.json`. Payloads
+  and the Plugins native copy match the manifest; protected files unchanged,
+  Settings.xml still `8B32882D…`, so the game has not run since rc.1.
+- In-game checks pending: KI-45's first-launch logging reset, the crash rattle
+  (the saved Crash strength is 19.52381; the standalone pick was made at 50),
+  and STD-005/006 camera feel.
+
+## Previous installation — 0.4.1-rc.1
 
 Installed 2026-10-06 01:39:17 UTC with the game closed, from clean source
 `c4b64809c2894cce1885b8254fd46007427b1f5e` (not yet pushed or tagged). Adds the
