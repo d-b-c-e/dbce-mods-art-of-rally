@@ -9,7 +9,7 @@ publication and attended sign-off remain separate.
 ## Current installation — 0.4.1-rc.2
 
 Installed 2026-10-06 04:01:39 UTC with the game closed, from clean source
-`ddabadaccb02f43a93a6492b0fb647555133b33e` (not yet pushed or tagged). Same as
+`ddabadaccb02f43a93a6492b0fb647555133b33e` (pushed to main 2026-10-06; not tagged). Same as
 rc.1 plus the crash push + 25 Hz rattle chosen in the owner's CrashFeel run (KI-38).
 
 - All 20 gates: `results/rc-0.4.1-rc.2-6f0e4ac0732d445f873d660c3afe5388/automated.json`.
@@ -20,6 +20,12 @@ rc.1 plus the crash push + 25 Hz rattle chosen in the owner's CrashFeel run (KI-
 - In-game checks pending: KI-45's first-launch logging reset, the crash rattle
   (the saved Crash strength is 19.52381; the standalone pick was made at 50),
   and STD-005/006 camera feel.
+
+Owner authorized merging the pending work on 2026-10-05 and will test tomorrow.
+The five existing commits through e979c25 are now on origin/main. Offline force
+normalization separately revalidated both original steering captures (11,921
+rows, zero model/device mismatches); this does not accept the new crash cue or
+camera/logging behavior. Installed package/settings remain as receipted above.
 
 ## Previous installation — 0.4.1-rc.1
 
