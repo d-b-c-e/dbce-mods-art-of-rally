@@ -6,7 +6,25 @@ feature or bug fix. After its candidate or final artifact passes the complete
 local automated gate, deploy it for testing without asking again. Public release
 publication and attended sign-off remain separate.
 
-## Current installation and stable release — 0.4.0
+## Current installation — 0.4.1-rc.1
+
+Installed 2026-10-06 01:39:17 UTC with the game closed, from clean source
+`c4b64809c2894cce1885b8254fd46007427b1f5e` (not yet pushed or tagged). Adds the
+2026-10-05 T300 feedback fixes (KI-45: support logging off at each launch,
+`ffb.log` trimmed over 8 MB, game steering options in support files) to the
+unreleased STD-005/006 camera layout and steps. Stable public release is still 0.4.0.
+
+- All 20 gates: `results/rc-0.4.1-rc.1-ead2ae530a3644dfb72a20fd533e2c10/automated.json`.
+- ZIP SHA-256: `4996A5213703A46CB74ED347D394B4B67B7F70413110F707AC8C50131ECA2A8E`.
+- Backup/receipt: `results/rc-041-rc1-install-20261005-2039/receipt.json`. Eight
+  payloads and the Plugins native copy match the manifest; seven protected
+  files kept their hashes, including Settings.xml (`8B32882D…`, unchanged since 0.4.0).
+  The SessionTools probe folder was left as installed.
+- The installed Settings.xml has `DiagnosticLogging` true, so the first launch
+  should log "Log detail for support was left on…" and show the toggle off.
+  That is KI-45's in-game check. Camera numpad feel (STD-005/006) is still pending.
+
+## Stable release and previous installation — 0.4.0
 
 Installed 2026-10-05 02:07:52 UTC and published 02:13:18 UTC from clean source
 `30d421b26eccebc564cd50bf0733c1ed6a82d849`, tag `v0.4.0`. The normal unified
