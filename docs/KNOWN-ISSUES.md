@@ -165,9 +165,14 @@ Owner chose a standalone comparison first (2026-10-05):
 [`tools/testing/CrashFeel`](../tools/testing/CrashFeel/README.md) plays the
 current pulse and six alternatives (longer pulses, knock, 12 Hz crunch, push +
 rattle, in-steering push), with or without a ±20% cornering load. It uses only
-existing toolkit calls and records 1–4 ratings to a CSV. It has been built,
-self-tested and opened without a wheel. No force has been applied yet, so
-nothing about feel is known.
+existing toolkit calls and records 1–4 ratings to a CSV. Owner run on the MOZA
+R12, all at 50%, + direction, no cornering load: A (current 120 ms) clear,
+B 250 ms clear, C 400 ms too strong, D knock faint, E 12 Hz crunch faint,
+**F push + rattle clear and "most realistic"**, G in-steering 250 ms too strong
+(B and G share magnitude and duration). One rating each; load and direction
+were not compared. Note that A was "clear" here at 50% while the in-game cue at
+the owner's saved 19.5% was not felt. 0.4.1-rc.2 plays F for crashes; whether it
+is felt in game, mid-corner and on a T300 is the open question.
 
 **Current lead, 2026-09-29:** the latest installed 0.2.7-rc.1 game log shows
 five accepted crash cues with ordinary expiry at roughly 121–130 ms. The

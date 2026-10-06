@@ -8,7 +8,7 @@ namespace ArtOfSimRally.Mod
 {
     internal static class ImpactController
     {
-        private sealed class ToolkitOutput : ILandingOutput
+        private sealed class ToolkitOutput : ILandingOutput, ICrashRattleOutput
         {
             public int Create(ImpactKind kind, int hz, int milliseconds) => kind == ImpactKind.Crash
                 ? WheelFfbNative.CreateConstantBurst(milliseconds) : WheelFfbNative.CreatePeriodicBurst(hz, milliseconds);
@@ -16,6 +16,10 @@ namespace ArtOfSimRally.Mod
                 ? WheelFfbNative.PlayConstantBurst(slot, magnitude) : WheelFfbNative.PlayPeriodicBurst(slot, magnitude, hz);
             public bool Stop(ImpactKind kind, int slot) => kind == ImpactKind.Crash
                 ? WheelFfbNative.StopConstantBurst(slot) : WheelFfbNative.StopPeriodicBurst(slot);
+            public int CreateRattle(int hz, int milliseconds) => WheelFfbNative.CreatePeriodicBurst(hz, milliseconds);
+            public bool PlayRattle(int slot, float magnitude, float hz, int fadeMs)
+                => WheelFfbNative.PlayShapedPeriodicBurst(slot, magnitude, hz, 0, fadeMs);
+            public bool StopRattle(int slot) => WheelFfbNative.StopPeriodicBurst(slot);
             // The mixer is the sole owner of both impact effect families.
             public void Release() { WheelFfbNative.ReleaseConstantBursts(); WheelFfbNative.ReleasePeriodics(); }
         }
@@ -28,6 +32,7 @@ namespace ArtOfSimRally.Mod
             if (Main.Settings == null || !Main.Settings.DiagnosticLogging) return;
             ModLog.Info($"Impact output kind={delivery.Kind} action={delivery.Action} reason={delivery.Reason} " +
                 $"magnitude={delivery.Magnitude:F4} playCall={delivery.PlayLatencyMs:F2}ms elapsedAfterReturn={delivery.ElapsedMs:F2}ms " +
+                (delivery.Kind == ImpactKind.Crash ? $"rattle={(delivery.Rattle ? "playing" : "off")} cue={delivery.DurationMs}ms " : "") +
                 $"steering={FfbController.CurrentForce:F4}; command timing, not measured wheel motion");
         }
         public static bool Enabled(ImpactKind kind) => Main.Enabled && Main.Settings != null &&
@@ -67,11 +72,12 @@ namespace ArtOfSimRally.Mod
                 text.AppendLine("=== " + kind + " vibration ===");
                 text.AppendLine("Status: " + (kind == ImpactKind.Crash ? CrashController.Status : Status(kind)));
                 text.AppendLine($"Session events: {c.Events}; driver accepted: {c.Accepted}; rejected: {c.Rejected}; overlap suppressed: {c.Suppressed}");
-                string waveform = kind == ImpactKind.Crash ? "constant-force pulse; fixed positive X direction; no envelope"
-                    : $"sine {LandingFeedback.Frequency} Hz; phase zero; no envelope";
-                text.AppendLine($"Last requested magnitude: {c.Magnitude:F4}; {waveform}; duration {LandingFeedback.DurationMs} ms");
+                string waveform = kind == ImpactKind.Crash
+                    ? $"constant-force pulse, fixed positive X, {LandingFeedback.DurationMs} ms; plus {LandingFeedback.RattleFrequency} Hz rattle at half magnitude for {LandingFeedback.RattleDurationMs} ms, fading over the last {LandingFeedback.RattleFadeMs} ms (rattle {Mixer.RattleStatus})"
+                    : $"sine {LandingFeedback.Frequency} Hz; phase zero; no envelope; duration {LandingFeedback.DurationMs} ms";
+                text.AppendLine($"Last requested magnitude: {c.Magnitude:F4}; {waveform}");
                 if (c.HasDelivery)
-                    text.AppendLine($"Last delivery: {c.Delivery.Action}/{c.Delivery.Reason}; native play call {c.Delivery.PlayLatencyMs:F2} ms; elapsed after return {c.Delivery.ElapsedMs:F2} ms; stops before 120 ms: {c.EarlyStops} (includes intended interrupts/replacements)");
+                    text.AppendLine($"Last delivery: {c.Delivery.Action}/{c.Delivery.Reason}; native play call {c.Delivery.PlayLatencyMs:F2} ms; elapsed after return {c.Delivery.ElapsedMs:F2} ms; early stops: {c.EarlyStops} (before the cue's own end; includes intended interrupts/replacements)");
             }
             text.AppendLine("One active cue; separate cached sine/constant handles. Shift yields to landing/crash; landing/crash retain strongest-cue arbitration. Driver acceptance is not measured wheel motion.");
             text.AppendLine("Crash requests require exact finite-duration readback; rejection disables crashes until toggled off/on while paused, preserving landing availability.");

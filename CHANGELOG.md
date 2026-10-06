@@ -23,6 +23,9 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Crashes add a short 25 Hz rattle (half the crash strength, 250 ms, fading
+  out) to the 120 ms push. Of seven kicks compared on the wheel, this one felt
+  most realistic. Wheels that cannot play it get the push alone.
 - The support file lists art of rally's own steering options (steering
   sensitivity, steering deadzone, steer assist, stability assist, steer
   correction) as the game's menu shows them.

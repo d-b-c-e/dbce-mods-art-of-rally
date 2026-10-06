@@ -16,16 +16,19 @@ tools/testing/CrashFeel/bin/Release/net8.0-windows/CrashFeel.exe
 CrashFeel.exe --selftest   # plan bounds only: no window, no wheel
 ```
 
+**First run, 2026-10-05 (owner, MOZA R12, 50%):** F (push + rattle) felt most
+realistic and went into the mod as 0.4.1-rc.2. Ratings are in KI-38.
+
 ## Candidates
 
 | Key | Kick | Calls |
 |---|---|---|
-| A | 120 ms push: **what the mod plays today** | constant burst, 120 ms |
+| A | 120 ms push: the mod's crash up to 0.4.0 | constant burst, 120 ms |
 | B | 250 ms push | constant burst, 250 ms |
 | C | 400 ms push | constant burst, 400 ms |
 | D | Knock: 60 ms one way, then 60 ms the other | 60 ms constant burst, replayed with the opposite sign |
 | E | Crunch: 12 Hz sine, starts at full push, fades over the last 200 of 300 ms | shaped periodic burst |
-| F | A plus a 25 Hz rattle at half strength | constant + periodic burst together |
+| F | A plus a 25 Hz rattle at half strength: **the mod's crash from 0.4.1** | constant + periodic burst together |
 | G | B's push added to the steering force instead of a separate effect | steering stream |
 
 **Strength** is the magnitude a full-intensity crash requests at that Crash

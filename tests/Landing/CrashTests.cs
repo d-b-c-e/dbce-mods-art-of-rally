@@ -111,9 +111,9 @@ static class CrashTests
         mixer.Tick(10.141);Check(output.Stops==2,"strong mixed effect did not stop old and new outputs");
         mixer.Tick(11);Check(output.Plays==2,"suppressed strong cue replayed later");mixer.Shutdown();
     }
-    static readonly MethodInfo CollisionHook=typeof(CrashController).GetMethod("BeforeCollision",BindingFlags.NonPublic|BindingFlags.Static);
-    static Collision Hit(float speed=30) => new(){relativeVelocity=new(speed,0,0),points=new[]{new ContactPoint{normal=new(1,0,0)}}};
-    static CarDynamics SetUp()
+    internal static readonly MethodInfo CollisionHook=typeof(CrashController).GetMethod("BeforeCollision",BindingFlags.NonPublic|BindingFlags.Static);
+    internal static Collision Hit(float speed=30) => new(){relativeVelocity=new(speed,0,0),points=new[]{new ContactPoint{normal=new(1,0,0)}}};
+    internal static CarDynamics SetUp()
     {
         ImpactController.Shutdown();Mod.Enabled=true;Mod.Settings=new(){CrashEffectsEnabled=true};
         Application.isFocused=true;FfbNative.Ready=true;GameState.IsDriving=false;GameState.IsRestarting=false;

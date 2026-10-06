@@ -68,13 +68,18 @@ namespace Dbce.Wheel.Ffb
         public static int Creates,Plays,Stops,Releases;
         public static float LastMagnitude;
         public static string LastError => "Fake driver rejection";
-        public static int CreatePeriodicBurst(int hz,int duration) { Creates++;return 0; }
+        // The crash rattle (25 Hz, 250 ms) is counted apart so push/landing counts keep their meaning.
+        public const int RattleSlot=3;
+        public static int RattleCreates,RattlePlays,RattleStops,LastRattleFade;
+        public static float LastRattle,LastRattleHz;
+        public static int CreatePeriodicBurst(int hz,int duration) { if(hz==25&&duration==250){RattleCreates++;return RattleSlot;} Creates++;return 0; }
+        public static bool PlayShapedPeriodicBurst(int slot,float magnitude,float hz,int phase,int fade) { RattlePlays++;LastRattle=magnitude;LastRattleHz=hz;LastRattleFade=fade;return slot==RattleSlot; }
         public static bool PlayPeriodicBurst(int slot,float magnitude,float hz) { Plays++;LastMagnitude=magnitude;return true; }
         public static int CreateConstantBurst(int duration) { Creates++;return 0; }
         public static bool PlayConstantBurst(int slot,float magnitude) { Plays++;LastMagnitude=magnitude;return true; }
         public static bool StopConstantBurst(int slot) { Stops++;return true; }
         public static void ReleaseConstantBursts() { }
-        public static bool StopPeriodicBurst(int slot) { Stops++;return true; }
+        public static bool StopPeriodicBurst(int slot) { if(slot==RattleSlot)RattleStops++;else Stops++;return true; }
         public static void ReleasePeriodics() { Releases++; }
     }
 }

@@ -30,7 +30,7 @@ static class Candidates
     // strength); sign is +1 or -1 and only picks the direction.
     public static readonly Candidate[] All =
     {
-        new('A', "120 ms push (current)", "What the mod plays today: one 120 ms constant pulse.",
+        new('A', "120 ms push (0.4.0)", "The mod's crash up to 0.4.0: one 120 ms constant pulse.",
             (m, s) => new[] { Push(0, 120, s * m) }),
         new('B', "250 ms push", "Same pulse, twice as long.",
             (m, s) => new[] { Push(0, 250, s * m) }),
@@ -40,7 +40,7 @@ static class Candidates
             (m, s) => new[] { Push(0, 60, s * m), Push(60, 60, -s * m) }),
         new('E', "Crunch 12 Hz", "Starts at a full push, shakes at 12 Hz and fades over 300 ms.",
             (m, s) => new[] { Sine(0, 12, 300, m, s > 0 ? 9000 : 27000, 200) }),
-        new('F', "Push + rattle", "The 120 ms push with a 25 Hz rattle at half strength on top.",
+        new('F', "Push + rattle (0.4.1)", "The mod's crash from 0.4.1: the 120 ms push with a 25 Hz rattle at half strength on top.",
             (m, s) => new[] { Push(0, 120, s * m), Sine(0, 25, 250, m / 2, 0, 150) }),
         new('G', "250 ms push in steering", "B's push added to the steering force instead of a separate effect.",
             (m, s) => new[] { InSteering(0, 250, s * m) }),
@@ -71,7 +71,7 @@ static class Candidates
                 if (step.Kind == StepKind.Stream && step.ForMs > 500) return where + ": stream kick too long";
             }
             if (candidate.Key == 'A' && (steps.Length != 1 || steps[0].SlotMs != 120 || steps[0].Magnitude != sign * m))
-                return "A no longer matches the mod's crash pulse";
+                return "A no longer matches the 0.4.0 crash pulse";
         }
         return null;
     }

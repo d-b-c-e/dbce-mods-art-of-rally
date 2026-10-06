@@ -10,12 +10,22 @@ namespace ArtOfSimRally.Mod
         void Release();
     }
 
+    // Optional second crash output. Outputs without it play the push alone.
+    internal interface ICrashRattleOutput
+    {
+        int CreateRattle(int frequency, int durationMs);
+        bool PlayRattle(int slot, float magnitude, float frequency, int fadeMs);
+        bool StopRattle(int slot);
+    }
+
     internal struct ImpactDelivery
     {
         public ImpactKind Kind;
         public string Action, Reason;
         public float Magnitude;
         public double PlayLatencyMs, ElapsedMs;
+        public int DurationMs;
+        public bool Rattle;
     }
 
     // One active impact, backed by separate finite native effect types. Stop the
@@ -28,11 +38,15 @@ namespace ArtOfSimRally.Mod
         public const float MaximumStrengthPercent = 40f;
         public const float MaximumCrashStrengthPercent = 100f, DefaultCrashStrengthPercent = 50f;
         public const float MaximumShiftStrengthPercent = 20f, DefaultShiftStrengthPercent = 5f;
+        // Owner's standalone comparison, 2026-10-05 (tools/testing/CrashFeel, F):
+        // the push with a 25 Hz rattle at half its magnitude felt most realistic.
+        public const int RattleFrequency = 25, RattleDurationMs = 250, RattleFadeMs = 150;
+        public const float RattleShare = .5f;
         private readonly ILandingOutput _output;
         private readonly Func<double> _clock;
         private readonly Action<ImpactDelivery> _observe;
-        private int _slot = -1, _crashSlot = -1;
-        private bool _attempted, _crashAttempted, _active;
+        private int _slot = -1, _crashSlot = -1, _rattleSlot = -1, _activeDurationMs = DurationMs;
+        private bool _attempted, _crashAttempted, _active, _rattleAttempted, _rattleFailed, _rattlePlaying;
         private double _endsAt, _startedAt, _gameTime, _observedTime, _playLatencyMs;
         private ImpactKind _kind;
         private bool _crashFailed;
@@ -47,6 +61,10 @@ namespace ArtOfSimRally.Mod
         private string _crashStatus = "Off";
         public string CrashStatus => _crashFailed ? "Crash kick unavailable. Toggle crash off/on while paused to retry; create a support file" : _crashStatus;
         public string ShiftStatus => _slot >= 0 ? "Ready" : Status;
+        private ICrashRattleOutput Rattle => _output as ICrashRattleOutput;
+        private bool RattleReady => Rattle != null && _rattleSlot >= 0 && !_rattleFailed;
+        public string RattleStatus => Rattle == null ? "not supported" : _rattleFailed ? "rejected by the wheel; push only"
+            : _rattleSlot >= 0 ? "ready" : _rattleAttempted ? "unavailable; push only" : "not prepared";
 
         // Production supplies Stopwatch time, independent of Unity's cached frame
         // time. Tests may supply a deterministic clock, or use the observed time.
@@ -87,6 +105,11 @@ namespace ArtOfSimRally.Mod
                     _crashStatus = "Ready";
                 }
             }
+            if (crash && idle && Rattle != null && _crashSlot >= 0 && _rattleSlot < 0 && !_rattleAttempted)
+            {
+                _rattleAttempted = true;
+                _rattleSlot = Rattle.CreateRattle(RattleFrequency, RattleDurationMs);
+            }
         }
 
         public bool Trigger(float intensity, float strengthPercent, double now)
@@ -110,6 +133,7 @@ namespace ArtOfSimRally.Mod
             Events++; LastMagnitude = magnitude;
             before = Clock;
             if (!Finite(before) || before < 0) return false;
+            _activeDurationMs = DurationMs; _rattlePlaying = false;
             bool accepted = _output.Play(kind, Slot(kind), magnitude, kind == ImpactKind.Crash ? 0 : Frequency);
             double after = Clock;
             _playLatencyMs = Finite(after) && after >= before ? (after - before) * 1000 : -1;
@@ -117,9 +141,16 @@ namespace ArtOfSimRally.Mod
             if (accepted)
             {
                 // Starting expiry before a slow native call could truncate the
-                // effect. The driver still enforces its own 120 ms hard end.
+                // effect. The driver still enforces each effect's own hard end.
                 Accepted++; _active = true; _startedAt = after; _gameTime = now;
-                _endsAt = after + DurationMs / 1000.0;
+                if (kind == ImpactKind.Crash && RattleReady)
+                {
+                    // The push already owns the cue; a rejected rattle leaves it push-only.
+                    if (Rattle.PlayRattle(_rattleSlot, magnitude * RattleShare, RattleFrequency, RattleFadeMs))
+                    { _rattlePlaying = true; _activeDurationMs = RattleDurationMs; }
+                    else { Rattle.StopRattle(_rattleSlot); _rattleFailed = true; }
+                }
+                _endsAt = after + _activeDurationMs / 1000.0;
                 if (kind == ImpactKind.Landing) Status = "Ready (last landing accepted by wheel driver)";
                 else if (kind == ImpactKind.Shift) Status = "Ready (last shift accepted by wheel driver)";
                 else _crashStatus = "Ready (last crash accepted by wheel driver)";
@@ -165,21 +196,28 @@ namespace ArtOfSimRally.Mod
                 Status = "Vibration stop failed; toggle both vibration features off, then on while paused to retry";
                 reason = "stop-failed/" + reason;
             }
+            if (_rattlePlaying && _rattleSlot >= 0 && !Rattle.StopRattle(_rattleSlot))
+            {
+                ReleaseAll();
+                Status = "Vibration stop failed; toggle both vibration features off, then on while paused to retry";
+                reason = "stop-failed/" + reason;
+            }
             Report("stop", reason, before);
-            _active = false;
+            _active = _rattlePlaying = false;
         }
 
         public void Shutdown(string reason = "shutdown")
         {
             Stop(reason);
-            if (_slot >= 0 || _crashSlot >= 0) ReleaseAll();
-            _attempted = _crashAttempted = _crashFailed = false;
+            if (_slot >= 0 || _crashSlot >= 0 || _rattleSlot >= 0) ReleaseAll();
+            _attempted = _crashAttempted = _crashFailed = _rattleAttempted = _rattleFailed = false;
             Status = _crashStatus = "Off";
         }
         private int Slot(ImpactKind kind) => kind == ImpactKind.Crash ? _crashSlot : _slot;
         private void ReleaseAll()
         {
-            _output.Release(); _slot = _crashSlot = -1;
+            _output.Release(); _slot = _crashSlot = _rattleSlot = -1;
+            _rattlePlaying = false; _rattleAttempted = true;
             // An output/stop failure needs an explicit reset before rebuilding.
             _attempted = _crashAttempted = true;
             _crashFailed = true;
@@ -188,6 +226,7 @@ namespace ArtOfSimRally.Mod
         {
             _observe?.Invoke(new ImpactDelivery { Kind = _kind, Action = action, Reason = reason,
                 Magnitude = LastMagnitude, PlayLatencyMs = _playLatencyMs,
+                DurationMs = _activeDurationMs, Rattle = _rattlePlaying,
                 ElapsedMs = Finite(at) && at >= _startedAt ? (at - _startedAt) * 1000 : -1 });
         }
         // Callers validate finite, positive inputs before evaluating this mapping.

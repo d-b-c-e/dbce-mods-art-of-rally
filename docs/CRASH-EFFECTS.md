@@ -1,5 +1,15 @@
 # Crash kick — 0.2.6 experimental feature
 
+**0.4.1-rc.2: push + rattle.** In a standalone comparison on 2026-10-05
+([CrashFeel](../tools/testing/CrashFeel/README.md)), the owner rated seven
+candidates at 50% on the MOZA R12. The 120 ms push with a 25 Hz rattle at half
+its magnitude (F) felt most realistic; the push alone and a 250 ms push were
+"clear", a 400 ms push and an in-steering push "too strong", a knock and a
+12 Hz crunch "faint". A crash now plays that push plus a 25 Hz sine of 250 ms at
+half the crash magnitude, fading over its last 150 ms, and owns the wheel for
+those 250 ms. If the wheel cannot create or play the rattle, the crash is the
+push alone, as before. Not yet felt in game.
+
 **Experimental and off by default in 0.2.6.** The saved
 owner drive shows head-on deceleration with almost no steering force. The new
 wheel cue addresses that missing response without changing the steering curve.
@@ -28,7 +38,7 @@ and steering strength are preserved. No SimHub helper is needed.
   continuous player motion, and disarms across pause, reset, teleport, stale
   sampling, car change or focus loss. At most eight contacts are inspected.
 - Requests a finite **120 ms constant-force pulse** in the positive X direction,
-  followed by release. This matches method A from the owner's standalone test.
+  followed by release, plus (from 0.4.1-rc.2) the 25 Hz rattle described above.
   It is a generic jolt, not collision-derived steering torque or a directional
   simulation of the car's impact.
   Landing retains its 25 Hz, 120 ms, phase-zero sine without an envelope.

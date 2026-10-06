@@ -48,7 +48,9 @@ Same T300 RS + TSS handbrake reporter (Reddit). Support file generated
 > **Crashes:** your log shows they fired, 56 of them, all accepted by the
 > wheel. The big one at the end was the strongest possible at your setting,
 > with no steering force on top. So I believe you that it's too subtle. I've
-> seen the same on my own wheel and I'm working on a stronger, longer kick.
+> seen the same on my own wheel. I compared seven kick designs on my wheel,
+> and the next build adds a short rattle to the push, which felt the most
+> like an actual hit. I'd love to know how it feels on your T300.
 >
 > **Logging:** good catch. It was still switched on from when you made a log
 > for me before. The next build turns it off by itself every time the game
@@ -58,8 +60,8 @@ Same T300 RS + TSS handbrake reporter (Reddit). Support file generated
 > **Shift cue:** great to hear, and thanks for testing the RC. Good to know
 > the default strength feels right on a T300.
 
-Before sending: confirm the "stronger, longer kick" wording matches what the
-owner decides for KI-38, and point to whichever build carries the logging fix.
+Before sending: point to the build that carries the logging fix and the push +
+rattle crash (0.4.1-rc.2 locally; not yet public).
 
 **2026-09-29 T300/TSS report on 0.2.6:** the new UI is much easier to use.
 Existing wheel/pedal/TSS bindings carried over; the inverted TSS handbrake

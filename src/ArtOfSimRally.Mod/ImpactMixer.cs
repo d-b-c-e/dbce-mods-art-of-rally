@@ -31,7 +31,8 @@ namespace ArtOfSimRally.Mod
         {
             if (delivery.Kind == ImpactKind.Crash && delivery.Action != "stop") _retryCrash = false;
             var counts = Counts(delivery.Kind); counts.HasDelivery = true; counts.Delivery = delivery;
-            if (delivery.Action == "stop" && delivery.ElapsedMs >= 0 && delivery.ElapsedMs < LandingFeedback.DurationMs)
+            int duration = delivery.DurationMs > 0 ? delivery.DurationMs : LandingFeedback.DurationMs;
+            if (delivery.Action == "stop" && delivery.ElapsedMs >= 0 && delivery.ElapsedMs < duration)
                 counts.EarlyStops++;
             _observe?.Invoke(delivery);
         }
@@ -40,6 +41,7 @@ namespace ArtOfSimRally.Mod
         public string Status(ImpactKind kind) => Enabled(kind) ?
             (kind == ImpactKind.Crash ? _feedback.CrashStatus : kind == ImpactKind.Shift ? _feedback.ShiftStatus : _feedback.Status) : "Off";
         public Counters Counts(ImpactKind kind) => _counts[(int)kind];
+        public string RattleStatus => _feedback.RattleStatus;
 
         public void Prepare(bool landing, bool crash, bool ready, bool idle)
             => Prepare(landing, crash, false, ready, idle);
