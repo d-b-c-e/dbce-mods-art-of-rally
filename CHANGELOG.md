@@ -7,6 +7,10 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Frame-rate readout (STD-023/024): settings Cameras page shows the average fps, 1% low and worst frame of the last 10 s; "Show frame rate on screen" draws a counter at the top right of the centre screen; the log gets a line every 30 s. Uses the toolkit FrameRateMonitor (vendored until the toolkit pin moves).
+
 ### Fixed
 
 - Menu button prompts (e.g. "next weather") with a wheel no longer draw a keyboard badge and a gamepad symbol on top of each other: where the game has no artwork for the wheel, the prompt shows the bound wheel button ("B12") in its keyboard badge, as the controls screen already does (KI-46). Follows the existing "text fallback for unknown controller glyphs" setting.

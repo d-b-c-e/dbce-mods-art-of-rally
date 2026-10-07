@@ -29,3 +29,6 @@ Audited 2026-10-04 (read-only standards audit); statuses below are from that aud
 | STD-019 | Menus on the centre screen; side screens only in gameplay | unchecked | added 2026-10-05 |
 | STD-020 | Standard feature checklist per game | adopted | row in dbce-project-mgmt PROJECTS.md feature checklist |
 | STD-021 | art of rally is the FFB reference | adopted | this mod is the reference: v0.4.1 at defaults (Strength 50, crash cue 120 ms push + 25 Hz rattle); not retuned to match other games |
+| STD-022 | One triple-screen selector | adopted | "Off / Single wide display / Three separate displays" (the same three-way choice, older labels) |
+| STD-023 | Frame-rate readout in the settings panel and the log | adopted | 0.4.2 candidate: Cameras page shows avg/1% low/worst of the last 10 s; log line every 30 s (toolkit FrameRateMonitor, vendored) |
+| STD-024 | On-screen frame-rate counter | adopted | 0.4.2 candidate: "Show frame rate on screen", top right of the centre screen, off by default |

@@ -54,6 +54,7 @@ namespace ArtOfSimRally.Mod
             ReadWheelInputs();
             Main.TickSettingsUi();
             ObserveFrameHealth();
+            TickFrameRate();
             TelemetryPump.StopIfDisabled();
             if (!Main.Enabled)
             {
@@ -113,6 +114,15 @@ namespace ArtOfSimRally.Mod
             FrameHealth.Current.Observe(Main.Enabled && Main.Settings != null && Main.Settings.DiagnosticLogging,
                 GameState.IsDriving && Application.isFocused, Time.realtimeSinceStartup);
         }
+
+        // Unity ECalls behind non-inlined boundaries, as for frame health.
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private static void TickFrameRate() => FrameRate.Tick();
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private static void DrawFrameRate() => FrameRate.Draw();
+
+        private void OnGUI() => DrawFrameRate();
 
         private void OnApplicationQuit()
         {

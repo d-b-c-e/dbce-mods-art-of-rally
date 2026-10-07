@@ -111,6 +111,8 @@ namespace ArtOfSimRally.Mod
         public float ShiftStrength = 5f;
 
         public bool DiagnosticLogging = false;
+        /// <summary>Frame-rate counter at the top right of the centre screen (STD-024).</summary>
+        public bool ShowFrameRate = false;
 
         // Set by the device picker in the settings panel, not drawn directly.
         // The name is what persists; the index is only a tiebreaker for rigs
