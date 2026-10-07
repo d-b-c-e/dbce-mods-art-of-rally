@@ -12,8 +12,8 @@ Audited 2026-10-04 (read-only standards audit); statuses below are from that aud
 | STD-002 | Recording and playback from launch | partial | recorder tools\testing\Recorder; replay on codex/session-playback (Astra/Codex) |
 | STD-003 | Normalized FFB strength | partial | default 50 (Settings.cs:67) and shared ForceCurve, but FyReference 11500 N is per-game; awaits a family 50% calibration |
 | STD-004 | Consistent settings UX | adopted | Simple/Advanced pages, F8 Stop FFB; KI-44 bindings lock-up still open |
-| STD-005 | Camera numpad layout 8/2 9/3 4/6 7/1 +/- 5 | adopted | bf23221 on claude/camera-standards: Settings.cs defaults; CameraKeys.MigratePreviousDefaults moves exact old default sets (either tilt order, or family interim layout) on load, logged; customised sets kept; feel at the rig pending |
-| STD-006 | Camera step sizes are settings | adopted | bf23221 on claude/camera-standards: CameraMoveStep 0.02 m / CameraTiltStep 1 deg / CameraFovStep 2 deg per press, held repeat 0.35 s then 0.1 s (CameraRepeat); Advanced > Cameras sliders + Default steps; replaces held speeds; feel at the rig pending |
+| STD-005 | Camera numpad layout 8/2 9/3 4/6 7/1 +/- 5 | adopted | bf23221 on claude/camera-standards: Settings.cs defaults; CameraKeys.MigratePreviousDefaults moves exact old default sets (either tilt order, or family interim layout) on load, logged; customised sets kept; owner accepted at the rig 2026-10-06, released in v0.4.1 |
+| STD-006 | Camera step sizes are settings | adopted | bf23221 on claude/camera-standards: CameraMoveStep 0.02 m / CameraTiltStep 1 deg / CameraFovStep 2 deg per press, held repeat 0.35 s then 0.1 s (CameraRepeat); Advanced > Cameras sliders + Default steps; replaces held speeds; owner accepted at the rig 2026-10-06, released in v0.4.1 |
 | STD-007 | Triple screens in one wide window | partial | wide one-window mode exists but off by default (Triple\Settings.cs:18); no Auto; game pillarbox not hidden |
 | STD-008 | Display changes: game applies once | partial | no SetResolution; Surround size not added to the game list; separate-display mode calls Display.Activate (needs watchdog test) |
 | STD-009 | Dashboard telemetry matches the HUD | partial | HUD = 0.6 x physics; fixed in b5c8e46 (v0.4.0, codex/session-playback) but not on main, ignores speedo type, unverified at rig; docs\TELEMETRY.md:93 stale |
@@ -22,3 +22,10 @@ Audited 2026-10-04 (read-only standards audit); statuses below are from that aud
 | STD-012 | Reproduce the route and preserve original signals | unchecked | added 2026-10-05; session playback (v0.4.0) is the likely fit |
 | STD-013 | The installed build launches plainly | unchecked | added 2026-10-05 |
 | STD-014 | Request reciprocal review when progress stalls | unchecked | added 2026-10-05; process standard |
+| STD-015 | Triples on Surround and on separate monitors | unchecked | added 2026-10-05; both modes exist (wide display and three separate displays) |
+| STD-016 | Telemetry: Forza Horizon layout, on by default | unchecked | added 2026-10-05 |
+| STD-017 | Hide settings pages that have nothing to offer | unchecked | added 2026-10-05 |
+| STD-018 | Handling changes never reach online scores | unchecked | added 2026-10-05; DisableSteerAssist is off by default |
+| STD-019 | Menus on the centre screen; side screens only in gameplay | unchecked | added 2026-10-05 |
+| STD-020 | Standard feature checklist per game | adopted | row in dbce-project-mgmt PROJECTS.md feature checklist |
+| STD-021 | art of rally is the FFB reference | adopted | this mod is the reference: v0.4.1 at defaults (Strength 50, crash cue 120 ms push + 25 Hz rattle); not retuned to match other games |

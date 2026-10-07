@@ -6,7 +6,26 @@ feature or bug fix. After its candidate or final artifact passes the complete
 local automated gate, deploy it for testing without asking again. Public release
 publication and attended sign-off remain separate.
 
-## Current installation — 0.4.1-rc.2
+## Current installation and stable release — 0.4.1
+
+Installed 2026-10-07 01:08 UTC (October 6 local) with the game closed, and published
+the same archive as [v0.4.1](https://github.com/d-b-c-e/dbce-mods-art-of-rally/releases/tag/v0.4.1).
+Clean source `7c3de40dce45fe6f5c9e95aadcf88d614876cb8e` (tag `v0.4.1`); runtime source is
+identical to 0.4.1-rc.2 (`ddabada`), only documentation changed since.
+
+- Owner tested 0.4.1-rc.2 at the rig on 2026-10-06 (crash rattle, camera keys and
+  steps, first-launch logging reset) and approved release ("I approve, let's ship it").
+  The owner reported KI-46 (overlapping menu prompts) for later.
+- All 20 final gates: `results/rc-0.4.1-3b4ea6074dc14bf5bf410278307680f2/automated.json`.
+  The two original owner force captures were revalidated separately against this source
+  (215,928 assertions, zero model/device mismatches).
+- ZIP SHA-256: `8BD632E89377447B03DCC98EBA9FA44DF6AF7EF6AB3C7A17A4A892605A28BA60`;
+  the published ZIP and checksum were downloaded again and match:
+  `results/release-041-published-download/verified.json`.
+- Backup/receipt: `results/release-041-install-20261006-2008/receipt.json`. All payloads and
+  the Plugins native copy match the package; the seven protected files kept their hashes.
+- SessionTools was not re-released; the installed 0.4.0 probe folder (`Mods/ArtOfSimRally.DevRecorder`) was left as it was.
+## Previous installation — 0.4.1-rc.2
 
 Installed 2026-10-06 04:01:39 UTC with the game closed, from clean source
 `ddabadaccb02f43a93a6492b0fb647555133b33e` (pushed to main 2026-10-06; not tagged). Same as
