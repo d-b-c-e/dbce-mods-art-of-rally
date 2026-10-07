@@ -6,7 +6,20 @@ feature or bug fix. After its candidate or final artifact passes the complete
 local automated gate, deploy it for testing without asking again. Public release
 publication and attended sign-off remain separate.
 
-## Current installation — 0.4.2-rc.1 (KI-46 test build)
+## Current installation — 0.4.2-rc.2 (KI-46 prompts + frame-rate readout)
+
+Installed 2026-10-07 09:13 UTC (04:13 local) with the game closed, from clean source
+`2fbff6d9d543245925777f327d8dc5ba964f7f09` (main; not tagged). Runtime = rc.1 plus the frame-rate readout
+(STD-023/024): settings Cameras page shows the last 10 s average/1% low/worst frame, "Show frame rate on screen"
+(off by default) draws a counter at the top right of the centre screen, the log gets a line every 30 s.
+
+- All 20 offline gates: `results/rc-0.4.2-rc.2-6a84523d87da458596c77d4050fa0743/automated.json`.
+- ZIP SHA-256: `77E8D520522A7203C28E74119E0F6B43E268DD7182B3B025445D9C668906C43F` (fresh extraction of the gated ZIP).
+- Backup/receipt: `results/rc-042-rc2-install-20261007-0413/receipt.json`. Payloads match; the seven protected
+  files kept their hashes.
+- In-game checks pending: KI-46 prompts with the wheel; the frame-rate readout and counter.
+
+## Previous installation — 0.4.2-rc.1 (KI-46 test build)
 
 Installed 2026-10-07 06:55 UTC (01:55 local) with the game closed, from clean source
 `2922100d31f645a04383835478a867bc790a1bc8` (main; not tagged). Runtime = 0.4.1 plus KI-46:
