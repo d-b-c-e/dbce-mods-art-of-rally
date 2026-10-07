@@ -108,6 +108,7 @@ namespace ArtOfSimRally.Mod
         public static void Flush(bool shutdown=false) => Calls.Log.Add("camera-save");
     }
     internal static class InputBackend { public static void Tick() { } }
+    internal static class FrameRate { public static void Tick() { } public static void Draw() { } }
     internal static class FrameHealthPersistence
     {
         public static void Flush(bool shutdown=false) => Calls.Log.Add("diagnostic-save");
