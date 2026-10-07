@@ -5,12 +5,13 @@ wheel, pedals and a shifter. Adds force feedback from the game's tyre forces,
 direct USB controls, bonnet/bumper cameras, telemetry for SimHub, and
 angle-correct triple screens (one wide display or three separate displays).
 
-**[Download 0.4.0](https://github.com/d-b-c-e/dbce-mods-art-of-rally/releases/tag/v0.4.0)** ·
+**[Download 0.4.1](https://github.com/d-b-c-e/dbce-mods-art-of-rally/releases/tag/v0.4.1)** ·
 [Setup guide](docs/SETUP.md) · [Troubleshooting](docs/TROUBLESHOOTING.md) ·
 [Changelog](CHANGELOG.md)
 
-Version 0.4.0 merges the separate triple-screen mod into this one; its settings are on
-the Cameras page. There are five settings pages (Controls, FFB, Cameras, Telemetry and
+Version 0.4.1 moves the camera keys to a numpad layout with one step per press, adds a
+short rattle to crashes and switches support logging off at each launch. Since 0.4.0 the
+triple-screen mod is part of this one; its settings are on the Cameras page. There are five settings pages (Controls, FFB, Cameras, Telemetry and
 Help) with Simple and Advanced views. Press **F6** to open Wheel settings. Pause before
 changing bindings or devices; the game simulation does not pause automatically.
 
@@ -25,12 +26,12 @@ download is needed.
    [Unity Mod Manager](https://www.nexusmods.com/site/mods/21). Run
    `UnityModManager.exe`, select **Art of Rally**, check its game folder, and click
    **Install**. This is a one-time setup for this game.
-2. Download **ArtOfSimRally-0.4.0.zip** from the release's **Assets** section.
+2. Download **ArtOfSimRally-0.4.1.zip** from the release's **Assets** section.
    Choose the mod ZIP, not GitHub's **Source code** downloads.
 3. Right-click the ZIP → **Extract All**. Open the extracted folder and
    double-click **Install.bat**. Wait for the successful verification message.
 4. Launch art of rally through Steam. Press **F6** for Wheel settings, or
-   **Ctrl+F10** to open UMM. Check that version **0.4.0** is listed.
+   **Ctrl+F10** to open UMM. Check that version **0.4.1** is listed.
 
 The installer finds Steam libraries on other drives and preserves existing mod
 settings. If it cannot find your game, see [custom folders](docs/SETUP.md#custom-game-folder).

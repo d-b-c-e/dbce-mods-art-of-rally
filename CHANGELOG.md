@@ -7,6 +7,8 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-10-06
+
 ### Changed
 
 - Camera shortcuts use the family numpad layout: 8/2 forward/back, 9/3 up/down,

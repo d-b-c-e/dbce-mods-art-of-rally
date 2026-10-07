@@ -21,21 +21,17 @@ Severity is about the effect on driving, not on how annoying it looks:
 
 ## Open
 
-### KI-45 — "Log detail for support" stays on across launches
+### KI-46 — Menu button prompts overlap and show gamepad symbols for a wheel
 
-**Reported 2026-10-05 by the T300/TSS user on 0.2.6; fixed in 0.4.1-rc.1,
-awaiting one launch.** The user found the toggle already on before they wanted
-a log. The default has always been off (checked at every tag from v0.1.0), but
-the setting was saved, so turning it on for an earlier support request kept FFB
-trace lines going to the UMM log five times a second for every later session.
-Their native `ffb.log` had also reached 89.9 MB, mostly force traces written by
-toolkit builds before KI-37's fix, because nothing ever trims it.
+**Owner-reported 2026-10-06 on 0.4.1-rc.2 (screenshot).** Some menu prompts, for
+example "next weather", draw a keyboard badge ("space") with a PlayStation
+triangle on top of it, as if keyboard and controller prompts were both shown.
+With a wheel the prompt should name the wheel button bound to that action.
 
-0.4.1-rc.1 turns the toggle off at every launch (logged once when it was left
-on) and its help says so. `ffb.log` over 8 MB is kept as `ffb.previous.log` at
-startup. SettingsUi and Support suites cover both. Not yet confirmed in game.
-Severity: cosmetic (disk use and log noise; this user's frame health was clean).
-
+Lead, not checked: `GlyphFallback` only patches the controls screen
+(`ControlsRemapper.RefreshDisplayedGlyph`); these menu prompts come from another
+component that picks a generic gamepad glyph for an unrecognised controller
+while its keyboard badge stays on. Severity: cosmetic.
 ### KI-44 — Open game bindings locks up the game again (0.4.0-rc.3)
 
 **Owner-reported 2026-10-04, blocking for that route; KI-42 regression.** In
@@ -835,6 +831,21 @@ failed socket. Production-code loopback tests cover recovery, three parked packe
 destination switching and repeat shutdown. SimHub remains an attended gate.
 
 ## Resolved
+
+### KI-45 — "Log detail for support" stays on across launches
+
+**Reported 2026-10-05 by the T300/TSS user on 0.2.6; fixed in 0.4.1 (owner
+tested 0.4.1-rc.2 at the rig and approved it for release, 2026-10-06).** The user found the toggle already on before they wanted
+a log. The default has always been off (checked at every tag from v0.1.0), but
+the setting was saved, so turning it on for an earlier support request kept FFB
+trace lines going to the UMM log five times a second for every later session.
+Their native `ffb.log` had also reached 89.9 MB, mostly force traces written by
+toolkit builds before KI-37's fix, because nothing ever trims it.
+
+0.4.1-rc.1 turns the toggle off at every launch (logged once when it was left
+on) and its help says so. `ffb.log` over 8 MB is kept as `ffb.previous.log` at
+startup. SettingsUi and Support suites cover both.
+Severity: cosmetic (disk use and log noise; this user's frame health was clean).
 
 ### KI-42 — Open game bindings can leave the native screen without input
 
