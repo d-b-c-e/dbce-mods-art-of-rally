@@ -6,7 +6,23 @@ feature or bug fix. After its candidate or final artifact passes the complete
 local automated gate, deploy it for testing without asking again. Public release
 publication and attended sign-off remain separate.
 
-## Current installation and stable release — 0.4.1
+## Current installation — 0.4.2-rc.1 (KI-46 test build)
+
+Installed 2026-10-07 06:55 UTC (01:55 local) with the game closed, from clean source
+`2922100d31f645a04383835478a867bc790a1bc8` (main; not tagged). Runtime = 0.4.1 plus KI-46:
+menu prompts (e.g. "next weather") show the wheel button's short name ("B12") in the keyboard
+badge when the wheel has no artwork, instead of a keyboard badge over a stale gamepad glyph
+(`PromptGlyphFallback`, 1f63094).
+
+- All 20 offline gates: `results/rc-0.4.2-rc.1-01052b3ee0094e9996edcbc26774f54b/automated.json`.
+- ZIP SHA-256: `61DFCCBBDFDD3861AD4BAA49BC6131331D7F562DCCC3E93DF5EE1EB073AEA8C5` (installed from a fresh
+  extraction of `dist/ArtOfSimRally-0.4.2-rc.1.zip`; the gate's own package folder is modified by its upgrade test
+  and refuses to install, which is correct).
+- Backup/receipt: `results/rc-042-rc1-install-20261007-0154/receipt.json`. All payloads match the package; the
+  seven protected files kept their hashes.
+- In-game check pending: KI-46 prompts with the wheel (the menu "next weather" prompt and the pause menu).
+
+## Previous installation and stable release — 0.4.1
 
 Installed 2026-10-07 01:08 UTC (October 6 local) with the game closed, and published
 the same archive as [v0.4.1](https://github.com/d-b-c-e/dbce-mods-art-of-rally/releases/tag/v0.4.1).
