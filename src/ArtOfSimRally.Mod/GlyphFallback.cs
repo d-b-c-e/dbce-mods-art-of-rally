@@ -64,7 +64,7 @@ namespace ArtOfSimRally.Mod
         /// truncated. A wheel can report over a hundred buttons, so the long form
         /// would overflow the badge on most of them.
         /// </remarks>
-        private static string Shorten(string name)
+        internal static string Shorten(string name)
         {
             if (string.IsNullOrEmpty(name)) return "?";
 

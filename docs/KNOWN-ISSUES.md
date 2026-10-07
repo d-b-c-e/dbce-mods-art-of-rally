@@ -28,10 +28,14 @@ example "next weather", draw a keyboard badge ("space") with a PlayStation
 triangle on top of it, as if keyboard and controller prompts were both shown.
 With a wheel the prompt should name the wheel button bound to that action.
 
-Lead, not checked: `GlyphFallback` only patches the controls screen
-(`ControlsRemapper.RefreshDisplayedGlyph`); these menu prompts come from another
-component that picks a generic gamepad glyph for an unrecognised controller
-while its keyboard badge stays on. Severity: cosmetic.
+Cause (decompiled 2026-10-07): the prompts are `ControllerButtonDisplay`. For a
+joystick its `SetupGlpyh` switches the text off and asks `ControllerGlyphs` for
+artwork by `hardwareTypeGuid`; an unrecognised wheel has none, and the method
+then changes nothing else, so the image keeps its last (gamepad) sprite and the
+keyboard badge stays as the keyboard left it. **Fix candidate (unreleased,
+`PromptGlyphFallback`, not yet seen in game):** with no artwork, the stale image
+is hidden and the badge shows the bound wheel element ("B12"), as `GlyphFallback`
+does on the controls screen. Severity: cosmetic.
 ### KI-44 — Open game bindings locks up the game again (0.4.0-rc.3)
 
 **Owner-reported 2026-10-04, blocking for that route; KI-42 regression.** In
