@@ -61,6 +61,11 @@ foreach ($line in Get-Content -LiteralPath (Join-Path $toolkit 'MANIFEST.txt')) 
     $entries++
 }
 if ($entries -lt 3) { throw 'Incomplete toolkit manifest' }
+$toolkitComponents = Get-Content -LiteralPath (Join-Path $toolkit 'COMPONENT-PROVENANCE.json') -Raw | ConvertFrom-Json
+if ($toolkitComponents.schemaVersion -ne 1 -or
+    $toolkitComponents.nativeSha256 -cne (Get-FileHash -LiteralPath (Join-Path $toolkit 'native/WheelFfb.dll')).Hash) {
+    throw 'Native component provenance does not match the packaged toolkit bytes'
+}
 
 Write-Host "Building managed mod..." -ForegroundColor Cyan
 & dotnet build (Join-Path $root 'src\ArtOfSimRally.Mod\ArtOfSimRally.Mod.csproj') -c Release -v q --nologo -warnaserror "-p:ReleaseLabel=$Version" "-p:SourceRevisionId=$revision" "-p:BuildSourceState=$sourceState"
@@ -91,7 +96,8 @@ Copy-Item (Join-Path $root 'tools\installer\Uninstall.bat') $stage
 Copy-Item (Join-Path $root 'tools\installer\install.ps1')   $stage
 Copy-Item (Join-Path $root 'tools\installer\verify.ps1')   $stage
 $build = [ordered]@{ schema=1; release=$Version; modVersion=$modVersion; identity=$identity; sourceRevision=$revision; sourceState=$sourceState; toolkitPin=$toolkitPin; builtUtc=[DateTime]::UtcNow.ToString('o') }
-$build | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $modDir 'build.json') -Encoding UTF8
+$build['toolkitComponents'] = $toolkitComponents
+$build | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $modDir 'build.json') -Encoding UTF8
 $fileVersion = [Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $modDir 'ArtOfSimRally.Mod.dll'))
 if ($fileVersion.ProductVersion -ne $identity -or $fileVersion.FileVersion -ne "$modVersion.0") { throw 'Built assembly identity does not match candidate' }
 

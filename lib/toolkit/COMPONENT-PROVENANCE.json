@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "managedRelease": "v0.15.0",
+  "nativeSourceRevision": "c8ec2ee7fc389b2b3a20be849bc39f1203628f26",
+  "nativeSourceTag": "native-0.9.1-fleet-candidate",
+  "nativeVersion": 901,
+  "nativeExportCount": 48,
+  "nativeArchitecture": "x64",
+  "nativeSha256": "F8361A08BBE08EAAB936B37800D308CF1FC7EDAB34E2839DB16A447FE34178C5",
+  "scope": "Native-only candidate. Managed FFB and telemetry remain byte-identical to v0.15.0. No force-model or saved-tune change."
+}
