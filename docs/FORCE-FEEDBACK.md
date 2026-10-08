@@ -432,3 +432,14 @@ and game lifecycle still require attended tests. See PRE-RELEASE-TESTING.md.
 
 `FyReference` remains 11,500 N; Strength and Smoothing remain the user's existing
 settings. There is no force retune, new damper or physics change in this RC.
+
+
+## Steering strength and effect intensity (STD-027)
+
+Steering strength adjusts tyre-based cornering resistance and return-to-centre
+feel. The default 50 is the steering model's reference level, not torque in Nm.
+Crash, landing and shift strengths remain independent in Advanced FFB. Turning
+steering down does not lower those effect settings; combined output can still
+reach the wheel's limit. Use FFB Off or Stop FFB to stop all wheel effects.
+The current UI calls steering strength Strength. The family label update belongs
+in the next regular candidate; this clarification preserves the reference tune.
