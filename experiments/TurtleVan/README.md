@@ -21,7 +21,17 @@ sounds, scoring and FFB come from the selected donor car. The van's upper body a
 roof accessories do not have matching collision geometry. The first build does not
 have deforming bodywork, working gauge needles, reflective mirrors or firing weapons.
 The steering wheel follows the donor's steering; road wheels follow its animated
-transforms. A donor's wheelbase/track can visibly stretch the body.
+transforms. Since 0.1.2 the body scales uniformly to wheelbase: changing donors
+changes overall size, but preserves the van's authored proportions. Native wheel
+centres still follow the donor, so wheel-arch fit varies with track and tyre radius.
+
+### 0.1.2 shape pass
+
+The editable model is 10% wider, with a hollow rounded lower body, fuller fenders,
+rounded bumper, wraparound belt trim, larger four-panel side armor, cooling vents,
+headlight details, wheel fasteners and cannon collars. Smooth/weighted normals are
+now exported instead of flattening every triangle. The driver's eye and interior
+are widened together. No physics or collision dimensions change.
 
 ## Current evidence
 
@@ -35,7 +45,27 @@ transforms. A donor's wheelbase/track can visibly stretch the body.
 - **0.1.1 replaces Unity JsonUtility with the game's Newtonsoft.Json library.**
   The exact production loader passes a managed test against the installed model
   (31 meshes / 44,812 triangles) plus seven corrupt-data cases. In-game loading
-  of this fix, spawning, shaders, camera transitions, driving and triples await retest.
+  of this fix was subsequently confirmed: the owner's Steam screenshot shows the
+  van in-game, and the UMM log records attachment to `Car_Kei(Clone)` and cockpit
+  camera registration. The owner called it a good start. This establishes exterior
+  rendering, not full camera/cockpit/triples/transition acceptance.
+- **0.1.2 installed:** geometry checks pass at 81,916 triangles / 31 meshes, with
+  clear driver sightlines and no degenerate triangles or winding errors. Build and
+  production-loader tests pass. Its revised appearance needs a fresh game check.
+
+## Requested follow-ups
+
+- **Stage intro and cutscenes:** show the van before the start. The prototype's
+  `PlayerView` attachment gate currently postpones replacement until driving/start
+  line/pause states. Investigate attachment after native wheel initialization during
+  intro, keeping cinematic camera ownership separate. Check finish/replay too.
+- **Own lineup entry with preview:** `CarChooserManager` builds previews from
+  pre-existing class/index children via `CarMenuDisplay`, including `BonusVans`.
+  The race car is separately instantiated by `PlayerManager.CreateCar` from the
+  selected car prefab path. A new selection therefore needs both a menu display
+  and donor mapping, with save/index/unlock handling; appending a name alone is
+  insufficient. A fixed donor is a possible route to consistent fit. Investigated
+  in installed build 17584229; not implemented in this visual-detail pass.
 
 ## Files and rebuilding
 

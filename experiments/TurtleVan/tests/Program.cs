@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using TurtleVan;
 
 internal static class Program
@@ -10,8 +11,10 @@ internal static class Program
     {
         var a = AssetLoader.Load(args[0]);
         Require(a.version == 1 && a.parts.Length == 31 && a.origins.Length == 6, "model sections");
-        Require(a.parts.Sum(p => p.triangles.Length / 3) == 44812, "complete model triangle count");
-        Require(Math.Abs(a.camera[0] + .47f) < .0001f && Math.Abs(a.camera[1] - 1.88f) < .0001f, "driver eye");
+        var report=JObject.Parse(File.ReadAllText(args[1]));
+        int triangles=a.parts.Sum(p => p.triangles.Length / 3);
+        Require(triangles == (int)report["triangles"], "complete model triangle count from independent geometry validator");
+        Require(Math.Abs(a.camera[0] + .517f) < .0001f && Math.Abs(a.camera[1] - 1.88f) < .0001f, "driver eye");
         string temp = Path.GetTempFileName();
         try
         {
@@ -23,7 +26,7 @@ internal static class Program
             p.normals = null; Reject(temp, JsonConvert.SerializeObject(a));
         }
         finally { File.Delete(temp); }
-        Console.WriteLine("PASS: exact production loader parsed 31 meshes / 44,812 triangles; driver eye and 7 corrupt-model cases checked.");
+        Console.WriteLine($"PASS: exact production loader parsed {a.parts.Length} meshes / {triangles} triangles; driver eye and 7 corrupt-model cases checked.");
         Console.WriteLine("JSON library: " + typeof(JsonConvert).Assembly.FullName);
         return 0;
     }

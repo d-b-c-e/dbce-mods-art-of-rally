@@ -127,9 +127,12 @@ namespace TurtleVan
             if (wheels.Count != 4) throw new InvalidDataException("Donor must have four named wheels.");
             car = target;
             var positions = wheels.ToDictionary(p => p.Key, p => car.transform.InverseTransformPoint(p.Value.modelTransform.position));
-            float width = Mathf.Abs(positions["wheelFL"].x - positions["wheelFR"].x);
             float length = Mathf.Abs(positions["wheelFL"].z - positions["wheelRL"].z);
-            float sx = width / 1.94f, sz = length / 2.51f, sy = (sx+sz)*.5f;
+            float sz = length / 2.51f;
+            // Preserve the artist's proportions across donors. Scale the entire
+            // body uniformly from wheelbase; never squeeze it to the wheel track.
+            // Native wheel positions/radii and colliders remain the donor's.
+            float sx = sz, sy = sz;
             if (sx < .3f || sx > 3 || sz < .3f || sz > 3) throw new InvalidDataException("Unexpected donor dimensions.");
             var center = (positions["wheelFL"]+positions["wheelFR"]+positions["wheelRL"]+positions["wheelRR"])*.25f;
             visual = new GameObject("TurtleVan_VisualOnly"); visual.SetActive(false);

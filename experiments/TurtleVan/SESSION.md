@@ -54,3 +54,41 @@ The owner explicitly closed the game for deployment. Installed 0.1.1 with the ex
 probe backed up and the main mod files preserved/hash-verified; see the newest ignored
 `artifacts/install-*/receipt.json`. Fresh UMM load/green status and in-game driving
 still need the owner's next launch. No game was launched by the agent.
+
+## 0.1.2 wider body and detail pass
+
+The owner confirmed 0.1.1 was a good start and requested more detail, a wider and
+less boxy body. Located the F12 screenshot at
+`D:\Program Files (x86)\Steam\userdata\22623167\760\remote\550320\screenshots\20261007234053_1.jpg`.
+It shows the custom exterior rendered in photo mode. UMM logs confirm attachment
+to `Car_Kei(Clone)` with body scale approximately `(0.7, 0.8, 0.9)` and cockpit
+registration. That nonuniform fit contributed to the narrow silhouette. The screenshot
+does not establish cockpit/triple-screen or all lifecycle acceptance.
+
+Authored the model 10% wider, including the interior and driver eye. Replaced the
+lower panel boxes with one hollow rounded body, and added rounded fenders/bumpers,
+wraparound trim, four larger armor panels, cooling vents, lens details, wheel fasteners
+and cannon collars. Runtime export now retains smooth/weighted corner normals, with
+face-normal fallback at sharp junctions. Reduced invisible bevel tessellation to stay
+under the existing 100,000-triangle budget.
+
+During the pass the owner asked whether every donor would warp the van. Runtime
+body fit now uses a single wheelbase-derived scale on X/Y/Z. The authored proportions
+stay constant across donors; overall size and wheel-arch fit still depend on donor.
+Native wheel centers/radii, colliders and handling remain intact. The wider tires are
+visual geometry only; physical contact points do not move.
+
+The owner also requested a future lineup choice with preview and visibility during
+cutscenes. Inspected installed `CarChooserManager` and `PlayerManager`: menu preview
+objects are pre-existing class/index children, while the stage uses a selected prefab
+path. The current driving-state attachment gate explains the stock-car intro. Recorded
+two separate follow-ups in README: early visual attachment for intros, and full menu
+entry/preview plus donor/save mapping. Neither is implemented in 0.1.2.
+
+Final 0.1.2 validation: 81,916 triangles / 31 material-group meshes, zero degenerate
+triangles, zero checked normal/winding errors, centered wheel pivots and clear driver
+horizon/road sightlines. Exterior/rear/cockpit renders regenerated and exterior/cockpit
+inspected. C# build and exact production-loader test pass, including seven malformed
+asset cases; triangle-count expectation now comes from the independent geometry report.
+Installed with the game closed, previous probe backed up and main-mod hashes preserved;
+see the latest ignored install receipt. Fresh 0.1.2 in-game visual acceptance is pending.

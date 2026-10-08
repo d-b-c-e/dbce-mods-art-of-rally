@@ -2,7 +2,7 @@
 Blender axes: X right, Y forward, Z up. Runtime export: X right, Y up, Z forward.
 No game geometry is extracted. Rear/cabin are original interpretations of the reference.
 """
-import bpy, math, json, os
+import bpy, bmesh, math, json, os
 from mathutils import Vector
 from collections import defaultdict
 from pathlib import Path
@@ -37,10 +37,10 @@ for name, c in colors.items():
     M[name] = m
 
 GROUP = 'body'
-def finish(o, name, mat, bevel=0):
+def finish(o, name, mat, bevel=0, segments=3):
     o.name = name; o.data.materials.append(M[mat]); o['group'] = GROUP
     if bevel:
-        mod = o.modifiers.new('Soft toy edges', 'BEVEL'); mod.width = bevel; mod.segments = 2
+        mod = o.modifiers.new('Soft toy edges', 'BEVEL'); mod.width = bevel; mod.segments = segments
         mod = o.modifiers.new('Weighted normals', 'WEIGHTED_NORMAL')
     return o
 def box(name, pos, size, mat, bevel=.025):
@@ -50,12 +50,14 @@ def box(name, pos, size, mat, bevel=.025):
 def sphere(name, pos, scale, mat):
     bpy.ops.mesh.primitive_uv_sphere_add(segments=20, ring_count=12, location=pos)
     o = bpy.context.object; o.scale = scale
+    for p in o.data.polygons: p.use_smooth=True
     return finish(o, name, mat)
 def rod(name, a, b, r, mat, r2=None, vertices=16):
     a,b = Vector(a),Vector(b); d=b-a
+    if r<.025: vertices=min(vertices,8)
     bpy.ops.mesh.primitive_cone_add(vertices=vertices, radius1=r, radius2=r if r2 is None else r2, depth=d.length, location=(a+b)/2)
     o=bpy.context.object; o.rotation_euler=d.to_track_quat('Z','Y').to_euler()
-    return finish(o,name,mat,.008)
+    return finish(o,name,mat,min(.008,r*.2),2)
 def mesh(name, vs, faces, mat, bevel=0):
     me=bpy.data.meshes.new(name); me.from_pydata(vs,[],faces); me.update()
     o=bpy.data.objects.new(name,me); bpy.context.collection.objects.link(o)
@@ -68,30 +70,70 @@ def torus(name,pos,major,minor,mat,rot=(0,0,0)):
     bpy.ops.mesh.primitive_torus_add(major_segments=32,minor_segments=8,location=pos,major_radius=major,minor_radius=minor,rotation=rot)
     return finish(bpy.context.object,name,mat)
 
+def rounded_loop(w,l,r,z):
+    points=[]
+    for cx,cy,start in ((w-r,l-r,0),(-w+r,l-r,90),(-w+r,-l+r,180),(w-r,-l+r,270)):
+        for i in range(9):
+            t=math.radians(start+i*90/8)
+            points.append((cx+r*math.cos(t),cy+r*math.sin(t),z))
+    return points
+def hull(name,z0,z1,w,l,r,thickness,mat):
+    loops=[rounded_loop(w,l,r,z0),rounded_loop(w,l,r,z1),
+           rounded_loop(w-thickness,l-thickness,r-thickness,z0),rounded_loop(w-thickness,l-thickness,r-thickness,z1)]
+    n=len(loops[0]); vs=sum(loops,[]); fs=[]
+    for i in range(n):
+        j=(i+1)%n
+        fs.extend([(i,j,n+j,n+i),(2*n+j,2*n+i,3*n+i,3*n+j),
+                   (n+i,n+j,3*n+j,3*n+i),(j,i,2*n+i,2*n+j)])
+    o=mesh(name,vs,fs,mat)
+    bm=bmesh.new(); bm.from_mesh(o.data); bmesh.ops.recalc_face_normals(bm,faces=list(bm.faces)); bm.to_mesh(o.data); bm.free()
+    return o
+def curve_rail(name,points,r,mat):
+    # Continuous swept tube keeps the trim smooth without hundreds of bevels.
+    points=[Vector(p) for p in points]; vs=[]; fs=[]; sides=8
+    for i,p in enumerate(points):
+        d=(points[min(i+1,len(points)-1)]-points[max(i-1,0)]).normalized()
+        axis=Vector((0,0,1)) if abs(d.z)<.9 else Vector((0,1,0))
+        n=d.cross(axis).normalized(); b=d.cross(n)
+        for j in range(sides):
+            t=j*math.tau/sides; vs.append(tuple(p+r*(math.cos(t)*n+math.sin(t)*b)))
+    for i in range(len(points)-1):
+        for j in range(sides):
+            k=(j+1)%sides; fs.append((i*sides+j,i*sides+k,(i+1)*sides+k,(i+1)*sides+j))
+    fs.extend([tuple(reversed(range(sides))),tuple((len(points)-1)*sides+j for j in range(sides))])
+    o=mesh(name,vs,fs,mat)
+    for p in o.data.polygons: p.use_smooth=p.index<len(fs)-2
+
 # Separate wall panels leave a real hollow cabin, including open wheel wells.
 box('Floor',(0,0,.65),(1.82,3.94,.14),'dash')
-box('Front lower body',(0,1.99,1.16),(1.91,.14,.93),'paint',.055)
+# A hollow rounded shell gives actual quarter-panel curvature; thin cubes could
+# not carry a large bevel because their thickness clamped the rounding radius.
+lower=hull('Rounded lower body',.68,1.60,.985,2.055,.25,.095,'paint')
+for y in (-1.26,1.25):
+    bpy.ops.mesh.primitive_cylinder_add(vertices=48,radius=.575,depth=2.65,location=(0,y,.5),rotation=(0,math.pi/2,0))
+    cutter=bpy.context.object
+    bo=lower.modifiers.new('Open wheel arch','BOOLEAN'); bo.operation='DIFFERENCE'; bo.object=cutter
+    bpy.context.view_layer.objects.active=lower
+    bpy.ops.object.modifier_apply(modifier=bo.name); bpy.data.objects.remove(cutter,do_unlink=True)
+mod=lower.modifiers.new('Soft body edges','BEVEL'); mod.width=.018; mod.segments=3
+lower.modifiers.new('Body normals','WEIGHTED_NORMAL')
 box('Rear wall',(0,-1.98,1.46),(1.91,.13,1.74),'paint',.04)
 box('Rear inset door',(0,-2.055,1.36),(1.44,.05,1.13),'highlight')
 rod('Rear door split',(0,-2.09,.87),(0,-2.09,1.87),.014,'paint')
 for x in (-.96,.96):
-    side=box('Side wall', (x,0,1.12),(.11,3.92,.88),'paint',.025)
     for y in (-1.26,1.25):
-        bpy.ops.mesh.primitive_cylinder_add(vertices=40,radius=.575,depth=.35,location=(x,y,.5),rotation=(0,math.pi/2,0))
-        cutter=bpy.context.object
-        bo=side.modifiers.new('Open wheel arch','BOOLEAN'); bo.operation='DIFFERENCE'; bo.object=cutter
-        bpy.context.view_layer.objects.active=side
-        bpy.ops.object.modifier_apply(modifier=bo.name); bpy.data.objects.remove(cutter,do_unlink=True)
-        # Arched metal lip around the top of each opening.
+        # Fuller rounded fender strip follows the open wheel arch.
         vs=[]
         for i in range(21):
             t=math.pi*i/20
-            for r in (.57,.65): vs.append((x*1.025,y+math.cos(t)*r,.5+math.sin(t)*r))
-        fs=[(i*2,i*2+1,i*2+3,i*2+2) for i in range(20)]
+            for j in range(5):
+                u=j/4; r=.578+.09*u
+                vs.append((x*(1.032+.035*math.sin(math.pi*u)),y+math.cos(t)*r,.5+math.sin(t)*r))
+        fs=[(i*5+j,i*5+j+1,(i+1)*5+j+1,(i+1)*5+j) for i in range(20) for j in range(4)]
         mesh('Wheel arch trim',vs,[tuple(reversed(f)) for f in fs] if x<0 else fs,'highlight')
     box('Rear upper side',(x,-.95,1.97),(.105,2.02,.87),'paint')
     box('Sliding door seam',(x*1.066,-.23,1.15),(.018,.014,.62),'seam',0)
-    box('Cab lower door',(x*1.013,.61,1.25),(.03,.92,.51),'highlight',.012)
+    box('Cab lower door',(x*1.04,.61,1.25),(.035,.92,.51),'paint',.015)
     box('Door pull',(x*1.057,.31,1.53),(.04,.17,.045),'metal',.015)
     box('Side runner',(x*1.085,0,.56),(.22,1.37,.09),'shell')
     # Side window posts connect windshield to a closed rear cabin.
@@ -101,12 +143,26 @@ for x in (-.96,.96):
     box('Side glazing',(x,.83,2.02),(.012,1.48,.67),'glass',0)
     box('Side mirror',(x*1.23,1.46,1.99),(.13,.075,.29),'metal')
     rod('Mirror bracket',(x,1.4,1.94),(x*1.23,1.46,1.96),.022,'metal')
-    for y in (-1.6,-1.2,-.8):
-        box('Side armor panel',(x*1.07,y,1.94),(.07,.29,.48),'highlight',.022)
+    # Four larger raised panels echo the toy's armored sliding side door.
+    box('Armored door backing',(x*1.07,-.67,1.61),(.055,1.08,1.08),'paint',.02)
+    for y in (-.94,-.40):
+        for z in (1.35,1.88):
+            box('Side armor panel',(x*1.11,y,z),(.09,.40,.39),'highlight',.04)
+    box('Rear vent recess',(x*1.065,-1.64,1.96),(.045,.39,.39),'seam',.015)
+    for z in (1.82,1.89,1.96,2.03,2.10):
+        box('Rear cooling louvre',(x*1.11,-1.64,z),(.095,.32,.035),'paint',.013)
+    for y in (-1.03,-.32):
+        for z in (1.18,2.07): sphere('Armor fastener',(x*1.17,y,z),(.009,.014,.014),'metal')
+    # Door perimeter and trim provide readable surface detail from the chase view.
+    curve_rail('Cab door outline',[(x*1.042,.09,.88),(x*1.042,.09,1.48),(x*1.042,1.07,1.48)],.009,'metal')
     box('Rear lamp',(x*.79,-2.075,1.05),(.20,.055,.16),'red')
     rod('Roof beacon post',(x*.85,1.63,2.46),(x*.85,1.63,2.72),.04,'highlight')
     rod('Beacon housing',(x*.85,1.44,2.74),(x*.85,1.78,2.74),.1,'highlight')
     rod('Beacon lens',(x*.85,1.78,2.74),(x*.85,1.80,2.74),.079,'red')
+    torus('Beacon lens guard',(x*.85,1.81,2.74),.084,.007,'highlight',(math.pi/2,0,0))
+
+for height,r,mat in ((1.60,.06,'highlight'),(1.48,.012,'paint')):
+    pts=rounded_loop(1.014,2.078,.26,height); curve_rail('Wraparound belt moulding',pts+[pts[0]],r,mat)
 
 # Split windscreen, with thin transparent panes and rubber trim.
 for x in (-.47,.47):
@@ -117,8 +173,9 @@ rod('Windshield sill',(-.96,1.98,1.58),(.96,1.98,1.58),.055,'highlight')
 for x in (-.46,.46): rod('Wiper',(x-.24,1.972,1.64),(x+.23,1.973,1.70),.012,'rubber')
 box('Cab roof',(0,.26,2.43),(2.08,3.85,.13),'shell',.045)
 box('Front visor',(0,1.95,2.42),(2.18,.52,.085),'shell')
+curve_rail('Roof rain gutter',[(-1.043,-1.66,2.44),(-1.043,1.75,2.44),(-.97,1.97,2.44),(.97,1.97,2.44),(1.043,1.75,2.44),(1.043,-1.66,2.44)],.025,'shell_light')
 box('Rear bumper',(0,-2.11,.64),(1.99,.22,.24),'shell')
-box('Front bumper',(0,2.14,.66),(2.05,.24,.34),'shell',.055)
+box('Front bumper',(0,2.14,.66),(2.12,.29,.37),'shell',.105)
 
 # Shell roof: separated curved green plates over a dark base.
 sphere('Shell dark base',(0,-.70,2.48),(.98,1.27,.47),'seam')
@@ -144,6 +201,11 @@ for x in (-.61,.61):
     sphere('Cannon socket',a,(.17,.20,.15),'metal')
     rod('Cannon breech',a,b,.11,'metal',.075)
     rod('Cannon barrel',b,c,.034,'metal')
+    for t in (.12,.22,.77):
+        start=Vector(b).lerp(Vector(c),t); end=Vector(b).lerp(Vector(c),t+.025)
+        rod('Cannon barrel collar',start,end,.047,'silver')
+    for sign in (-1,1):
+        rod('Breech inset',(x+sign*.075,-.26,2.88),(x+sign*.065,-.02,3.06),.012,'seam')
     rod('Cannon muzzle',(x,1.08,3.78),(x,1.31,3.94),.065,'metal',.025)
     sphere('Muzzle dark tip',(x,1.32,3.945),(.025,.025,.025),'rubber')
 rod('Radar mast',(0,.72,2.48),(0,.72,3.03),.028,'metal')
@@ -158,6 +220,10 @@ label('TURTLES badge','TURTLES',(0,2.244,1.16),.105,'highlight')
 for x in (-.73,.73):
     rod('Headlight bezel',(x,2.075,1.07),(x,2.15,1.07),.15,'silver')
     rod('Headlight glass',(x,2.15,1.07),(x,2.17,1.07),.113,'lamp')
+    torus('Headlamp gasket',(x,2.18,1.07),.118,.009,'rubber',(math.pi/2,0,0))
+    for dx in (-.05,0,.05):
+        h=math.sqrt(.095**2-dx**2)
+        rod('Lens flute',(x+dx,2.175,1.07-h),(x+dx,2.175,1.07+h),.003,'silver',vertices=6)
     rod('Marker light',(x,2.078,1.40),(x,2.12,1.40),.038,'red')
     # Curved individual teeth follow an almond-shaped, black cartoon mouth.
     sign=1 if x>0 else -1
@@ -224,6 +290,23 @@ for side,x in (('L',-.97),('R',.97)):
             t=i*math.tau/24
             tread=box('Tread',(x,y+math.sin(t)*.488,.5+math.cos(t)*.488),(.255,.022,.011),'rubber',.002)
             tread.rotation_euler.x=-t
+        for i in range(5):
+            t=i*math.tau/5
+            sphere('Wheel lug',(out+(-.027 if x<0 else .027),y+math.sin(t)*.17,.50+math.cos(t)*.17),(.012,.018,.018),'silver')
+
+# Width is authored into every part, including cabin and eye marker, so the
+# editable model matches the shipped asset. Tyres grow axially, not in radius.
+WIDEN=1.10
+from mathutils import Matrix
+stretch=Matrix.Diagonal((WIDEN,1,1,1))
+bpy.context.view_layer.update()
+for ob in list(bpy.context.scene.objects):
+    if ob.type not in ('MESH','FONT') or 'group' not in ob: continue
+    ob.matrix_world=stretch@ob.matrix_world
+    if ob['group'].startswith('wheel'):
+        pivot=Vector(origins[ob['group']]); pivot.x*=WIDEN
+        ob.matrix_world=Matrix.Translation(pivot)@Matrix.Diagonal((1.20,1,1,1))@Matrix.Translation(-pivot)@ob.matrix_world
+origins={k:(v[0]*WIDEN,v[1],v[2]) for k,v in origins.items()}
 
 # UV palette atlas. Every exported surface gets a real UV and a palette swatch.
 atlas=bpy.data.images.new('TurtleVan palette atlas',width=256,height=256,alpha=True)
@@ -250,12 +333,18 @@ for ob in list(bpy.context.scene.objects):
         if (corners[1]-corners[0]).cross(corners[2]-corners[0]).length < 1e-10:
             continue # Bevel junctions may contain collapsed triangles; never ship them.
         first=len(p['vertices'])//3
-        for vi in tri.vertices:
+        # At sharp tube elbows/thin bevel junctions, a weighted corner normal
+        # can point behind a triangulated face. Keep smooth normals elsewhere,
+        # but use that face's normal on these corners to avoid dark seams.
+        face=(corners[2]-corners[0]).cross(corners[1]-corners[0]).normalized()
+        for loop,vi in zip(tri.loops,tri.vertices):
             v=me.vertices[vi]; p['vertices']+=unity(ob.matrix_world@v.co-origin)
-            p['normals']+=unity((normalmat@tri.normal).normalized()); p['uv']+=list(uv)
+            normal=Vector(unity((normalmat@me.corner_normals[loop].vector).normalized()))
+            if normal.dot(face)<=.001: normal=face
+            p['normals']+=[round(v,6) for v in normal]; p['uv']+=list(uv)
         p['triangles'] += [first,first+2,first+1] # swap winding for reflected coordinate system
     ev.to_mesh_clear()
-asset=dict(version=1,units='metres',camera=unity((-.47,.40,1.88)),
+asset=dict(version=1,units='metres',camera=unity((-.47*WIDEN,.40,1.88)),
            origins=[dict(name=k,position=unity(v)) for k,v in origins.items()],
            materials=[dict(name=k,color=list(v)) for k,v in colors.items()],parts=list(parts.values()))
 (ASSETS/'turtle-van.json').write_text(json.dumps(asset,separators=(',',':')),encoding='utf-8')
@@ -279,7 +368,7 @@ cam.data.type='ORTHO'; cam.data.ortho_scale=7.1; aim(cam,(0,0,1.7))
 scene.render.filepath=str(PREVIEWS/'exterior.png'); bpy.ops.render.render(write_still=True)
 cam.location=(5,-7,4.5); aim(cam,(0,-.2,1.6)); scene.render.filepath=str(PREVIEWS/'rear.png'); bpy.ops.render.render(write_still=True)
 cam.data.type='PERSP'; cam.data.lens=19; cam.data.clip_start=.025
-cam.location=(-.47,.40,1.88); aim(cam,(-.47,6,1.88-5.6*math.tan(math.radians(6))))
+cam.location=(-.47*WIDEN,.40,1.88); aim(cam,(-.47*WIDEN,6,1.88-5.6*math.tan(math.radians(6))))
 scene.render.resolution_x=1600; scene.render.resolution_y=900
 scene.render.filepath=str(PREVIEWS/'cockpit.png'); bpy.ops.render.render(write_still=True)
 print('TURTLE VAN EXPORT: '+str(sum(len(p['triangles'])//3 for p in parts.values()))+' triangles, '+str(len(parts))+' material/group meshes')
