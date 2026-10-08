@@ -300,12 +300,13 @@ namespace ArtOfSimRally.Mod
             bool enabled = Toggle(c.ForceFeedbackEnabled, "FFB");
             if (enabled != c.ForceFeedbackEnabled) Main.SetFeedbackEnabled(enabled);
             Panel.DrawWheelPicker();
-            c.Strength = (int)Slider(c.Strength, 0, 100, 50, "Strength", 1, "%");
+            c.Strength = (int)Slider(c.Strength, 0, 100, 50, "Steering strength", 1, "%");
+            Help("Cornering resistance and return-to-centre feel. Crash, landing and shift strengths are independent.");
             Help(!c.ForceFeedbackEnabled ? "Off — choose On when ready." : !FfbNative.Ready ? FfbNative.Status :
                 "Inactive while settings are open. Feedback resumes through normal driving gates.");
             if (!SettingsViewPolicy.Advanced(c))
             {
-                if (SettingsViewPolicy.CustomFfb(c) && LinkButton("Review custom FFB tuning in Advanced >", 260)) Select(c, true, 1);
+                if (LinkButton("Steering tuning, crashes and other effects >", 350)) Select(c, true, 1);
                 return;
             }
             c.Smoothing = Slider(c.Smoothing, 0, .95f, .2f, "Smoothing", 100, "%");
