@@ -10,12 +10,6 @@ using UnityModManagerNet;
 
 namespace TurtleVan
 {
-    // Artist mesh data only. No game objects, code or physics are serialized.
-    [Serializable] public class Asset { public int version; public float[] camera; public Origin[] origins; public MaterialInfo[] materials; public Part[] parts; }
-    [Serializable] public class Origin { public string name; public float[] position; }
-    [Serializable] public class MaterialInfo { public string name; public float[] color; }
-    [Serializable] public class Part { public string group, material; public float[] vertices, normals, uv; public int[] triangles; }
-
     public static class Main
     {
         private const string Id = "ArtOfSimRally.TurtleVan";
@@ -58,8 +52,8 @@ namespace TurtleVan
             entry = mod;
             try
             {
-                asset = JsonUtility.FromJson<Asset>(File.ReadAllText(Path.Combine(entry.Path, "turtle-van.json")));
-                if (asset == null || asset.version != 1 || asset.parts == null || asset.parts.Length == 0) throw new InvalidDataException("Missing model data.");
+                asset = AssetLoader.Load(Path.Combine(entry.Path, "turtle-van.json"));
+                entry.Logger.Log($"Model loaded: schema {asset.version}, {asset.parts.Length} meshes, {asset.origins.Length} groups.");
                 harmony = new Harmony(Id); harmony.PatchAll(Assembly.GetExecutingAssembly());
                 entry.OnToggle = (m, value) => { enabled = value; if (!value) Detach(); return true; };
                 entry.OnGUI = Draw;

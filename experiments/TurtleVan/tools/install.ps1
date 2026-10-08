@@ -29,7 +29,8 @@ foreach ($row in $manifest) {
 foreach ($row in $protected) {
     if ((Get-FileHash -LiteralPath $row.path).Hash -ne $row.sha256) { throw "Owner file changed: $($row.path)" }
 }
-[ordered]@{time=(Get-Date).ToUniversalTime().ToString('o');target=$target;version='0.1.0';
+$version = (Get-Content -LiteralPath (Join-Path $package 'Info.json') -Raw | ConvertFrom-Json).Version
+[ordered]@{time=(Get-Date).ToUniversalTime().ToString('o');target=$target;version=$version;
     enabledByDefault=$false;gameLaunched=$false;runtimeVerified=$false;payload=$manifest;protectedFiles=$protected
 } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $receiptDir 'receipt.json') -Encoding utf8
 Write-Output "Installed prototype; van is OFF until enabled in UMM. Receipt: $receiptDir\receipt.json"

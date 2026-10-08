@@ -9,6 +9,10 @@ if ($Model) {
 if ($LASTEXITCODE -ne 0) { throw 'Asset validation failed' }
 & dotnet build (Join-Path $root 'src\TurtleVan.csproj') -c Release --nologo
 if ($LASTEXITCODE -ne 0) { throw 'Mod build failed' }
+& dotnet build (Join-Path $root 'tests\AssetLoader.Tests.csproj') -c Release --nologo
+if ($LASTEXITCODE -ne 0) { throw 'Loader test build failed' }
+& (Join-Path $root 'tests\bin\Release\net48\AssetLoader.Tests.exe') (Join-Path $root 'assets\turtle-van.json')
+if ($LASTEXITCODE -ne 0) { throw 'Production loader test failed' }
 $dest = Join-Path $root 'dist\ArtOfSimRally.TurtleVan'
 New-Item -ItemType Directory -Force $dest | Out-Null
 foreach ($p in @('Info.json','src\bin\Release\TurtleVan.Experimental.dll','assets\turtle-van.json','assets\palette.png')) {

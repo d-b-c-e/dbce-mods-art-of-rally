@@ -30,8 +30,12 @@ transforms. A donor's wheelbase/track can visibly stretch the body.
 - Independent mesh checks cover finite coordinates, indices, UVs, normal winding,
   triangle budget, wheel pivots and two clear driver sightlines.
 - C# candidate builds against installed game build **17584229** with warnings as errors.
-- **No live game test yet.** Successful compilation and Blender renders do not establish
-  game spawning, shader availability, camera transitions, driving or triple-screen acceptance.
+- **0.1.0 failed the owner's startup test:** UMM reported `Missing model data` and
+  could not register the settings panel. The installed JSON was valid and complete.
+- **0.1.1 replaces Unity JsonUtility with the game's Newtonsoft.Json library.**
+  The exact production loader passes a managed test against the installed model
+  (31 meshes / 44,812 triangles) plus seven corrupt-data cases. In-game loading
+  of this fix, spawning, shaders, camera transitions, driving and triples await retest.
 
 ## Files and rebuilding
 
