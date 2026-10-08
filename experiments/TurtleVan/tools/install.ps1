@@ -33,4 +33,4 @@ $version = (Get-Content -LiteralPath (Join-Path $package 'Info.json') -Raw | Con
 [ordered]@{time=(Get-Date).ToUniversalTime().ToString('o');target=$target;version=$version;
     enabledByDefault=$false;gameLaunched=$false;runtimeVerified=$false;payload=$manifest;protectedFiles=$protected
 } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $receiptDir 'receipt.json') -Encoding utf8
-Write-Output "Installed prototype; van is OFF until enabled in UMM. Receipt: $receiptDir\receipt.json"
+Write-Output "Installed prototype; choose Turtle Van at the end of Group 2. Manual overlay defaults OFF. Receipt: $receiptDir\receipt.json"

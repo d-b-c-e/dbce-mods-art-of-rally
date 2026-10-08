@@ -16,12 +16,18 @@ namespace TurtleVan
         private static UnityModManager.ModEntry entry;
         private static Harmony harmony;
         private static bool enabled, armed, failed;
+        internal static bool Enabled => enabled;
+        internal static void Log(string message) => entry.Logger.Log(message);
+        internal static void LogError(Exception error) => entry.Logger.Error(error.ToString());
         private static Asset asset;
+        internal static List<VehiclePackage> Packages { get; private set; }
+        private static VehiclePackage activePackage;
         private static GameObject visual;
         private static CarDynamics car;
         private static Transform steering;
         private static readonly Dictionary<string, Transform> groups = new Dictionary<string, Transform>();
         private static readonly Dictionary<string, Wheel> wheels = new Dictionary<string, Wheel>();
+        private static readonly Dictionary<string, Vector3> wheelOffsets = new Dictionary<string, Vector3>();
         private static readonly Dictionary<Renderer, bool> hidden = new Dictionary<Renderer, bool>();
         private static readonly List<UnityEngine.Object> resources = new List<UnityEngine.Object>();
         private static readonly FieldInfo ManagerField = typeof(GameEntryPoint).GetField("eventManager", BindingFlags.Static | BindingFlags.NonPublic);
@@ -34,7 +40,7 @@ namespace TurtleVan
         private static Quaternion savedRotation;
         private static Vector3 eyeAdjustment;
         private static float pitch = 6f, fov = 65f;
-        private static string status = "Prototype ready. Enable the van, then enter a stage or free roam.";
+        private static string status = "Choose Turtle Van at the end of Group 2, or enable the manual overlay below.";
 
         private static EventManager Manager => ManagerField?.GetValue(null) as EventManager;
         private static bool PlayerView
@@ -52,13 +58,26 @@ namespace TurtleVan
             entry = mod;
             try
             {
-                asset = AssetLoader.Load(Path.Combine(entry.Path, "turtle-van.json"));
+                Packages = VehiclePackage.Discover(entry.Path, message => entry.Logger.Error(message));
+                if (Packages.Count == 0) throw new InvalidDataException("No valid vehicle packages found.");
+                asset = Packages[0].Model;
+                Log("Loaded " + Packages.Count + " vehicle package(s).");
                 entry.Logger.Log($"Model loaded: schema {asset.version}, {asset.parts.Length} meshes, {asset.origins.Length} groups.");
                 harmony = new Harmony(Id); harmony.PatchAll(Assembly.GetExecutingAssembly());
-                entry.OnToggle = (m, value) => { enabled = value; if (!value) Detach(); return true; };
+                entry.OnToggle = (m, value) =>
+                {
+                    // Menu buttons cache array lengths. Removing a registered slot mid-menu is unsafe.
+                    if (!value && Catalog.Registered) { Log("Restart the game to unload the registered Turtle Van entry; choose another car to stop using it."); return false; }
+                    enabled = value; if (!value) Detach(); return true;
+                };
                 entry.OnGUI = Draw;
                 entry.OnUpdate = Update;
-                entry.OnUnload = m => { Detach(); harmony.UnpatchAll(Id); return true; };
+                entry.OnLateUpdate = (m, dt) =>
+                {
+                    if (visual == null || car == null) return;
+                    try { Animate(); } catch (Exception ex) { failed = true; Detach(); LogError(ex); }
+                };
+                entry.OnUnload = m => { if (Catalog.Registered) return false; Detach(); harmony.UnpatchAll(Id); return true; };
                 return true;
             }
             catch (Exception ex) { harmony?.UnpatchAll(Id); entry.Logger.Error(ex.ToString()); return false; }
@@ -67,8 +86,9 @@ namespace TurtleVan
         private static void Draw(UnityModManager.ModEntry mod)
         {
             GUILayout.Label("Turtle Van — experimental visual body and cockpit");
-            GUILayout.Label("Uses the selected car's handling and collision shape. Pause before changing the model.");
-            bool next = GUILayout.Toggle(armed, "Enable Turtle Van for this session");
+            GUILayout.Label("Choose Turtle Van at the end of Group 2. It uses the rotary kei's handling and collision shape.");
+            GUILayout.Label("The Australia DLC is required for that donor. Stock liveries do not recolor the van.");
+            bool next = GUILayout.Toggle(armed, "Manual overlay on any chosen car (this session)");
             if (next != armed) { armed = next; failed = false; if (!armed) Detach(); }
             GUILayout.Label(status);
             GUILayout.Label("Cycle the game's camera views to reach the cockpit (added after the existing views).");
@@ -94,14 +114,18 @@ namespace TurtleVan
 
         private static void Update(UnityModManager.ModEntry mod, float dt)
         {
-            if (!enabled || !armed || failed) return;
+            if (!enabled || failed) return;
             try
             {
+                Catalog.DiscoverExistingChooser();
+                var chosen = Catalog.Selected ?? (armed ? Packages[0] : null);
+                if (chosen == null) { if (visual != null) Detach(); return; }
+                if (activePackage != chosen) { Detach(); activePackage = chosen; asset = chosen.Model; }
                 var m = Manager;
                 var active = m?.playerManager?.carDynamics;
-                if (active != car || (visual != null && active == null)) Detach();
+                if (active != car || (visual != null && active == null)) { Detach(); activePackage = chosen; asset = chosen.Model; }
                 if (active == null || m.IsRestartingStage()) { ReleaseCamera(false); return; }
-                if (visual == null && PlayerView) Attach(active);
+                if (visual == null) Attach(active); // Include intro/finish cinematics once native wheels are ready.
                 if (!PlayerView || rig == null || !rig.enabled) ReleaseCamera(false);
             }
             catch (Exception ex) { failed = true; Detach(); status = "Stopped after an error; see the UMM log. Toggle off/on to retry."; entry.Logger.Error(ex.ToString()); }
@@ -128,7 +152,8 @@ namespace TurtleVan
             car = target;
             var positions = wheels.ToDictionary(p => p.Key, p => car.transform.InverseTransformPoint(p.Value.modelTransform.position));
             float length = Mathf.Abs(positions["wheelFL"].z - positions["wheelRL"].z);
-            float sz = length / 2.51f;
+            var authored = asset.origins.ToDictionary(o => o.name, o => V(o.position));
+            float sz = length / Mathf.Abs(authored["wheelFL"].z - authored["wheelRL"].z);
             // Preserve the artist's proportions across donors. Scale the entire
             // body uniformly from wheelbase; never squeeze it to the wheel track.
             // Native wheel positions/radii and colliders remain the donor's.
@@ -137,16 +162,39 @@ namespace TurtleVan
             var center = (positions["wheelFL"]+positions["wheelFR"]+positions["wheelRL"]+positions["wheelRR"])*.25f;
             visual = new GameObject("TurtleVan_VisualOnly"); visual.SetActive(false);
             visual.transform.SetParent(car.transform, false);
-            visual.transform.localPosition = center - new Vector3(0,.5f*sy,-.005f*sz);
+            var authoredCenter = (authored["wheelFL"] + authored["wheelFR"] + authored["wheelRL"] + authored["wheelRR"]) * .25f;
+            visual.transform.localPosition = center - authoredCenter * sz;
             visual.transform.localScale = new Vector3(sx,sy,sz);
 
+            PopulateModel(activePackage, visual, car.gameObject.layer, groups, resources);
+            foreach (var pair in wheels)
+            {
+                float authoredX = car.transform.InverseTransformPoint(groups[pair.Key].position).x;
+                wheelOffsets[pair.Key] = new Vector3(authoredX - positions[pair.Key].x, 0, 0);
+            }
+            steering=groups["steering"];
+            // Hide renderers only. Native physics, wheel transforms, collider objects,
+            // particles, damage scripts and native meshes remain alive and unchanged.
+            foreach (var r in car.GetComponentsInChildren<Renderer>(true))
+            {
+                if (r.transform.IsChildOf(visual.transform) || (!(r is MeshRenderer) && !(r is SkinnedMeshRenderer)) || r.name.IndexOf("shadow",StringComparison.OrdinalIgnoreCase)>=0) continue;
+                hidden[r]=r.forceRenderingOff; r.forceRenderingOff=true;
+            }
+            Animate();
+            visual.SetActive(true);
+            status=activePackage.Manifest.name+" attached to "+car.name+". Cycle camera views for the cockpit.";
+            entry.Logger.Log(status+" Body scale "+visual.transform.localScale+"; donor colliders unchanged.");
+        }
+
+        internal static void PopulateModel(VehiclePackage package, GameObject root, int layer, Dictionary<string, Transform> groups, List<UnityEngine.Object> resources)
+        {
             var texture = new Texture2D(2,2,TextureFormat.RGBA32,false); resources.Add(texture);
-            if (!ImageConversion.LoadImage(texture,File.ReadAllBytes(Path.Combine(entry.Path,"palette.png")))) throw new InvalidDataException("Palette could not be loaded.");
+            if (!ImageConversion.LoadImage(texture,File.ReadAllBytes(package.TexturePath))) throw new InvalidDataException("Palette could not be loaded.");
             texture.filterMode=FilterMode.Point;
             var shader=Shader.Find("Standard");
             if (shader == null) throw new InvalidDataException("Standard shader unavailable in this build.");
             var materials=new Dictionary<string,Material>();
-            foreach (var info in asset.materials)
+            foreach (var info in package.Model.materials)
             {
                 var mat=new Material(shader) { name="TurtleVan_"+info.name, mainTexture=texture, color=Color.white };
                 resources.Add(mat); mat.SetFloat("_Glossiness",.18f);
@@ -158,13 +206,13 @@ namespace TurtleVan
                 }
                 materials[info.name]=mat;
             }
-            foreach (var origin in asset.origins)
+            foreach (var origin in package.Model.origins)
             {
-                var t=new GameObject(origin.name).transform; t.SetParent(visual.transform,false); t.localPosition=V(origin.position); groups[origin.name]=t;
+                var t=new GameObject(origin.name).transform; t.SetParent(root.transform,false); t.localPosition=V(origin.position); groups[origin.name]=t;
             }
-            foreach (var part in asset.parts)
+            foreach (var part in package.Model.parts)
             {
-                var obj=new GameObject(part.group+"_"+part.material); obj.layer=car.gameObject.layer; obj.transform.SetParent(groups[part.group],false);
+                var obj=new GameObject(part.group+"_"+part.material); obj.layer=layer; obj.transform.SetParent(groups[part.group],false);
                 var mesh=new Mesh { name=obj.name, indexFormat=IndexFormat.UInt32 }; resources.Add(mesh);
                 mesh.vertices=Vectors(part.vertices); mesh.normals=Vectors(part.normals);
                 var uv=new Vector2[part.uv.Length/2]; for(int i=0;i<uv.Length;i++) uv[i]=new Vector2(part.uv[i*2],part.uv[i*2+1]);
@@ -173,17 +221,6 @@ namespace TurtleVan
                 var renderer=obj.AddComponent<MeshRenderer>(); renderer.sharedMaterial=materials[part.material];
                 if (part.material=="glass") renderer.shadowCastingMode=ShadowCastingMode.Off;
             }
-            steering=groups["steering"];
-            // Hide renderers only. Native physics, wheel transforms, collider objects,
-            // particles, damage scripts and native meshes remain alive and unchanged.
-            foreach (var r in car.GetComponentsInChildren<Renderer>(true))
-            {
-                if (r.transform.IsChildOf(visual.transform) || (!(r is MeshRenderer) && !(r is SkinnedMeshRenderer)) || r.name.IndexOf("shadow",StringComparison.OrdinalIgnoreCase)>=0) continue;
-                hidden[r]=r.forceRenderingOff; r.forceRenderingOff=true;
-            }
-            visual.SetActive(true);
-            status="Van attached to "+car.name+". Cycle camera views for the cockpit.";
-            entry.Logger.Log(status+" Body scale "+visual.transform.localScale+"; donor colliders unchanged.");
         }
 
         private static void Animate()
@@ -191,9 +228,13 @@ namespace TurtleVan
             foreach(var pair in wheels)
             {
                 var w=pair.Value; if(w==null || w.modelTransform==null) continue;
-                var t=groups[pair.Key]; t.position=w.modelTransform.position; t.rotation=w.modelTransform.rotation;
+                var t=groups[pair.Key];
+                // Move only the drawn wheel to the authored track. Offset in car
+                // space, never spinning wheel space; keep native suspension/steer.
+                t.position=w.modelTransform.position + car.transform.TransformVector(wheelOffsets[pair.Key]);
+                t.rotation=w.modelTransform.rotation;
                 // World size follows native tyre radius; never move the native wheel.
-                float r=w.radius/.49f;
+                float r=w.radius/activePackage.Manifest.wheelRadius;
                 var scale=visual.transform.lossyScale;
                 float worldScale=car.transform.lossyScale.y;
                 t.localScale=new Vector3(r*worldScale/scale.x,r*worldScale/scale.y,r*worldScale/scale.z);
@@ -202,12 +243,12 @@ namespace TurtleVan
         }
         private static void Drive(CarCameras current)
         {
-            if(!enabled || !armed || visual==null || car==null) return;
+            if(!enabled || visual==null || car==null) return;
             try
             {
                 // A rig aimed at a different car is never ours to modify.
                 if(current.target==null || (current.target!=car.transform && !current.target.IsChildOf(car.transform))) return;
-                Animate();
+                if (!activePackage.Manifest.cockpit) return;
                 if(rig!=current)
                 {
                     RemoveAngle(); rig=current;
@@ -252,7 +293,7 @@ namespace TurtleVan
             hidden.Clear();
             if(visual!=null) { visual.SetActive(false); UnityEngine.Object.Destroy(visual); }
             foreach(var resource in resources) if(resource!=null) UnityEngine.Object.Destroy(resource);
-            resources.Clear(); groups.Clear(); wheels.Clear(); visual=null; car=null; steering=null;
+            resources.Clear(); groups.Clear(); wheels.Clear(); wheelOffsets.Clear(); visual=null; car=null; steering=null; activePackage=null;
             status="Van off. Original car visuals restored.";
         }
         [HarmonyPatch(typeof(CarCameras),"LateUpdate")]

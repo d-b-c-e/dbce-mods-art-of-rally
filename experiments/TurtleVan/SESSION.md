@@ -92,3 +92,46 @@ inspected. C# build and exact production-loader test pass, including seven malfo
 asset cases; triangle-count expectation now comes from the independent geometry report.
 Installed with the game closed, previous probe backed up and main-mod hashes preserved;
 see the latest ignored install receipt. Fresh 0.1.2 in-game visual acceptance is pending.
+
+## 0.1.3 selection / cinematic / drawn wheel fit candidate (2026-10-08)
+
+Owner accepted 0.1.2's appearance and supplied Steam screenshot
+`20261008001505_1.jpg`; viewed it locally. It shows the front wheel tucked inside
+its wider arch. Logs confirm 0.1.2 on Car_Kei at uniform 0.9 scale. Added a fixed
+car-relative lateral offset for drawn wheels, retaining native radius, suspension,
+steering, contact patches and colliders.
+
+Implemented menu preview injection after CarChooserManager.Awake, custom list entry
+with donor-native season selection, stock-index persistence and session-only cosmetic
+identity. The fixed bundled donor remains Car_Kei (Australia DLC), Group 2. Intro
+attachment now waits only for initialized wheel transforms, not PlayerView; wheel
+animation uses UMM LateUpdate so it continues when cinematic cameras disable the
+normal car rig. Model construction is reusable between menu and race instances.
+
+Owner proposed an entire creator framework, then explicitly separated the deliverables:
+cosmetic Turtle Van first, serious Cars Extended successor later. Added a small data
+package boundary and isolated external-package validation now; physics, exporter UI,
+full SDK, independent save/stat identity and public distribution remain future work.
+See ../CustomVehicles/README.md. Researched the original Cars Extended: its own README
+reports unresolved wheel jitter and spawning failures; it is not a working dependency.
+Steam store features do not advertise Workshop, and the official tutorial supports PNG
+liveries. This full model cannot be shipped through the native PNG livery path.
+
+Connected via communicate as tara, manual delivery. Peer hula is working on portfolio /
+FFB standards; exchanged boundaries, claiming only experiments/TurtleVan and the new
+CustomVehicles planning folder. No core runtime, FFB/config or native DLL changes.
+No unattended game launch, driving or wheel-force test. Release candidate is locally
+built and tested, but menu/intro/finish/replay/wheel alignment and cockpit handback
+require the owner's next game check. Public upload destination is not selected.
+
+Final candidate verification: model budget/geometry and exact production JSON loader
+pass; package tests cover two independent package identities, duplicate/malformed
+isolation, relative-path rejection and invalid radius; native donor save mapping and
+class isolation pass; 19 Harmony targets resolve in installed build metadata. Added
+an explicit rally-complete display correction because native season identity remains
+the donor. No game runtime was executed by the agent.
+
+0.1.3 installed with the game closed. Prior probe backed up and main ArtOfSimRally
+file hashes unchanged. Receipt: `artifacts/install-20261008-003641/receipt.json`.
+Owner's next check: Group 2 -> Turtle Van, manual overlay unchecked, rotating preview,
+intro/results visibility, widened drawn wheel track, stock-car restoration and cameras.

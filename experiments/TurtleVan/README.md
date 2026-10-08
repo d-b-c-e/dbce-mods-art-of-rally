@@ -6,24 +6,30 @@ interpretation, not a verified reconstruction of cartoon production drawings.
 
 ## Try the prototype
 
-1. Launch the usual Steam art of rally installation.
-2. Open Unity Mod Manager with **Ctrl+F10**, expand **Turtle Van (experimental)**,
-   and check **Enable Turtle Van for this session**. Pause first if already driving.
-3. Enter free roam or a stage with a normal car. The model fits to that car's axles.
-4. Use the game's normal change-camera control; the cockpit is appended after the
-   stock and Art of Sim Rally views. Driver position, pitch and FOV can be adjusted
-   in the Turtle Van panel while paused.
-5. Uncheck the enable box to restore the original visuals. Every game launch
-   starts with the van off. No owner camera, control or wheel settings are saved.
+1. Launch the usual Steam art of rally installation with the probe enabled.
+2. In Free Roam or Custom Rally, choose **Group 2**, then **Turtle Van** at the end
+   of the car list. Its fixed donor is **the rotary kei**, requiring the Australia
+   DLC. Choosing this entry activates the model without checking a UMM overlay box.
+3. The candidate supplies a rotating menu model and attaches after wheel startup,
+   including stage intros. These new paths need the next attended game check.
+4. Cycle the game's cameras for the cockpit. Eye position, pitch and FOV remain
+   adjustable through **Ctrl+F10 -> Turtle Van (experimental)**.
+5. Choose a stock car to return to stock visuals. The optional **Manual overlay on
+   any chosen car (this session)** checkbox retains the earlier experiment mode.
+   Leave it unchecked when testing menu selection.
+6. Selections are remembered only in this running session. Native saves retain the
+   stock donor and index, so the next launch starts with a stock selection. Unloading
+   a registered menu slot requires restarting; remove the probe only with the game closed.
 
 This is a **visual replacement**. Handling, collision shape, wheel radius, suspension,
 sounds, scoring and FFB come from the selected donor car. The van's upper body and
 roof accessories do not have matching collision geometry. The first build does not
 have deforming bodywork, working gauge needles, reflective mirrors or firing weapons.
 The steering wheel follows the donor's steering; road wheels follow its animated
-transforms. Since 0.1.2 the body scales uniformly to wheelbase: changing donors
-changes overall size, but preserves the van's authored proportions. Native wheel
-centres still follow the donor, so wheel-arch fit varies with track and tyre radius.
+transforms, with a car-relative lateral offset to the authored arches in 0.1.3.
+Physical contact points, native wheel radius and suspension remain stock. Since 0.1.2 the body scales uniformly to wheelbase: changing donors
+changes overall size, but preserves the van's authored proportions. Native contact patches still follow the donor; the drawn wheels now follow the
+authored body width. Tire size still follows the donor radius.
 
 ### 0.1.2 shape pass
 
@@ -51,21 +57,36 @@ are widened together. No physics or collision dimensions change.
   rendering, not full camera/cockpit/triples/transition acceptance.
 - **0.1.2 installed:** geometry checks pass at 81,916 triangles / 31 meshes, with
   clear driver sightlines and no degenerate triangles or winding errors. Build and
-  production-loader tests pass. Its revised appearance needs a fresh game check.
+  production-loader tests pass. The owner
+  accepted the revised appearance in the Steam screenshot `20261008001505_1.jpg`,
+  while noting the wheels were tucked inside the wider body. UMM records uniform
+  `(0.9, 0.9, 0.9)` scale on `Car_Kei`.
 
-## Requested follow-ups
+## 0.1.3 menu and cinematic candidate
 
-- **Stage intro and cutscenes:** show the van before the start. The prototype's
-  `PlayerView` attachment gate currently postpones replacement until driving/start
-  line/pause states. Investigate attachment after native wheel initialization during
-  intro, keeping cinematic camera ownership separate. Check finish/replay too.
-- **Own lineup entry with preview:** `CarChooserManager` builds previews from
-  pre-existing class/index children via `CarMenuDisplay`, including `BonusVans`.
-  The race car is separately instantiated by `PlayerManager.CreateCar` from the
-  selected car prefab path. A new selection therefore needs both a menu display
-  and donor mapping, with save/index/unlock handling; appending a name alone is
-  insufficient. A fixed donor is a possible route to consistent fit. Investigated
-  in installed build 17584229; not implemented in this visual-detail pass.
+- Adds a separate named choice and 3D menu preview to the donor's class. Stock
+  choices remain present; choosing a custom entry maps the native season to the donor.
+- Builds previews after the native diorama initializes; temporarily removes custom
+  metadata before a new diorama Awake so native authored child indices remain valid.
+- Hides the donor body as soon as all native wheel transforms exist, including intro
+  states. Wheel visuals animate independently of the driving camera during cinematics.
+- Drawn wheel centers move outward to the authored arches. No physical wheel or
+  collider is repositioned. The widened appearance is still a cosmetic configuration.
+- `vehicle.json` separates identity/donor/artwork from the runtime. The loader also
+  accepts data-only folders under `Vehicles/<id>/vehicle.json` as an experimental
+  foundation. The bundled Turtle Van is the only attended release candidate.
+- The rally-complete display selects the custom preview while season data retains
+  its native donor identity.
+- Menu/save mapping and package validation pass managed tests. All 19 Harmony targets are
+  checked against the installed assemblies. Offline tests do **not** establish menu
+  rendering, cutscene coverage, wheel alignment or cockpit/triple acceptance.
+
+The owner requested **two separate deliverables**: finish the cosmetic Turtle Van
+first; then a serious custom-vehicle framework with creator tooling and physical
+vehicle definitions. See [the framework plan](../CustomVehicles/README.md).
+No public upload has occurred. Steam does not advertise Workshop support for this
+app; the [official custom livery tutorial](https://steamcommunity.com/app/550320/discussions/0/3108015514308229529/)
+covers PNG skins. This geometry mod requires UMM distribution as a downloadable mod.
 
 ## Files and rebuilding
 
@@ -73,6 +94,7 @@ are widened together. No physics or collision dimensions change.
 - `assets/turtle-van.glb`: portable preview/import model.
 - `tools/model.py`: deterministic procedural construction and runtime export.
 - `assets/turtle-van.json` + `palette.png`: original model only; no game assets.
+- `vehicle.json`: versioned identity, donor, texture/model files, wheel radius and cockpit flag.
 - `src/`: independent development UMM probe, inside the existing game repository.
 - `previews/`: rendered views and validation evidence.
 
@@ -91,7 +113,10 @@ released for cinematics, stage transitions, disabling, unloading and normal view
 
 ## Next attended check
 
-Start with free roam, then check the exterior, four moving wheels, clear cockpit,
+Start with Group 2 -> Turtle Van, verify its rotating preview, then enter a stage
+and confirm it is already the van during the intro. Check the outward wheel fit
+while stopped, steering and driving; choose a stock car and confirm restoration.
+Then check four moving wheels, clear cockpit,
 normal camera cycling, disabling/restoration, pause, restart, stage finish/replay,
 and return to menu. Check all three rendered screens separately. If the mod refuses
 to attach or shows pink/missing geometry, keep the UMM log for diagnosis.

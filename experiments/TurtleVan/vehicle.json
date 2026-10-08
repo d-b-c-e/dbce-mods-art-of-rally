@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "id": "dbce.turtle-van",
+  "name": "Turtle Van",
+  "author": "d-b-c-e",
+  "donorPrefab": "Car_Kei",
+  "model": "turtle-van.json",
+  "texture": "palette.png",
+  "wheelRadius": 0.49,
+  "cockpit": true
+}

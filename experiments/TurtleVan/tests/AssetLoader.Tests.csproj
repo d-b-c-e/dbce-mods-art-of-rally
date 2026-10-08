@@ -8,6 +8,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="..\src\AssetData.cs" Link="AssetData.cs" />
+    <Compile Include="..\src\VehiclePackage.cs" Link="VehiclePackage.cs" />
+    <Compile Include="..\src\SelectionState.cs" Link="SelectionState.cs" />
     <Reference Include="Newtonsoft.Json"><HintPath>$(GameDir)\artofrally_Data\Managed\Newtonsoft.Json.dll</HintPath><Private>true</Private></Reference>
   </ItemGroup>
 </Project>
