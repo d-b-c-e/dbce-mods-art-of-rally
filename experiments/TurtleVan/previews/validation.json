@@ -1,0 +1,27 @@
+{
+  "triangles": 44812,
+  "material_group_meshes": 31,
+  "degenerate_triangles": 0,
+  "normal_winding_mismatches": 0,
+  "driver_sightlines": {
+    "horizon": "clear through windshield",
+    "road_center": "clear through windshield"
+  },
+  "minimum": [
+    -1.2458,
+    0.006500000000000006,
+    -2.22
+  ],
+  "maximum": [
+    1.2458,
+    3.97,
+    2.304
+  ],
+  "game_runtime_tested": false,
+  "sha256": {
+    "palette.png": "f67c02d3a27388943679a99b146f2cdf6e32c400892182e118c45365acbbbfa7",
+    "turtle-van.blend": "485bb571bd8c220d3bcf53590d0963223ab5f133763208a699d43f110cf4b49f",
+    "turtle-van.glb": "5aa1f0b5c875f60a2791b04456b42365bfaa14b9abb03aae495334aa3900aa6e",
+    "turtle-van.json": "001237e55b445845f2b880ee147fe71b8d27ada725e956bc94f4fffb27d38de8"
+  }
+}
