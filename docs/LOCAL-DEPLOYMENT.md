@@ -6,7 +6,27 @@ feature or bug fix. After its candidate or final artifact passes the complete
 local automated gate, deploy it for testing without asking again. Public release
 publication and attended sign-off remain separate.
 
-## Current installation — 0.4.2-rc.2 (KI-46 prompts + frame-rate readout)
+## Current installation — 0.4.2-rc.3 (steering wording + native lifecycle)
+
+Installed October 8, 09:26 UTC from clean source
+`914ea3a983aa52bd78cc0cf8416968db9f0b10b6`. Includes the Steering strength label
+and visible effects/tuning link, plus reviewed native 901 / 48-export lifecycle
+fixes. Managed toolkit remains v0.15.0; force models and owner tune are unchanged.
+
+- All 20 offline gates and both original force captures pass (215,928 corpus
+  assertions, zero model/device mismatch).
+- ZIP SHA-256: `16F79235A23039720D5D046CB9C9A541959BF23659B961968FA696DB7319B200`.
+- Backup/receipt: `results/native901-20261008/`; exact payloads and second native
+  copy verified. 11 protected files unchanged.
+- Original owner session 5 cold replay passes all 13,455 driving poses, normal
+  exit 0, no gear mismatch/divergence. All 58 raw preferences and three owner
+  files restored and independently compared.
+- Physical output muted; UI rendering, device recovery and feel remain attended
+  checks. Public stable remains 0.4.1; this native component pin is a local RC.
+
+See [native adoption evidence](reviews/2026-10-08-native-lifecycle-adoption.md).
+
+## Previous installation — 0.4.2-rc.2 (KI-46 prompts + frame-rate readout)
 
 Installed 2026-10-07 09:13 UTC (04:13 local) with the game closed, from clean source
 `2fbff6d9d543245925777f327d8dc5ba964f7f09` (main; not tagged). Runtime = rc.1 plus the frame-rate readout
