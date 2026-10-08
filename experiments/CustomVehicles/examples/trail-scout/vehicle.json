@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 2,
+  "id": "dbce.trail-scout",
+  "name": "Trail Scout",
+  "author": "DBCE",
+  "version": "0.2.0",
+  "description": "Original compact trail wagon and editable creator example. Physics definitions are experimental and locked in the offline candidate.",
+  "donorPrefab": "Car_Mini",
+  "model": "model.json",
+  "texture": "palette.png",
+  "preview": "preview.png",
+  "wheelRadius": 0.38,
+  "cockpit": true,
+  "physics": {
+    "massKg": 1350,
+    "frontWeightFraction": 0.54,
+    "inertiaScale": 1.0,
+    "centerOfMassM": [0, 0.57, 0.05],
+    "engine": {"powerKw": 115, "peakPowerRpm": 5800, "torqueNm": 220, "peakTorqueRpm": 3600, "idleRpm": 900, "limitRpm": 6500},
+    "gearbox": {"forwardRatios": [3.4, 2.1, 1.4, 1.0, 0.82], "reverseRatio": -3.1, "finalDrive": 4.1},
+    "frontAxle": {"travelM": 0.22, "springRateNPerM": 42000, "bumpDampingNsPerM": 2400, "reboundDampingNsPerM": 3900, "brakeTorqueNm": 1600},
+    "rearAxle": {"travelM": 0.24, "springRateNPerM": 36000, "bumpDampingNsPerM": 2100, "reboundDampingNsPerM": 3400, "brakeTorqueNm": 1250},
+    "dimensions": {"wheelbaseM": 2.28, "frontTrackM": 1.70, "rearTrackM": 1.70, "tireRadiusM": 0.38, "tireWidthM": 0.25},
+    "collision": {"centerM": [0, 1.08, 0], "sizeM": [1.70, 1.55, 3.72]}
+  }
+}

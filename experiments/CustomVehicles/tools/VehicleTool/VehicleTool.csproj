@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework><OutputType>Exe</OutputType><LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <GameDir Condition="'$(GameDir)' == ''">D:\Program Files (x86)\Steam\steamapps\common\artofrally</GameDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\src\Core\*.cs" Link="Core\%(Filename)%(Extension)" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" GeneratePathProperty="true" />
+    <Reference Include="System.IO.Compression" /><Reference Include="System.IO.Compression.FileSystem" />
+  </ItemGroup>
+  <Target Name="CopyDependencyLicense" AfterTargets="Build">
+    <Copy SourceFiles="$(PkgNewtonsoft_Json)\LICENSE.md" DestinationFiles="$(OutDir)Newtonsoft.Json.LICENSE.md" />
+  </Target>
+</Project>

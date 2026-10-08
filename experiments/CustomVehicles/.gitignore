@@ -1,0 +1,6 @@
+artifacts/
+dist/
+bin/
+obj/
+__pycache__/
+*.blend1

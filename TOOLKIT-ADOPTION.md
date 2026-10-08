@@ -33,3 +33,14 @@ Audited 2026-10-04 (read-only standards audit); statuses below are from that aud
 | STD-023 | Frame-rate readout in the settings panel and the log | adopted | 0.4.2 candidate: Cameras page shows avg/1% low/worst of the last 10 s; log line every 30 s (toolkit FrameRateMonitor, vendored) |
 | STD-024 | On-screen frame-rate counter | adopted | 0.4.2 candidate: "Show frame rate on screen", top right of the centre screen, off by default |
 | STD-027 | Independent steering and effect strengths | partial | Existing steering gain and crash/landing/shift amplitudes are separate. Player docs clarify the current Strength control. Runtime label and Simple effect-group discoverability are queued for the next regular candidate; no runtime, saved tune or native change in this adoption note. |
+
+## Custom-vehicle experiment evidence (2026-10-08)
+
+The separate, uninstalled [Custom Vehicles candidate](experiments/CustomVehicles/README.md)
+adds process-latched network and local result/ghost/progression guards for proposed
+physical overrides. Production prefixes and native hook contracts are checked
+offline; physical activation remains hard-locked pending attended donor/guard
+qualification. See [the evidence and remaining checks](experiments/CustomVehicles/QUALIFICATION.md).
+This is experiment-scoped STD-018 progress, not adoption by the parent release;
+the global STD-018 row remains unchecked. No main-mod settings, native FFB, game
+preferences or installed payloads changed for this candidate.

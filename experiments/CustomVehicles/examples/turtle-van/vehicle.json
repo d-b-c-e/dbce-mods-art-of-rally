@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 2,
+  "id": "dbce.turtle-van",
+  "name": "Turtle Van",
+  "author": "d-b-c-e",
+  "version": "0.2.0",
+  "description": "Fan-made Turtle Van with the revised 0.1.4 window geometry. Experimental physical proposal; runtime writes remain locked pending qualification.",
+  "donorPrefab": "Car_Kei",
+  "model": "model.json",
+  "texture": "palette.png",
+  "preview": "preview.png",
+  "wheelRadius": 0.49,
+  "cockpit": true,
+  "physics": {
+    "massKg": 1800,
+    "frontWeightFraction": 0.48,
+    "centerOfMassM": [0, 0.76, 0],
+    "inertiaScale": 1.15,
+    "engine": {"powerKw": 165, "peakPowerRpm": 5500, "torqueNm": 340, "peakTorqueRpm": 3200, "idleRpm": 850, "limitRpm": 6200},
+    "gearbox": {"forwardRatios": [3.5, 2.1, 1.4, 1.0, 0.8], "reverseRatio": -3.4, "finalDrive": 4.2},
+    "frontAxle": {"travelM": 0.25, "springRateNPerM": 55000, "bumpDampingNsPerM": 3200, "reboundDampingNsPerM": 4800, "brakeTorqueNm": 1900},
+    "rearAxle": {"travelM": 0.25, "springRateNPerM": 60000, "bumpDampingNsPerM": 3500, "reboundDampingNsPerM": 5200, "brakeTorqueNm": 1700},
+    "dimensions": {"wheelbaseM": 2.51, "frontTrackM": 2.134, "rearTrackM": 2.134, "tireRadiusM": 0.49, "tireWidthM": 0.3696},
+    "collision": {"centerM": [0, 1.57, 0], "sizeM": [2.28, 2.25, 4.22]}
+  }
+}
