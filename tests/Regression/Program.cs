@@ -168,13 +168,14 @@ static class Program
         Check(NativeDiagnostics.Describe("UnityForceFeedback.dll").Contains("not loaded"), "inspection loaded native DLL");
         Check(WheelFfbNative.Load(directory, "UnityForceFeedback.dll"), WheelFfbNative.LastError);
         Check(!WheelFfbNative.Ready, "binding unexpectedly acquired a device");
-        // 0.8.0 adds finite constant pulses without removing prior exports.
-        Check(WheelFfbNative.Version == 800, "native component changed; review candidate ABI");
+        // Reviewed native-only 0.9.1 candidate retains every v0.15.0 wrapper export.
+        // Load and inspect only: this regression must never acquire a device.
+        Check(WheelFfbNative.Version == 901, "native component changed; review candidate ABI");
         Check(WheelFfbNative.SupportsPeriodicBursts, "finite periodic burst API is unavailable");
         Check(WheelFfbNative.SupportsShapedPeriodicBursts, "shaped finite burst API is unavailable");
         Check(WheelFfbNative.SupportsConstantBursts, "finite constant burst API is unavailable");
         string description = NativeDiagnostics.Describe("UnityForceFeedback.dll");
-        Check(description.Contains("0.8.0"), "native version decoding");
+        Check(description.Contains("0.9.1"), "native version decoding");
         Check(description.Contains(NativeDiagnostics.FileHash(source)), "mapped DLL hash");
         Check(description.Contains(alias), "mapped DLL path");
         Check(NativeDiagnostics.Describe("kernel32.dll").Contains("export missing"), "missing-export fallback");
