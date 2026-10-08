@@ -41,6 +41,20 @@ are widened together. No physics or collision dimensions change.
 
 ## Current evidence
 
+- **0.1.3 owner check:** Steam screenshots `20261008004619_1.jpg` and
+  `20261008004819_1.jpg` show the named Group 2 menu entry with its model preview
+  and the cockpit while driving. The owner described the result as great, with a
+  remaining window geometry mismatch. Logs confirm menu index 8, donor index 7,
+  selection, attachment and cockpit registration. This does not independently
+  establish every cinematic/replay/transition or triple-screen path.
+- **0.1.4 window fit:** trapezoidal side panes follow the front pillars; front
+  panes, divider, sill, header and wipers share one windshield rake. Glass has
+  thin closed geometry for both exterior and interior views, with seated edges
+  and rubber seals. Exterior/cockpit renders inspected; 82,804 triangles / 31
+  meshes, no degenerates or checked winding errors, both driver sightlines clear.
+  Build, production-loader/package tests and all 19 hook checks pass. Installed
+  with a previous-probe backup; fresh in-game appearance remains unverified.
+
 - Editable Blender model, portable GLB, palette PNG and runtime mesh JSON generated.
 - Exterior, rear and cockpit previews rendered and inspected in Blender.
 - Independent mesh checks cover finite coordinates, indices, UVs, normal winding,

@@ -135,3 +135,30 @@ the donor. No game runtime was executed by the agent.
 file hashes unchanged. Receipt: `artifacts/install-20261008-003641/receipt.json`.
 Owner's next check: Group 2 -> Turtle Van, manual overlay unchecked, rotating preview,
 intro/results visibility, widened drawn wheel track, stock-car restoration and cameras.
+
+## 0.1.4 window fit (2026-10-08)
+
+Owner called 0.1.3 great progress and noted window geometry did not fit the body.
+Viewed new Steam screenshots: `20261008004619_1.jpg` confirms the Group 2 Turtle
+Van entry and 3D preview; `20261008004819_1.jpg` shows cockpit rendering while
+driving. Logs confirm slot 8 -> donor 7, selection, body attachment and cockpit
+registration. Broader cutscene/finish/replay/camera-handback acceptance is still
+not individually observed.
+
+The model's side glass was a rectangular box ending short of the sloping A pillar;
+the windshield used separate positions/rakes from its frame and left edge gaps.
+Replaced side glass with fitted trapezoids, used one shared windshield rake for
+pillars/divider/glass/sill/header/wipers, and added narrow seals and upper rails.
+Thin closed panes provide outward and inward faces without relying on one-sided
+surface visibility. No runtime behavior, physics, camera position or wheel fit change.
+
+Regenerated Blender/GLB/runtime JSON and all three previews. Inspected exterior
+and cockpit. Geometry passes at 82,804 triangles / 31 meshes, zero degenerate
+triangles and checked winding errors; horizon/road sightlines remain clear. The
+exact production loader, package/selection tests, warnings-as-errors build and all
+19 installed-game patch target checks pass.
+
+Installed with game closed; previous prototype backed up and main-mod hashes
+unchanged. Receipt: `artifacts/install-20261008-005252/receipt.json`. No game or
+wheel-force launch. Fresh 0.1.4 visual acceptance remains owner-pending. Hula was
+notified before the scoped build/install/commit window using hcom (tara).

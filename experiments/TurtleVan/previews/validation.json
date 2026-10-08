@@ -1,5 +1,5 @@
 {
-  "triangles": 81916,
+  "triangles": 82804,
   "material_group_meshes": 31,
   "degenerate_triangles": 0,
   "normal_winding_mismatches": 0,
@@ -20,8 +20,8 @@
   "game_runtime_tested": false,
   "sha256": {
     "palette.png": "f67c02d3a27388943679a99b146f2cdf6e32c400892182e118c45365acbbbfa7",
-    "turtle-van.blend": "d319c6379089a1f69dff70ae45f05beea705420f7d683a01eed7d1e3a1869803",
-    "turtle-van.glb": "3784d99c3c628f3d247bed36c03066fe8a95c7585deee69692a37add16448fd4",
-    "turtle-van.json": "bf12320cefa9eff094c52fde800da98917b2c1a5aeaaece1434515f860beb6fa"
+    "turtle-van.blend": "d223e9673ebfee05b518e6f7d0eba27553acfba239a9b0ae40548f5f5cd25d7f",
+    "turtle-van.glb": "2f77ddb48973f9b670799de69b91261c0b556eb07a0cc7cb3bd07a40a4aa000c",
+    "turtle-van.json": "db3100e3dd38b7e1d07893feef7ebd9607d56b4a1152940df6e79bfefe84657d"
   }
 }

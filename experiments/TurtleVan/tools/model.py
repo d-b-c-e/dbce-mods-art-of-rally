@@ -104,6 +104,22 @@ def curve_rail(name,points,r,mat):
     o=mesh(name,vs,fs,mat)
     for p in o.data.polygons: p.use_smooth=p.index<len(fs)-2
 
+def window_pane(name, corners, normal):
+    # A thin closed pane has faces visible from both the street and driver seat.
+    # All edges tuck into the seal instead of ending loose inside the opening.
+    normal=Vector(normal).normalized()
+    vs=[tuple(Vector(p)+normal*.003) for p in corners]+[tuple(Vector(p)-normal*.003) for p in corners]
+    n=len(corners)
+    fs=[tuple(range(n)),tuple(reversed(range(n,2*n)))]
+    fs += [(i,(i+1)%n,(i+1)%n+n,i+n) for i in range(n)]
+    o=mesh(name,vs,fs,'glass')
+    bm=bmesh.new(); bm.from_mesh(o.data)
+    bmesh.ops.recalc_face_normals(bm,faces=list(bm.faces)); bm.to_mesh(o.data); bm.free()
+
+def windshield_y(z):
+    # Shared rake for A pillars, center divider, seals, glass, header and wipers.
+    return 1.94-(z-1.58)*(.22/.82)
+
 # Separate wall panels leave a real hollow cabin, including open wheel wells.
 box('Floor',(0,0,.65),(1.82,3.94,.14),'dash')
 # A hollow rounded shell gives actual quarter-panel curvature; thin cubes could
@@ -138,9 +154,15 @@ for x in (-.96,.96):
     box('Side runner',(x*1.085,0,.56),(.22,1.37,.09),'shell')
     # Side window posts connect windshield to a closed rear cabin.
     rod('B pillar',(x,.05,1.57),(x,.05,2.40),.047,'paint')
-    rod('A pillar',(x,1.94,1.57),(x,1.72,2.40),.047,'paint')
+    rod('A pillar',(x,windshield_y(1.58),1.58),(x,windshield_y(2.40),2.40),.047,'paint')
     rod('Door belt',(x,.03,1.58),(x,1.96,1.58),.048,'highlight')
-    box('Side glazing',(x,.83,2.02),(.012,1.48,.67),'glass',0)
+    rod('Side window header',(x,.05,2.385),(x,windshield_y(2.385),2.385),.036,'paint')
+    # Trapezoid follows the sloping A pillar; the old rectangular box stopped
+    # short of it and left an obvious open wedge at the front of each door.
+    edge=[(x,.078,1.618),(x,windshield_y(1.618)-.026,1.618),
+          (x,windshield_y(2.366)-.026,2.366),(x,.078,2.366)]
+    window_pane('Side glazing',edge,(1 if x>0 else -1,0,0))
+    curve_rail('Side window rubber seal',edge+[edge[0]],.013,'rubber')
     box('Side mirror',(x*1.23,1.46,1.99),(.13,.075,.29),'metal')
     rod('Mirror bracket',(x,1.4,1.94),(x*1.23,1.46,1.96),.022,'metal')
     # Four larger raised panels echo the toy's armored sliding side door.
@@ -164,13 +186,17 @@ for x in (-.96,.96):
 for height,r,mat in ((1.60,.06,'highlight'),(1.48,.012,'paint')):
     pts=rounded_loop(1.014,2.078,.26,height); curve_rail('Wraparound belt moulding',pts+[pts[0]],r,mat)
 
-# Split windscreen, with thin transparent panes and rubber trim.
-for x in (-.47,.47):
-    vs=[(x-.42,1.945,1.64),(x+.42,1.945,1.64),(x+.42,1.755,2.34),(x-.42,1.755,2.34)]
-    mesh('Windshield glass',vs,[(0,1,2,3)],'glass')
-rod('Windshield center',(0,1.955,1.58),(0,1.737,2.40),.028,'paint')
-rod('Windshield sill',(-.96,1.98,1.58),(.96,1.98,1.58),.055,'highlight')
-for x in (-.46,.46): rod('Wiper',(x-.24,1.972,1.64),(x+.23,1.973,1.70),.012,'rubber')
+# Split windscreen fully seated in the frame, with the same rake as the A pillars.
+for left,right in ((-.931,-.018),(.018,.931)):
+    edge=[(left,windshield_y(1.624),1.624),(right,windshield_y(1.624),1.624),
+          (right,windshield_y(2.365),2.365),(left,windshield_y(2.365),2.365)]
+    window_pane('Windshield glass',edge,(0,1,.22/.82))
+    curve_rail('Windshield rubber seal',edge+[edge[0]],.013,'rubber')
+rod('Windshield center',(0,windshield_y(1.58),1.58),(0,windshield_y(2.40),2.40),.028,'paint')
+rod('Windshield sill',(-.96,windshield_y(1.58),1.58),(.96,windshield_y(1.58),1.58),.055,'highlight')
+rod('Windshield header',(-.96,windshield_y(2.385),2.385),(.96,windshield_y(2.385),2.385),.036,'paint')
+for x in (-.46,.46):
+    rod('Wiper',(x-.24,windshield_y(1.65)+.018,1.65),(x+.23,windshield_y(1.71)+.018,1.71),.012,'rubber')
 box('Cab roof',(0,.26,2.43),(2.08,3.85,.13),'shell',.045)
 box('Front visor',(0,1.95,2.42),(2.18,.52,.085),'shell')
 curve_rail('Roof rain gutter',[(-1.043,-1.66,2.44),(-1.043,1.75,2.44),(-.97,1.97,2.44),(.97,1.97,2.44),(1.043,1.75,2.44),(1.043,-1.66,2.44)],.025,'shell_light')
