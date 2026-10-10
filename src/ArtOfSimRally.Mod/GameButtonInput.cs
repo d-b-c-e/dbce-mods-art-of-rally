@@ -26,7 +26,7 @@ namespace ArtOfSimRally.Mod
             var panels = UIManager.Instance == null ? null : UIManager.Instance.PanelManager;
             if (splash == null || !splash.isActiveAndEnabled || panels == null || panels.Peek() != panels.SplashScreenPanel) return;
             splash.EndSplashScreen();
-            ModLog.Info("Profile start/confirm release advanced the title screen.");
+            ModLog.Info("Profile " + (WheelInput.GameButtonReleased(WheelInput.Channel.Start) ? "start" : "confirm") + " release advanced the title screen.");
         }
         internal static bool Button(int action, bool negative, bool down)
         {

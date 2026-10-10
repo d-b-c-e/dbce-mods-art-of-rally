@@ -106,6 +106,19 @@ static class GameButtonTests
             Device.ReadOk=true; Application.isFocused=true; Main.SettingsVisible=false; GameButtonCompatibility.Allowed=true;
             Tick(); Check(SplashScreenControl.Instance.Ends==0,"title recovery manufactured release: "+gate);
         }
+        SplashScreenControl.Instance=new SplashScreenControl();
+        UIManager.Instance.PanelManager.Current=UIManager.Instance.PanelManager.SplashScreenPanel;
+        Main.Settings.ThrottleBinding=Binding("button:29"); WheelInput.LoadBindings();
+        foreach(var button in new[] {18,29,32})
+        {
+            Device.Buttons[button]=0; Tick(); Device.Buttons[button]=1; Tick(); Device.Buttons[button]=0; Tick();
+            Check(SplashScreenControl.Instance.Ends==0,"unrelated/pedal button dismissed title: "+button);
+        }
+        Device.Hats[0]=-1; Tick(); Device.Hats[0]=18000; Tick(); Device.Hats[0]=-1; Tick();
+        Check(SplashScreenControl.Instance.Ends==0,"hat navigation dismissed title");
+        Device.Buttons[31]=0; Tick(); Device.Buttons[31]=1; Tick();
+        SplashScreenControl.Instance.EndSplashScreen(); // Native Rewired event wins first.
+        Device.Buttons[31]=0; Tick(); Check(SplashScreenControl.Instance.Ends==1,"native event and profile release both ended title");
         UIManager.Instance=null; SplashScreenControl.Instance=null;
         WheelInput.Close(); Array.Clear(Device.Buttons); Array.Fill(Device.Hats,-1);
         return checks;
