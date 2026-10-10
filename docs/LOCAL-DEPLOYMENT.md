@@ -6,7 +6,20 @@ feature or bug fix. After its candidate or final artifact passes the complete
 local automated gate, deploy it for testing without asking again. Public release
 publication and attended sign-off remain separate.
 
-## Current installation — 0.4.2-rc.4 (KI-47 input recovery)
+## Current installation — 0.4.2-rc.6 (profile controls)
+
+Installed October 10, 07:10:38 UTC (02:10 CT), clean source `905d04b`.
+All 20 gates and both original force-corpus cases passed before installation.
+ZIP SHA-256: `647CCD0B2A8E5F8A2009FB88E3EFD5F68C5839358A710208C29D929DBEE2ABCD`.
+Private exact backup/receipt: `results/profile-controls-rc6-install/`.
+All packaged payloads and the second native copy verified; eleven protected
+settings, loader, game-assembly and probe files are unchanged. Installed under
+the shared lease after the idle gate, with the game closed. No launch, profile
+Apply, force output or device operation. Lease released. Public 0.4.1 unchanged.
+Post-Apply input and live regression remain pending; see
+`reviews/2026-10-09-profile-controls.md` for the capability and acceptance limits.
+
+## Previous installation — 0.4.2-rc.4 (KI-47 input recovery)
 
 Installed October 10, 01:21:34 UTC (October 9 local), clean source `20fc617`.
 All 20 package gates and the original force corpus pass. ZIP SHA-256:

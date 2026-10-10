@@ -74,3 +74,13 @@ unfocused automated action qualification, new controlled USB/focus transitions,
 and adapters for select/look-back/reset/horn/neutral/gears beyond Art's existing
 six-gear shifter. Those profile actions are not silently reported as applied.
 Software signal/trajectory replay remains distinct from physical feel.
+
+## Installed October 10, 02:10 CT
+
+The exact rc.6 artifact above is installed under the shared lease after an
+owner-idle check. Every packaged payload and the second native DLL match;
+eleven protected files, including the owner's settings/tune and development
+probe, are byte-identical. Backup and verification receipt:
+`results/profile-controls-rc6-install/`. No game launch, profile Apply or physical
+output occurred. Lease released. Public release and the live checks above
+remain separate; the older statement that rc.6 is not installed is superseded.
