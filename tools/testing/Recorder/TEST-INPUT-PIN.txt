@@ -1,0 +1,6 @@
+NativeTestInjectionClient.cs is source-vendored from dbce-wheel-mod-toolkit
+candidate bef99bc on hula/managed-injection-20261010.
+SHA256 1BE33757F81860D0FD7863A5D02BE5A76FA4C71AFD6071AA009C7672C4624160
+Developer probe only. Not a native pin or public player-package dependency.
+Native ABI review, exact-artifact offline qualification, private installation
+and post-Apply raw-input runtime validation are still pending.

@@ -102,6 +102,8 @@ namespace ArtOfSimRally.Testing
         }
 
         internal static bool Replaying => _mode == Mode.Replay;
+        internal static bool Active => _mode != Mode.Off;
+        internal static void MuteForControls() { _muteOutputs = true; PatchOutputs(); }
         internal static string Describe => _mode == Mode.Off && _result == null ? "session tape off" :
             (_result != null ? "Replay result=" + _result + " " : _mode + " ") + "frame=" + _frame + " step=" + _fixedStep +
             (_frames != null

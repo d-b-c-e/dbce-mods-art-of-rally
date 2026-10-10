@@ -71,7 +71,7 @@ namespace ArtOfSimRally.Testing
                         using (var writer = new StreamWriter(pipe, new System.Text.UTF8Encoding(false), 1024, true) { AutoFlush = true })
                         {
                             string command = reader.ReadLine();
-                            if (command != "START" && command != "STOP" && command != "STATUS" && command != "SESSION-STOP" && command != "SESSION-STATUS" && command != "SESSION-UI") { writer.WriteLine("ERROR unknown command"); continue; }
+                            if (command == null || command.Length > 2048 || (command != "START" && command != "STOP" && command != "STATUS" && command != "SESSION-STOP" && command != "SESSION-STATUS" && command != "SESSION-UI" && !command.StartsWith("CONTROLS ", StringComparison.Ordinal))) { writer.WriteLine("ERROR unknown command"); continue; }
                             var request = new Request { Command = command }; queue.Enqueue(request);
                             int completed = WaitHandle.WaitAny(new[] { stopped, request.Done.WaitHandle }, 5000);
                             if (completed == 0) { request.Cancelled = true; return; }

@@ -72,6 +72,7 @@ internal static class Program
                 var nativeType = force.GetType("Dbce.Wheel.Ffb.WheelFfbNative", true);
                 Check(!(bool)nativeType.GetProperty("Ready").GetValue(null), "unexpected hardware initialization");
                 collisionPatches.GetType().GetMethod("UnpatchAll").Invoke(collisionPatches, new object[] { "ArtOfSimRally.DevRecorder" });
+                CheckRawProbe(mod,force,probe);
                 Console.WriteLine("{\"status\":\"passed\",\"assertions\":" + assertions + ",\"runtime\":\"Unity Mono\",\"scope\":\"actual game collision patch attach/unpatch; no event execution or hardware\"}");
                 return 0;
             }
@@ -142,4 +143,33 @@ internal static class Program
         }
         catch (Exception ex) { Console.Error.WriteLine(ex); return 1; }
     }
+    static void CheckRawProbe(Assembly mod,Assembly force,Assembly probe)
+    {
+            var rawProbe = probe.GetType("ArtOfSimRally.Testing.ControlsProbe", true);
+            rawProbe.GetMethod("Attach", Static).Invoke(null, new object[] { mod });
+            var rawHarmony = rawProbe.GetField("_patches", Static).GetValue(null);
+            var rawMethods = ((System.Collections.IEnumerable)rawHarmony.GetType().GetMethod("GetPatchedMethods").Invoke(rawHarmony,null)).Cast<MethodBase>().ToArray();
+            Check(rawMethods.Any(m=>m.DeclaringType.Name=="WheelPovInput" && m.Name=="Read"),"raw reader observer missing");
+            Check(rawMethods.Count(m=>m.DeclaringType.FullName=="Rewired.Player")==5,"actual downstream observer seams changed");
+            Check(rawMethods.Any(m=>m.DeclaringType.Name=="AxisCarController" && m.Name=="GetInput"),"actual car input observer missing");
+            Check(rawMethods.Any(m=>m.Name=="BeginAssign") && rawMethods.Any(m=>m.Name=="BeginCalibration") && rawMethods.Any(m=>m.Name=="SaveCalibration"),"assignment/calibration guards missing");
+            Check(!(bool)rawProbe.GetField("_armed",Static).GetValue(null),"metadata attach unexpectedly armed input");
+            rawProbe.GetField("_requested",Static).SetValue(null,true);
+            var wheel=mod.GetType("ArtOfSimRally.Mod.WheelInput",true);
+            var channel=Enum.ToObject(wheel.GetNestedType("Channel"),0);
+            // Actual patched entry points must return before engine/device APIs.
+            wheel.GetMethod("BeginAssign",Static).Invoke(null,new[]{channel});
+            wheel.GetMethod("BeginCalibration",Static).Invoke(null,new object[]{channel,false});
+            Check(!(bool)wheel.GetMethod("SaveCalibration",Static).Invoke(null,null),"save calibration accepted synthetic capture");
+            Check(wheel.GetProperty("Assigning",Static).GetValue(null)==null,"assignment was opened");
+            Check(((string)wheel.GetProperty("Status",Static).GetValue(null)).Contains("disabled"),"test block not explained");
+            foreach(var open in force.GetType("Dbce.Wheel.Ffb.WheelFfbNative",true).GetMethods().Where(m=>m.Name=="Initialise"))
+            {
+                var a=open.GetParameters().Select(p=>p.ParameterType.IsValueType?Activator.CreateInstance(p.ParameterType):null).ToArray();
+                Check(!(bool)open.Invoke(null,a),"force open was not refused by the test guard");
+            }
+            rawProbe.GetField("_requested",Static).SetValue(null,false);
+            rawHarmony.GetType().GetMethod("UnpatchAll").Invoke(rawHarmony,new object[]{"ArtOfSimRally.DevRecorder.RawControls"});
+    }
+
 }
