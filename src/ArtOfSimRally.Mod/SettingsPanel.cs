@@ -162,6 +162,24 @@ namespace ArtOfSimRally.Mod
             Help("Handbrake axis, button and game controls use the greater value; a held button contributes 100%.");
             _clutch = Disclosure(_clutch, "clutch binding");
             if (_clutch) Axis(c, WheelInput.Channel.Clutch, "Clutch");
+            string[] transmissions = { "Follow game", "Automatic", "Sequential", "H-pattern" };
+            int transmission = Math.Max(0, Array.IndexOf(transmissions, c.TransmissionMode));
+            GUILayout.Label("Transmission", _heading);
+            int chosen = GUILayout.SelectionGrid(transmission, transmissions, 2);
+            Help("An explicit transmission choice overrides the game's transmission option. Choose Follow game to use that option again.");
+            if (chosen != transmission)
+            {
+                c.TransmissionMode = transmissions[chosen];
+                if (chosen > 0) c.ShifterIsHPattern = chosen == 3;
+                SettingsManager.SetTransmission();
+            }
+            GUILayout.Label("Camera and menus", _heading);
+            Axis(c, WheelInput.Channel.CameraSwitch, "Change camera");
+            Axis(c, WheelInput.Channel.Confirm, "Confirm"); Axis(c, WheelInput.Channel.Back, "Back");
+            Axis(c, WheelInput.Channel.Start, "Start / pause");
+            Axis(c, WheelInput.Channel.NavUp, "Navigate up"); Axis(c, WheelInput.Channel.NavDown, "Navigate down");
+            Axis(c, WheelInput.Channel.NavLeft, "Navigate left"); Axis(c, WheelInput.Channel.NavRight, "Navigate right");
+            Help("Buttons and hat directions use the same saved bindings as Wheelkit. Release after focus or device changes. Game keyboard and controller bindings remain available.");
             _shifter = Disclosure(_shifter, "shifter bindings");
             if (_shifter)
             {
@@ -246,7 +264,7 @@ namespace ArtOfSimRally.Mod
                 if (pending != null)
                 {
                     GUILayout.Label("Device input: " + (WheelInput.CalibrationValue * 100).ToString("F0") + "%", _wrap);
-                    if (!pending.IsButton)
+                    if (!pending.IsDigital)
                     {
                         pending.Inverted = Toggle(pending.Inverted, "Invert " + (WheelInput.Assigning == WheelInput.Channel.Handbrake ? "handbrake" : "axis"));
                         pending.Deadzone = Slider(pending.Deadzone, 0, .1f, 0, "Deadzone", 100, "%");
@@ -256,7 +274,7 @@ namespace ArtOfSimRally.Mod
                 bool stack = StackRows;
                 if (!stack) { GUILayout.BeginHorizontal(); GUILayout.FlexibleSpace(); } bool enabled = GUI.enabled;
                 GUI.enabled = enabled && WheelInput.CanSaveCalibration;
-                if (GUILayout.Button(pending != null && pending.IsButton ? "Save binding" : "Save calibration",
+                if (GUILayout.Button(pending != null && pending.IsDigital ? "Save binding" : "Save calibration",
                     stack ? GUILayout.ExpandWidth(true) : SettingsPresentation.Width(125)))
                 {
                     string previous = c.SteerBinding;
@@ -337,7 +355,7 @@ namespace ArtOfSimRally.Mod
             if (Main.OtherCameraModLoaded) { Help(BonnetCamera.ExternalCameraHelp); return; }
             c.BonnetCameraEnabled = Toggle(c.BonnetCameraEnabled, "Bonnet");
             c.BumperCameraEnabled = Toggle(c.BumperCameraEnabled, "Bumper");
-            Help("Included in the game's Change camera cycle. Change camera and held Look behind use the game's bindings. Close settings to adjust the active mount.");
+            Help("Included in the game's Change camera cycle. Change camera can be bound under Controls or in the game. Held Look behind uses the game's bindings. Close settings to adjust the active mount.");
             if (RightButton("Open game bindings", 180)) GameBindings.Open();
             Help(GameBindings.Status);
             _cameraKeys = Disclosure(_cameraKeys, "adjustment bindings");

@@ -44,12 +44,14 @@ namespace ArtOfSimRally.Mod
     internal static partial class WheelInput
     {
         public enum Channel { Steer, Throttle, Brake, Clutch, Handbrake, HandbrakeButton, SettingsButton, StopFfbButton,
-            CameraUp, CameraDown, CameraForward, CameraBack, CameraLeft, CameraRight, CameraPitchDown, CameraPitchUp, CameraFovUp, CameraFovDown, CameraReset }
+            CameraUp, CameraDown, CameraForward, CameraBack, CameraLeft, CameraRight, CameraPitchDown, CameraPitchUp, CameraFovUp, CameraFovDown, CameraReset,
+            CameraSwitch, Confirm, Back, Start, NavUp, NavDown, NavLeft, NavRight }
         public static readonly Channel[] Channels = (Channel[])Enum.GetValues(typeof(Channel));
         public static bool IsCameraButton(Channel c) => c >= Channel.CameraUp && c <= Channel.CameraReset;
         public static Channel CameraChannel(int index) => (Channel)((int)Channel.CameraUp + index);
         public static bool IsShortcut(Channel c) => c == Channel.SettingsButton || c == Channel.StopFfbButton || IsCameraButton(c);
-        public static bool IsButtonChannel(Channel c) => c == Channel.HandbrakeButton || IsShortcut(c);
+        public static bool IsGameButton(Channel c) => c >= Channel.CameraSwitch && c <= Channel.NavRight;
+        public static bool IsButtonChannel(Channel c) => c == Channel.HandbrakeButton || IsShortcut(c) || IsGameButton(c);
         public static bool HasShortcutBindings { get { foreach (var c in Channels) if (IsShortcut(c) && IsBound(c)) return true; return false; } }
         private static readonly Dictionary<Channel, bool> ShortcutHeld = new Dictionary<Channel, bool>();
         public static bool ShortcutPressed(Channel c)
@@ -75,6 +77,8 @@ namespace ArtOfSimRally.Mod
             public Guid? InstanceGuid;
             public int[] Axes = new int[AxisCount];
             public byte[] Buttons = new byte[ButtonCount];
+            public int[] Hats = { -1, -1, -1, -1 };
+            public int[] BaseHats = { -1, -1, -1, -1 };
             public int[] BaseAxes = new int[AxisCount];
             public byte[] BaseButtons = new byte[ButtonCount];
             public bool Ok, HasAssignBaseline;
@@ -130,6 +134,7 @@ namespace ArtOfSimRally.Mod
             var cfg = Main.Settings;
             _bindings.Clear();
             _values.Clear();
+            ResetGameButtons();
             if (cfg == null) return;
             foreach (var c in Channels)
             {
@@ -138,7 +143,7 @@ namespace ArtOfSimRally.Mod
                 // inversion swaps physical endpoints, which stay in raw range.
                 if (b != null && c != Channel.Steer && (b.Far < 0 || b.Far > 65535)) b = null;
                 if (b != null && c == Channel.Steer && b.Calibrated && (b.Left >= b.Rest || b.Far <= b.Rest)) b = null;
-                if (b != null && IsButtonChannel(c) && !b.IsButton) b = null;
+                if (b != null && IsButtonChannel(c) && !b.IsDigital) b = null;
                 if (b != null) _bindings[c] = b;
             }
         }
@@ -159,6 +164,14 @@ namespace ArtOfSimRally.Mod
                 case Channel.HandbrakeButton: return cfg.HandbrakeButtonBinding;
                 case Channel.SettingsButton: return cfg.SettingsButtonBinding;
                 case Channel.StopFfbButton: return cfg.StopFfbButtonBinding;
+                case Channel.CameraSwitch: return cfg.CameraSwitchBinding;
+                case Channel.Confirm: return cfg.ConfirmBinding;
+                case Channel.Back: return cfg.BackBinding;
+                case Channel.Start: return cfg.StartBinding;
+                case Channel.NavUp: return cfg.NavUpBinding;
+                case Channel.NavDown: return cfg.NavDownBinding;
+                case Channel.NavLeft: return cfg.NavLeftBinding;
+                case Channel.NavRight: return cfg.NavRightBinding;
                 default: return cfg.HandbrakeBinding;
             }
         }
@@ -180,6 +193,14 @@ namespace ArtOfSimRally.Mod
                 case Channel.HandbrakeButton: cfg.HandbrakeButtonBinding = value; break;
                 case Channel.SettingsButton: cfg.SettingsButtonBinding = value; break;
                 case Channel.StopFfbButton: cfg.StopFfbButtonBinding = value; break;
+                case Channel.CameraSwitch: cfg.CameraSwitchBinding = value; break;
+                case Channel.Confirm: cfg.ConfirmBinding = value; break;
+                case Channel.Back: cfg.BackBinding = value; break;
+                case Channel.Start: cfg.StartBinding = value; break;
+                case Channel.NavUp: cfg.NavUpBinding = value; break;
+                case Channel.NavDown: cfg.NavDownBinding = value; break;
+                case Channel.NavLeft: cfg.NavLeftBinding = value; break;
+                case Channel.NavRight: cfg.NavRightBinding = value; break;
                 default: cfg.HandbrakeBinding = value; break;
             }
         }
@@ -224,6 +245,7 @@ namespace ArtOfSimRally.Mod
             _values.Clear();
             _open = false;
             ShortcutHeld.Clear();
+            ResetGameButtons();
             _assigning = null;
             _calibration = null;
         }
@@ -252,7 +274,7 @@ namespace ArtOfSimRally.Mod
 
             foreach (var d in _devices)
             {
-                try { d.Ok = WheelFfbNative.Read(d.Slot, d.Axes, d.Buttons); }
+                try { d.Ok = WheelPovInput.Read(d.Slot, d.Axes, d.Buttons, d.Hats); }
                 catch { d.Ok = false; }
             }
             if (!_firstReadLogged)
@@ -294,6 +316,11 @@ namespace ArtOfSimRally.Mod
                     _values[c] = b.Element < ButtonCount && d.Buttons[b.Element] != 0 ? 1f : 0f;
                     continue;
                 }
+                if (b.IsHat)
+                {
+                    _values[c] = b.HatPressed(d.Hats[b.Element]) ? 1f : 0f;
+                    continue;
+                }
                 int raw = d.Axes[b.Element];
                 int span = b.Far - b.Rest;
                 if (span == 0) { _values[c] = 0f; continue; }
@@ -306,6 +333,7 @@ namespace ArtOfSimRally.Mod
                 _values[c] = b.Normalize(raw, c == Channel.Steer);
             }
 
+            TickGameButtons();
             if (extended)
             {
                 // Update the settings object immediately - that is a few string
@@ -399,11 +427,12 @@ namespace ArtOfSimRally.Mod
             foreach (var d in _devices)
             {
                 d.HasAssignBaseline = false;
-                try { d.HasAssignBaseline = WheelFfbNative.Read(d.Slot, d.Axes, d.Buttons); } catch { }
+                try { d.HasAssignBaseline = WheelPovInput.Read(d.Slot, d.Axes, d.Buttons, d.Hats); } catch { }
                 if (d.HasAssignBaseline)
                 {
                     Array.Copy(d.Axes, d.BaseAxes, AxisCount);
                     Array.Copy(d.Buttons, d.BaseButtons, ButtonCount);
+                    Array.Copy(d.Hats, d.BaseHats, 4);
                 }
             }
             _assigning = c;
@@ -430,7 +459,7 @@ namespace ArtOfSimRally.Mod
         /// <summary>Invert steering around center; swap pedal rest/full endpoints.</summary>
         public static void Flip(Channel c)
         {
-            if (!_bindings.TryGetValue(c, out var b) || b.IsButton) return;
+            if (!_bindings.TryGetValue(c, out var b) || b.IsDigital) return;
             if (b.Calibrated) b.Inverted = !b.Inverted;
             else if (c == Channel.Steer) b.Far = b.Rest - (b.Far - b.Rest);
             else { int rest = b.Rest; b.Rest = b.Far; b.Far = rest; }
@@ -449,6 +478,7 @@ namespace ArtOfSimRally.Mod
             { Status = "Could not save; previous binding kept. Pause, check Settings.xml is writable, then retry."; return false; }
             _bindings.Remove(c);
             _values.Remove(c);
+            ResetGameButtons();
             Status = c + " cleared.";
             return true;
         }

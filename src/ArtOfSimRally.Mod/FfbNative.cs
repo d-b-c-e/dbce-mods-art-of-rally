@@ -46,6 +46,7 @@ namespace ArtOfSimRally.Mod
             if (LogFiles.RotateIfLarge(log))
                 ModLog.Info("Force feedback log was over " + LogFiles.RotateBytes / (1024 * 1024) + " MB; kept as ffb.previous.log.");
             WheelFfbNative.LogTo(log);
+            WheelPovInput.Bind(RequestedPath);
             return true;
         }
 

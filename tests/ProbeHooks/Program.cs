@@ -41,13 +41,14 @@ internal static class Program
                 uiProcessor.GetType().GetMethod("Patch").Invoke(uiProcessor, null);
                 var uiMethods = ((System.Collections.IEnumerable)uiHarmony.GetType().GetMethod("GetPatchedMethods").Invoke(uiHarmony,null)).Cast<MethodBase>();
                 Check(uiMethods.Any(m=>m.Name=="ToggleWindow"),"UMM cancel-first hook failed");
-                foreach (string type in new[] { "StockUiDispatchGuard", "StockPanelInputGuard", "StockModsInputGuard", "StockScreenInputGuard" })
+                foreach (string type in new[] { "StockUiDispatchGuard", "StockPanelInputGuard", "StockModsInputGuard", "StockScreenInputGuard", "GameButtonPatch", "GameButtonAxisPatch", "TransmissionInput" })
                 {
                     var p = uiHarmony.GetType().GetMethod("CreateClassProcessor").Invoke(uiHarmony,
                         new object[] { mod.GetType("ArtOfSimRally.Mod." + type, true) });
                     p.GetType().GetMethod("Patch").Invoke(p, null);
                 }
                 uiMethods = ((System.Collections.IEnumerable)uiHarmony.GetType().GetMethod("GetPatchedMethods").Invoke(uiHarmony,null)).Cast<MethodBase>();
+                Check(uiMethods.Count(m => m.DeclaringType.FullName == "Rewired.Player" && new[] { "GetButton", "GetButtonDown", "GetNegativeButton", "GetNegativeButtonDown", "GetAxis" }.Contains(m.Name)) == 5, "game button action seams changed");
                 foreach (string type in new[] { "RewiredStandaloneInputModule", "PanelManager", "ModsPanel", "PauseScreen", "ReplayManager" })
                     Check(uiMethods.Any(m=>m.DeclaringType.Name==type),"stock input hook missing: "+type);
                 var gameAssembly = Assembly.LoadFrom(Path.Combine(paths[2], "Assembly-CSharp.dll"));

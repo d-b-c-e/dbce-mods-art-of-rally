@@ -60,6 +60,10 @@ static class Program
             Check(Calls.Log.IndexOf(call)>=0 && Calls.Log.IndexOf(call)<disk &&
                 Calls.Log.IndexOf(call)<Calls.Log.IndexOf("camera-save"), call+" happened after save");
         var watchdog=new ModWatchdog(); Calls.Log.Clear(); ArtOfSimRally.Mod.Main.Enabled=true; GameState.IsDriving=true;
+        typeof(ModWatchdog).GetMethod("OnApplicationFocus",BindingFlags.NonPublic|BindingFlags.Instance).Invoke(watchdog,new object[]{false});
+        Check(Calls.Log.SequenceEqual(new[]{"buttons-reset"}),"focus loss did not invalidate buttons without an Update"); Calls.Log.Clear();
+        typeof(ModWatchdog).GetMethod("OnApplicationPause",BindingFlags.NonPublic|BindingFlags.Instance).Invoke(watchdog,new object[]{true});
+        Check(Calls.Log.SequenceEqual(new[]{"buttons-reset"}),"pause did not invalidate buttons without an Update"); Calls.Log.Clear();
         typeof(ModWatchdog).GetMethod("Update",BindingFlags.NonPublic|BindingFlags.Instance).Invoke(watchdog,null);
         Check(!Calls.Log.Contains("telemetry-prepare") && Calls.Log.Contains("telemetry-stop-disabled"), "driving watchdog connected/did not check telemetry disable");
         Check(!Calls.Log.Contains("force-recover"), "driving watchdog attempted FFB acquisition");

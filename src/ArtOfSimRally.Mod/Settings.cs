@@ -59,6 +59,17 @@ namespace ArtOfSimRally.Mod
         public string ClutchBinding = "";
         public string HandbrakeBinding = "";
         public string HandbrakeButtonBinding = "";
+        public string CameraSwitchBinding = "";
+        public string ConfirmBinding = "";
+        public string BackBinding = "";
+        public string StartBinding = "";
+        public string NavUpBinding = "";
+        public string NavDownBinding = "";
+        public string NavLeftBinding = "";
+        public string NavRightBinding = "";
+        // Follow game preserves every existing install; explicit profile choice
+        // uses the same drivetrain switch as the game's transmission preference.
+        public string TransmissionMode = "Follow game";
 
         // ---- Force feedback -------------------------------------------------
 

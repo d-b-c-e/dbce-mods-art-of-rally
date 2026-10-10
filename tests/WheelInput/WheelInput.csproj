@@ -9,6 +9,9 @@
     <Compile Include="../../src/ArtOfSimRally.Mod/WheelInput.cs" Link="WheelInput.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/WheelInput.Binding.cs" Link="WheelInput.Binding.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/WheelInput.Calibration.cs" Link="WheelInput.Calibration.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/WheelInput.GameButtons.cs" Link="WheelInput.GameButtons.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/GameButtonInput.cs" Link="GameButtonInput.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/TransmissionInput.cs" Link="TransmissionInput.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/DeferredSave.cs" Link="DeferredSave.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/Settings.cs" Link="Settings.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/SettingsPersistence.cs" Link="SettingsPersistence.cs" />

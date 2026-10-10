@@ -12,6 +12,14 @@ namespace ArtOfSimRally.Mod
             public string Device = "";
             public int DeviceIndex = -1;
             public bool IsButton;
+            public bool IsHat;
+            public bool IsDigital => IsButton || IsHat;
+            public bool HatPressed(int angle)
+            {
+                if (!IsHat || angle < 0 || angle >= 36000) return false;
+                int distance = Math.Abs(angle - Rest);
+                return Math.Min(distance, 36000 - distance) <= 4500;
+            }
             public int Element = -1;
             public int Rest, Far;
             public Guid? InstanceGuid;
@@ -43,22 +51,24 @@ namespace ArtOfSimRally.Mod
                 if (p.Length > calibration + 1) return null;
                 if (!int.TryParse(p[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out b.DeviceIndex) || b.DeviceIndex < 0) return null;
                 var el = p[2].Split(':');
-                if (el.Length != 2 || (el[0] != "button" && el[0] != "axis")) return null;
+                if (el.Length != 2 || (el[0] != "button" && el[0] != "axis" && el[0] != "pov")) return null;
                 b.IsButton = el[0] == "button";
+                b.IsHat = el[0] == "pov";
                 if (!int.TryParse(el[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out b.Element) ||
-                    b.Element < 0 || b.Element >= (b.IsButton ? 128 : 8)) return null;
+                    b.Element < 0 || b.Element >= (b.IsButton ? 128 : b.IsHat ? 4 : 8)) return null;
                 if (!int.TryParse(p[3], NumberStyles.Integer, CultureInfo.InvariantCulture, out b.Rest) ||
                     !int.TryParse(p[4], NumberStyles.Integer, CultureInfo.InvariantCulture, out b.Far) ||
                     b.Rest < 0 || b.Rest > 65535 || (long)b.Far - b.Rest < -65535 || (long)b.Far - b.Rest > 65535) return null;
                 // Steering Flip reflects a calibrated endpoint around center;
                 // 32767..65535 becomes 32767..-1. The endpoint is a calibration
                 // value, not a raw sample. Bound the span without rejecting it.
-                if (b.Calibrated && (b.IsButton || b.Far < 0 || b.Far > 65535 || b.Far == b.Rest)) return null;
+                if (b.IsHat && (b.Rest >= 36000 || b.Far != 1 || !b.InstanceGuid.HasValue)) return null;
+                if (b.Calibrated && (b.IsDigital || b.Far < 0 || b.Far > 65535 || b.Far == b.Rest)) return null;
                 return b;
             }
 
             public override string ToString() => string.Format(CultureInfo.InvariantCulture, "{0}|{1}|{2}:{3}|{4}|{5}",
-                Device, DeviceIndex, IsButton ? "button" : "axis", Element, Rest, Far) +
+                Device, DeviceIndex, IsButton ? "button" : IsHat ? "pov" : "axis", Element, Rest, Far) +
                 (InstanceGuid.HasValue ? "|guid:" + InstanceGuid.Value.ToString("D") : "") +
                 (Calibrated ? "|cal:" + Left.ToString(CultureInfo.InvariantCulture) + ":" + Deadzone.ToString("R", CultureInfo.InvariantCulture) + ":" + (Inverted ? "1" : "0") : "");
 
@@ -77,7 +87,7 @@ namespace ArtOfSimRally.Mod
                 return value;
             }
 
-            public string Describe() => Device + (IsButton ? " button " + (Element + 1) : " axis " + (Element < AxisNames.Length ? AxisNames[Element] : Element.ToString()));
+            public string Describe() => Device + (IsButton ? " button " + (Element + 1) : IsHat ? " hat " + (Element + 1) + " at " + (Rest / 100f).ToString("0.##", CultureInfo.InvariantCulture) + " degrees" : " axis " + (Element < AxisNames.Length ? AxisNames[Element] : Element.ToString()));
         }
 
     }

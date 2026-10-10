@@ -96,7 +96,10 @@ Copy-Item (Join-Path $root 'tools\installer\Uninstall.bat') $stage
 Copy-Item (Join-Path $root 'tools\installer\install.ps1')   $stage
 Copy-Item (Join-Path $root 'tools\installer\verify.ps1')   $stage
 $build = [ordered]@{ schema=1; release=$Version; modVersion=$modVersion; identity=$identity; sourceRevision=$revision; sourceState=$sourceState; toolkitPin=$toolkitPin; builtUtc=[DateTime]::UtcNow.ToString('o') }
-$build['toolkitComponents'] = $toolkitComponents
+  $build['toolkitComponents'] = $toolkitComponents
+  # Data-only capability used by Wheelkit; older packages do not receive fields
+  # that their runtime ignores merely because the catalog knows newer keys.
+  $build['controlsProfileSchema'] = 1
 $build | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $modDir 'build.json') -Encoding UTF8
 $fileVersion = [Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $modDir 'ArtOfSimRally.Mod.dll'))
 if ($fileVersion.ProductVersion -ne $identity -or $fileVersion.FileVersion -ne "$modVersion.0") { throw 'Built assembly identity does not match candidate' }

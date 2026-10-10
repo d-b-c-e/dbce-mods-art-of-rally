@@ -21,6 +21,21 @@ Severity is about the effect on driving, not on how annoying it looks:
 
 ## Open
 
+### KI-48 — Wheelkit profile buttons were stored but not applied
+
+After the owner accepted rc.4's fresh-launch axes, camera and menu bindings
+still differed from the Wheelkit profile. The existing Apply path wrote only
+screen/FFB/telemetry fields. It never translated the profile controls. This is
+separate from KI-47; a successful pose replay would not detect it.
+
+The source candidate adds one F6/XML store for camera, confirm/back/start and
+menu directions (including POV hats), plus an explicit transmission override.
+Wheelkit's matching adapter writes those fields and existing axis/shifter fields
+through its real Apply service. Independent complete XML expectations, exact
+restoration and fake raw-device input tests pass. Live consumption and the
+remaining generic actions are not qualified. Do not call the portfolio complete.
+See [candidate and evidence](reviews/2026-10-09-profile-controls.md).
+
 ### KI-47 — Shared wheel handle does not recover after device disappearance
 
 Owner reported missing steering/throttle on October 9 after a Wheelkit profile

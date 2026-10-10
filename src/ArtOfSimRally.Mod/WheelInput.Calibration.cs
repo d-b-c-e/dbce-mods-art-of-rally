@@ -14,10 +14,10 @@ namespace ArtOfSimRally.Mod
         }
         private static Calibration _calibration;
         public static Binding PendingCalibration => _calibration?.Candidate;
-        public static float CalibrationValue => PendingCalibration == null ? 0 :
+        public static float CalibrationValue => PendingCalibration == null ? 0 : PendingCalibration.IsDigital ? _calibration.Raw :
             PendingCalibration.Normalize(_calibration.Raw, _assigning == Channel.Steer);
         public static bool CanSaveCalibration => PendingCalibration != null && _calibration.Released &&
-            (PendingCalibration.IsButton || (_assigning == Channel.Steer
+            (PendingCalibration.IsDigital || (_assigning == Channel.Steer
                 ? PendingCalibration.Rest - _calibration.Minimum >= AssignThreshold && _calibration.Maximum - PendingCalibration.Rest >= AssignThreshold
                 : Math.Abs(PendingCalibration.Far - PendingCalibration.Rest) >= AssignThreshold));
         public static bool Inverted(Channel channel) => _bindings.TryGetValue(channel, out var b) && b.Inverted;
@@ -35,7 +35,7 @@ namespace ArtOfSimRally.Mod
             if (_assigning != channel) return;
             _calibration = new Calibration();
             _assignDeadline = Time.realtimeSinceStartup + 45;
-            if (existingAxis && _bindings.TryGetValue(channel, out var current) && !current.IsButton)
+            if (existingAxis && _bindings.TryGetValue(channel, out var current) && !current.IsDigital)
             {
                 var device = Resolve(current);
                 if (device == null || !device.HasAssignBaseline || current.Element >= AxisCount)
@@ -60,7 +60,7 @@ namespace ArtOfSimRally.Mod
                 return;
             }
             Status = channel == Channel.Steer ? "Centre the wheel before Bind, then turn fully left, fully right, and centre it."
-                : IsButtonChannel(channel) ? "Press and release a button."
+                : IsButtonChannel(channel) ? "Press and release a button or hat direction."
                 : "Release the control before Bind, then press/pull fully and release. Save calibration when ready.";
         }
         private static void StepCalibration(Settings cfg)
@@ -79,6 +79,7 @@ namespace ArtOfSimRally.Mod
                     {
                         Array.Copy(device.Axes, device.BaseAxes, AxisCount);
                         Array.Copy(device.Buttons, device.BaseButtons, ButtonCount);
+                        Array.Copy(device.Hats, device.BaseHats, 4);
                         device.HasAssignBaseline = true; continue;
                     }
                     int count = IsButtonChannel(_assigning.Value) ? ButtonCount : AxisCount;
@@ -93,14 +94,32 @@ namespace ArtOfSimRally.Mod
                             Rest = button ? 0 : device.BaseAxes[i], Far = button ? 1 : device.Axes[i],
                             Left = button ? 0 : device.BaseAxes[i], Calibrated = !button };
                     }
+                    if (IsButtonChannel(_assigning.Value)) for (int i = 0; i < 4; i++)
+                    {
+                        if (device.Hats[i] >= 0 && device.BaseHats[i] < 0)
+                        {
+                            if (_assigning.Value >= Channel.NavUp && _assigning.Value <= Channel.NavRight && device.Hats[i] % 9000 != 0)
+                            { Status = "Use a straight hat direction (up, down, left or right), then release."; continue; }
+                            matches++;
+                            found = new Binding { Device = device.Name, DeviceIndex = device.Index,
+                                InstanceGuid = device.InstanceGuid, Element = i, IsHat = true,
+                                Rest = device.Hats[i], Far = 1 };
+                        }
+                    }
+                    // Controls held when Bind opened must be released before a
+                    // fresh press; release re-arms them within this same attempt.
+                    for (int i = 0; i < ButtonCount; i++) if (device.Buttons[i] == 0) device.BaseButtons[i] = 0;
+                    for (int i = 0; i < 4; i++) if (device.Hats[i] < 0) device.BaseHats[i] = -1;
                 }
                 if (matches > 1) { Status = "More than one control moved. Release them and move only the requested control."; return; }
                 if (found == null) return;
-                if (found.IsButton)
+                if (found.IsDigital)
                 {
                     foreach (var existing in _bindings)
                         if (existing.Key != _assigning && (IsShortcut(existing.Key) || IsShortcut(_assigning.Value)) &&
-                            existing.Value.IsButton && existing.Value.InstanceGuid == found.InstanceGuid && existing.Value.Element == found.Element)
+                            existing.Value.IsButton == found.IsButton && existing.Value.IsHat == found.IsHat &&
+                            existing.Value.InstanceGuid == found.InstanceGuid && existing.Value.Element == found.Element &&
+                            (!found.IsHat || existing.Value.Rest == found.Rest))
                         { Status = "That button is already used by " + existing.Key + ". Release it and choose another, or cancel and clear the old binding."; return; }
                 }
                 _calibration.Candidate = found;
@@ -111,8 +130,9 @@ namespace ArtOfSimRally.Mod
             }
             var d = Resolve(candidate);
             if (d == null || !d.Ok) { CancelAssign(); Status = "Device disconnected. Previous binding kept."; return; }
-            if (candidate.IsButton)
-            { _calibration.Raw = d.Buttons[candidate.Element] == 0 ? 0 : 1; _calibration.Released = _calibration.Raw == 0; return; }
+            if (candidate.IsDigital)
+            { _calibration.Raw = candidate.IsHat ? (d.Hats[candidate.Element] == candidate.Rest ? 1 : 0) : d.Buttons[candidate.Element] == 0 ? 0 : 1;
+                _calibration.Released = candidate.IsHat ? d.Hats[candidate.Element] < 0 : _calibration.Raw == 0; return; }
             int raw = d.Axes[candidate.Element];
             _calibration.Raw = raw;
             _calibration.Minimum = Math.Min(_calibration.Minimum, raw);

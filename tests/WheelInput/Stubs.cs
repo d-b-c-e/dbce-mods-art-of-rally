@@ -13,6 +13,7 @@ namespace Dbce.Wheel.Ffb
         public static DeviceInfo[] Devices = { new DeviceInfo() };
         public static readonly int[] Axes = new int[8];
         public static readonly byte[] Buttons = new byte[128];
+        public static readonly int[] Hats = { -1, -1, -1, -1 };
         public static bool ReadOk = true, ThrowRead = false, FailOpen = false;
         public static int Reads, Enumerations, Closes;
         public static int LastAuxIndex=-1;
@@ -41,9 +42,13 @@ namespace Dbce.Wheel.Ffb
 }
 namespace HarmonyLib
 {
-    public sealed class HarmonyPatch : Attribute { public HarmonyPatch(Type type, string method) { } }
+    public sealed class HarmonyPatch : Attribute { public HarmonyPatch() {} public HarmonyPatch(Type type, string method, params Type[] args) { } }
     public sealed class HarmonyPostfix : Attribute { }
+    public sealed class HarmonyTargetMethods : Attribute { }
+    public static class AccessTools { public static System.Reflection.MethodInfo Method(Type type, string name, Type[] types) => type.GetMethod(name, types); }
 }
+namespace Rewired { public class Player { } }
+public static class PadManager { public static readonly Rewired.Player Player = new(); public static Rewired.Player GetPlayer() => Player; }
 public static class EventStatusEnums { public enum EventStatus { UNDERWAY, FINISHING_STAGE_ANIMATION } }
 public sealed class EventManager { public EventStatusEnums.EventStatus status = EventStatusEnums.EventStatus.UNDERWAY; }
 public static class GameEntryPoint { public static EventManager EventManager = new(); }
@@ -54,6 +59,7 @@ public class AxisCarController
 }
 public class Drivetrain
 {
+    public bool automatic;
     public int gear=2; public float[] gearRatios=new float[7]; public int Shifts;
     public void Shift(int selected,bool force) { gear=selected; Shifts++; }
 }
@@ -65,7 +71,13 @@ public static class SettingsManager
 }
 namespace ArtOfSimRally.Mod
 {
-    internal static class Time { public static float realtimeSinceStartup = 100; }
+    internal static class GameButtonCompatibility { internal static bool Allowed=true; }
+    internal static class Time { public static float realtimeSinceStartup = 100; public static int frameCount; }
+    internal static class WheelPovInput
+    {
+        public static bool Read(int slot, int[] axes, byte[] buttons, int[] hats)
+        { Array.Copy(Dbce.Wheel.Ffb.WheelFfbNative.Hats, hats, 4); return Dbce.Wheel.Ffb.WheelFfbNative.Read(slot, axes, buttons); }
+    }
     internal static class Application { public static bool isFocused = true; }
     internal static class GameState
     {

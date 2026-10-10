@@ -28,6 +28,7 @@ namespace ArtOfSimRally.Mod
             ModuleActions[1] = module.VerticalActionId;
             ModuleActions[2] = module.SubmitActionId;
             ModuleActions[3] = module.CancelActionId;
+            GameButtonInput.Observe(module.HorizontalActionId, module.VerticalActionId, module.SubmitActionId, module.CancelActionId);
         }
         internal static void DiscardPointerPresses(RewiredStandaloneInputModule module)
         {

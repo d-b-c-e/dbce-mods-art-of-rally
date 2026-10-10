@@ -120,6 +120,7 @@ namespace ArtOfSimRally.Mod
         public static float Value(Channel c) => 0;
         public static void Update() { }
         public static void Close() => Calls.Log.Add("input-close");
+        public static void ResetGameButtons() => Calls.Log.Add("buttons-reset");
         public static void FlushLearnedRanges(bool shutdown=false) => Calls.Log.Add("save");
     }
     internal static class FfbNative

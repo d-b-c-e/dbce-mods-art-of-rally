@@ -100,6 +100,11 @@ namespace ArtOfSimRally.Mod
             FrameHealthPersistence.Flush();
         }
 
+        // Unity may stop Update while unfocused. Re-arm on a fresh release even
+        // if there was no background frame in which to observe focus loss.
+        private void OnApplicationFocus(bool focused) { if (!focused) WheelInput.ResetGameButtons(); }
+        private void OnApplicationPause(bool paused) { if (paused) WheelInput.ResetGameButtons(); }
+
         private void LateUpdate() => BonnetCamera.ReleaseIfInactive();
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
