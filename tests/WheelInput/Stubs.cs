@@ -33,7 +33,7 @@ namespace Dbce.Wheel.Ffb
         public static readonly byte[] Buttons = new byte[128];
         public static readonly int[] Hats = { -1, -1, -1, -1 };
         public static bool ReadOk = true, ThrowRead = false, FailOpen = false;
-        public static int Reads, Enumerations, Closes;
+        public static int Reads, Enumerations, Closes, Opens;
         public static int LastAuxIndex=-1;
         public static DeviceInfo Aux;
         public static bool OpenAux(int index) { Aux=Devices.SingleOrDefault(d=>d.Index==index); LastAuxIndex=index; return Aux!=null && !Aux.CannotOpen; }
@@ -43,6 +43,7 @@ namespace Dbce.Wheel.Ffb
         public static DeviceInfo[] ListAllDevices() { Enumerations++; return Devices; }
         public static int OpenRead(int index)
         {
+            Opens++;
             var device = Devices.Single(d => d.Index == index);
             if (FailOpen || device.CannotOpen) return -1;
             int slot = slots.Count; slots.Add(slot, device); return slot;

@@ -147,6 +147,37 @@ static class GameButtonTests
         Device.Buttons[31]=0; Tick(); Check(SplashScreenControl.Instance.Ends==1,"native event and profile release both ended title");
         UIManager.Instance=null; SplashScreenControl.Instance=null;
         WheelInput.Close(); Array.Clear(Device.Buttons); Array.Fill(Device.Hats,-1);
+        // Queries cannot acquire or reconnect devices. A same-frame watchdog
+        // still owns discovery even when the earlier query could not sample.
+        Time.realtimeSinceStartup+=60; Time.frameCount++;
+        int opens=Device.Opens, closes=Device.Closes, enums=Device.Enumerations;
+        reads=Device.Reads;
+        Check(GameButtonInput.Prepare(PadManager.Player), "closed-reader primary query refused");
+        Check(Device.Opens==opens && Device.Closes==closes && Device.Enumerations==enums && Device.Reads==reads, "query discovered a closed reader");
+        WheelInput.EnsureUpdatedThisFrame();
+        Check(Device.Opens>opens && Device.Reads==reads+1, "query prevented same-frame watchdog discovery");
+        Device.ReadOk=false; Time.realtimeSinceStartup+=6; Time.frameCount++;
+        opens=Device.Opens; closes=Device.Closes; enums=Device.Enumerations;
+        reads=Device.Reads;
+        GameButtonInput.Prepare(PadManager.Player);
+        Check(Device.Reads==reads+1 && Device.Opens==opens && Device.Closes==closes && Device.Enumerations==enums, "failed query attempted reconnect");
+        Check(!Down(Channel.Confirm) && !Held(Channel.NavDown), "failed query retained action");
+        Device.ReadOk=true; WheelInput.EnsureUpdatedThisFrame();
+        Check(Device.Opens>opens && Device.Closes>closes && Device.Reads==reads+1, "watchdog recovery acquired/read in wrong phase");
+        Tick(); Check(Device.Reads==reads+2, "replacement reader did not sample next frame");
+        string legacy="TSS fixture|0|axis:2|0|1000";
+        Main.Settings.ThrottleBinding=legacy; WheelInput.LoadBindings();
+        Device.Axes[2]=4000; Time.frameCount++;
+        GameButtonInput.Prepare(PadManager.Player);
+        Check(Main.Settings.ThrottleBinding==legacy, "query learned/pinned a legacy binding");
+        reads=Device.Reads; WheelInput.EnsureUpdatedThisFrame();
+        var learned=WheelInput.Binding.Parse(Main.Settings.ThrottleBinding);
+        Check(Device.Reads==reads && learned.Far==4000 && learned.InstanceGuid==Identity, "watchdog did not learn/pin cached input");
+        WheelInput.BeginCalibration(Channel.NavUp); Time.frameCount++;
+        reads=Device.Reads; Device.Hats[0]=18000;
+        GameButtonInput.Prepare(PadManager.Player);
+        Check(Device.Reads==reads && WheelInput.PendingCalibration==null, "query advanced assignment");
+        WheelInput.CancelAssign(); WheelInput.Close(); Array.Fill(Device.Hats,-1);
         return checks;
     }
 }

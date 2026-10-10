@@ -250,20 +250,39 @@ namespace ArtOfSimRally.Mod
             _calibration = null;
         }
 
-        /// <summary>Called every frame by the watchdog.</summary>
-        private static int _sampledFrame = -1;
+        private static int _sampledFrame = -1, _watchdogFrame = -1;
+        /// <summary>Watchdog maintenance, reusing a query's current snapshot.</summary>
         internal static void EnsureUpdatedThisFrame()
         {
-            if (_sampledFrame == Time.frameCount) return;
-            // Stamp before sampling: native callbacks must not recursively poll,
-            // and later consumers must retain the same non-consuming press edge.
-            _sampledFrame = Time.frameCount;
-            Update();
+            if (_watchdogFrame == Time.frameCount) return;
+            _watchdogFrame = Time.frameCount;
+            UpdateCore(true);
         }
-
-        public static void Update()
+        internal static void PrepareGameQuery()
         {
+            if (_sampledFrame == Time.frameCount || !_open || !Enabled ||
+                _assigning.HasValue || Main.SettingsVisible || !Application.isFocused) return;
+            // Only already-open, non-exclusive readers. No discovery, binding
+            // edits, range learning, logging, persistence or scene transitions.
+            ReadSnapshot();
+            UpdateValues(Main.Settings, false);
+            TickGameButtons();
+        }
+        private static void ReadSnapshot()
+        {
+            // Stamp before native callbacks to prevent recursive polling.
             _sampledFrame = Time.frameCount;
+            foreach (var d in _devices)
+            {
+                try { d.Ok = WheelPovInput.Read(d.Slot, d.Axes, d.Buttons, d.Hats); }
+                catch { d.Ok = false; }
+            }
+        }
+        // Direct entry retained for explicit sampler fixtures; runtime callers
+        // use the frame-aware watchdog/query entries above.
+        public static void Update() => UpdateCore(false);
+        private static void UpdateCore(bool reuseSnapshot)
+        {
             var cfg = Main.Settings;
             if (cfg == null) return;
             if ((!cfg.WheelInputEnabled && !HasShortcutBindings && !_assigning.HasValue) || !Main.Enabled)
@@ -283,11 +302,9 @@ namespace ArtOfSimRally.Mod
                 if (!_open) return;
             }
 
-            foreach (var d in _devices)
-            {
-                try { d.Ok = WheelPovInput.Read(d.Slot, d.Axes, d.Buttons, d.Hats); }
-                catch { d.Ok = false; }
-            }
+            // Discovery may have discarded the early snapshot. Defer reading
+            // replacement handles to the next frame rather than poll twice.
+            if (!reuseSnapshot || _sampledFrame != Time.frameCount) ReadSnapshot();
             if (!_firstReadLogged)
             {
                 // Once, with raw values: proves the reads work on every handle,
@@ -307,7 +324,11 @@ namespace ArtOfSimRally.Mod
                 if (GameState.IsDriving) CancelAssign();
                 else StepAssign(cfg);
             }
-
+            UpdateValues(cfg, true);
+            if (!reuseSnapshot || _buttonFrame != Time.frameCount) TickGameButtons();
+        }
+        private static void UpdateValues(Settings cfg, bool allowLearning)
+        {
             bool extended = false;
             foreach (var c in Channels)
             {
@@ -317,7 +338,7 @@ namespace ArtOfSimRally.Mod
                 if (d == null || !d.Ok) { _values[c] = 0f; continue; }
                 // Pin an unambiguous legacy binding after a successful read.
                 // Persist through the existing idle save path, never in driving IO.
-                if (!_assigning.HasValue && !b.InstanceGuid.HasValue && d.InstanceGuid.HasValue)
+                if (allowLearning && !_assigning.HasValue && !b.InstanceGuid.HasValue && d.InstanceGuid.HasValue)
                 {
                     b.InstanceGuid = d.InstanceGuid;
                     extended = true;
@@ -337,14 +358,13 @@ namespace ArtOfSimRally.Mod
                 if (span == 0) { _values[c] = 0f; continue; }
                 // The far end keeps extending in the recorded direction, so the
                 // first full press or full lock calibrates the range.
-                if (!_assigning.HasValue && !b.Calibrated && Math.Sign(raw - b.Rest) == Math.Sign(span) && Math.Abs(raw - b.Rest) > Math.Abs(span))
+                if (allowLearning && !_assigning.HasValue && !b.Calibrated && Math.Sign(raw - b.Rest) == Math.Sign(span) && Math.Abs(raw - b.Rest) > Math.Abs(span))
                 {
                     b.Far = raw; span = b.Far - b.Rest; extended = true;
                 }
                 _values[c] = b.Normalize(raw, c == Channel.Steer);
             }
 
-            TickGameButtons();
             if (extended)
             {
                 // Update the settings object immediately - that is a few string

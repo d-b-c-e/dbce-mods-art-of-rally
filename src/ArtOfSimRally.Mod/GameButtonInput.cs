@@ -21,7 +21,7 @@ namespace ArtOfSimRally.Mod
             // The dynamically loaded watchdog's execution-order attribute did
             // not put it before the game's UI module in the qualified build.
             // Poll at the first eligible consumer, once per rendered frame.
-            WheelInput.EnsureUpdatedThisFrame();
+            WheelInput.PrepareGameQuery();
             return true;
         }
         internal static void TickTitle()
