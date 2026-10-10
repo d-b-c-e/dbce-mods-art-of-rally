@@ -227,9 +227,28 @@ static class Program
             else if (args.Contains("--reconnect-only")) DeviceRecovery();
             else if (args.Contains("--flip-only")) FlipPersistence();
             else if (args.Contains("--assign-only")) AssignmentReadFailure();
-            else { Travel(0, 65535); Travel(65535, 0); RangesAndAssignment(); Lifecycle(); FlipPersistence(); AssignmentReadFailure(); DeviceIdentity(); DeviceRecovery(); AssignmentResume(); BindingSaves(); assertions+=ShifterIdentityTests.Run(); assertions+=CalibrationTests.Run(); }
+            else { Travel(0, 65535); Travel(65535, 0); RangesAndAssignment(); Lifecycle(); FlipPersistence(); AssignmentReadFailure(); DeviceIdentity(); DeviceRecovery(); ReadHealth(); AssignmentResume(); BindingSaves(); assertions+=ShifterIdentityTests.Run(); assertions+=CalibrationTests.Run(); }
             Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
         }
         catch (Exception ex) { Console.Error.WriteLine(ex); return 1; }
+    }
+
+    static void ReadHealth()
+    {
+        Setup("");
+        var id = new Guid("11111111-1111-1111-1111-111111111111");
+        WheelInput.Close();
+        Check(WheelInput.DeviceReadHealth(id.ToString()) == null, "closed reader reported a known failure");
+        Device.Devices = new[] { new Device.DeviceInfo { Index=0, InstanceGuid=id } };
+        WheelInput.Open(); WheelInput.Update();
+        int reads=Device.Reads, enumerations=Device.Enumerations;
+        Check(WheelInput.DeviceReadHealth(id.ToString()) == true, "responsive identity not observed");
+        Check(WheelInput.DeviceReadHealth("22222222-2222-2222-2222-222222222222") == false, "missing identity followed another device");
+        Check(WheelInput.DeviceReadHealth("bad-guid") == null, "invalid identity reported as a device");
+        Check(Device.Reads==reads && Device.Enumerations==enumerations, "health query touched hardware");
+        Device.ReadOk=false; WheelInput.Update();
+        Check(WheelInput.DeviceReadHealth(id.ToString()) == false, "failed read kept healthy status");
+        Device.ReadOk=true; WheelInput.Update();
+        Check(WheelInput.DeviceReadHealth(id.ToString()) == true, "resumed read not observed");
     }
 }

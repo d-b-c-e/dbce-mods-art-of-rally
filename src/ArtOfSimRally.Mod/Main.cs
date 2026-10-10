@@ -36,6 +36,7 @@ namespace ArtOfSimRally.Mod
         private static Harmony _harmony;
         private static UnityModManager.ModEntry _modEntry;
         private static readonly FfbReconnect ForceReconnect = new FfbReconnect();
+        private static readonly FfbReadRecovery ForceReadRecovery = new FfbReadRecovery();
         private static int _saveAttempts;
 
         /// <summary>Referenced by <c>EntryMethod</c> in Info.json.</summary>
@@ -196,6 +197,20 @@ namespace ArtOfSimRally.Mod
 
         internal static void RecoverForceFeedback()
         {
+            // USB topology changes can invalidate the shared exclusive handle
+            // while native Ready stays true. Reopening reader slots alone keeps
+            // referring to that handle. Use the existing focused/idle, strict-
+            // identity reconnect path after a sustained failed read instead.
+            if (Enabled && Settings != null && Settings.ForceFeedbackEnabled && Settings.WheelInputEnabled &&
+                FfbNative.Ready && !ForceReconnect.Pending &&
+                FfbSelection.TryTarget(Settings, out _, out _, out var readGuid, out _))
+            {
+                if (ForceReadRecovery.Observe(Time.realtimeSinceStartup, readGuid, WheelInput.DeviceReadHealth(readGuid)))
+                {
+                    ModLog.Warning("Selected FFB wheel stopped responding to input; scheduling bounded recovery while focused and paused/in menus.");
+                    ForceReconnect.Request();
+                }
+            }
             if (!ForceReconnect.Pending || _modEntry == null || Settings == null) return;
             if (!ForceReconnect.TryBegin(Time.realtimeSinceStartup,
                 Enabled && Settings.ForceFeedbackEnabled, GameState.IsDriving,
@@ -225,7 +240,7 @@ namespace ArtOfSimRally.Mod
             }
         }
 
-        internal static void CancelForceRecovery() => ForceReconnect.Cancel();
+        internal static void CancelForceRecovery() { ForceReconnect.Cancel(); ForceReadRecovery.Reset(); }
 
         /// <summary>Persists settings changed outside the panel, e.g. by the camera hotkeys.</summary>
         public static bool SaveSettings()

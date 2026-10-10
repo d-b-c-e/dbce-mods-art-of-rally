@@ -93,6 +93,15 @@ namespace ArtOfSimRally.Mod
 
         public static string Status { get; private set; } = "";
         public static Channel? Assigning => _assigning;
+        // Read the last observation only. Never enumerate, acquire or guess by
+        // name/index. Null means there is no open reader observation to assess.
+        internal static bool? DeviceReadHealth(string guid)
+        {
+            if (!_open || !Guid.TryParse(guid, out var identity) || identity == Guid.Empty) return null;
+            foreach (var device in _devices)
+                if (device.InstanceGuid == identity) return device.Ok;
+            return false;
+        }
         public static string DeviceSummary
         {
             get

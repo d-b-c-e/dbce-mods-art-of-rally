@@ -21,6 +21,30 @@ Severity is about the effect on driving, not on how annoying it looks:
 
 ## Open
 
+### KI-47 — Shared wheel handle does not recover after device disappearance
+
+Owner reported missing steering/throttle on October 9 after a Wheelkit profile
+apply. The Apply log lists only panel width, height and eye distance; Art's
+saved control bindings remain present. Camera cycling still follows its native
+game binding: Wheelkit does not yet apply profile controls.
+
+Art 0.4.2-rc.3 initially read the R12 both before and after FFB initialization.
+At 20:03:42 local the R12 vanished from DirectInput enumeration while shifter
+and stalk remained; six seconds later it returned. Every subsequent reader
+reopen reused the existing FFB handle, and the R12 stayed NOT RESPONDING until
+exit. Owner says the base stayed powered and a separate USB camera was
+unplugged/replugged on another hub. That is context, not proof of a USB cause.
+The initial loss and any earlier control symptom remain unqualified.
+
+Candidate fix: observe the selected FFB device's existing input-read health,
+request bounded recovery after two seconds of failed observations, and reuse
+the existing strict-identity, focused-idle reconnect path. One request per
+outage; reader reopen/failed retries do not replenish it. A half second of
+healthy observations or an explicit identity change permits a new outage.
+No native pin, force curve, binding or geometry changes. Tests pass; attended
+recovery remains pending. [Evidence and validation](reviews/2026-10-09-input-recovery.md).
+
+
 ### KI-46 — Menu button prompts overlap and show gamepad symbols for a wheel
 
 **Owner-reported 2026-10-06 on 0.4.1-rc.2 (screenshot).** Some menu prompts, for

@@ -103,6 +103,24 @@ static class Program
         Check(!retry.Pending && !retry.TryBegin(500,true,false,false,window), "retry budget unbounded");
         retry.Request(); retry.Cancel();
         Check(!retry.Pending, "shutdown retained a pending acquisition");
+
+        var health = new FfbReadRecovery();
+        const string id = "11111111-1111-1111-1111-111111111111";
+        Check(!health.Observe(0,id,true) && !health.Observe(1,id,false), "brief failed read requested recovery");
+        Check(!health.Observe(2.99,id,false) && health.Observe(3,id,false), "sustained input failure did not request recovery");
+        retry.Request();
+        Check(!retry.TryBegin(3,true,false,false,IntPtr.Zero), "health recovery acquired in background");
+        Check(!retry.TryBegin(4,true,true,false,window), "health recovery acquired during driving");
+        Check(!retry.TryBegin(5,true,false,true,window), "health recovery interrupted assignment");
+        Check(!retry.TryBegin(6,true,false,false,window) && retry.TryBegin(6.5,true,false,false,window), "health recovery bypassed focused idle delay");
+        Check(!health.Observe(7,id,null) && !health.Observe(8,id,false) && !health.Observe(99,id,false), "reader close replenished outage recovery");
+        Check(!health.Observe(100,id,true) && !health.Observe(100.1,id,false), "single good read reset outage latch");
+        Check(!health.Observe(102.1,id,false), "intermittent read enabled endless recovery");
+        Check(!health.Observe(103,id,true) && !health.Observe(103.5,id,true), "healthy reads requested recovery");
+        Check(!health.Observe(104,id,false) && health.Observe(106,id,false), "a new outage after stable recovery was ignored");
+        Check(!health.Observe(107,"22222222-2222-2222-2222-222222222222",false) &&
+            health.Observe(109,"22222222-2222-2222-2222-222222222222",false), "explicit identity switch inherited prior outage latch");
+        Check(!health.Observe(double.NaN,id,false) && !health.Observe(double.PositiveInfinity,id,false), "invalid clock requested recovery");
     }
     static void CameraCompatibility()
     {
