@@ -251,8 +251,19 @@ namespace ArtOfSimRally.Mod
         }
 
         /// <summary>Called every frame by the watchdog.</summary>
+        private static int _sampledFrame = -1;
+        internal static void EnsureUpdatedThisFrame()
+        {
+            if (_sampledFrame == Time.frameCount) return;
+            // Stamp before sampling: native callbacks must not recursively poll,
+            // and later consumers must retain the same non-consuming press edge.
+            _sampledFrame = Time.frameCount;
+            Update();
+        }
+
         public static void Update()
         {
+            _sampledFrame = Time.frameCount;
             var cfg = Main.Settings;
             if (cfg == null) return;
             if ((!cfg.WheelInputEnabled && !HasShortcutBindings && !_assigning.HasValue) || !Main.Enabled)
@@ -334,7 +345,6 @@ namespace ArtOfSimRally.Mod
             }
 
             TickGameButtons();
-            GameButtonInput.TickTitle();
             if (extended)
             {
                 // Update the settings object immediately - that is a few string

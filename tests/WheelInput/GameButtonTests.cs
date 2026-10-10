@@ -8,7 +8,7 @@ static class GameButtonTests
     static readonly Guid Identity = new("11111111-1111-1111-1111-111111111111");
     static void Check(bool ok, string message) { checks++; if (!ok) throw new Exception(message); }
     static string Binding(string element, int rest = 0) => $"TSS fixture|0|{element}|{rest}|1|guid:{Identity:D}";
-    static void Tick() { Time.frameCount++; WheelInput.Update(); }
+    static void Tick() { Time.frameCount++; WheelInput.EnsureUpdatedThisFrame(); GameButtonInput.TickTitle(); }
     static bool Down(Channel channel) => WheelInput.GameButton(channel, true);
     static bool Held(Channel channel) => WheelInput.GameButton(channel, false);
     public static int Run()
@@ -66,6 +66,25 @@ static class GameButtonTests
             Device.Buttons[32]=0; Tick(); Device.Buttons[32]=1; Tick(); Check(Down(Channel.CameraSwitch), "gate release did not rearm");
         }
         Time.frameCount++; Check(!Down(Channel.CameraSwitch), "stale snapshot reused");
+        // Actual menu order: Rewired asks before the watchdog. The first read
+        // samples; subsequent readers/watchdog see the same edge, even if the
+        // physical state changes between them. No extra polling consumes it.
+        Device.Buttons[32]=0; Device.Hats[0]=-1; Tick();
+        Device.Hats[0]=18000; Time.frameCount++;
+        int reads=Device.Reads;
+        Check(GameButtonInput.Prepare(PadManager.Player), "early menu consumer refused");
+        Check(Device.Reads==reads+1, "early consumer did not read exactly once");
+        Check(GameButtonInput.Axis(13)==-1 && GameButtonInput.Button(13,true,true), "early menu lost current hat edge");
+        Device.Hats[0]=-1;
+        WheelInput.EnsureUpdatedThisFrame();
+        Check(GameButtonInput.Prepare(PadManager.Player) && GameButtonInput.Button(13,true,true), "watchdog/second consumer consumed edge");
+        Check(Device.Reads==reads+1, "multiple consumers repeated native read");
+        Tick(); Check(GameButtonInput.Axis(13)==0 && !GameButtonInput.Button(13,true,true), "next frame retained released hat");
+        Device.Hats[0]=18000; Tick();
+        Check(GameButtonInput.Prepare(PadManager.Player) && GameButtonInput.Button(13,true,true), "watchdog-first order lost edge");
+        Time.frameCount++; Device.Hats[0]=-1;
+        Check(!GameButtonInput.Prepare(new Rewired.Player()) && !Down(Channel.NavDown), "other player sampled wheel");
+        Check(GameButtonInput.Prepare(PadManager.Player) && GameButtonInput.Axis(13)==0, "primary player did not sample after other player");
         Device.Hats[0]=9000; WheelInput.BeginCalibration(Channel.NavUp); Tick();
         Check(WheelInput.PendingCalibration==null, "held hat bound immediately");
         Device.Hats[0]=-1; Tick(); Device.Hats[0]=4500; Tick();
@@ -90,6 +109,13 @@ static class GameButtonTests
             Device.Buttons[button]=0; Tick(); Check(SplashScreenControl.Instance.Ends==1,"title release ignored");
             Tick(); Check(SplashScreenControl.Instance.Ends==1,"title advanced twice");
         }
+        SplashScreenControl.Instance=new SplashScreenControl();
+        UIManager.Instance.PanelManager.Current=UIManager.Instance.PanelManager.SplashScreenPanel;
+        Device.Buttons[31]=0; Tick(); Device.Buttons[31]=1; Tick();
+        Device.Buttons[31]=0; Time.frameCount++;
+        Check(GameButtonInput.Prepare(PadManager.Player) && SplashScreenControl.Instance.Ends==0, "input query changed scene");
+        WheelInput.EnsureUpdatedThisFrame(); GameButtonInput.TickTitle();
+        Check(SplashScreenControl.Instance.Ends==1, "watchdog lost early sampled title release");
         foreach(var gate in new[] {"read","focus","panel","build","wrong-screen","inactive","startup-held"})
         {
             SplashScreenControl.Instance=new SplashScreenControl();

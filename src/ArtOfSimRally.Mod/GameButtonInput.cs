@@ -15,6 +15,15 @@ namespace ArtOfSimRally.Mod
         internal static void Observe(int horizontal, int vertical, int submit, int cancel)
         { _horizontal = horizontal; _vertical = vertical; _submit = submit; _cancel = cancel; }
         internal static bool Primary(Player player) => WheelInput.Enabled && GameButtonCompatibility.Allowed && ReferenceEquals(player, PadManager.GetPlayer());
+        internal static bool Prepare(Player player)
+        {
+            if (!Primary(player)) return false;
+            // The dynamically loaded watchdog's execution-order attribute did
+            // not put it before the game's UI module in the qualified build.
+            // Poll at the first eligible consumer, once per rendered frame.
+            WheelInput.EnsureUpdatedThisFrame();
+            return true;
+        }
         internal static void TickTitle()
         {
             // The title uses a Rewired ButtonJustReleased delegate, not GetButton.
@@ -62,7 +71,7 @@ namespace ArtOfSimRally.Mod
         [HarmonyPostfix]
         private static void After(Player __instance, int __0, MethodBase __originalMethod, ref bool __result)
         {
-            if (!GameButtonInput.Primary(__instance)) return;
+            if (!GameButtonInput.Prepare(__instance)) return;
             __result |= GameButtonInput.Button(__0, __originalMethod.Name.StartsWith("GetNegative", StringComparison.Ordinal),
                 __originalMethod.Name.EndsWith("Down", StringComparison.Ordinal));
         }
@@ -73,7 +82,7 @@ namespace ArtOfSimRally.Mod
         [HarmonyPostfix]
         private static void After(Player __instance, int __0, ref float __result)
         {
-            if (!GameButtonInput.Primary(__instance)) return;
+            if (!GameButtonInput.Prepare(__instance)) return;
             float value = GameButtonInput.Axis(__0);
             if (value != 0) __result = value;
         }

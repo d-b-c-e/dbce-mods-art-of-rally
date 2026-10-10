@@ -108,7 +108,12 @@ namespace ArtOfSimRally.Mod
         private void LateUpdate() => BonnetCamera.ReleaseIfInactive();
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
-        private static void ReadWheelInputs() => WheelInput.Update();
+        private static void ReadWheelInputs()
+        {
+            WheelInput.EnsureUpdatedThisFrame();
+            // Scene/menu transitions belong here, never inside a Rewired query.
+            GameButtonInput.TickTitle();
+        }
 
         // Keep Unity ECalls behind a non-inlined runtime boundary. The separate
         // developer probe must be able to attach its Update hook on the CLR for
