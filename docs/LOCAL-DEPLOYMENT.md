@@ -16,7 +16,10 @@ All packaged payloads and the second native copy verified; eleven protected
 settings, loader, game-assembly and probe files are unchanged. Installed under
 the shared lease after the idle gate, with the game closed. No launch, profile
 Apply, force output or device operation. Lease released. Public 0.4.1 unchanged.
-Post-Apply input and live regression remain pending; see
+The post-Apply live regression subsequently passed at 02:44 CT: production
+Wheelkit Apply, launch-file verification and the original session-5 playback
+(13,455 poses, zero application error), normal closure and exact owner restore.
+Physical output was muted. Raw input qualification remains pending; see
 `reviews/2026-10-09-profile-controls.md` for the capability and acceptance limits.
 
 ## Previous installation — 0.4.2-rc.4 (KI-47 input recovery)

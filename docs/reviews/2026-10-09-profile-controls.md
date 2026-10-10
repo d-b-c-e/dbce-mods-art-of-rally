@@ -84,3 +84,35 @@ probe, are byte-identical. Backup and verification receipt:
 `results/profile-controls-rc6-install/`. No game launch, profile Apply or physical
 output occurred. Lease released. Public release and the live checks above
 remain separate; the older statement that rc.6 is not installed is superseded.
+
+## Production Apply and original playback, October 10, 02:39-02:44 CT
+
+Wheelkit `tools/Test-ProfileGame.ps1 -Replay` used its production configuration
+service to write the owner's selected profile, independently verified the
+written values, and carried those applied settings into a private session copy.
+Launch hashes verified that the replay did not substitute the old tape's XML.
+Camera button 32, confirm 31, back 18, start 35, profile POV navigation and
+sequential transmission were among the applied settings.
+
+The installed rc.6 played the original `2026-10-04-owner-session-5`: all 13,455
+driving poses, zero pose-application error and zero gear mismatches. Skipped
+rows were outside driving. The game closed normally; settings and automatic
+backups restored exactly at `2026-10-10T07:44:39.8427525Z`. Shared lease and
+owner-idle gate were used, wheel and motion outputs muted; no display override.
+
+Private evidence is Wheelkit `artifacts/art-rc6-profile-live-20261010/`
+(`preview.json`, `apply.json`, `launch-settings.json`, `qualification.json`,
+`restored.json`, `runtime.log`, copied game log), plus this repo's
+`results/sessions/2026-10-04-owner-session-5/replay-20261010-023939/`.
+Launch Settings.xml SHA-256:
+`60EFA75AB5363AFA980F91B6B9B1B7F073880ADEAA5E6A097C840A538746EE6D`;
+TripleScreen.xml:
+`13F0FD93B02D3457801D7720F33B94A9ABB3C967FF2FBCDF50214C6CCF4D17FC`.
+
+This verifies the configuration write and the playback regression, **not**
+camera/menu/pedal input delivery. The run's summary says `bindings preserved`;
+read the preview/apply reports for unsupported actions. Wheelkit `0e82177`
+subsequently preserves that detailed qualification report instead of replacing
+it with the short runtime summary. Raw-input observation after Apply is the
+next gate; a shared native test seam is under review. No physical acceptance
+or public release is added by this run.
