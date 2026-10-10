@@ -41,7 +41,7 @@ internal static class Program
                 uiProcessor.GetType().GetMethod("Patch").Invoke(uiProcessor, null);
                 var uiMethods = ((System.Collections.IEnumerable)uiHarmony.GetType().GetMethod("GetPatchedMethods").Invoke(uiHarmony,null)).Cast<MethodBase>();
                 Check(uiMethods.Any(m=>m.Name=="ToggleWindow"),"UMM cancel-first hook failed");
-                foreach (string type in new[] { "StockUiDispatchGuard", "StockPanelInputGuard", "StockModsInputGuard", "StockScreenInputGuard", "GameButtonPatch", "GameButtonAxisPatch", "TransmissionInput" })
+                foreach (string type in new[] { "StockUiDispatchGuard", "StockPanelInputGuard", "StockModsInputGuard", "StockScreenInputGuard", "GameButtonPatch", "GameButtonAxisPatch", "GameContinuePatch", "TransmissionInput" })
                 {
                     var p = uiHarmony.GetType().GetMethod("CreateClassProcessor").Invoke(uiHarmony,
                         new object[] { mod.GetType("ArtOfSimRally.Mod." + type, true) });

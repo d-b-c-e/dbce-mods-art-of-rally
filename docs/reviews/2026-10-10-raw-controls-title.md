@@ -69,11 +69,45 @@ whichever comes first, once per rendered frame. Later consumers retain the same
 non-consuming edge. The frame is stamped before polling to avoid recursion.
 Title transitions remain in the watchdog, outside input queries. Tests cover
 both call orders, one native read, held/released frames, unrelated players and
-deferred title transitions (354 input assertions; zero-warning solution build).
-The ordering fix still needs its own clean RC gates and live menu qualification.
+deferred title transitions. Claude's review moved discovery, logging, range
+learning and assignment entirely out of the query path (9fd1776; 364 input
+assertions). The query reads existing handles only. All 20 clean RC gates and
+the two original force-corpus cases passed for rc.11. Its exact package was
+installed with 11 protected files unchanged; receipt:
+`results/profile-controls-rc11-install/install-receipt.json`.
 
 Run 04 accepted two commands and carried 159 injected reads. Normal close,
 explicit semantic Settings.xml verification and exact owner-file/preferences
 restoration passed; no process or lease remained. The native no-force latch and
 temporary disabled output settings were retained throughout the test. The
 archived ffb.log is retained owner history, not evidence of test force output.
+
+## Run 05: menu path passed; intro query missing
+
+`results/raw-controls-menu-20261010-05` applied the original profile through
+Wheelkit's production writer. Raw Start 35 dismissed the title; four separate
+POV-0 South pulses selected Time Attack, Custom Rally, Online Events (not
+entered), then Free Roam. Confirm 31 reached location, car selection and the
+Finland free-roam scene. Fresh game-window frames were inspected before each
+press. This qualifies those menu inputs on rc.11 and closes the observed query
+ordering defect. It does not qualify driving.
+
+The stage remained in its cinematic. A fresh Confirm and Start did not advance
+it. Inspection of the same pinned game assembly found `StageIntroCinematic.Update`
+uses `Input.anyKeyDown || PadManager.GetPlayer().GetAnyButtonDown()`, not a named
+Submit action. `GameIntroduction` uses the same query for its text. The mod had
+no adapter for this query. Private decompilation: `results/freeroam-intro-20261010/`.
+
+The follow-up augments parameterless `Player.GetAnyButtonDown` for the primary
+player with fresh profile Confirm/Start only. It preserves native true results,
+does not generate OS input, and leaves scene transitions to the game. The
+existing build/focus/panel/assignment/read/release guards apply. Camera, Back,
+navigation and ordinary pedal bindings cannot skip the intro. Production-postfix
+fixtures cover both controls, repeated queries, held/released states, other
+players and all guards (386 input assertions; clean solution build). The actual
+Mono patch-attachment check includes this hook. Live qualification remains due.
+
+Run 05 ended normally after ten commands, with 167,310 trace rows. Semantic
+Settings.xml verification and exact owner-file/Unity-preference restoration
+passed at 10:09:10Z. The process exited and the lease was released. The no-force
+native latch stayed armed; no physical force or motion output was enabled.

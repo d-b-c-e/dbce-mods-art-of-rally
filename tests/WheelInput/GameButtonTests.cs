@@ -11,6 +11,12 @@ static class GameButtonTests
     static void Tick() { Time.frameCount++; WheelInput.EnsureUpdatedThisFrame(); GameButtonInput.TickTitle(); }
     static bool Down(Channel channel) => WheelInput.GameButton(channel, true);
     static bool Held(Channel channel) => WheelInput.GameButton(channel, false);
+    static bool Continue(bool original = false, Rewired.Player player = null)
+    {
+        object[] args = { player ?? PadManager.Player, original };
+        typeof(GameContinuePatch).GetMethod("After", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic).Invoke(null,args);
+        return (bool)args[1];
+    }
     public static int Run()
     {
         foreach (var bad in new[] { Binding("pov:4"), Binding("pov:0",36000), Binding("pov:0",-1), "TSS fixture|0|pov:0|0|1", Binding("pov:0")+"|cal:0:0:0" })
@@ -146,6 +152,43 @@ static class GameButtonTests
         SplashScreenControl.Instance.EndSplashScreen(); // Native Rewired event wins first.
         Device.Buttons[31]=0; Tick(); Check(SplashScreenControl.Instance.Ends==1,"native event and profile release both ended title");
         UIManager.Instance=null; SplashScreenControl.Instance=null;
+        // Run the production postfix: native positives survive; only fresh,
+        // guarded Confirm/Start presses augment the primary player's query.
+        Array.Clear(Device.Buttons); Device.Hats[0]=-1; Tick();
+        Check(Continue(true) && !Continue(), "any-button changed native input or created a press");
+        foreach (int button in new[] {31,35})
+        {
+            Device.Buttons[button]=1; Time.frameCount++;
+            reads=Device.Reads;
+            Check(Continue() && Continue() && Device.Reads==reads+1, "continue query lost edge or polled twice");
+            Check(!Continue(player:new Rewired.Player()), "continue leaked to another player");
+            WheelInput.EnsureUpdatedThisFrame(); Check(Continue(), "watchdog consumed continue edge");
+            Tick(); Check(!Continue(), "held continue repeated");
+            Device.Buttons[button]=0; Tick(); Check(!Continue(), "continue release counted as press");
+        }
+        foreach (int button in new[] {18,29,32})
+        {
+            Device.Buttons[button]=1; Tick(); Check(!Continue(), "unrelated/pedal control skipped intro");
+            Device.Buttons[button]=0; Tick();
+        }
+        Device.Hats[0]=18000; Tick(); Check(!Continue(), "navigation skipped intro");
+        Device.Hats[0]=-1; Tick();
+        foreach (string gate in new[] {"read","focus","panel","build","disabled","assignment","startup-held"})
+        {
+            Device.Buttons[31]=0; Tick();
+            if(gate=="read") Device.ReadOk=false;
+            if(gate=="focus") Application.isFocused=false;
+            if(gate=="panel") Main.SettingsVisible=true;
+            if(gate=="build") GameButtonCompatibility.Allowed=false;
+            if(gate=="disabled") Main.Enabled=false;
+            if(gate=="assignment") WheelInput.BeginCalibration(Channel.NavUp);
+            Device.Buttons[31]=1; Time.frameCount++;
+            if(gate=="startup-held") WheelInput.ResetGameButtons();
+            Check(!Continue() && Continue(true), "continue gate changed native input or leaked: "+gate);
+            Device.ReadOk=true; Application.isFocused=true; Main.SettingsVisible=false;
+            GameButtonCompatibility.Allowed=true; Main.Enabled=true; WheelInput.CancelAssign();
+            Device.Buttons[31]=0; Tick();
+        }
         WheelInput.Close(); Array.Clear(Device.Buttons); Array.Fill(Device.Hats,-1);
         // Queries cannot acquire or reconnect devices. A same-frame watchdog
         // still owns discovery even when the earlier query could not sample.

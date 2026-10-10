@@ -58,6 +58,14 @@ namespace ArtOfSimRally.Mod
             if (action < 0 || (action != _horizontal && action != _vertical && action != 14)) return 0;
             return (Button(action, false, false) ? 1 : 0) - (Button(action, true, false) ? 1 : 0);
         }
+        internal static bool ContinuePressed(Player player)
+        {
+            // StageIntroCinematic and GameIntroduction use GetAnyButtonDown,
+            // not a named Submit action. Expose only the two explicit continue
+            // controls; steering, pedals, navigation and camera are not a skip.
+            return Prepare(player) && (WheelInput.GameButton(WheelInput.Channel.Confirm, true) ||
+                WheelInput.GameButton(WheelInput.Channel.Start, true));
+        }
     }
     [HarmonyPatch]
     internal static class GameButtonPatch
@@ -85,6 +93,15 @@ namespace ArtOfSimRally.Mod
             if (!GameButtonInput.Prepare(__instance)) return;
             float value = GameButtonInput.Axis(__0);
             if (value != 0) __result = value;
+        }
+    }
+    [HarmonyPatch(typeof(Player), "GetAnyButtonDown", new Type[] { })]
+    internal static class GameContinuePatch
+    {
+        [HarmonyPostfix]
+        private static void After(Player __instance, ref bool __result)
+        {
+            __result |= GameButtonInput.ContinuePressed(__instance);
         }
     }
 }

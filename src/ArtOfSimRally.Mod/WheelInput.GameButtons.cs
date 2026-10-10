@@ -35,7 +35,7 @@ namespace ArtOfSimRally.Mod
             if (!Enabled || !Application.isFocused || Main.SettingsVisible || _assigning.HasValue) return false;
             if (_buttonFrame != Time.frameCount)
             {
-                if (!_staleLogged && _buttonFrame >= 0 && IsBound(channel))
+                if (!_staleLogged && _open && _buttonFrame >= 0 && IsBound(channel))
                 { _staleLogged = true; ModLog.Warning("Profile action read preceded this frame's input snapshot; button withheld. Check script execution order."); }
                 return false;
             }
