@@ -25,6 +25,9 @@ param(
     [Parameter(ParameterSetName = 'Record', Mandatory)][Parameter(ParameterSetName = 'Replay', Mandatory)][ValidatePattern('^[a-zA-Z0-9][a-zA-Z0-9._-]*$')][string]$Name,
     [Parameter(ParameterSetName = 'Replay')][ValidateSet('trajectory','input-diagnostic')][string]$Playback = 'trajectory',
     [string]$GameDir = 'D:/Program Files (x86)/Steam/steamapps/common/artofrally',
+    # Optional library/result locations for Wheelkit; old command lines retain their paths.
+    [string]$SessionsRoot,
+    [Parameter(ParameterSetName = 'Replay')][string]$OutputDirectory,
     # Kept only to reject obsolete automation with an actionable error.
     [Parameter(ParameterSetName = 'Replay')][switch]$Assist,
     [Parameter(ParameterSetName = 'Replay')][double]$PoseThreshold = 2,
@@ -33,7 +36,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
-$sessions = Join-Path $root 'results/sessions'
+$sessions = if ($SessionsRoot) { $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($SessionsRoot) } else { Join-Path $root 'results/sessions' }
 $request = Join-Path $env:LOCALAPPDATA 'ArtOfSimRally/session-request.txt'
 # Custom rally progress lives outside the Steam Cloud folder; it decides which
 # menus appear, so a replay needs the recorded copy.
@@ -119,7 +122,8 @@ switch ($PSCmdlet.ParameterSetName) {
         }
         Assert-GameClosed
         Assert-TestSlot
-        $out = Join-Path $tape ('replay-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
+        $out = if ($OutputDirectory) { $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputDirectory) } else { Join-Path $tape ('replay-' + (Get-Date -Format 'yyyyMMdd-HHmmss')) }
+        if (Test-Path -LiteralPath $out) { throw 'Choose a new playback result directory; existing evidence is never overwritten.' }
         $threshold = if ($Assist) { $PoseThreshold } else { 0 }
         New-Item -ItemType Directory -Force -Path $out | Out-Null
         $ownerState = Join-Path $out 'owner-environment'
@@ -153,7 +157,7 @@ switch ($PSCmdlet.ParameterSetName) {
             if ((Get-Date) -gt $deadline) { throw "No replay result after $TimeoutMinutes minutes; status: $(Send-Probe 'SESSION-STATUS')" }
             Start-Sleep -Seconds 5
         }
-        $result = Get-Content -LiteralPath $resultFile
+        $result = @(Get-Content -LiteralPath $resultFile)
         $result
         if (-not $KeepGameOpen) {
             $game = Get-Process artofrally -ErrorAction SilentlyContinue

@@ -1,5 +1,20 @@
 # Session recording, playback and force analysis
 
+**Wheelkit integration (October 10):** `Session.ps1` also accepts `-SessionsRoot`
+for a recording library outside this checkout and replay-only `-OutputDirectory`
+for separate results. Both resolve relative paths from the PowerShell location.
+Old invocations keep their existing locations. An existing replay result folder
+is refused before starting or applying a recorded environment. Wheelkit uses
+these parameters with `-MuteOutputs` for recording and trajectory mode for playback;
+it holds the shared rig lease around the original Art runner. This changes no
+mod/runtime payload or owner configuration. The first Wheelkit launch is still
+to be qualified.
+
+`tools/testing/Test-SessionPaths.ps1` executes the actual script against process,
+registry and environment doubles: custom paths with spaces, correct tape identity,
+separate evidence, restoration, a one-line success result, existing-result refusal
+and unchanged legacy paths. It never launches a game or accesses owner state.
+
 Install the optional **SessionTools** release archive separately from the normal
 mod. Close the game before installing or removing this developer probe.
 
