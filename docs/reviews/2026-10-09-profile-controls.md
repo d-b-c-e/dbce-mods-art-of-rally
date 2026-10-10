@@ -61,6 +61,14 @@ Claude's source review (hcom 3215) led to diagonal-capture refusal, the exact ga
 assembly guard, transmission wording and stale-frame diagnostics. Final clean
 candidate gates and live qualification must be recorded separately.
 
+Clean candidate **0.4.2-rc.6** from **905d04bceea6b3b684ca91efd57abae3a3332d33**
+passed all 20 gates and both original force-corpus cases at 2026-10-10 02:28 UTC.
+Receipt: `results/rc-0.4.2-rc.6-23f795a6a09c46af9dc6d08f4035b4a8/automated.json`.
+ZIP: `dist/ArtOfSimRally-0.4.2-rc.6.zip`, SHA-256
+`647CCD0B2A8E5F8A2009FB88E3EFD5F68C5839358A710208C29D929DBEE2ABCD`.
+This includes the review fixes and capability marker. It is **not installed or
+published**; the owner's installed rc4/settings remain untouched.
+
 Still open: real post-Apply cold launch/input observation, F6 render acceptance,
 unfocused automated action qualification, new controlled USB/focus transitions,
 and adapters for select/look-back/reset/horn/neutral/gears beyond Art's existing
