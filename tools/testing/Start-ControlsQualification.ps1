@@ -34,7 +34,7 @@ foreach($p in @($request,$switch,(Join-Path $env:LOCALAPPDATA 'ArtOfSimRally/ses
 }
 if([double](& "$HubRepo/tools/Owner-Input.ps1" -IdleSeconds) -lt 300) { throw 'Owner input is recent.' }
 $lease=Enter-StageRigLease -Path (Join-Path $env:LOCALAPPDATA 'dbce/test-slot.txt') -Owner hula-art-controls -Purpose 'Production Apply and native raw-input observation; no force; exact restore'
-$game=$null; $snapshots=@(); $ready=$false; $applied=$false; $environmentSaved=$false; $restored=$false
+$game=$null; $snapshots=@(); $ready=$false; $applied=$false; $environmentSaved=$false; $restored=$false; $verificationError=$null
 function Hash([string]$p) { if(Test-Path -LiteralPath $p -PathType Leaf){return (Get-FileHash -LiteralPath $p).Hash}; return 'absent' }
 function Assert-PlainPath([string]$p) {
     $cursor=Full $p
@@ -71,6 +71,11 @@ try {
     foreach($p in $cloudBefore) { Save-File $p }
     $snapshots | ConvertTo-Json -Depth 4 | Set-Content "$Result/owner-files.json"
     $ready=$true # all recovery bytes exist before any owner file is written
+    # Keep the loader window from covering the title. Its exact prior file is restored.
+    $ummParams=Join-Path $GameDir 'artofrally_Data/Managed/UnityModManager/Params.xml'
+    [xml]$paramsXml=Get-Content -LiteralPath $ummParams -Raw
+    if(!$paramsXml.Param.ShowOnStart) { throw 'Missing UMM startup-window setting.' }
+    $paramsXml.Param.ShowOnStart='0'; $paramsXml.Save($ummParams)
     # Independent output interlocks also cover a probe that refuses to load.
     $settings=Join-Path $GameDir 'Mods/ArtOfSimRally/Settings.xml'
     [xml]$xml=Get-Content -LiteralPath $settings -Raw
@@ -88,6 +93,11 @@ try {
     & dotnet $harness apply-live $live
     if($LASTEXITCODE){throw 'Production Apply failed.'}
     $applied=$true
+    Copy-Item -LiteralPath $settings -Destination "$Result/applied-settings.xml"
+    [xml]$appliedXml=Get-Content -LiteralPath $settings -Raw
+    foreach($key in @('ForceFeedbackEnabled','LandingEffectsEnabled','CrashEffectsEnabled','ShiftEffectsEnabled','TelemetryEnabled')) {
+        if($appliedXml.Settings.$key -ne 'false') { throw "Apply changed output interlock $key" }
+    }
     & dotnet $harness raw-workload "$live/profile.json" "$Result/raw-workload.json"
     if($LASTEXITCODE){throw 'Independent raw workload failed.'}
     foreach($relative in $payloads.Keys) {
@@ -136,7 +146,13 @@ try {
             if($nonce) { foreach($taken in Get-ChildItem -LiteralPath (Split-Path $request) -Filter 'controls-request.txt.*.taken') { Attempt-Restore {
                 if((Get-Content -LiteralPath $taken.FullName -Raw).Contains("nonce=$nonce")) { Copy-Item -LiteralPath $taken.FullName -Destination "$Result/after/"; Remove-Item -LiteralPath $taken.FullName }
             } } }
-            if($applied) { Attempt-Restore { & dotnet $harness verify-live $live; "verifyExit=$LASTEXITCODE" | Set-Content "$Result/verify.txt" } }
+            if($applied) {
+                try {
+                    & dotnet $harness verify-art-runtime $live
+                    "verifyExit=$LASTEXITCODE" | Set-Content "$Result/verify.txt"
+                    if($LASTEXITCODE) { throw 'Applied settings verification failed; inspect retained runtime bytes.' }
+                } catch { $verificationError=$_.Exception.Message; $verificationError | Set-Content "$Result/verification-error.txt" }
+            }
             if(Test-Path "$Result/apply/apply.json") { Attempt-Restore { & dotnet $harness restore-live $live; if($LASTEXITCODE){throw 'Apply restore failed.'} } }
             foreach($item in $snapshots) { Attempt-Restore {
                 Assert-GameClosed; Assert-PlainPath $item.path
@@ -160,4 +176,5 @@ try {
         $restored=$true
         if(Test-Path -LiteralPath $Result){[DateTime]::UtcNow.ToString('o') | Set-Content "$Result/restored.txt"}
     } finally { if($restored){$null=Exit-StageRigLease -Lease $lease} }
+    if($verificationError) { throw "$verificationError Owner state restored; lease released." }
 }
