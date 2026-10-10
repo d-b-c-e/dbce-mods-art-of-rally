@@ -6,7 +6,19 @@ feature or bug fix. After its candidate or final artifact passes the complete
 local automated gate, deploy it for testing without asking again. Public release
 publication and attended sign-off remain separate.
 
-## Current installation — 0.4.2-rc.3 (steering wording + native lifecycle)
+## Current installation — 0.4.2-rc.4 (KI-47 input recovery)
+
+Installed October 10, 01:21:34 UTC (October 9 local), clean source `20fc617`.
+All 20 package gates and the original force corpus pass. ZIP SHA-256:
+`2B4E73868E2928462CDB7B4AFB184AF31299318FEA2611C7E0FE7044068D15AD`.
+Private receipt and original backup: `results/input-recovery-rc4-install/`.
+Every package payload, second native copy and protected settings/probe file
+was hash-checked. Game closed, no launch or physical force. Native 901 and
+accepted force tune remain unchanged. Attended control/recovery checks are
+pending; the original disappearance is not attributed to a proven USB cause.
+See [investigation](reviews/2026-10-09-input-recovery.md).
+
+## Previous installation — 0.4.2-rc.3 (steering wording + native lifecycle)
 
 Installed October 8, 09:26 UTC from clean source
 `914ea3a983aa52bd78cc0cf8416968db9f0b10b6`. Includes the Steering strength label
