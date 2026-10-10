@@ -33,6 +33,8 @@ Audited 2026-10-04 (read-only standards audit); statuses below are from that aud
 | STD-023 | Frame-rate readout in the settings panel and the log | adopted | 0.4.2 candidate: Cameras page shows avg/1% low/worst of the last 10 s; log line every 30 s (toolkit FrameRateMonitor, vendored) |
 | STD-024 | On-screen frame-rate counter | adopted | 0.4.2 candidate: "Show frame rate on screen", top right of the centre screen, off by default |
 | STD-027 | Independent steering and effect strengths | partial | Existing steering gain and crash/landing/shift amplitudes are separate. October 8 source labels Steering strength, explains independence and always exposes the Advanced tuning/effects link in Simple. No force arithmetic, saved tune or native change. Build checked; packaging and rendered label/link acceptance remain pending. |
+| STD-033 | Rig profile controls reach the game | partial | rc12 / f6165bc plus candidate Wheelkit writer: production Apply, actual raw reader, named/any-button game queries and real car inputs qualified in October 10 runs06/07. Title, menu Up/Down/Confirm/Back/Start, camera, steering/throttle/brake/handbrake observed. Left/right navigation, clutch and auxiliary shifter still open. No user release of the Wheelkit writer yet. |
+| STD-034 | Closed-loop Apply qualification | partial | Frozen writer/profile, independent raw workload, process no-force latch, actual consumer observations and exact restoration in runs06/07. Config verification accepts only complete semantic XML equivalence after the native serializer reorders fields. All-binding staged-fault matrix and omitted shifter actions remain open. See docs/reviews/2026-10-10-raw-controls-title.md. |
 
 ## Custom-vehicle experiment evidence (2026-10-08)
 
