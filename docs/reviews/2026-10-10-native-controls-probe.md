@@ -47,7 +47,7 @@ pass (18); Unity's own Mono attaches the new observer/guards and executes the
 assignment/calibration/force-open refusals without entering device or game APIs
 (24 checks including existing collision/UI seams). These guards include methods
 with Unity ECalls, so CLR alone cannot qualify their patch installation.
-The vendored managed ABI client passes 73 fake-delegate checks each on net8/net48;
+The vendored managed ABI client passes 79 fake-delegate checks each on net8/net48;
 its precise candidate/source hash is in tools/testing/Recorder/TEST-INPUT-PIN.txt.
 
 Still required before a live run: peer review of both ABI halves, native fake-COM
@@ -55,3 +55,10 @@ and legacy regression checks, exact temporary candidate installation of both
 native copies under the lease, production Wheelkit Apply, independent raw
 workload, observation classification, normal exit and byte-exact restoration.
 No physical force may be enabled for that unattended qualification.
+
+`Send-ControlsCommand.ps1` sends Status, Raw or Stop through the current-user
+pipe. Supply the nonce, PID and exact UTC process start time captured at launch;
+it also checks the executable path before sending and after the reply. Raw
+commands are at most 512 printable ASCII bytes. Transport has one total deadline
+and a 4 KiB reply bound. A timeout has an unknown outcome and is never retried
+automatically. Command acceptance is separate from delivery and game response.

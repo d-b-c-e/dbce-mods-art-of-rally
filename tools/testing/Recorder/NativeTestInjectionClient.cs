@@ -13,7 +13,7 @@ namespace Dbce.Wheel.Input
     public sealed class NativeTestInjectionClient
     {
         public const int NoForce = 1;
-        public const int MaxCommandBytes = 1023;
+        public const int MaxCommandBytes = 512;
         private const int ReplyBytes = 1024;
         private static readonly UTF8Encoding Utf8 = new UTF8Encoding(false, true);
 
@@ -107,7 +107,7 @@ namespace Dbce.Wheel.Input
             {
                 if (string.IsNullOrEmpty(command) || !command.StartsWith("inject raw ", StringComparison.Ordinal))
                     throw new ArgumentException("only raw injection commands are accepted");
-                foreach (char c in command) if (char.IsControl(c)) throw new ArgumentException("command contains a control character");
+                foreach (char c in command) if (c < 32 || c > 126) throw new ArgumentException("command must contain printable ASCII only");
                 int length = Utf8.GetByteCount(command);
                 if (length > MaxCommandBytes) throw new ArgumentException("command exceeds UTF-8 byte limit");
                 encoded = new byte[length + 1]; Utf8.GetBytes(command, 0, command.Length, encoded, 0);
