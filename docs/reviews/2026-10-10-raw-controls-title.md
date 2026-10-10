@@ -111,3 +111,46 @@ Run 05 ended normally after ten commands, with 167,310 trace rows. Semantic
 Settings.xml verification and exact owner-file/Unity-preference restoration
 passed at 10:09:10Z. The process exited and the lease was released. The no-force
 native latch stayed armed; no physical force or motion output was enabled.
+
+## Runs 06/07: stage controls and centre-window picture verified
+
+All 20 clean RC gates, including actual Mono patch attachment and both original
+force cases, passed for `0.4.2-rc.12` / `f6165bc`. The exact ZIP SHA-256 is
+`F22626664CC4E41D9E6A188F1226CC0385EA75D0D2472C8731C5B47024049511`.
+Installation retained 11 protected files; receipt is
+`results/profile-controls-rc12-install/install-receipt.json`. Claude reviewed
+the fresh-edge GetAnyButtonDown addition without a blocking finding.
+
+`results/raw-controls-drive-20261010-06` used the frozen Wheelkit production
+writer and original profile. Confirm now ends the intro, selects Begin stage,
+then starts the real player car. Observations at AxisCarController.GetInput:
+steering -0.499985/+0.5, throttle 0/0.500008/1, brake 0/0.5, and handbrake
+0/0.500008. These are actual game inputs, not expected values substituted by
+the observer. The initial game's handbrake=1 occurs only for the first 1.22 s
+after Begin stage; it is not the later half-handbrake sample. Camera button 32
+reaches action 61 and changes CarCameras index 0 -> 1. Start selects the actual
+PauseScreen/Resume object. The 200,000-row limit safely stops the observer at
+212 s; normal close and exact restoration complete at 10:24:56Z.
+
+The first screenshots appeared to show a stuck cinematic without a HUD. This
+was a capture-selection error: WGC's largest-window policy selected a Unity
+Secondary Display at (-2560,0), tied in size with the centre. No rendering change
+was made. Toolkit `2e99ca0` adds `--list` and explicitly owned `--hwnd` capture,
+checking window ownership before and after capture. Run 07 lists all three
+2560x1440 windows at -2560, 0 and 2560 and selects the centre at (0,0).
+
+`results/raw-controls-windows-20261010-07` repeats the production Apply chain
+on the same installed rc12. Centre frames show the intro, Begin stage menu,
+normal car/HUD, raw throttle accelerating to 19 mph, changed camera view,
+Start opening Pause, POV South selecting Recover car, POV North returning to
+Resume, and Back resuming. Both side windows were captured separately. This
+closes the apparent missing-centre-picture defect; it is not a complete triples
+geometry or all-camera acceptance matrix. The run stops explicitly after 16
+commands / 178,100 rows. Semantic config verification, normal exit and exact
+owner-file/Unity-preference restoration pass at 10:39:52Z; no process/lease remains.
+
+Both tests used the irreversible native no-force fence, disabled physical/network
+outputs and blocked progression writes. No physical FFB acceptance is inferred.
+Left/right navigation, clutch and auxiliary shifter input remain unqualified by
+these runs. The original profile is applied only for each bounded test and then
+restored; this does not release Wheelkit's candidate controls writer to users.
