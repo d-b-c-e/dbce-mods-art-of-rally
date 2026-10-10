@@ -36,6 +36,12 @@ restoration and fake raw-device input tests pass. Live consumption and the
 remaining generic actions are not qualified. Do not call the portfolio complete.
 See [candidate and evidence](reviews/2026-10-09-profile-controls.md).
 
+October 10 raw testing found a separate title entry gap: the applied Start and
+Confirm bindings reached the reader, but the title listens to a Rewired release
+event outside the existing GetButton hooks. A guarded title-release bridge has
+source tests; its runtime check remains pending. See
+[raw input evidence](reviews/2026-10-10-raw-controls-title.md).
+
 ### KI-47 — Shared wheel handle does not recover after device disappearance
 
 Owner reported missing steering/throttle on October 9 after a Wheelkit profile

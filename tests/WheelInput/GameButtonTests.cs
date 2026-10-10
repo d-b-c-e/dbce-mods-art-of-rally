@@ -79,6 +79,34 @@ static class GameButtonTests
         Main.Settings.TransmissionMode="Automatic"; TransmissionInput.Apply(drivetrain); Check(drivetrain.automatic,"automatic preference ignored");
         Main.Settings.TransmissionMode="Follow game"; drivetrain.automatic=false; TransmissionInput.Apply(drivetrain); Check(!drivetrain.automatic,"game preference overridden by default");
         Main.Enabled=false; Main.Settings.TransmissionMode="Automatic"; TransmissionInput.Apply(drivetrain); Check(!drivetrain.automatic,"disabled mod applied transmission"); Main.Enabled=true;
+        // Real title routing: release after a fresh press, only on its active panel.
+        UIManager.Instance=new UIManager();
+        foreach(var button in new[] {31,35})
+        {
+            SplashScreenControl.Instance=new SplashScreenControl();
+            UIManager.Instance.PanelManager.Current=UIManager.Instance.PanelManager.SplashScreenPanel;
+            Device.Buttons[button]=0; Tick();
+            Device.Buttons[button]=1; Tick(); Check(SplashScreenControl.Instance.Ends==0,"title advanced on press instead of release");
+            Device.Buttons[button]=0; Tick(); Check(SplashScreenControl.Instance.Ends==1,"title release ignored");
+            Tick(); Check(SplashScreenControl.Instance.Ends==1,"title advanced twice");
+        }
+        foreach(var gate in new[] {"read","focus","panel","build","wrong-screen","inactive","startup-held"})
+        {
+            SplashScreenControl.Instance=new SplashScreenControl();
+            UIManager.Instance.PanelManager.Current=UIManager.Instance.PanelManager.SplashScreenPanel;
+            Device.Buttons[31]=0; Tick(); Device.Buttons[31]=1; Tick();
+            if(gate=="read") Device.ReadOk=false;
+            if(gate=="focus") Application.isFocused=false;
+            if(gate=="panel") Main.SettingsVisible=true;
+            if(gate=="build") GameButtonCompatibility.Allowed=false;
+            if(gate=="wrong-screen") UIManager.Instance.PanelManager.Current=new object();
+            if(gate=="inactive") SplashScreenControl.Instance.isActiveAndEnabled=false;
+            if(gate=="startup-held") { WheelInput.ResetGameButtons(); Tick(); }
+            Device.Buttons[31]=0; Tick(); Check(SplashScreenControl.Instance.Ends==0,"title gate leaked release: "+gate);
+            Device.ReadOk=true; Application.isFocused=true; Main.SettingsVisible=false; GameButtonCompatibility.Allowed=true;
+            Tick(); Check(SplashScreenControl.Instance.Ends==0,"title recovery manufactured release: "+gate);
+        }
+        UIManager.Instance=null; SplashScreenControl.Instance=null;
         WheelInput.Close(); Array.Clear(Device.Buttons); Array.Fill(Device.Hats,-1);
         return checks;
     }

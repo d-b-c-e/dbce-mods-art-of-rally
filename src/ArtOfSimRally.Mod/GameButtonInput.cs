@@ -15,6 +15,19 @@ namespace ArtOfSimRally.Mod
         internal static void Observe(int horizontal, int vertical, int submit, int cancel)
         { _horizontal = horizontal; _vertical = vertical; _submit = submit; _cancel = cancel; }
         internal static bool Primary(Player player) => WheelInput.Enabled && GameButtonCompatibility.Allowed && ReferenceEquals(player, PadManager.GetPlayer());
+        internal static void TickTitle()
+        {
+            // The title uses a Rewired ButtonJustReleased delegate, not GetButton.
+            // Match its release semantics through the same guarded reader. Do not
+            // synthesize Rewired events globally or make pedals skip the title.
+            if (!WheelInput.Enabled || !GameButtonCompatibility.Allowed ||
+                !(WheelInput.GameButtonReleased(WheelInput.Channel.Start) || WheelInput.GameButtonReleased(WheelInput.Channel.Confirm))) return;
+            var splash = SplashScreenControl.Instance;
+            var panels = UIManager.Instance == null ? null : UIManager.Instance.PanelManager;
+            if (splash == null || !splash.isActiveAndEnabled || panels == null || panels.Peek() != panels.SplashScreenPanel) return;
+            splash.EndSplashScreen();
+            ModLog.Info("Profile start/confirm release advanced the title screen.");
+        }
         internal static bool Button(int action, bool negative, bool down)
         {
             if (action < 0) return false;

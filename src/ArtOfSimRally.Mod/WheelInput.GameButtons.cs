@@ -8,7 +8,7 @@ namespace ArtOfSimRally.Mod
         // One snapshot/edge per watchdog frame. Reads are non-consuming so two
         // game consumers see the same edge. Startup/reconnect/focus/edit requires
         // release first; failed reads never manufacture a press on recovery.
-        private sealed class ButtonState { public bool Armed, Held, Down; }
+        private sealed class ButtonState { public bool Armed, Held, Down, Up; }
         private static readonly Dictionary<Channel, ButtonState> GameButtons = new Dictionary<Channel, ButtonState>();
         private static int _buttonFrame = -1;
         private static bool _staleLogged;
@@ -24,9 +24,10 @@ namespace ArtOfSimRally.Mod
                     _bindings.TryGetValue(channel, out var binding) && Resolve(binding)?.Ok == true;
                 bool held = available && Value(channel) > .5f;
                 state.Down = false;
+                state.Up = false;
                 if (!available) { state.Armed = false; state.Held = false; continue; }
                 if (!held) state.Armed = true;
-                if (state.Armed) { state.Down = held && !state.Held; state.Held = held; }
+                if (state.Armed) { state.Down = held && !state.Held; state.Up = !held && state.Held; state.Held = held; }
             }
         }
         internal static bool GameButton(Channel channel, bool down)
@@ -39,6 +40,11 @@ namespace ArtOfSimRally.Mod
                 return false;
             }
             return GameButtons.TryGetValue(channel, out var state) && (down ? state.Down : state.Held);
+        }
+        internal static bool GameButtonReleased(Channel channel)
+        {
+            if (!Enabled || !Application.isFocused || Main.SettingsVisible || _assigning.HasValue || _buttonFrame != Time.frameCount) return false;
+            return GameButtons.TryGetValue(channel, out var state) && state.Up;
         }
     }
 }

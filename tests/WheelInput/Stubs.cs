@@ -1,5 +1,23 @@
 // Fake device transport and game boundary, with production assignment,
 // normalization, binding serialization and input override linked unchanged.
+public sealed class SplashScreenControl
+{
+    public static SplashScreenControl Instance;
+    public bool isActiveAndEnabled = true;
+    public int Ends;
+    public void EndSplashScreen() { Ends++; isActiveAndEnabled=false; UIManager.Instance.PanelManager.Current=null; }
+}
+public sealed class UIManager
+{
+    public static UIManager Instance;
+    public PanelManager PanelManager = new();
+}
+public sealed class PanelManager
+{
+    public object Current;
+    public object SplashScreenPanel = new();
+    public object Peek()=>Current;
+}
 namespace Dbce.Wheel.Ffb
 {
     public static class WheelFfbNative

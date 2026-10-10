@@ -334,6 +334,7 @@ namespace ArtOfSimRally.Mod
             }
 
             TickGameButtons();
+            GameButtonInput.TickTitle();
             if (extended)
             {
                 // Update the settings object immediately - that is a few string
