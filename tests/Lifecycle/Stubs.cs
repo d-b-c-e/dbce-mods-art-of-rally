@@ -118,11 +118,12 @@ namespace ArtOfSimRally.Mod
         public enum Channel { Steer, Throttle, Brake, Clutch, Handbrake }
         public static bool Enabled => true;
         public static float Value(Channel c) => 0;
-        public static void Update() { }
+        public static void EnsureUpdatedThisFrame() => Calls.Log.Add("input-snapshot");
         public static void Close() => Calls.Log.Add("input-close");
         public static void ResetGameButtons() => Calls.Log.Add("buttons-reset");
         public static void FlushLearnedRanges(bool shutdown=false) => Calls.Log.Add("save");
     }
+    internal static class GameButtonInput { public static void TickTitle() => Calls.Log.Add("title-tick"); }
     internal static class FfbNative
     {
         public static void SetForce(int value) => Calls.Log.Add("force:"+value);

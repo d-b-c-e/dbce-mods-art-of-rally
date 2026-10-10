@@ -65,6 +65,7 @@ static class Program
         typeof(ModWatchdog).GetMethod("OnApplicationPause",BindingFlags.NonPublic|BindingFlags.Instance).Invoke(watchdog,new object[]{true});
         Check(Calls.Log.SequenceEqual(new[]{"buttons-reset"}),"pause did not invalidate buttons without an Update"); Calls.Log.Clear();
         typeof(ModWatchdog).GetMethod("Update",BindingFlags.NonPublic|BindingFlags.Instance).Invoke(watchdog,null);
+        Check(Calls.Log.IndexOf("input-snapshot")>=0 && Calls.Log.IndexOf("title-tick")>Calls.Log.IndexOf("input-snapshot"), "title tick preceded input snapshot");
         Check(!Calls.Log.Contains("telemetry-prepare") && Calls.Log.Contains("telemetry-stop-disabled"), "driving watchdog connected/did not check telemetry disable");
         Check(!Calls.Log.Contains("force-recover"), "driving watchdog attempted FFB acquisition");
         Check(Calls.Log.Contains("landing-tick"), "landing lifecycle not observed during driving");
