@@ -46,6 +46,13 @@ and recovery when paused after a naturally occurring input loss. Do not induce
 a USB fault or issue unattended physical force merely to produce a passing test.
 If input still fails, capture a support file before refreshing/restarting.
 
+Owner follow-up, October 9: fresh rc4 launch at 20:30 read the R12 successfully
+before and after FFB initialization. Owner answered **"Yes, controls respond"**
+to the steering/throttle/handbrake check. The applied screen measurements and
+saved controls were retained. This accepts fresh-launch control operation on
+this rig; it does not qualify automatic recovery after another USB/device-list
+interruption, nor establish the original USB cause.
+
 Wheelkit's new shared-settings requirement is in its `docs/SETTINGS-PARITY.md`.
 Control-profile application is pending; it must not be presented as complete
 until the per-game binding adapter has been implemented and qualified.

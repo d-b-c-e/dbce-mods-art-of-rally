@@ -41,8 +41,9 @@ request bounded recovery after two seconds of failed observations, and reuse
 the existing strict-identity, focused-idle reconnect path. One request per
 outage; reader reopen/failed retries do not replenish it. A half second of
 healthy observations or an explicit identity change permits a new outage.
-No native pin, force curve, binding or geometry changes. Tests pass; attended
-recovery remains pending. [Evidence and validation](reviews/2026-10-09-input-recovery.md).
+No native pin, force curve, binding or geometry changes. Tests pass. Owner
+confirmed controls respond on a fresh rc4 launch; recovery after a new device
+interruption remains pending. [Evidence and validation](reviews/2026-10-09-input-recovery.md).
 
 
 ### KI-46 — Menu button prompts overlap and show gamepad symbols for a wheel

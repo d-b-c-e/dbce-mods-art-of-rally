@@ -18,6 +18,10 @@ accepted force tune remain unchanged. Attended control/recovery checks are
 pending; the original disappearance is not attributed to a proven USB cause.
 See [investigation](reviews/2026-10-09-input-recovery.md).
 
+Owner then launched at 20:30 local and confirmed steering, throttle and
+handbrake respond. Fresh-launch control operation is accepted; automatic
+recovery after a new device interruption remains untested.
+
 ## Previous installation — 0.4.2-rc.3 (steering wording + native lifecycle)
 
 Installed October 8, 09:26 UTC from clean source
