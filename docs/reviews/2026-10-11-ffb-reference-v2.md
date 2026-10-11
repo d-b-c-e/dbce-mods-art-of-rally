@@ -56,8 +56,29 @@ do not relabel v1 CSV output or scale clipped requests.
 
 ## Remaining
 
-Package and closed-game adoption, muted runtime/capture check, and the owner's
+Private package **0.4.2-rc.13** from `8bc94b1f54cfb490fbbb37191727cdf7eee0edf8`
+passed all 20 existing `Test-Rc.ps1` gates, including the original owner corpus.
+The ZIP SHA256 is
+`B8D45C60F748E441FCEE950F9F99679A982EE65B33078FFCC1AB94D880576970`;
+the mod DLL SHA256 is
+`F199D405808C37FF82B3C505693F22374322288797D99493150DA87D250A8062`.
+The exact artifact remains in the private worktree
+`games/.worktrees/art-reference-v2-20261011/dist`, with the full automated result
+under `results/rc-0.4.2-rc.13-3f9907ab9c3f427fac84c76d9710d41c`.
+
+Its recorded source identity ends in `.dirty`: dependency staging left only
+`lib/toolkit/COMPONENT-PROVENANCE.json` marked modified by line-ending/index
+state. The worktree blob matched the indexed blob
+`173ce9f816d149b370650078f1faa71097550228`, with an empty textual diff.
+Refreshing that index entry cleared the status. The package and its honest
+identity are retained unchanged; this is a private candidate, not a clean-source
+public release. An earlier build attempt stopped on misplaced local dependencies;
+its failure log is retained separately, before the complete passing run.
+
+Closed-game adoption, muted runtime/capture check, and the owner's
 attended feel check remain. No new physical output, game launch, installation,
 or public release occurred. DRIVE normalization follows this baseline once its
-adoption is qualified; the old quick-comparison wrapper still selects v1 until
-explicitly updated with the matching v2 corpus.
+adoption is qualified. The hub quick-comparison wrapper now defaults to the
+matching v2 corpus and labels it as an offline trial; explicit v1 selection
+retains the historical comparison. Both paths were exercised on the same DRIVE
+diagnostic without changing its trial output or any installed tuning.
