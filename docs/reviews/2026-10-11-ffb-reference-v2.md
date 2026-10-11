@@ -75,10 +75,50 @@ identity are retained unchanged; this is a private candidate, not a clean-source
 public release. An earlier build attempt stopped on misplaced local dependencies;
 its failure log is retained separately, before the complete passing run.
 
-Closed-game adoption, muted runtime/capture check, and the owner's
-attended feel check remain. No new physical output, game launch, installation,
-or public release occurred. DRIVE normalization follows this baseline once its
-adoption is qualified. The hub quick-comparison wrapper now defaults to the
+The hub quick-comparison wrapper now defaults to the
 matching v2 corpus and labels it as an offline trial; explicit v1 selection
 retains the historical comparison. Both paths were exercised on the same DRIVE
 diagnostic without changing its trial output or any installed tuning.
+
+## Installed adoption and original route check
+
+At 14:46 Central, the exact gated rc.13 archive above was installed through its
+packaged installer. Every payload and the second native DLL copy matched the
+manifest. Eleven protected settings, loader, game and recorder files retained
+their prior hashes. The two rebuilt triple-screen dependency DLLs differ from
+rc.12 because their product versions embed the new source commit; their source
+projects were unchanged between f6165bc and 8bc94b1.
+
+The explicitly requested baseline adoption was a separate operation: only
+`FyReference` changed from 11500 to 19166.666015625. Steering strength remains
+50; crash, landing, shift, bindings and other settings are unchanged. The old
+mod and original settings are backed up in
+`results/ffb-reference-v2-rc13-install/before-install`.
+
+The original owner session `2026-10-04-owner-session-5` then passed cold
+trajectory playback: 13,455 driving/finish poses, zero measured application
+error, no first divergence, final menu reached, normal game close. All owner
+files and raw preferences were restored and verified; the adopted v2 settings
+were restored byte-for-byte. Physical and telemetry delivery were muted while
+the existing producer/observation code remained available. The lease was
+released at 14:51:28 Central. Evidence and the copied game log are under
+`results/ffb-reference-v2-rc13-install/replay-session5`.
+
+The separate muted synthetic original-signal capture also passed, closing
+normally at 14:57 Central. All 722 force rows contain reference 19166.666015625
+and gain 1 (Steering strength 50). The strict replayer passed 26,827 assertions
+with zero float delta and zero device-command mismatches. The producer retained
+1,221 pre-mute telemetry packets, four effect requests and three collision
+entries; physical output remained disabled. The complete capture seal and all
+file hashes were verified. Owner state, including the adopted settings, was
+restored exactly and the lease released at 14:57:41.
+
+Capture: `results/sessions/2026-10-11-art-reference-v2-rc13-muted-synthetic`.
+Receipt and reconstruction: `results/ffb-reference-v2-rc13-install/muted-capture`.
+The seal SHA256 is
+`154785d65e8450304f4dd4a1b4d2ea0bfceba807839c57ba53ba20823b0e9ea8`.
+This diagnostic verifies the installed software reference and original signal
+path; it is not a representative normalization drive or physical acceptance.
+The original owner corpus is unchanged. Attended feel and public release remain
+open. Its first attempt was deferred before launch or mutation by recent-input
+detection; the expired owner-input watcher was restarted before the passing run.
