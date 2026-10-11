@@ -30,6 +30,7 @@ static class Program
 
     static void Curve()
     {
+        StandardReference();
         var random = new System.Random(550320);
         foreach (float smoothing in new[] { 0f, .2f, .5f, .95f, 1f })
         foreach (float gain in new[] { 0f, .3f, .52f, 1f, 2f })
@@ -71,6 +72,36 @@ static class Program
         Check(ForceCurve.Normalised(40000, 0, 8.5f, 3, 11500, 2, false) == 0, "fade start");
         Check(ForceCurve.Normalised(40000, 0, 8.5f, 12, 11500, 2, false) == 1, "saturation");
         Same(ForceCurve.Normalised(1, 0, 0, 12, 0, 1, true), -1, "reference floor/inversion");
+    }
+
+    static void StandardReference()
+    {
+        var cfg = new Settings();
+        Check(cfg.Strength == 50 && cfg.GainFromStrength == 1, "standard steering slider midpoint changed");
+        Check(cfg.CrashStrength == 50 && cfg.LandingStrength == 5 && cfg.ShiftStrength == 5, "steering calibration altered independent effect defaults");
+        foreach (float smoothing in new[] { 0f, .2f, .95f })
+        foreach (bool invert in new[] { false, true })
+        {
+            float legacy = 0, standard = 0;
+            for (int i = 0; i < 2400; i++)
+            {
+                // Both signs, saturating inputs, standstill/fade, reversal, release
+                // and explicit reset. Oracle uses old tune and frozen game math.
+                float fy = i % 17 == 0 ? 0 : (float)(System.Math.Sin(i * .037) * 48000);
+                float slip = i % 40, speed = i % 150;
+                if (i % 233 == 0) legacy = standard = 0;
+                legacy = Baseline(fy, slip, 8.5f, speed, 11500, .6f, invert, smoothing, legacy);
+                standard = ForceCurve.Smooth(standard, ForceCurve.Normalised(fy, slip, 8.5f, speed,
+                    cfg.FyReference, cfg.GainFromStrength, invert), smoothing);
+                Same(standard, legacy, "standard50 differs from legacy30");
+                Check(System.Math.Abs((int)(standard * 10000) - (int)(legacy * 10000)) <= 1,
+                    "standard50 differs by more than one native quantization unit");
+            }
+        }
+        // High forces must retain full range: scaling an old clipped output by
+        // .6 would incorrectly yield .6 here rather than legacy30's full force.
+        Same(ForceCurve.Normalised(100000, 0, 8.5f, 60, cfg.FyReference, cfg.GainFromStrength, false), 1,
+            "reference calibrated after output clipping");
     }
 
     static void WheelIdentity()

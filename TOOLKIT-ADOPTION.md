@@ -10,7 +10,7 @@ Audited 2026-10-04 (read-only standards audit); statuses below are from that aud
 |---|---|---|---|
 | STD-001 | One mod per game | adopted | wheel and triple in src\ArtOfSimRally.Mod (Triple\) |
 | STD-002 | Recording and playback from launch | partial | recorder tools\testing\Recorder; replay on codex/session-playback (Astra/Codex) |
-| STD-003 | Normalized FFB strength | partial | default 50 (Settings.cs:67) and shared ForceCurve, but FyReference 11500 N is per-game; awaits a family 50% calibration |
+| STD-003 | Normalized FFB strength | partial | default 50 and shared ForceCurve; STD-031 source candidate uses 11500/0.6 N. Cross-game calibration follows qualified adoption of this Art reference. |
 | STD-004 | Consistent settings UX | adopted | Simple/Advanced pages, F8 Stop FFB; KI-44 bindings lock-up still open |
 | STD-005 | Camera numpad layout 8/2 9/3 4/6 7/1 +/- 5 | adopted | bf23221 on claude/camera-standards: Settings.cs defaults; CameraKeys.MigratePreviousDefaults moves exact old default sets (either tilt order, or family interim layout) on load, logged; customised sets kept; owner accepted at the rig 2026-10-06, released in v0.4.1 |
 | STD-006 | Camera step sizes are settings | adopted | bf23221 on claude/camera-standards: CameraMoveStep 0.02 m / CameraTiltStep 1 deg / CameraFovStep 2 deg per press, held repeat 0.35 s then 0.1 s (CameraRepeat); Advanced > Cameras sliders + Default steps; replaces held speeds; owner accepted at the rig 2026-10-06, released in v0.4.1 |
@@ -28,13 +28,21 @@ Audited 2026-10-04 (read-only standards audit); statuses below are from that aud
 | STD-018 | Handling changes never reach online scores | unchecked | added 2026-10-05; DisableSteerAssist is off by default |
 | STD-019 | Menus on the centre screen; side screens only in gameplay | unchecked | added 2026-10-05 |
 | STD-020 | Standard feature checklist per game | adopted | row in dbce-project-mgmt PROJECTS.md feature checklist |
-| STD-021 | art of rally is the FFB reference | adopted | this mod is the reference: v0.4.1 at defaults (Strength 50, crash cue 120 ms push + 25 Hz rattle); not retuned to match other games |
+| STD-021 | art of rally is the FFB reference | adopted | historical v1 retained; owner-requested v2 steering calibration has source/original-input checks below. Independent crash shape/strength unchanged; runtime adoption and feel pending. |
 | STD-022 | One triple-screen selector | adopted | "Off / Single wide display / Three separate displays" (the same three-way choice, older labels) |
 | STD-023 | Frame-rate readout in the settings panel and the log | adopted | 0.4.2 candidate: Cameras page shows avg/1% low/worst of the last 10 s; log line every 30 s (toolkit FrameRateMonitor, vendored) |
 | STD-024 | On-screen frame-rate counter | adopted | 0.4.2 candidate: "Show frame rate on screen", top right of the centre screen, off by default |
 | STD-027 | Independent steering and effect strengths | partial | Existing steering gain and crash/landing/shift amplitudes are separate. October 8 source labels Steering strength, explains independence and always exposes the Advanced tuning/effects link in Simple. No force arithmetic, saved tune or native change. Build checked; packaging and rendered label/link acceptance remain pending. |
 | STD-033 | Rig profile controls reach the game | partial | rc12 / f6165bc plus candidate Wheelkit writer: production Apply, actual raw reader, named/any-button game queries and real car inputs qualified in October 10 runs06/07. Title, menu Up/Down/Confirm/Back/Start, camera, steering/throttle/brake/handbrake observed. Left/right navigation, clutch and auxiliary shifter still open. No user release of the Wheelkit writer yet. |
 | STD-034 | Closed-loop Apply qualification | partial | Frozen writer/profile, independent raw workload, process no-force latch, actual consumer observations and exact restoration in runs06/07. Config verification accepts only complete semantic XML equivalence after the native serializer reorders fields. All-binding staged-fault matrix and omitted shifter actions remain open. See docs/reviews/2026-10-10-raw-controls-title.md. |
+
+## Steering reference update (2026-10-11)
+
+STD-031 is **partial**: the new default reference makes new50 match legacy30
+before clamp/filter; explicit saved tunes and historical replay stay unchanged.
+Build, settings/recorder checks and paired trials on 11,921 original owner force
+rows pass. Package/runtime adoption and physical feel remain. See
+[reference v2](docs/reviews/2026-10-11-ffb-reference-v2.md).
 
 ## Custom-vehicle experiment evidence (2026-10-08)
 

@@ -3,6 +3,12 @@
 For tuning instructions, see [the setup guide](SETUP.md#steering-force-and-landing-vibration).
 The technical history below explains how the current force curve was established.
 
+**October 11 reference candidate:** STD-031 makes new Steering strength 50
+equivalent to former 30 by changing the default force reference to 19,166.67 N.
+Explicit saved tunes stay unchanged; crash/landing/shift controls remain
+independent. Source and original-input checks pass; installation and physical
+acceptance remain. See [the v2 calibration](reviews/2026-10-11-ffb-reference-v2.md).
+
 Version 0.2.6 adds an opt-in [constant-force crash kick](CRASH-EFFECTS.md),
 with one active impact at a time across cached sine and constant handles.
 Crash strength defaults to 50 for new settings, range 0–100; landing stays 5/0–40.

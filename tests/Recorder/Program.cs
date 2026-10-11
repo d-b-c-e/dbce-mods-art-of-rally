@@ -180,7 +180,11 @@ static class Program
         var settings = main.GetProperty("Settings", BindingFlags.NonPublic | BindingFlags.Static);
         settings.SetValue(null, cfg);
         var tune = access.ReadTune();
-        Check(tune.Reference == 11500 && tune.Smoothing == .2f && tune.Gain == 1 && !tune.Invert, "probe reads wrong settings");
+        Check(tune.Reference == 11500f / .6f && tune.Smoothing == .2f && tune.Gain == 1 && !tune.Invert, "probe does not record the new standard reference");
+        cfg.GetType().GetField("FyReference").SetValue(cfg, 11500f);
+        cfg.GetType().GetField("Strength").SetValue(cfg, 30);
+        tune = access.ReadTune();
+        Check(tune.Reference == 11500 && tune.Gain == .6f, "probe substitutes the new default for an explicit legacy tune");
     }
     static int Main(string[] args)
     {

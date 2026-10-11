@@ -18,7 +18,7 @@ namespace ArtOfSimRally.Mod
             cfg.SettingsPage = page + 1;
             return true;
         }
-        public static bool CustomFfb(Settings c) => c.Smoothing != .2f || c.Invert || c.FyReference != 11500f ||
+        public static bool CustomFfb(Settings c) => c.Smoothing != .2f || c.Invert || c.FyReference != Settings.DefaultFyReference ||
             !c.LandingEffectsEnabled || c.LandingStrength != 5 || c.CrashEffectsEnabled || c.CrashStrength != 50 ||
             c.ShiftEffectsEnabled || c.ShiftStrength != 5;
         public static bool CustomControls(Settings c) => !c.DirectSteering || !c.ZeroAxisDeadzone ||

@@ -16,6 +16,13 @@ static class Program
     static readonly string Wheel="a5444f71-6773-43d7-b43f-3b83492d6f55";
     static void Views()
     {
+        Check(new Settings().FyReference == Settings.DefaultFyReference && !SettingsViewPolicy.CustomFfb(new Settings()), "new standard reference not used by defaults/presentation");
+        var oldTune = Read("<Settings><Strength>30</Strength><FyReference>11500</FyReference><CrashStrength>19.52381</CrashStrength></Settings>");
+        Check(oldTune.FyReference == 11500f && oldTune.Strength == 30 && oldTune.CrashStrength == 19.52381f && SettingsViewPolicy.CustomFfb(oldTune), "saved legacy tune overwritten or hidden");
+        var oldAgain = Read(Xml(oldTune));
+        Check(oldAgain.FyReference == 11500f && oldAgain.Strength == 30 && oldAgain.CrashStrength == oldTune.CrashStrength, "legacy tune changed through save/load");
+        oldAgain.ResetFfbTuning();
+        Check(oldAgain.FyReference == Settings.DefaultFyReference && oldAgain.Strength == 50, "explicit reset did not adopt the new reference");
         var c=Read("<Settings><ForceFeedbackEnabled>false</ForceFeedbackEnabled><Smoothing>0.61</Smoothing><CrashStrength>19.52381</CrashStrength><LandingStrength>20</LandingStrength><BonnetHeight>1.4</BonnetHeight><PreferredDeviceGuid>"+Wheel+"</PreferredDeviceGuid></Settings>");
         Check(!SettingsViewPolicy.Advanced(c)&&SettingsViewPolicy.Page(c)==0,"legacy Setup did not open Simple Controls");
         Check(SettingsViewPolicy.CustomFfb(c)&&SettingsViewPolicy.CustomCamera(c),"custom tune hidden without summary");

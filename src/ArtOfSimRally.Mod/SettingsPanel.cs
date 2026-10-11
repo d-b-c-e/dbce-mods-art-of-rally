@@ -330,8 +330,8 @@ namespace ArtOfSimRally.Mod
             c.Smoothing = Slider(c.Smoothing, 0, .95f, .2f, "Smoothing", 100, "%");
             Help("Higher smoothing softens rapid force changes and delays their response.");
             c.Invert = Toggle(c.Invert, "Invert force direction");
-            Help("Force reference: " + c.FyReference.ToString("0.##") + " N (legacy tuning; default 11500 N).");
-            if (c.FyReference != 11500f && RightButton("Restore force reference", 180)) { c.FyReference = 11500f; Main.MarkSettingsDirty(); }
+            Help("Force reference: " + c.FyReference.ToString("0.##") + " N (standard " + Settings.DefaultFyReference.ToString("0.##") + " N; standard 50% matches the former 30%).");
+            if (c.FyReference != Settings.DefaultFyReference && RightButton("Use standard reference", 180)) { c.FyReference = Settings.DefaultFyReference; Main.MarkSettingsDirty(); }
             c.LandingEffectsEnabled = Toggle(c.LandingEffectsEnabled, "Landing vibration");
             c.LandingStrength = Slider(c.LandingStrength, 0, 40, 5, "Landing strength", 1, "%");
             Help(LandingController.Status);
