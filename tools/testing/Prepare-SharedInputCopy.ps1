@@ -13,7 +13,11 @@ param([Parameter(Mandatory)][string]$GameCopy,
       [string]$ExpectedNativeSha256 = 'DD3013147821364AD8795F76B4500FB479F669E6BD89576F83E725A677273414',
       # Native-script coexistence (Invoke-SharedInputCopy -RouteSource): also stage the dev recorder. Without it any
       # earlier recorder is removed from the copy.
-      [switch]$Recorder)
+      [switch]$Recorder,
+      # Copy-only Settings.xml with ForceFeedbackEnabled=false, so the mod never initialises a force device. Required
+      # for a native without the DBCE_FFB_MUTE load-time latch (the native-0.9.1 read-snapshot port 44E46799). The
+      # owner file is only read; every force tuning value is left as it is.
+      [switch]$ForceFeedbackOff)
 $ErrorActionPreference = 'Stop'
 function Full([string]$p) { [IO.Path]::GetFullPath($p).TrimEnd('\') }
 function Hash([string]$p) { (Get-FileHash -LiteralPath $p -Algorithm SHA256).Hash }
@@ -62,10 +66,16 @@ if ($Recorder) {
 $node = $settings.DocumentElement.SelectSingleNode('SharedInput')
 if (-not $node) { $node = $settings.CreateElement('SharedInput'); $null = $settings.DocumentElement.AppendChild($node) }
 $node.InnerText = 'true'
+if ($ForceFeedbackOff) {
+    $ffb = $settings.DocumentElement.SelectSingleNode('ForceFeedbackEnabled')
+    if (-not $ffb) { $ffb = $settings.CreateElement('ForceFeedbackEnabled'); $null = $settings.DocumentElement.AppendChild($ffb) }
+    $ffb.InnerText = 'false'
+}
 $settings.Save((Join-Path $mod 'Settings.xml'))
 [IO.File]::WriteAllText((Join-Path $GameCopy 'steam_appid.txt'), '550320', [Text.Encoding]::ASCII)
 $staged = [ordered]@{
     schema = 1; kind = 'shared-input-ordinary'; utc = [DateTime]::UtcNow.ToString('o'); sourceCommit = $commit; recorder = [bool]$Recorder
+    forceFeedbackOff = [bool]$ForceFeedbackOff; nativeSha256 = $ExpectedNativeSha256
     gameCopy = $GameCopy; sourceGame = $SourceGame; ownerSettingsSha256 = Hash $ownerSettings
     files = [ordered]@{}
 }

@@ -66,6 +66,13 @@ function Assert-Pins {
 Assert-Pins
 [xml]$copySettings=Get-Content -LiteralPath (Join-Path $mod 'Settings.xml') -Raw
 if($copySettings.DocumentElement.SharedInput -ne 'true') { throw 'Staged settings do not turn SharedInput on.' }
+# DBCE_FFB_MUTE only mutes a native with the load-time latch (toolkit 82c40c4, DD301314). Any other native is run
+# with force feedback off in the copy, so the mod never initialises a force device (checked again after the run).
+$latchedNatives=@('DD3013147821364AD8795F76B4500FB479F669E6BD89576F83E725A677273414')
+$forceOff=$staged.files.'Mods/ArtOfSimRally/UnityForceFeedback.dll' -notin $latchedNatives
+if($forceOff -and ($staged.forceFeedbackOff -ne $true -or $copySettings.DocumentElement.ForceFeedbackEnabled -ne 'false')) {
+    throw 'This native has no DBCE_FFB_MUTE latch: stage with Prepare-SharedInputCopy -ForceFeedbackOff.'
+}
 $allowed=@('ArtOfSimRally') + $(if($native) { @('ArtOfSimRally.DevRecorder') } else { @() })
 $otherMods=@(Get-ChildItem -LiteralPath (Join-Path $GameDir 'Mods') -Directory | Where-Object Name -NotIn $allowed)
 if($otherMods.Count) { throw 'Disposable copy contains optional mod folders; stage only ArtOfSimRally (and the recorder for a native-script run).' }
@@ -211,6 +218,15 @@ try {
     Assert-GameClosed
     if(Test-Path -LiteralPath $umLog) { Copy-Item -LiteralPath $umLog -Destination (Join-Path $Result 'umm-log.txt') }
     $errors=[Collections.Generic.List[string]]::new()
+    $forceViolation=$null
+    if($forceOff -and $launchAttempted) {
+        # The launch's own UMM log: the mod loaded with ffb=False and never tried to initialise a force device.
+        $ummLines=if(Test-Path -LiteralPath (Join-Path $Result 'umm-log.txt')) { @(Get-Content -LiteralPath (Join-Path $Result 'umm-log.txt')) } else { @() }
+        $loadedOff=@($ummLines -match '\[ArtOfSimRally\] Loaded - .*ffb=False').Count -gt 0
+        $attempts=@($ummLines -match 'Force feedback (device initialised|unavailable)')
+        @{loadedWithFfbOff=$loadedOff;forceAttempts=$attempts} | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath "$Result/force-check.json"
+        if(!$loadedOff -or $attempts.Count) { $forceViolation='Force feedback was not verifiably off in this launch; see force-check.json.' }
+    }
     function Attempt([scriptblock]$work) { try { & $work } catch { $errors.Add($_.Exception.Message); Write-Warning $_.Exception.Message } }
     if($ready -and $native) {
         # The recorder's request marker never outlives the run, launched or not.
@@ -243,4 +259,5 @@ try {
     if($errors.Count) { $errors | Set-Content -LiteralPath "$Result/restore-errors.txt"; throw "Restoration incomplete; backup and lease retained: $Result" }
     [DateTime]::UtcNow.ToString('o') | Set-Content -LiteralPath "$Result/restored.txt"
     if($lease) { $null=Exit-StageRigLease -Lease $lease }
+    if($forceViolation) { throw $forceViolation }
 }
