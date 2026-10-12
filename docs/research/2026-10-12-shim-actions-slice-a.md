@@ -200,3 +200,26 @@ hardware-facing session scripted (`ISharedQualification`); `--shared-startup-onl
 (each fix removed or weakened) all fail. Also fixed: `tests/Lifecycle` stubs
 (broken by 54f687a), and the reasoned close is not an overload of `Close`, which
 the dev recorder looks up by name.
+
+## Muted ordinary startup smoke (2026-10-12 03:23, romi 28934)
+
+Disposable copy `art-shim-probe-game-20261011` staged by
+`Prepare-SharedInputCopy.ps1` at 0adda89 (mod source = 8f9b945), shim 7DDC9621,
+native DD301314, the owner's Wheelkit profile 5206EDFB, the owner's settings plus
+`SharedInput=true`; run by `Invoke-SharedInputCopy.ps1` under the rig lease,
+broker launch at Medium, `DBCE_FFB_MUTE=1`, no input or force, no owner install.
+
+- Startup: profile found, Art's shifter reader kept closed. FFB init failed five
+  times (0x80070005, under the mute latch); after "FFB recovery exhausted" the
+  shared profile qualified, which is the intended force-settle order.
+- Attached profile 'Moza KS Pro Triple' (Sequential), isolating MOZA R12 Base and
+  DS-8X Shifter. First frame accepted with 14 owned actions: steer, throttle,
+  brake, handbrake, shiftUp, shiftDown, confirm, back, start, navUp/Down/Left/Right,
+  camera. No stop during the 10 s settle.
+- Normal exit; Core host-shutdown resolved with inputs released; shared state
+  restored; owner pins unchanged; lease released.
+- Not covered: physical input, driving, and first-force coexistence (FFB never
+  acquired in this run). Keyboard driving after a terminal fault stays neutral
+  and is not qualified (scoped follow-up).
+
+Evidence (ignored): `E:/Source/games/.worktrees/art-shim-probe-evidence/shared-smoke-20261012-032314`.
