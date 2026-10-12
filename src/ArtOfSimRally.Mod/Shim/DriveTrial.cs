@@ -131,14 +131,16 @@ namespace ArtOfSimRally.Mod.Shim
             return null;
         }
         // Null to open now. Otherwise the unmet fence, with wait set when only the stage start or focus is
-        // still pending (the caller bounds the wait); any other unmet fence refuses.
+        // still pending (the caller bounds the wait); any other unmet fence refuses. Before the stage the
+        // event's mode is not set yet (the menus run with no game mode), so CUSTOM is waited for with the
+        // stage start; at the stage a non-CUSTOM event refuses (first Drive run, 05:38).
         internal static string Admission(Fences f, out bool wait)
         {
             string unmet = Unfenced(f);
             wait = false;
             if (unmet == null || f == null || (f.StageReady && f.Focused)) return unmet;
             var later = new Fences { NoForceArmed = f.NoForceArmed, SettingsWritesSuppressed = f.SettingsWritesSuppressed, TelemetryIdle = f.TelemetryIdle,
-                MissingHooks = f.MissingHooks, MissingGuards = f.MissingGuards, Compatible = f.Compatible, Custom = f.Custom, StageReady = true, Focused = true };
+                MissingHooks = f.MissingHooks, MissingGuards = f.MissingGuards, Compatible = f.Compatible, Custom = f.StageReady ? f.Custom : true, StageReady = true, Focused = true };
             wait = Unfenced(later) == null;
             return unmet;
         }

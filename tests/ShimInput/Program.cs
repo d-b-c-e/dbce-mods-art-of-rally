@@ -532,10 +532,17 @@ internal static class Program
         bool wait;
         Check(DriveTrial.Admission(All(), out wait) == null && !wait && DriveTrial.Unfenced(null) != null, "verified drive refused or missing fences accepted");
         var stage = All(); stage.StageReady = false; Check(DriveTrial.Admission(stage, out wait) != null && wait, "stage start not waited for");
+        // In the menus the game mode is not set yet: CUSTOM is waited for with the stage (the first Drive run
+        // refused here); at the stage a non-CUSTOM event refuses, focused or not.
+        var menus = All(); menus.StageReady = false; menus.Custom = false;
+        Check(DriveTrial.Admission(menus, out wait) != null && wait, "unset menu game mode refused instead of waited for");
+        var career = All(); career.Custom = false;
+        Check(DriveTrial.Admission(career, out wait).Contains("CUSTOM") && !wait, "non-CUSTOM stage waited for");
+        career.Focused = false; Check(DriveTrial.Admission(career, out wait) != null && !wait, "non-CUSTOM stage waited for while unfocused");
         foreach (var (mutate, expected) in new (Action<DriveTrial.Fences>, string)[] {
             (f => f.NoForceArmed = false, "no-force"), (f => f.SettingsWritesSuppressed = false, "settings writes"), (f => f.TelemetryIdle = false, "telemetry"),
             (f => f.MissingHooks = "GetInput", "input hooks missing"), (f => f.MissingGuards = "UploadScore", "capture guards missing: UploadScore"),
-            (f => f.Compatible = false, "game build"), (f => f.Custom = false, "CUSTOM") })
+            (f => f.Compatible = false, "game build") })
         {
             var f = All(); mutate(f); f.StageReady = false;
             string why = DriveTrial.Admission(f, out wait);
