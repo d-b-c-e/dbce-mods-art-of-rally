@@ -9,30 +9,59 @@ namespace ArtOfSimRally.Mod.Shim
         internal bool StartEngine;
     }
 
-    // The game's normalized axis sink. It never reads devices or files, resolves
-    // bindings, changes settings, emits forces or rewrites a capture.
+    // The game's normalized shared-action sink. It never reads devices or files,
+    // resolves bindings, changes settings, emits forces or rewrites a capture.
     internal sealed class ShimAxisConsumer
     {
         private readonly int ownerThread = Thread.CurrentThread.ManagedThreadId;
-        private readonly bool[] owned = new bool[5];
+        private readonly bool[] owned = new bool[ShimFrame.Count];
         private ShimFrame current;
-        private int gameFrame;
+        private int gameFrame, pendingShift;
         internal bool Started { get; private set; }
         internal bool Terminal { get; private set; }
         internal string Status { get; private set; } = "no shared input session";
         internal ShimFrame OriginalFrame => current;
 
-        // Bound actions outside this first axis slice must be marked Unsupported
-        // by Core at open, never presented as Live with no game consumer.
+        // Actions with an Art consumer: driving axes, sequential shifts, H-pattern gates
+        // (validated against the current car), menu buttons and the two mod shortcuts.
+        private static readonly string[] Reasons = BuildReasons();
+        private static string[] BuildReasons()
+        {
+            var reasons = new string[ShimFrame.Count];
+            reasons[12] = "Art has no select action";
+            reasons[18] = "Art has no look-back action in the inspected build";
+            reasons[19] = "Art reset is not a qualified shared action";
+            reasons[20] = "Art has no horn";
+            return reasons;
+        }
+        internal static bool Supported(int action) => action >= 0 && action < ShimFrame.Count && Reasons[action] == null;
+
+        // Bound actions without an Art consumer must be marked Unsupported by Core
+        // at open, never presented as Live with no game consumer.
         internal static string UnsupportedActions
         {
             get
             {
                 var lines = new System.Text.StringBuilder();
-                for (int i = 5; i < ShimFrame.Count; i++) lines.Append(ShimFrame.Names[i]).Append("=Art shared-input axis slice has no consumer for this action\n");
+                for (int i = 0; i < ShimFrame.Count; i++) if (!Supported(i)) lines.Append(ShimFrame.Names[i]).Append('=').Append(Reasons[i]).Append('\n');
                 return lines.ToString();
             }
         }
+
+        // True only while a started session owns the action; ownership is fixed at open.
+        internal bool Owns(int action) => Started && action >= 0 && action < ShimFrame.Count && owned[action];
+        // The accepted frame belongs to this Unity frame and the session is not terminal.
+        internal bool Fresh(int unityFrame) => Started && !Terminal && unityFrame == gameFrame;
+        internal bool Live(int action, int unityFrame) => Fresh(unityFrame) && Owns(action) && current[action].Status == ShimStatus.Live;
+        internal float Value(int action, int unityFrame) => Live(action, unityFrame) ? current[action].Value : 0f;
+        // One queued sequential step per call; latched presses survive frames with no physics step.
+        internal int TakeShift()
+        {
+            if (Thread.CurrentThread.ManagedThreadId != ownerThread) throw new InvalidOperationException("shim shift taken on another thread");
+            if (Terminal) { pendingShift = 0; return 0; }
+            int step = Math.Sign(pendingShift); pendingShift -= step; return step;
+        }
+        internal void ClearShifts() => pendingShift = 0;
 
         internal bool Publish(byte[] bytes, int unityFrame, out string reason)
         {
@@ -41,26 +70,33 @@ namespace ArtOfSimRally.Mod.Shim
             ShimFrame next;
             if (!ShimFrame.TryDecode(bytes, out next, out reason)) { Refuse(reason); return false; }
             if (next.Latched || next.SuppressNative || next.Run != 0)
-            { reason = "Art axis slice has no verified test-session fences"; Refuse(reason); return false; }
-            for (int i = 5; i < ShimFrame.Count; i++)
-                if (next[i].Owned) { reason = "unsupported Art action: " + ShimFrame.Names[i]; Refuse(reason); return false; }
+            { reason = "Art shared input has no verified test-session fences"; Refuse(reason); return false; }
+            for (int i = 0; i < ShimFrame.Count; i++)
+                if (next[i].Owned && !Supported(i)) { reason = "unsupported Art action: " + ShimFrame.Names[i]; Refuse(reason); return false; }
             if (Started)
             {
                 if (unityFrame <= gameFrame || next.Sequence <= current.Sequence || next.TickMicroseconds < current.TickMicroseconds)
                 { reason = "shim frame did not advance monotonically"; Refuse(reason); return false; }
-                for (int i = 0; i < 5; i++)
-                    if (next[i].Owned != owned[i]) { reason = "shim axis ownership changed after open"; Refuse(reason); return false; }
+                for (int i = 0; i < ShimFrame.Count; i++)
+                    if (next[i].Owned != owned[i]) { reason = "shim action ownership changed after open"; Refuse(reason); return false; }
             }
-            else for (int i = 0; i < 5; i++) owned[i] = next[i].Owned;
+            else for (int i = 0; i < ShimFrame.Count; i++) owned[i] = next[i].Owned;
+            // Core's press edges (rearmed, Live only); presses before the first accepted frame are not replayed.
+            if (Started)
+            {
+                if (owned[ShiftUp] && next[ShiftUp].Status == ShimStatus.Live && (next.Down & (1UL << ShiftUp)) != 0) pendingShift = Math.Min(pendingShift + 1, 2);
+                if (owned[ShiftDown] && next[ShiftDown].Status == ShimStatus.Live && (next.Down & (1UL << ShiftDown)) != 0) pendingShift = Math.Max(pendingShift - 1, -2);
+            }
             current = next; gameFrame = unityFrame;
-            Started = true; Status = "shared input axes (source candidate)"; reason = ""; return true;
+            Started = true; Status = "shared input actions (source candidate)"; reason = ""; return true;
         }
+        internal const int ShiftUp = 5, ShiftDown = 6;
 
         private void Refuse(string reason)
         {
             // Before first acceptance the caller may remain native. Afterward a
             // transport fault retains ownership and can never revive an old read.
-            Terminal = true; Status = reason;
+            Terminal = true; Status = reason; pendingShift = 0;
         }
         internal void Stop()
         {

@@ -72,6 +72,7 @@ namespace Rewired
     public sealed class Joystick
     {
         public Guid deviceInstanceGuid;
+        public bool isConnected = true;
         public string name = "fixture";
         public int axisCount => 1;
         public float GetAxisRaw(int index) => enabled ? -1f : 0f;
@@ -81,7 +82,16 @@ namespace Rewired
         public bool enabled { get => value; set { Writes++; this.value = value; } }
     }
     public sealed class ControllerInventory { public readonly List<Joystick> Joysticks = new(); }
-    public static class ReInput { public static bool isReady; public static readonly ControllerInventory controllers = new(); }
+    public sealed class ControllerStatusChangedEventArgs : EventArgs { }
+    public static class ReInput
+    {
+        public static bool isReady; public static readonly ControllerInventory controllers = new();
+        public static event Action<ControllerStatusChangedEventArgs> ControllerConnectedEvent, ControllerPreDisconnectEvent, ControllerDisconnectedEvent;
+        public static event Action PreShutDownEvent, ShutDownEvent, InitializedEvent;
+        internal static int Subscribers => (ControllerConnectedEvent?.GetInvocationList().Length ?? 0) + (ControllerPreDisconnectEvent?.GetInvocationList().Length ?? 0) +
+            (ControllerDisconnectedEvent?.GetInvocationList().Length ?? 0) + (PreShutDownEvent?.GetInvocationList().Length ?? 0) +
+            (ShutDownEvent?.GetInvocationList().Length ?? 0) + (InitializedEvent?.GetInvocationList().Length ?? 0);
+    }
 }
 namespace Rewired.Platforms.Windows.RawInput
 {

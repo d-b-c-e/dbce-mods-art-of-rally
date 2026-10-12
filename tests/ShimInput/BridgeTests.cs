@@ -1,3 +1,4 @@
+using System.Linq;
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -92,7 +93,79 @@ internal static class BridgeTests
     internal static int Actual(string dll)
     {
         checks = 0;
-        ActualOne(dll, false); ActualOne(dll, true); return checks;
+        ActualOne(dll, false); ActualOne(dll, true); ActualActions(dll); return checks;
+    }
+    // Two owned devices with independently scripted buttons and hats (R12 slot 0, DS-8X slot 1).
+    private sealed class DeviceSource : IPhysicalSnapshotSource, IPhysicalSnapshotPathSource
+    {
+        [DllImport("kernel32.dll")] private static extern bool QueryPerformanceCounter(out long value);
+        [DllImport("kernel32.dll")] private static extern bool QueryPerformanceFrequency(out long value);
+        internal static readonly Guid[] Ids = { new Guid("d71b8350-61b7-11f1-8001-444553540000"), new Guid("d9b1d890-6f3f-11f1-8002-444553540000") };
+        internal static readonly Guid[] Products = { new Guid("0006346e-0000-0000-0000-504944564944"), new Guid("05310483-0000-0000-0000-504944564944") };
+        internal readonly bool[][] Buttons = { new bool[128], new bool[128] };
+        internal readonly uint[] Hat0 = { uint.MaxValue, uint.MaxValue };
+        internal int Reads; private ulong sequence;
+        public int Describe(int slot, byte[] bytes)
+        {
+            BitConverter.GetBytes(144).CopyTo(bytes, 0); bytes[4] = 1; BitConverter.GetBytes((ulong)(7 + slot)).CopyTo(bytes, 8);
+            Ids[slot].ToByteArray().CopyTo(bytes, 16); Products[slot].ToByteArray().CopyTo(bytes, 32);
+            // axis_mask/range_mask: axis 0 (0..65535); pov_mask: hat 0; button_mask: all 128 buttons present.
+            bytes[48] = bytes[52] = 1; bytes[56] = 1; for (int i = 64; i < 80; i++) bytes[i] = 0xff;
+            BitConverter.GetBytes(65535).CopyTo(bytes, 112); return 1;
+        }
+        public bool TryGetPath(int slot, ulong generation, out string path) { path = @"\\?\hid#owned-" + slot; return generation == (ulong)(7 + slot); }
+        public int Read(int slot, byte[] bytes)
+        {
+            Reads++; BitConverter.GetBytes(232).CopyTo(bytes, 0); bytes[4] = 1; BitConverter.GetBytes((ulong)(7 + slot)).CopyTo(bytes, 8);
+            BitConverter.GetBytes(++sequence).CopyTo(bytes, 16);
+            long tick, frequency;
+            if (!QueryPerformanceCounter(out tick) || !QueryPerformanceFrequency(out frequency)) throw new Exception("QPC unavailable");
+            long us = tick / frequency * 1000000 + tick % frequency * 1000000 / frequency;
+            BitConverter.GetBytes(us).CopyTo(bytes, 24); BitConverter.GetBytes(us).CopyTo(bytes, 32);
+            bytes[50] = 1; BitConverter.GetBytes(32768).CopyTo(bytes, 52);
+            for (int b = 0; b < 128; b++) bytes[84 + b] = (byte)(Buttons[slot][b] ? 0x80 : 0);
+            BitConverter.GetBytes(Hat0[slot]).CopyTo(bytes, 212);
+            for (int i = 216; i < 228; i++) bytes[i] = 0xff;
+            return 1;
+        }
+    }
+    // The actual Core with the pinned owner profile's action shapes: every supported action resolves,
+    // the unsupported ones are reported Unsupported, and both owning devices are bound.
+    private static void ActualActions(string dll)
+    {
+        string folder = Path.Combine(Path.GetTempPath(), "art-copied-actions-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(folder);
+        string r12 = " dev={d71b8350-61b7-11f1-8001-444553540000} prod={0006346e-0000-0000-0000-504944564944}";
+        string ds8x = " dev={d9b1d890-6f3f-11f1-8002-444553540000} prod={05310483-0000-0000-0000-504944564944}";
+        string profile = "[Controls]\nSchema = 1\nProfile = Actions\nRevision = r1\nTransmission = Sequential\n" +
+            "steer = axis 0" + r12 + " range=0..65535 rest=32768 travel=+1\n" +
+            "confirm = button 31" + r12 + "\nnavDown = hat 0 18000" + r12 + "\nselect = button 5" + r12 + "\n" +
+            "shiftUp = button 9" + ds8x + "\nshiftDown = button 10" + ds8x + "\n";
+        var source = new DeviceSource(); var sink = new ShimAxisConsumer();
+        var native = new ShimBridgeNative(dll, folder, System.Text.Encoding.UTF8.GetBytes(profile));
+        var ids = new System.Collections.Generic.HashSet<Guid>(native.BoundInstances());
+        Check(ids.SetEquals(DeviceSource.Ids), "Core did not bind both owning devices");
+        var bridge = new ShimBridge(source, native, sink, new[] { 0, 1 }); int frame = 0;
+        bool Step() { Check(bridge.ReadFrame(++frame, (slot, bytes) => { }), "actual action frame: " + bridge.Failure); Thread.Sleep(5); return true; }
+        bool AllLive() => sink.Started && sink.Live(9, frame) && sink.Live(14, frame) && sink.Live(5, frame) && sink.Live(6, frame);
+        try
+        {
+            for (int i = 0; i < 400 && Step() && !AllLive(); i++) { }
+            Check(AllLive(), "actual confirm/navDown/shiftUp/shiftDown never became Live while released: " +
+                (sink.Started ? string.Join(",", new[] { 9, 14, 5, 6 }.Select(a => ShimFrame.Names[a] + "=" + sink.OriginalFrame[a].Status)) : "not started"));
+            Check(sink.Value(9, frame) == 0 && sink.Value(14, frame) == 0, "released actions not neutral");
+            Check(!sink.Owns(12) && sink.OriginalFrame[12].Status == ShimStatus.Unsupported, "bound select not reported Unsupported");
+            source.Buttons[0][31] = true; source.Hat0[0] = 18000; Step();
+            Check(sink.Value(9, frame) == 1f && (sink.OriginalFrame.Down & (1UL << 9)) != 0, "actual confirm press");
+            Check(sink.Value(14, frame) == 1f, "actual hat navDown");
+            source.Buttons[0][31] = false; source.Hat0[0] = uint.MaxValue; Step();
+            Check(sink.Value(9, frame) == 0 && sink.Value(14, frame) == 0, "actual release");
+            source.Buttons[1][9] = true; Step(); source.Buttons[1][9] = false; Step();
+            Check(sink.TakeShift() == 1 && sink.TakeShift() == 0, "actual DS-8X shiftUp did not queue exactly one step");
+            source.Buttons[1][10] = true; Step(); source.Buttons[1][10] = false; Step();
+            Check(sink.TakeShift() == -1, "actual DS-8X shiftDown");
+        }
+        finally { bridge.Stop("action qualification complete"); }
+        Check(File.ReadAllText(Path.Combine(folder, "host-shutdown.json")).Contains("\"state\":\"resolved\""), "actual action bridge stop did not resolve");
     }
     private static void ActualOne(string dll, bool withPath)
     {

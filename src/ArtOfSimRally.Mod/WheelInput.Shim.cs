@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using ArtOfSimRally.Mod.Shim;
 using UnityEngine;
 
@@ -21,6 +22,35 @@ namespace ArtOfSimRally.Mod
             }
         }
         internal static void StopSharedProbe() => StopSharedInput();
+
+        // Art channels with a shared action. Channels without one (camera tuning,
+        // handbrake button) keep Art's own bindings on the same copied read.
+        private static readonly Dictionary<Channel, int> SharedActions = new Dictionary<Channel, int>
+        {
+            { Channel.Confirm, 9 }, { Channel.Back, 10 }, { Channel.Start, 11 },
+            { Channel.NavUp, 13 }, { Channel.NavDown, 14 }, { Channel.NavLeft, 15 }, { Channel.NavRight, 16 },
+            { Channel.CameraSwitch, 17 }, { Channel.SettingsButton, 21 }, { Channel.StopFfbButton, 22 },
+        };
+        internal static bool SharedOwns(Channel channel) => SharedActions.TryGetValue(channel, out int action) && ShimInput.Consumer.Owns(action);
+        // True when a started shared session owns the channel's action. Availability and
+        // value then come only from this frame's shared input; once the session is
+        // terminal the channel stays neutral rather than falling back to Art's binding.
+        internal static bool SharedChannel(Channel channel, out bool available, out float value)
+        {
+            available = false; value = 0f;
+            if (!SharedActions.TryGetValue(channel, out int action) || !ShimInput.Consumer.Owns(action)) return false;
+            EnsureSharedFrame();
+            available = ShimInput.Consumer.Live(action, Time.frameCount);
+            value = ShimInput.Consumer.Value(action, Time.frameCount);
+            return true;
+        }
+        // The first shared-input consumer in a Unity frame (car input, physics gear step,
+        // Rewired query or watchdog) publishes this frame's snapshot; later ones reuse it.
+        // Game scripts can run before the watchdog, so freshness must not depend on order.
+        internal static void EnsureSharedFrame()
+        {
+            if (sharedInput != null && _sampledFrame != Time.frameCount) ReadSnapshot();
+        }
 
         // Explicit muted probe handoff only; no saved backend flag. Ordinary
         // copied-provider mode is used: extension 1 has no capture/test fences.

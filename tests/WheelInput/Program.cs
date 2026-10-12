@@ -225,6 +225,11 @@ static class Program
             {
                 SharedRead(); Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
             }
+            // The shared consumer is a process singleton; each shim scenario needs its own process.
+            if (args.Contains("--shim-actions-only"))
+            {
+                SharedActionChannels(); Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
+            }
             if (args.Contains("--resume-assignment-only")) AssignmentResume();
             else if (args.Contains("--shifter-only")) assertions+=ShifterIdentityTests.Run();
             else if (args.Contains("--identity-only")) DeviceIdentity();
@@ -273,6 +278,58 @@ static class Program
         Check(WheelInput.DeviceReadHealth(id.ToString()) == false, "failed read kept healthy status");
         Device.ReadOk=true; WheelInput.Update();
         Check(WheelInput.DeviceReadHealth(id.ToString()) == true, "resumed read not observed");
+    }
+
+    // Scripted Core frames: the listed actions owned with their status/value, the rest unbound.
+    sealed class ActionNative : ArtOfSimRally.Mod.Shim.IShimBridge
+    {
+        internal Func<(int Action, ArtOfSimRally.Mod.Shim.ShimStatus Status, float Value)[]> Script = () => Array.Empty<(int, ArtOfSimRally.Mod.Shim.ShimStatus, float)>();
+        internal int Ticks, Stops;
+        public bool Devices(byte[] bytes, int count) => true;
+        public bool Tick(byte[] samples, int count, byte[] frame)
+        {
+            Ticks++;
+            BitConverter.GetBytes(296).CopyTo(frame, 0); frame[4] = 2; BitConverter.GetBytes((ulong)Ticks).CopyTo(frame, 8); BitConverter.GetBytes((long)Ticks).CopyTo(frame, 16);
+            for (int i = 0; i < 31; i++) frame[52 + i * 8] = (byte)(i < 5 ? ArtOfSimRally.Mod.Shim.ShimStatus.Live : ArtOfSimRally.Mod.Shim.ShimStatus.Unbound);
+            foreach (var a in Script()) { BitConverter.GetBytes(a.Value).CopyTo(frame, 48 + a.Action * 8); frame[52 + a.Action * 8] = (byte)a.Status; }
+            return true;
+        }
+        public void Stop() => Stops++;
+    }
+    static void SharedActionChannels()
+    {
+        const ArtOfSimRally.Mod.Shim.ShimStatus L = ArtOfSimRally.Mod.Shim.ShimStatus.Live;
+        Setup("");
+        // Art's own bindings press the same copied button: owned channels must ignore them, unowned ones keep them.
+        Host.Settings.ConfirmBinding = "TSS fixture|0|button:0|0|1"; Host.Settings.BackBinding = "TSS fixture|0|button:0|0|1";
+        Host.Settings.SettingsButtonBinding = "TSS fixture|0|button:0|0|1";
+        WheelInput.LoadBindings(); Clock.frameCount = 9000; WheelInput.Update();
+        var source = new BridgeTests.Source(); float confirm = 0, menu = 0;
+        var native = new ActionNative { Script = () => new[] { (9, L, confirm), (21, L, menu) } };
+        WheelInput.AttachSharedInput(source, native, () => true, () => true);
+        void Frame() { Clock.frameCount++; WheelInput.EnsureUpdatedThisFrame(); }
+        Frame();
+        Check(source.Reads == 1 && !WheelInput.GameButton(WheelInput.Channel.Confirm, false), "owned confirm used Art's pressed binding");
+        Check(WheelInput.GameButton(WheelInput.Channel.Back, false), "unowned back lost Art's binding on the same copied read");
+        confirm = 1; Frame();
+        Check(WheelInput.GameButton(WheelInput.Channel.Confirm, true) && WheelInput.GameButton(WheelInput.Channel.Confirm, false), "shared confirm press");
+        Frame(); Check(!WheelInput.GameButton(WheelInput.Channel.Confirm, true) && WheelInput.GameButton(WheelInput.Channel.Confirm, false), "held confirm repeated");
+        confirm = 0; Frame(); Check(WheelInput.GameButtonReleased(WheelInput.Channel.Confirm), "shared confirm release");
+        Check(!WheelInput.ShortcutPressed(WheelInput.Channel.SettingsButton), "released shared shortcut pressed (Art binding leaked)");
+        menu = 1; Frame(); Check(WheelInput.ShortcutPressed(WheelInput.Channel.SettingsButton), "shared shortcut edge");
+        Frame(); Check(!WheelInput.ShortcutPressed(WheelInput.Channel.SettingsButton), "held shortcut repeated");
+        // Car input can run before the watchdog: it must publish and use this frame's snapshot.
+        Clock.frameCount++; int reads = source.Reads; float t = 0, b = 0, s = 0, h = 0, c = 0; bool e = false;
+        Check(ArtOfSimRally.Mod.Shim.ShimInput.TryOverride(new AxisCarController(), ref t, ref b, ref s, ref h, ref c, ref e), "car input not owned");
+        Check(source.Reads == reads + 1 && ArtOfSimRally.Mod.Shim.ShimInput.Consumer.Fresh(Clock.frameCount), "car input composed a previous frame");
+        WheelInput.EnsureUpdatedThisFrame(); Check(source.Reads == reads + 1 && native.Ticks == reads + 1, "same frame polled twice");
+        // A refused frame keeps the owned channels neutral; nothing falls back to Art's binding.
+        native.Script = () => new[] { (9, L, 1f), (21, L, 1f), (10, L, 1f) };
+        menu = 0; Frame();
+        Check(ArtOfSimRally.Mod.Shim.ShimInput.Consumer.Terminal, "ownership change after open accepted");
+        Check(!WheelInput.GameButton(WheelInput.Channel.Confirm, false) && !WheelInput.ShortcutPressed(WheelInput.Channel.SettingsButton), "terminal session fell back or stayed live");
+        Frame(); Check(!WheelInput.GameButton(WheelInput.Channel.Confirm, false), "terminal session revived");
+        WheelInput.Close();
     }
 
     static void SharedRead()

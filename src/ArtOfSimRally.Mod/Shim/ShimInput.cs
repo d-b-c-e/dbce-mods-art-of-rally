@@ -23,6 +23,9 @@ namespace ArtOfSimRally.Mod.Shim
                 if (manager == null || manager.status == EventStatusEnums.EventStatus.FINISHING_STAGE_ANIMATION) return true;
             }
             catch { return true; }
+            // The car can read input before the watchdog runs; publish this frame's shared
+            // snapshot first so Compose never sees a previous frame as current.
+            WheelInput.EnsureSharedFrame();
             var values = new DrivingValues { Throttle = throttle, Brake = brake, Steer = steer,
                 Handbrake = handbrake, Clutch = clutch, StartEngine = startEngine };
             Consumer.Compose(Time.frameCount, IsolatedFrame == Time.frameCount,

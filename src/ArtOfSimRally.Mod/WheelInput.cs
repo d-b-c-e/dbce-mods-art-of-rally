@@ -56,10 +56,19 @@ namespace ArtOfSimRally.Mod
         private static readonly Dictionary<Channel, bool> ShortcutHeld = new Dictionary<Channel, bool>();
         public static bool ShortcutPressed(Channel c)
         {
-            if (!_bindings.TryGetValue(c, out var b)) { ShortcutHeld[c] = true; return false; }
-            var device = Resolve(b);
-            if (device == null || !device.Ok) { ShortcutHeld[c] = true; return false; }
-            bool held = Value(c) > .5f;
+            bool held;
+            if (SharedChannel(c, out bool sharedAvailable, out float sharedValue))
+            {
+                if (!sharedAvailable) { ShortcutHeld[c] = true; return false; }
+                held = sharedValue > .5f;
+            }
+            else
+            {
+                if (!_bindings.TryGetValue(c, out var b)) { ShortcutHeld[c] = true; return false; }
+                var device = Resolve(b);
+                if (device == null || !device.Ok) { ShortcutHeld[c] = true; return false; }
+                held = Value(c) > .5f;
+            }
             bool edge = held && ShortcutHeld.TryGetValue(c, out var previous) && !previous;
             ShortcutHeld[c] = held;
             return edge;

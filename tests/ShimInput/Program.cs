@@ -115,13 +115,81 @@ internal static class Program
         Check(!accepted && !wrongThread.Started, "wrong thread accepted");
         var duplicate = new ShimAxisConsumer(); Check(duplicate.Publish(Frame(), 5, out why), why);
         Check(!duplicate.Publish(Frame(2), 5, out why), "polled twice in one Unity frame");
-        Check(ShimAxisConsumer.UnsupportedActions.Contains("camera=") && !ShimAxisConsumer.UnsupportedActions.Contains("clutch="), "capability wrong");
+        Check(ShimAxisConsumer.UnsupportedActions.Contains("select=") && ShimAxisConsumer.UnsupportedActions.Contains("horn=") &&
+            !ShimAxisConsumer.UnsupportedActions.Contains("camera=") && !ShimAxisConsumer.UnsupportedActions.Contains("clutch=") &&
+            !ShimAxisConsumer.UnsupportedActions.Contains("gear6="), "capability wrong");
+    }
+    // Actions beyond the axes: menu buttons, shortcuts, sequential edges and H-pattern gates.
+    private static byte[] Actions(ulong seq, ulong down, params (int Action, ShimStatus Status, float Value)[] owned)
+    {
+        var bytes = Frame(seq);
+        BitConverter.GetBytes(down).CopyTo(bytes, 24); BitConverter.GetBytes(0UL).CopyTo(bytes, 32);
+        foreach (var a in owned) { BitConverter.GetBytes(a.Value).CopyTo(bytes, 48 + a.Action * 8); bytes[48 + a.Action * 8 + 4] = (byte)a.Status; }
+        return bytes;
+    }
+    private static void SharedActions()
+    {
+        string why; const ShimStatus L = ShimStatus.Live;
+        int[] unsupported = { 12, 18, 19, 20 };
+        for (int i = 0; i < ShimFrame.Count; i++) Check(ShimAxisConsumer.Supported(i) == Array.IndexOf(unsupported, i) < 0, "supported set " + ShimFrame.Names[i]);
+        foreach (int action in unsupported)
+        { var s = new ShimAxisConsumer(); Check(!s.Publish(Actions(1, 0, (action, L, 1f)), 1, out why) && s.Terminal, "unsupported action owned " + ShimFrame.Names[action]); }
+
+        // Menu buttons and shortcuts: current, Live and owned only.
+        var sink = new ShimAxisConsumer();
+        Check(!sink.Owns(9) && !sink.Live(9, 1) && sink.Value(9, 1) == 0, "ownership before the first accepted frame");
+        Check(sink.Publish(Actions(1, 0, (9, L, 1f), (10, L, 0f), (21, ShimStatus.Rearming, 1f)), 1, out why), why);
+        Check(sink.Owns(9) && sink.Live(9, 1) && sink.Value(9, 1) == 1f, "confirm held lost");
+        Check(sink.Owns(10) && sink.Live(10, 1) && sink.Value(10, 1) == 0f, "released back");
+        Check(sink.Owns(21) && !sink.Live(21, 1) && sink.Value(21, 1) == 0f, "rearming shortcut presented as held");
+        Check(!sink.Owns(11) && sink.Value(11, 1) == 0f, "unbound start owned");
+        Check(sink.Value(9, 2) == 0f && !sink.Live(9, 2), "previous frame presented as current");
+        Check(!sink.Publish(Actions(2, 0, (9, L, 1f), (10, L, 0f), (21, L, 1f), (11, L, 1f)), 2, out why) && sink.Terminal, "ownership change after open accepted");
+        Check(!sink.Owns(9) || (sink.Value(9, 2) == 0f && !sink.Live(9, 2)), "terminal session not neutral");
+
+        // Sequential: Core press edges, Live only, latched until a physics step takes one.
+        var seq = new ShimAxisConsumer(); ulong up = 1UL << 5, dn = 1UL << 6;
+        Check(seq.Publish(Actions(1, up, (5, L, 1f), (6, L, 0f)), 1, out why) && seq.TakeShift() == 0, "press before the first accepted frame replayed");
+        Check(seq.Publish(Actions(2, up, (5, L, 1f), (6, L, 0f)), 2, out why), why);
+        Check(seq.Publish(Actions(3, 0, (5, L, 0f), (6, L, 0f)), 3, out why), why);
+        Check(seq.Publish(Actions(4, up, (5, L, 1f), (6, L, 0f)), 4, out why), why);
+        Check(seq.TakeShift() == 1 && seq.TakeShift() == 1 && seq.TakeShift() == 0, "two presses across frames without a physics step");
+        foreach (ulong n in new ulong[] { 5, 6, 7 }) Check(seq.Publish(Actions(n, up, (5, L, 1f), (6, L, 0f)), (int)n, out why), why);
+        Check(seq.TakeShift() == 1 && seq.TakeShift() == 1 && seq.TakeShift() == 0, "queued presses not capped at two");
+        Check(seq.Publish(Actions(8, dn, (5, L, 0f), (6, L, 1f)), 8, out why) && seq.TakeShift() == -1, "downshift lost");
+        Check(seq.Publish(Actions(9, up | dn, (5, L, 1f), (6, L, 1f)), 9, out why) && seq.TakeShift() == 0, "simultaneous up/down not neutral");
+        Check(seq.Publish(Actions(10, up, (5, ShimStatus.Rearming, 1f), (6, L, 0f)), 10, out why) && seq.TakeShift() == 0, "non-live edge shifted");
+        Check(seq.Publish(Actions(11, up, (5, L, 1f), (6, L, 0f)), 11, out why), why); seq.ClearShifts();
+        Check(seq.TakeShift() == 0, "cleared press shifted");
+        Check(seq.Publish(Actions(12, up, (5, L, 1f), (6, L, 0f)), 12, out why), why); seq.Stop();
+        Check(seq.TakeShift() == 0, "terminal session shifted");
+
+        // H-pattern gates: reverse first, no gate is neutral, stale or unowned is no decision.
+        var plain = new ShimAxisConsumer(); Check(plain.Publish(Actions(1, 0), 1, out why), why);
+        Check(!ShimTransmission.OwnsGates(plain) && ShimTransmission.Gate(plain, 1) == null, "gates without ownership");
+        var h = new ShimAxisConsumer(); var gates = new System.Collections.Generic.List<(int, ShimStatus, float)> { (7, L, 0f), (8, L, 0f) };
+        for (int g = 0; g < 8; g++) gates.Add((23 + g, L, 0f));
+        (int, ShimStatus, float)[] Hold(params int[] held) => gates.ConvertAll(x => (x.Item1, x.Item2, Array.IndexOf(held, x.Item1) >= 0 ? 1f : 0f)).ToArray();
+        Check(h.Publish(Actions(1, 0, Hold()), 1, out why) && ShimTransmission.Gate(h, 1) == ShimTransmission.Neutral, "no gate is not neutral");
+        Check(h.Publish(Actions(2, 0, Hold(25)), 2, out why) && ShimTransmission.Gate(h, 2) == ShimTransmission.FirstGear + 2, "third gate");
+        Check(h.Publish(Actions(3, 0, Hold(8, 23)), 3, out why) && ShimTransmission.Gate(h, 3) == ShimTransmission.Reverse, "reverse collar not first");
+        Check(h.Publish(Actions(4, 0, Hold(7)), 4, out why) && ShimTransmission.Gate(h, 4) == ShimTransmission.Neutral, "explicit neutral");
+        Check(h.Publish(Actions(5, 0, Hold(28)), 5, out why) && ShimTransmission.Gate(h, 5) == ShimTransmission.FirstGear + 5, "sixth gate index");
+        Check(ShimTransmission.Gate(h, 6) == null, "stale gate decided");
+        Check(!ShimTransmission.Exists(ShimTransmission.FirstGear + 5, 6) && ShimTransmission.Exists(ShimTransmission.FirstGear + 4, 6), "car range not checked");
+        h.Stop(); Check(ShimTransmission.Gate(h, 5) == null, "terminal gate decided");
+
+        // Sequential targets never clamp; neutral may be stepped over.
+        Check(ShimTransmission.Step(2, 1, false, 6) == 3 && ShimTransmission.Step(2, -1, false, 6) == 1, "plain steps");
+        Check(ShimTransmission.Step(2, -1, true, 6) == 0 && ShimTransmission.Step(0, 1, true, 6) == 2, "skip neutral");
+        Check(ShimTransmission.Step(6, 1, false, 6) == null && ShimTransmission.Step(0, -1, false, 6) == null, "out-of-range step clamped");
+        Check(ShimTransmission.Step(3, 0, false, 6) == null && ShimTransmission.Step(3, 1, false, -1) == null, "no step or no ratios shifted");
     }
     private static int Main(string[] args)
     {
         try
         {
-            Decode(); Consumption(); StatusesAndFailures();
+            Decode(); Consumption(); StatusesAndFailures(); SharedActions();
             assertions += BridgeTests.Fake();
             assertions += IsolationTests.Run();
             assertions += ProbeTests.Run();
