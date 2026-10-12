@@ -50,8 +50,10 @@ receipt. It requires exact GUID/disabled/restored flags and neutral raw axes,
 then repeats the current checks before attaching. A neutral-at-rest receipt is
 accepted while its nonzero cache transition remains explicitly inconclusive.
 It publishes 120 menu frames through the real copied provider and Art sink, then
-stops/restores. After attachment failure or completion, the source consumer
-retains neutral ownership until exit; restart to return to ordinary input.
+stops/restores. After the first accepted frame, failure or completion makes the
+source consumer retain neutral ownership until exit; restart to return to ordinary
+input. Failure before the first accepted frame leaves the consumer unstarted and
+retains Native input.
 This proves neither car input, keyboard operation, menus, physical FFB nor full
 multi-device action parity. The receipt reports last axis statuses and values;
 `PublishedFrames=120` alone does not mean every bound axis became Live.
@@ -87,6 +89,11 @@ exports must refuse.
    UMM configuration, and existing game preferences using the established Art
    test restoration procedure. A copied Unity game still shares PlayerPrefs,
    LocalLow logs and Steam integration; **copying files alone is not isolation**.
+   Also snapshot and restore the existence/bytes of
+   `%LOCALAPPDATA%/DBCE/TripleScreen/games/art-of-rally/status.json` and
+   `render-diagnostics.json` in that same folder: the normal triple-screen
+   publisher still runs in the copy. Remove only a probe-created shared file
+   that was absent before; otherwise restore its exact original bytes.
    Keep Steam offline/local and preserve the existing prefs/logs before launch.
    Do not enter a stage, change controls, invoke Steam's normal Play, or run
    Wheelkit Apply. Use no optional recorder/injection markers or extra native
