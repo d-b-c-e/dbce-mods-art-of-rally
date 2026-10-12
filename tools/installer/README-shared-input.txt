@@ -33,10 +33,15 @@ changes need a restart. A control the profile does not map keeps Art's binding,
 unless the profile already uses that physical control for something else.
 
 To stop using it: turn the option off and restart, or remove dbce-controls.ini.
-To go back to your previous release, install that release's package: it replaces
-the plugin and removes the dbce_shim.dll this package installed. Your settings are
-kept either way. The installer never replaces or removes a dbce_shim.dll it did not
-install, including one you changed or placed by hand; move such a file aside first.
+To go back to your previous release: first run THIS package's Uninstall.bat (your
+settings are kept), then install the previous release's package as usual. Older
+release installers do not know about dbce_shim.dll and leave it in place, so do the
+uninstall first.
+
+This installer replaces or removes dbce_shim.dll only when it installed exactly
+those bytes. A copy you changed or placed by hand is left as it is: the uninstall
+keeps it, and installing this package over it stops with a message unless the copy
+is byte-identical to this package's. Move such a file aside first.
 
 Not yet tested by a person: driving with the physical wheel and keyboard through
 the shared profile, and force feedback together with it.

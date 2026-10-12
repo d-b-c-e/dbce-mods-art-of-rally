@@ -1,9 +1,13 @@
 # Art shared input: private owner-test candidate package (2026-10-12)
 
 romi 32256 asked for the next offline Art delivery slice. romi 32354 accepted the native
-port (option A), the private `-SharedInputCandidate` packaging, and the merge target
-`7c1b67e` -> `c731a6c` in principle. The final fast-forward waits for review of these
-packaging commits. Nothing has been merged, installed or launched for this slice.
+port (option A) and the private `-SharedInputCandidate` packaging. The independent native
+review passed (32797), and so did the packaging and ownership review (32927).
+
+Main is not fast-forwarded through this branch, because its history carries the shim
+blob (32891). It gets a squash of the clean final tree onto a new branch from `7c1b67e`,
+whose ancestry has no `7DDC9621` blob. Nothing has been merged, installed or launched for
+this slice.
 
 ## What the candidate is
 
@@ -19,12 +23,25 @@ packaging commits. Nothing has been merged, installed or launched for this slice
 `sharedInputCandidate`, and the installer's verifier accepts the shim only with that
 record. The default package is unchanged: the `lib/toolkit` native `F8361A08` and no shim.
 
-### Shipping the shim
+Where the two binaries live:
+- **Native:** vendored in `lib/input-shim/native`. It is the same MIT toolkit component
+  this public repository already vendors and ships.
+- **Shim:** not kept in this public repository (romi 32775). The private build passes
+  `-SharedInputShim <private copy>`, which is checked against the pin. See
+  `lib/input-shim/PROVENANCE.md`.
+
+### Shipping the shim (romi 32767)
 
 - `dbce_shim.dll` is an optional payload entry, pinned by the build record.
-- `install.ps1` installs and verifies it when the package contains it.
-- Uninstall removes it, and so does installing a package without it. Reinstalling the
-  owner's current release therefore restores that payload exactly.
+- It is this mod's to replace or remove only while the installed `build.json` pins exactly
+  its bytes. That is decided before anything is written.
+  - An uninstall, or an install of a release built from this branch without the shim,
+    removes an owned copy and keeps any other copy.
+  - A candidate install over a different copy stops before writing anything. A
+    byte-identical copy is adopted.
+- **Reverting:** run this candidate's `Uninstall.bat` first (settings are kept), then
+  install the previous package. Older installers, for example the published 0.4.1, do not
+  know about the shim and leave it in place.
 - `Settings.xml` and unknown files, including an owner-placed `dbce-controls.ini`, are
   kept.
 
@@ -113,8 +130,8 @@ unchanged):
 
 ## Merge readiness
 
-- **Target:** fast-forward `main` from `7c1b67e` to `c731a6c`, which has 0 commits behind
-  main. Then the packaging commits after review.
+- **Target:** one squash commit of this branch's final tree on a new branch from
+  `7c1b67e`. `main` is pushed only on romi's word.
 - **With SharedInput off and no `DBCE_ART_SHIM_REQUEST`:**
   - the probe and shared code are inert;
   - the shifter and GetInput shared paths require a started consumer;
