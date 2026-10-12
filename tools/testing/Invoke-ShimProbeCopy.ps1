@@ -51,7 +51,12 @@ foreach($p in @('ArtOfSimRally/controls-request.txt','ArtOfSimRally/session-requ
     if(Test-Path -LiteralPath (Join-Path $env:LOCALAPPDATA $p)) { throw "Existing developer marker refused: $p" }
 }
 Assert-GameClosed
-if($PreflightOnly) { Write-Output 'Disposable candidate pins, settings, app id, UMM and marker checks passed. No launch or shared-state mutation.'; return }
+. (Join-Path $PSScriptRoot 'SteamLaunchContext.ps1')
+# SteamAPI_Init needs a running Steam client at the game's access level; refuse before any lease or snapshot.
+$context=Get-SteamLaunchContext
+$context | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath "$Result/preflight-steam-context.json"
+if($context.decision -eq 'refuse') { throw "Steam launch context refused: $($context.reason)" }
+if($PreflightOnly) { Write-Output "Disposable candidate pins, settings, app id, UMM, marker and Steam context ($($context.decision)) checks passed. No launch or shared-state mutation."; return }
 $ownerInput=Join-Path $HubRepo 'tools/Owner-Input.ps1'
 if([double](& $ownerInput -IdleSeconds) -lt 300) { throw 'Owner input is recent; no launch or shared-state mutation.' }
 $customRally=Join-Path $env:USERPROFILE 'AppData/LocalLow/Funselektor Labs/Art of Rally/customrally'
@@ -91,21 +96,50 @@ try {
     Assert-StageRigLease -Path $lease.path -Token $lease.token
     if([double](& $ownerInput -IdleSeconds) -lt 300) { throw 'Owner input resumed during preparation; no launch.' }
     Assert-Pins # close the preparation-to-launch gap while holding the lease
-    $start=[Diagnostics.ProcessStartInfo]::new()
-    $start.FileName=Join-Path $GameDir 'artofrally.exe'; $start.WorkingDirectory=$GameDir; $start.UseShellExecute=$false
-    $start.EnvironmentVariables['DBCE_ART_SHIM_REQUEST']=$requestPath
-    $start.EnvironmentVariables['SteamAppId']='550320'; $start.EnvironmentVariables['SteamGameId']='550320'
-    $start.EnvironmentVariables['DBCE_FFB_MUTE']='1' # native load-time latch precedes managed request validation
-    $start.EnvironmentVariables['DBCE_FFB_LOG_PATH']=Join-Path $Result 'native.log' # also covers pre-Prepare refusals
-    $launchAttempted=$true
-    $game=[Diagnostics.Process]::Start($start)
+    $context=Get-SteamLaunchContext # Steam may have stopped or changed since preflight
+    if($context.decision -eq 'refuse') { $context | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath "$Result/launch-steam-context.json"; throw "Steam launch context refused: $($context.reason)" }
+    $exe=Join-Path $GameDir 'artofrally.exe'
+    $childEnvironment=[ordered]@{
+        DBCE_ART_SHIM_REQUEST=$requestPath
+        SteamAppId='550320'; SteamGameId='550320'
+        DBCE_FFB_MUTE='1' # native load-time latch precedes managed request validation
+        DBCE_FFB_LOG_PATH=(Join-Path $Result 'native.log') # also covers pre-Prepare refusals
+    }
+    $brokerSha256=$null
+    if($context.decision -eq 'direct') {
+        $start=[Diagnostics.ProcessStartInfo]::new()
+        $start.FileName=$exe; $start.WorkingDirectory=$GameDir; $start.UseShellExecute=$false
+        foreach($name in $childEnvironment.Keys) { $start.EnvironmentVariables[$name]=$childEnvironment[$name] }
+        $launchAttempted=$true
+        $game=[Diagnostics.Process]::Start($start)
+    } else {
+        # Steam runs at the user's Medium level: start the copy through the user shell with cmd-local variables only.
+        $broker=Join-Path $Result 'launch-broker.cmd'
+        $brokerSha256=New-ChildEnvironmentBroker -Path $broker -Executable $exe -WorkingDirectory $GameDir -Environment $childEnvironment
+        $launchUtc=[DateTime]::UtcNow; $launchAttempted=$true
+        Start-MediumBroker $broker
+        # Adopt only the single new exact copy process; never an older or different Art process.
+        $adoptDeadline=[DateTime]::UtcNow.AddSeconds(15)
+        while(!$game -and [DateTime]::UtcNow -lt $adoptDeadline) {
+            $candidates=@(Get-Process artofrally -ErrorAction SilentlyContinue)
+            if($candidates.Count -gt 1) { throw 'More than one Art process appeared after the broker launch; do not answer Steam session dialogs.' }
+            if($candidates.Count -eq 1 -and $candidates[0].StartTime.ToUniversalTime() -ge $launchUtc.AddSeconds(-1)) { $game=$candidates[0]; $null=$game.SafeHandle }
+            else { Start-Sleep -Milliseconds 100 }
+        }
+        if(!$game) { throw 'Broker launch produced no Art process; nothing to close.' }
+    }
     $processStart=$game.StartTime.ToUniversalTime(); $imageDeadline=[DateTime]::UtcNow.AddSeconds(5); $imagePath=$null
     while(!$imagePath -and !$game.HasExited -and [DateTime]::UtcNow -lt $imageDeadline) {
         try { $game.Refresh(); $imagePath=$game.MainModule.FileName } catch [ComponentModel.Win32Exception] { }
         if(!$imagePath) { $null=$game.WaitForExit(100) }
     }
-    if(![string]::Equals($imagePath,$start.FileName,[StringComparison]::OrdinalIgnoreCase)) { throw 'Launched executable path unavailable or differs; no replacement process action authorized.' }
-    @{pid=$game.Id;startUtc=$processStart.ToString('o');executable=$imagePath;requestSha256=(Hash $requestPath);lease=$lease} | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath "$Result/launch.json"
+    if(![string]::Equals($imagePath,$exe,[StringComparison]::OrdinalIgnoreCase)) { throw 'Launched executable path unavailable or differs; no replacement process action authorized.' }
+    $gameIntegrity=try { Get-ProcessIntegrity $game.Id } catch { $null }
+    $matchesSteam=$null -ne $gameIntegrity -and $gameIntegrity.integrity -eq $context.steam[0].integrity
+    @{pid=$game.Id;startUtc=$processStart.ToString('o');executable=$imagePath;requestSha256=(Hash $requestPath);lease=$lease
+        launchMode=$context.decision;brokerSha256=$brokerSha256;steam=$context.steam[0];launcher=$context.launcher;game=$gameIntegrity;integrityMatchesSteam=$matchesSteam} |
+        ConvertTo-Json -Depth 4 | Set-Content -LiteralPath "$Result/launch.json"
+    if(!$matchesSteam) { throw 'Launched copy integrity differs from Steam; SteamAPI_Init cannot succeed. Closing the exact child without observation.' }
     Write-Output "Disposable Art started: pid=$($game.Id), path=$imagePath. No input sent."
     $deadline=[DateTime]::UtcNow.AddSeconds($ObserveSeconds)
     while(!$game.HasExited -and !(Test-Path -LiteralPath "$Result/probe-receipt.json") -and [DateTime]::UtcNow -lt $deadline) {

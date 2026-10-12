@@ -145,8 +145,14 @@ exports must refuse.
    and losing the child environment; see `docs/FORCE-FEEDBACK.md`. The development
    app-ID file suppresses `SteamAPI_RestartAppIfNecessary` according to Valve's
    [Steamworks startup contract](https://partner.steamgames.com/doc/sdk/api#initialization_and_shutdown).
-   Do not put that file in the owner installation. Use the runner only in the
-   coordinator's already-authorized serialized slot:
+   Do not put that file in the owner installation. Because of that file the copy
+   cannot start Steam: the owner's Steam client must already be running, and the
+   game must run at Steam's access level. The runner refuses an absent, duplicated
+   or unreadable Steam client before any lease or snapshot, and launches through
+   the user shell at Medium with cmd-local child variables when Steam is Medium
+   and the runner elevated (`SteamLaunchContext.ps1`). Never start Steam elevated
+   to fit the copy. Use the runner only in the coordinator's already-authorized
+   serialized slot:
 
    ```powershell
    & "$art\tools\testing\Invoke-ShimProbeCopy.ps1" -Result $result

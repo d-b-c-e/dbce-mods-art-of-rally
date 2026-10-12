@@ -23,6 +23,34 @@ Evidence (local, retained):
   `shared-environment/state.json`, `restored.txt`, and retained `after/` bytes.
 - disposable game: `E:/Source/games/.worktrees/art-shim-probe-game-20261011`.
 
+## Cause established (October 12)
+
+The Steam client was not running. Steam's own logs
+(`D:/Program Files (x86)/Steam/logs`) record `bootstrap_log.txt` "Shutdown" and
+`connection_log.txt` "Log session ended" at 21:57:07 local on October 11, with no
+later entries; the probe launched at 23:58:00. The copy's `steam_appid.txt`
+(correct bytes `550320`) suppresses `SteamAPI_RestartAppIfNecessary`, so the game
+never starts Steam and `SteamAPI_Init` cannot succeed. A retry without a running
+client would fail identically.
+
+A second precondition applies once Steam runs: Valve's `SteamAPI_Init` also fails
+when the game runs at a different access level from the Steam client. The agent
+runners are elevated (High integrity) and a direct child inherits that token,
+while the owner's Steam normally runs at Medium. Steam must not be started
+elevated merely to fit the copy.
+
+`Invoke-ShimProbeCopy.ps1` now checks this before any lease or snapshot and again
+inside the lease (`SteamLaunchContext.ps1`). It refuses when Steam is absent,
+duplicated or unreadable. When Steam runs at the runner's level it launches
+directly as before. When Steam runs at Medium under an elevated runner, it writes
+`launch-broker.cmd` into the result (cmd-local `set` of the same four child-only
+variables, including `DBCE_FFB_MUTE=1`) and opens it through the user shell, so
+the copy runs at Medium without any persistent or parent environment change. It
+adopts only the single new exact copy process, records the Steam, launcher and
+game integrity levels in `launch.json`, and closes the child without observation
+if the game's level differs from Steam's. `Test-SteamLaunchContext.ps1` proves
+the broker child runs at Medium with only those variables (no game, Steam or rig).
+
 ## Exact candidate
 
 | Component | Source commit | Built SHA-256 |
@@ -75,8 +103,9 @@ shared-backend setting.
 
 ## Next integration work
 
-1. Resolve the observed Steam startup failure in the coordinator's authorized
-   window. Do not infer a remote-session cause or answer Steam prompts. Prepare
+1. Run only while the owner's Steam client is already running (see "Cause
+   established"); the runner refuses otherwise and selects a direct or Medium
+   broker launch. Do not start Steam elevated or answer Steam prompts. Prepare
    a new expiring request from the reviewed artifacts; the old nonce is consumed.
    Run Observe using `tools/testing/Invoke-ShimProbeCopy.ps1`, preserve state, and
    retain separate identity, flag and raw-axis facts. Existing nonzero resting
