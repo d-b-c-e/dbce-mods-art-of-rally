@@ -163,6 +163,12 @@ function Set-RouteEnvironment([string]$Route, [string]$Saved) { $global:ArtPathT
     Check ($global:ArtPathTest.launches[-1].muteOutputs -eq '1' -and $global:ArtPathTest.launches[-1].captureDriver -eq (Join-Path $library 'route-a')) 'Automated request lost its mute or route'
     $order = @("save:$ownerEnv", "route:$(Join-Path $library 'route-a')|$ownerEnv", "save:$(Join-Path $auto 'environment-at-start')", "restore:$ownerEnv")
     Check (($global:ArtPathTest.calls -join ';') -eq ($order -join ';')) "Automated environment order: $($global:ArtPathTest.calls -join '; ')"
+    # The synthetic route is the only input and no force device starts: the replay isolation, before the launch.
+    $autoLaunch = [xml]$global:ArtPathTest.settingsAtLaunch[-1]
+    foreach ($flag in 'SharedInput', 'WheelInputEnabled', 'ShifterEnabled', 'ForceFeedbackEnabled') { Check ($autoLaunch.Settings.$flag -eq 'false') "Automated recording launched with $flag not off" }
+    $autoIsolation = Get-Content -LiteralPath (Join-Path $auto 'automation/replay-input.json') -Raw | ConvertFrom-Json
+    Check ($autoIsolation.recorded.SharedInput -eq 'true' -and $autoIsolation.applied.ForceFeedbackEnabled -eq 'false') 'Automated isolation evidence differs'
+    Set-Content -LiteralPath $settingsPath -Value $ownerSettings -NoNewline
     Check (Test-Path -LiteralPath (Join-Path $ownerEnv 'restored.txt')) 'Automated recording did not restore the owner environment'
     $global:ArtPathTest.exitWithoutSeal = $true
     & $runner -Record -MuteOutputs -ScriptedFrom route-a -Name auto-unsealed -SessionsRoot './my tape library' -GameDir $game

@@ -112,6 +112,9 @@ switch ($PSCmdlet.ParameterSetName) {
             $ownerState = Join-Path $tape 'automation/owner-environment'
             Save-SessionEnvironment $ownerState
             Set-RouteEnvironment $route $ownerState
+            # The route's synthetic input is the only input, and no force device is initialised (sana 37706): the
+            # same isolation as replay, recorded in automation/replay-input.json. The owner restore returns the settings.
+            Set-ReplayInputIsolation (Join-Path $GameDir 'Mods/ArtOfSimRally/Settings.xml') (Join-Path $tape 'automation')
         }
         Save-SessionEnvironment (Join-Path $tape 'environment-at-start')
         # Reference copy of the game's local preferences (stage/car choices may live here).
