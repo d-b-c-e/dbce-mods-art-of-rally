@@ -242,6 +242,10 @@ static class Program
             {
                 SharedTransportStop(); Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
             }
+            if (args.Contains("--latched-menu-only"))
+            {
+                LatchedMenu(); Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
+            }
             if (args.Contains("--shim-latched-only"))
             {
                 SharedLatchedSuppression(); Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
@@ -308,7 +312,7 @@ static class Program
             if (Refuse) return false;
             BitConverter.GetBytes(296).CopyTo(frame, 0); frame[4] = 2; BitConverter.GetBytes((ulong)Ticks).CopyTo(frame, 8); BitConverter.GetBytes((long)Ticks).CopyTo(frame, 16);
             for (int i = 0; i < 31; i++) frame[52 + i * 8] = (byte)(i < 5 ? ArtOfSimRally.Mod.Shim.ShimStatus.Live : ArtOfSimRally.Mod.Shim.ShimStatus.Unbound);
-            foreach (var a in Script()) { BitConverter.GetBytes(a.Value).CopyTo(frame, 48 + a.Action * 8); frame[52 + a.Action * 8] = (byte)a.Status; if (Latched) frame[53 + a.Action * 8] = 1; }
+            foreach (var a in Script()) { BitConverter.GetBytes(a.Value).CopyTo(frame, 48 + a.Action * 8); frame[52 + a.Action * 8] = (byte)a.Status; if (Latched && a.Status == ArtOfSimRally.Mod.Shim.ShimStatus.Live) frame[53 + a.Action * 8] = 1; }
             if (Latched) { frame[40] = 3; frame[41] = 1; frame[42] = 1; } // Running, latched, native suppressed
             return true;
         }
@@ -592,6 +596,48 @@ static class Program
         fake.Isolated = true; Frame(); Frame();
         Check(Drive(out throttle) == 0f && throttle == 0f && Text().Contains("wheel and keyboard alike"), "neutral not sticky after isolation loss: " + Text());
         WheelInput.Close();
+    }
+    // The in-game Trial failure (2026-10-12 04:21): the real Core reports navDown test-neutral until a batch
+    // activates, so the release-first arming never armed and the injected press was swallowed. Here the
+    // real latched Core drives Art's actual Rewired postfixes, read the way RewiredStandaloneInputModule's
+    // GetRawMoveVector reads them (GetAxis plus GetNegativeButtonDown on the vertical action).
+    static void LatchedMenu()
+    {
+        string dll = Environment.GetEnvironmentVariable("ART_LATCHED_SHIM_DLL") ?? @"E:\Source\research\.worktrees\art-shim-bridge\build-art-bridge\windows\Release\dbce_shim.dll";
+        Check(File.Exists(dll), "latched dbce_shim.dll unavailable: " + dll);
+        Setup(""); GameButtonCompatibility.Allowed = true; Clock.frameCount = 40000; WheelInput.Update();
+        GameButtonInput.Observe(12, 13, 16, 17);
+        string folder = Path.Combine(Path.GetTempPath(), "art-latched-menu-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(folder);
+        string session = Path.Combine(folder, "shim-session.txt"), batch = Path.Combine(folder, "shim-batch.txt"), nonce = Guid.NewGuid().ToString("N");
+        ArtOfSimRally.Mod.Shim.ProbeRequest.Replace(session, "nonce=" + nonce + "\nexpires=" + (DateTimeOffset.UtcNow.ToUnixTimeSeconds() + 600) + "\n");
+        string r12 = " dev={d71b8350-61b7-11f1-8001-444553540000} prod={0006346e-0000-0000-0000-504944564944}";
+        string profile = "[Controls]\nSchema = 1\nProfile = Menu\nRevision = r1\nTransmission = Sequential\n" +
+            "steer = axis 0" + r12 + " range=0..65535 rest=32768 travel=+1\nconfirm = button 31" + r12 + "\nnavUp = hat 0 0" + r12 + "\nnavDown = hat 0 18000" + r12 + "\n";
+        var native = new ArtOfSimRally.Mod.Shim.ShimBridgeNative(dll, folder, System.Text.Encoding.UTF8.GetBytes(profile),
+            new ArtOfSimRally.Mod.Shim.ShimBridgeNative.LatchedSession { Nonce = nonce, SessionFile = session, BatchFile = batch, FencesVerified = true, ForceAbsent = true });
+        var consumer = ArtOfSimRally.Mod.Shim.ShimInput.Consumer;
+        consumer.AcceptLatched = true; consumer.DeliverOnly(ArtOfSimRally.Mod.Shim.LatchedTrial.NavUp, ArtOfSimRally.Mod.Shim.LatchedTrial.NavDown);
+        WheelInput.AttachSharedInput(new BridgeTests.DeviceSource(), native, () => true, () => true);
+        int selected = 0, moves = 0;
+        // GetRawMoveVector with moveOneElementPerAxisPress: an axis sign plus the matching button edge.
+        void Menu()
+        {
+            float vertical = AxisQuery(13, 0f);
+            if (Query(PadManager.Player, "GetNegativeButtonDown", 13, false) && vertical < 0) { selected++; moves++; }
+            if (Query(PadManager.Player, "GetButtonDown", 13, false) && vertical > 0) { selected--; moves++; }
+        }
+        var trial = new ArtOfSimRally.Mod.Shim.LatchedTrial(consumer, () => "item#" + selected, text => ArtOfSimRally.Mod.Shim.ProbeRequest.Replace(batch, text), nonce);
+        try
+        {
+            for (int i = 0; i < 4000 && trial.Current != ArtOfSimRally.Mod.Shim.LatchedTrial.Step.Passed && trial.Current != ArtOfSimRally.Mod.Shim.LatchedTrial.Step.Failed; i++)
+            {
+                Clock.frameCount++; WheelInput.EnsureUpdatedThisFrame(); Menu(); trial.Tick(Clock.frameCount); System.Threading.Thread.Sleep(5);
+            }
+            Check(trial.Current == ArtOfSimRally.Mod.Shim.LatchedTrial.Step.Passed && trial.AfterDown == "item#1" && trial.AfterUp == "item#0" && moves == 2,
+                "menu did not move once down and once up through the patched queries: " + trial.Current + " " + trial.Failure + " moves " + moves);
+        }
+        finally { WheelInput.Close(); }
+        Check(File.ReadAllText(Path.Combine(folder, "host-shutdown.json")).Contains("\"state\":\"resolved\""), "latched menu stop did not resolve");
     }
     static void SharedActionChannels()
     {

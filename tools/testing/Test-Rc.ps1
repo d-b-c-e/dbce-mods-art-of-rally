@@ -69,6 +69,9 @@ try {
     $result = Run 'shared-input-lifecycle' 'dotnet' @('run','--project','tests/WheelInput/WheelInput.csproj','-c','Release','--','--shared-lifecycle-only')
     $sharedLifecycle = $result | Select-Object -Last 1 | ConvertFrom-Json
     Assert ($sharedLifecycle.status -eq 'passed' -and $sharedLifecycle.assertions -gt 0) 'Shared input lifecycle runner ran no assertions'
+    $result = Run 'latched-menu' 'dotnet' @('run','--project','tests/WheelInput/WheelInput.csproj','-c','Release','--','--latched-menu-only')
+    $latchedMenu = $result | Select-Object -Last 1 | ConvertFrom-Json
+    Assert ($latchedMenu.status -eq 'passed' -and $latchedMenu.assertions -gt 0) 'Latched menu runner ran no assertions'
     $result = Run 'shared-input-transport' 'dotnet' @('run','--project','tests/WheelInput/WheelInput.csproj','-c','Release','--','--shared-transport-only')
     $sharedTransport = $result | Select-Object -Last 1 | ConvertFrom-Json
     Assert ($sharedTransport.status -eq 'passed' -and $sharedTransport.assertions -gt 0) 'Shared input transport runner ran no assertions'

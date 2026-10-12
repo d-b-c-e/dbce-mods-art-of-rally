@@ -76,6 +76,9 @@ namespace ArtOfSimRally.Mod.Shim
         // Core suppresses native input for its whole latched session: injected actions are the only input.
         internal bool LatchedDelivery(int unityFrame) => Fresh(unityFrame) && current.Latched && current.SuppressNative;
         internal bool Injected(int action, int unityFrame) => Live(action, unityFrame) && current[action].Injected;
+        // A latched session reports its delivered actions test-neutral between injections: a known
+        // released state, so press edges can arm on it (the first injection is not swallowed).
+        internal bool KnownNeutral(int action, int unityFrame) => Fresh(unityFrame) && Owns(action) && Delivers(action) && current[action].Status == ShimStatus.TestNeutral;
         internal float Value(int action, int unityFrame) => Live(action, unityFrame) ? current[action].Value : 0f;
         // One queued sequential step per call; latched presses survive frames with no physics step.
         internal int TakeShift()

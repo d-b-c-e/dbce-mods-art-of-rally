@@ -298,3 +298,22 @@ repro is preserved as `tests/ShimInput --replace-race` (Core-style reader agains
 400 replacements; for example ReplaceFileW 21,679 refused opens, POSIX rename 0)
 with the two failing Core journals under the ignored evidence folder
 `bridge-sharing-repro-20261012`.
+
+## First in-game Trial (2026-10-12 04:21) and the arming fix
+
+Observe on 0D10F913 qualified (identity qualified and restored, flags disabled and
+restored, raw axes neutral). The Trial verified its fences, ended the title once,
+reached the main menu and was admitted; Core injected navDown live for exactly
+300 ms (journal), but the selection stayed "Career (Button)". Cleanup was complete.
+
+Cause: the game-button projection arms a press only after seeing the button
+released while available ("release first"). The real latched Core reports its
+delivered actions `test-neutral` until a batch activates, which was not counted as
+available, so navDown never armed and the injected press was swallowed (no down
+edge, zero axis). The offline trial test had read consumer values directly and
+missed it. Fix: `KnownNeutral` (test-neutral, owned, delivered, current frame)
+counts as available and released. New fixture `--latched-menu-only` drives the
+real Core through Art's actual Rewired postfixes the way
+RewiredStandaloneInputModule.GetRawMoveVector reads them (GetAxis plus
+GetNegativeButtonDown on the vertical action); without the fix it fails with the
+in-game message, with it the menu moves once down and once up.

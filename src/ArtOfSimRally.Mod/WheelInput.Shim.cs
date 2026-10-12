@@ -40,7 +40,7 @@ namespace ArtOfSimRally.Mod
             available = false; value = 0f;
             if (!SharedActions.TryGetValue(channel, out int action) || !ShimInput.Consumer.Owns(action)) return false;
             EnsureSharedFrame();
-            available = ShimInput.Consumer.Live(action, Time.frameCount);
+            available = ShimInput.Consumer.Live(action, Time.frameCount) || ShimInput.Consumer.KnownNeutral(action, Time.frameCount);
             value = ShimInput.Consumer.Value(action, Time.frameCount);
             return true;
         }

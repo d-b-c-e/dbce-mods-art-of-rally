@@ -198,7 +198,7 @@ internal static class BridgeTests
         Check(fixedAtOpen, "latched acceptance changed after open");
     }
     // Two owned devices with independently scripted buttons and hats (R12 slot 0, DS-8X slot 1).
-    private sealed class DeviceSource : IPhysicalSnapshotSource, IPhysicalSnapshotPathSource
+    internal sealed class DeviceSource : IPhysicalSnapshotSource, IPhysicalSnapshotPathSource
     {
         [DllImport("kernel32.dll")] private static extern bool QueryPerformanceCounter(out long value);
         [DllImport("kernel32.dll")] private static extern bool QueryPerformanceFrequency(out long value);
