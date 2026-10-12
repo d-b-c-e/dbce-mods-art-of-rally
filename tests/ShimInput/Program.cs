@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
 using ArtOfSimRally.Mod.Shim;
@@ -250,11 +251,105 @@ internal static class Program
         Check(SharedInputStatus.Gears("Automatic", "Sequential", false).Contains("not used") && SharedInputStatus.Gears(null, "Sequential", false).Contains("names no transmission"), "non-manual profile claimed gears");
         Check(SharedInputStatus.Gears("H-pattern", "Sequential", false).Contains("Gears follow the profile (H-pattern)"), "manual mismatch text");
     }
+    // Slice B trial against a scripted latched Core: admission, then navDown and navUp injections the
+    // fake menu reacts to, each read back, then end. Every way it can fail is named, never passed.
+    private static LatchedTrial SimulateTrial(System.Collections.Generic.List<string> batches, bool admits = true, bool injects = true,
+        bool moves = true, bool returns = true, bool readable = true, int stopAt = -1)
+    {
+        const ShimStatus L = ShimStatus.Live; string why;
+        var sink = new ShimAxisConsumer { AcceptLatched = true }; sink.DeliverOnly(LatchedTrial.NavUp, LatchedTrial.NavDown);
+        string selected = "Career#11", pending = null; int injectFrames = 0, action = 0; byte run = admits ? LatchedTrial.Waiting : (byte)1;
+        var trial = new LatchedTrial(sink, () => readable ? selected : null, text => { batches.Add(text); pending = text; }, "n0nce1234");
+        for (int frame = 1; frame <= 3000 && trial.Current != LatchedTrial.Step.Passed && trial.Current != LatchedTrial.Step.Failed; frame++)
+        {
+            if (pending != null)
+            {
+                string command = pending.Split('\n')[2]; pending = null;
+                if (command == "end") run = LatchedTrial.Completed;
+                else if (injects) { run = 3; injectFrames = 5; action = command.Contains("navDown") ? LatchedTrial.NavDown : LatchedTrial.NavUp; }
+            }
+            bool injecting = injectFrames-- > 0;
+            float down = injecting && action == LatchedTrial.NavDown ? 1f : 0f, up = injecting && action == LatchedTrial.NavUp ? 1f : 0f;
+            var b = Actions((ulong)frame, 0, (9, L, 0f), (13, L, up), (14, L, down)); b[40] = run; b[41] = 1; b[42] = 1;
+            if (down > 0) b[48 + 14 * 8 + 5] = 1;
+            if (up > 0) b[48 + 13 * 8 + 5] = 1;
+            if (frame == stopAt) sink.Stop(); else Check(sink.Publish(b, frame, out why), why);
+            if (down > 0 && moves) selected = "FreeRoam#12";
+            if (up > 0 && returns) selected = "Career#11";
+            trial.Tick(frame);
+        }
+        return trial;
+    }
+    private static void TrialSteps()
+    {
+        var batches = new System.Collections.Generic.List<string>();
+        var passed = SimulateTrial(batches);
+        Check(passed.Current == LatchedTrial.Step.Passed && passed.Before == "Career#11" && passed.AfterDown == "FreeRoam#12" && passed.AfterUp == "Career#11", "trial did not pass: " + passed.Current + " " + passed.Failure);
+        Check(batches.Count == 3 && batches[0] == "nonce=n0nce1234\nbatch=1\ninject action navDown 1 ms=300\n" &&
+            batches[1] == "nonce=n0nce1234\nbatch=2\ninject action navUp 1 ms=300\n" && batches[2] == "nonce=n0nce1234\nbatch=3\nend\n", "trial batches: " + string.Join("|", batches));
+        foreach (var (name, trial, expected) in new[] {
+            ("no move", SimulateTrial(new System.Collections.Generic.List<string>(), moves: false), "navDown did not move"),
+            ("no return", SimulateTrial(new System.Collections.Generic.List<string>(), returns: false), "navUp did not return"),
+            ("no selection", SimulateTrial(new System.Collections.Generic.List<string>(), readable: false), "no menu selection"),
+            ("not admitted", SimulateTrial(new System.Collections.Generic.List<string>(), admits: false), "no progress in Admission"),
+            ("never injected", SimulateTrial(new System.Collections.Generic.List<string>(), injects: false), "no progress in Down"),
+            ("stopped", SimulateTrial(new System.Collections.Generic.List<string>(), stopAt: 40), "shared session stopped") })
+            Check(trial.Current == LatchedTrial.Step.Failed && trial.Failure.Contains(expected), name + ": " + trial.Current + " " + trial.Failure);
+        // The fence byte: every fact observed, the first failing one named.
+        LatchedTrial.Fences All() => new LatchedTrial.Fences { NoForceArmed = true, SettingsWritesSuppressed = true, TelemetryIdle = true, Compatible = true, Primary = true, MainMenu = true, Focused = true };
+        Check(LatchedTrial.Unfenced(All()) == null && LatchedTrial.Unfenced(null) != null, "verified fences refused or missing fences accepted");
+        foreach (var (mutate, expected) in new (Action<LatchedTrial.Fences>, string)[] {
+            (f => f.NoForceArmed = false, "no-force"), (f => f.SettingsWritesSuppressed = false, "settings writes"), (f => f.TelemetryIdle = false, "telemetry"),
+            (f => f.MissingHooks = "GetAxis", "hooks missing: GetAxis"), (f => f.Compatible = false, "game build"), (f => f.Primary = false, "primary player"),
+            (f => f.MainMenu = false, "main menu"), (f => f.Driving = true, "main menu"), (f => f.Focused = false, "not focused") })
+        { var f = All(); mutate(f); var why = LatchedTrial.Unfenced(f); Check(why != null && why.Contains(expected), "fence not refused: " + expected + " -> " + why); }
+        // Only reaching the main menu or focus may be waited for; nothing else, and never while driving.
+        bool wait;
+        var title = All(); title.MainMenu = false; Check(LatchedTrial.Admission(title, out wait) != null && wait, "title screen not waited for");
+        var away = All(); away.Focused = false; Check(LatchedTrial.Admission(away, out wait) != null && wait, "unfocused window not waited for");
+        var hooks = All(); hooks.MainMenu = false; hooks.MissingHooks = "GetAxis"; Check(LatchedTrial.Admission(hooks, out wait) != null && !wait, "missing hook waited for");
+        var force = All(); force.Focused = false; force.NoForceArmed = false; Check(LatchedTrial.Admission(force, out wait) != null && !wait, "unarmed no-force waited for");
+        var driving = All(); driving.Driving = true; Check(LatchedTrial.Admission(driving, out wait) != null && !wait, "driving waited for");
+        driving.MainMenu = false; Check(LatchedTrial.Admission(driving, out wait) != null && !wait, "driving away from the menu waited for");
+        Check(LatchedTrial.Admission(All(), out wait) == null && !wait, "fenced admission refused");
+        // Trial runs only on the reviewed latched build.
+        string Refusal(string shim)
+        {
+            try { new ProbeRequest { Schema = 1, Mode = "Trial", Nonce = Guid.NewGuid().ToString("N"), ShimSha256 = shim, ExpiresUtc = DateTime.UtcNow.AddMinutes(5).ToString("o") }.Validate(DateTime.UtcNow, "x", "y", "z", "w"); return ""; }
+            catch (Exception e) { return e.Message; }
+        }
+        Check(Refusal(BridgeTests.OrdinaryShim).Contains("reviewed latched bridge build") && !Refusal(ProbeRequest.LatchedShimSha256).Contains("reviewed latched bridge build"), "Trial shim pin");
+        // Whole-file replacement while a reader holds the old file the way Core does (read + delete sharing).
+        string folder = Path.Combine(Path.GetTempPath(), "art-trial-replace-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(folder);
+        string batch = Path.Combine(folder, "shim-batch.txt");
+        ProbeRequest.Replace(batch, "one\n");
+        using (var held = new FileStream(batch, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete))
+        {
+            ProbeRequest.Replace(batch, "two\n");
+            Check(new StreamReader(held).ReadToEnd() == "one\n", "held reader saw a torn or replaced object");
+        }
+        Check(File.ReadAllText(batch) == "two\n" && Directory.GetFiles(folder).Length == 1, "replacement incomplete or temp file left");
+        // A Core-style reader opening the batch concurrently never meets a sharing violation or a torn file.
+        int refused = 0, torn = 0, reads = 0; bool stop = false;
+        var reader = new Thread(() =>
+        {
+            while (!Volatile.Read(ref stop))
+            {
+                try { using (var r = new FileStream(batch, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete)) { reads++; var t = new StreamReader(r).ReadToEnd(); if (!t.StartsWith("batch ") || !t.EndsWith(" end\n")) torn++; } }
+                catch (FileNotFoundException) { refused++; }
+                catch (IOException) { refused++; }
+            }
+        });
+        ProbeRequest.Replace(batch, "batch 0 end\n"); reader.Start();
+        for (int i = 1; i <= 400; i++) ProbeRequest.Replace(batch, "batch " + i + " " + new string('x', i % 97) + " end\n");
+        Volatile.Write(ref stop, true); reader.Join();
+        Check(refused == 0 && torn == 0 && reads > 0 && Directory.GetFiles(folder).Length == 1, "concurrent reader refused " + refused + " / torn " + torn + " of " + reads);
+    }
     private static int Main(string[] args)
     {
         try
         {
-            Decode(); Consumption(); StatusesAndFailures(); SharedActions(); SharedStatus();
+            Decode(); Consumption(); StatusesAndFailures(); SharedActions(); SharedStatus(); TrialSteps();
             assertions += BridgeTests.Fake();
             assertions += IsolationTests.Run();
             assertions += ProbeTests.Run();

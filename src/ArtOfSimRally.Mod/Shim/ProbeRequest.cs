@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
 using System.Security.Cryptography;
@@ -17,6 +18,8 @@ namespace ArtOfSimRally.Mod.Shim
         [DataMember(IsRequired = true)] public string ModSha256, NativeSha256, ShimSha256, SettingsSha256, ProfileSha256;
         [DataMember(IsRequired = true)] public string ShimPath, ProfilePath;
         [DataMember] public string ObserveReceipt;
+        // Trial (Slice B) runs only on the reviewed latched bridge build, art-shim-bridge f38b855 (romi 28531).
+        internal const string LatchedShimSha256 = "0D10F913C998C97D7DDF3A8F5F470D010092C3681152059DC88D7E0A7BB0386B";
         internal DateTime Deadline => DateTime.Parse(ExpiresUtc, System.Globalization.CultureInfo.InvariantCulture,
             System.Globalization.DateTimeStyles.RoundtripKind).ToUniversalTime();
         internal static T Read<T>(string path)
@@ -29,6 +32,36 @@ namespace ArtOfSimRally.Mod.Shim
         {
             using (var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.Read))
                 new DataContractJsonSerializer(typeof(T)).WriteObject(stream, value);
+        }
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern Microsoft.Win32.SafeHandles.SafeFileHandle CreateFileW(string name, uint access, uint share, IntPtr security, uint disposition, uint flags, IntPtr template);
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool SetFileInformationByHandle(Microsoft.Win32.SafeHandles.SafeFileHandle file, int infoClass, byte[] info, int size);
+        // Whole-file replacement for Core's session and batch files. Core opens them read-only with read
+        // and delete sharing and fails the run on a sharing violation. ReplaceFile opens the target and
+        // can collide with that open; a POSIX-semantics rename of a sibling temp over the target does not
+        // open it, so a concurrent reader sees the old or the new file and a held reader keeps the old one.
+        internal static void Replace(string path, string text)
+        {
+            string full = Path.GetFullPath(path), temp = full + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            File.WriteAllText(temp, text, new System.Text.UTF8Encoding(false));
+            try
+            {
+                const uint Delete = 0x00010000, Synchronize = 0x00100000, ShareAll = 7, OpenExisting = 3;
+                using (var handle = CreateFileW(temp, Delete | Synchronize, ShareAll, IntPtr.Zero, OpenExisting, 0, IntPtr.Zero))
+                {
+                    if (handle.IsInvalid) throw new IOException("replacement temp open failed: " + Marshal.GetLastWin32Error());
+                    // FILE_RENAME_INFO (x64): flags at 0, root handle at 8, name length at 16, name at 20.
+                    var name = System.Text.Encoding.Unicode.GetBytes(full);
+                    var info = new byte[20 + name.Length + 2];
+                    BitConverter.GetBytes(3).CopyTo(info, 0); // FILE_RENAME_FLAG_REPLACE_IF_EXISTS | FILE_RENAME_FLAG_POSIX_SEMANTICS
+                    BitConverter.GetBytes(name.Length).CopyTo(info, 16);
+                    name.CopyTo(info, 20);
+                    if (!SetFileInformationByHandle(handle, 22 /* FileRenameInfoEx */, info, info.Length))
+                        throw new IOException("atomic replacement failed: " + Marshal.GetLastWin32Error());
+                }
+            }
+            catch { try { File.Delete(temp); } catch { } throw; }
         }
         internal static string Hash(string path)
         {
@@ -45,8 +78,10 @@ namespace ArtOfSimRally.Mod.Shim
         internal void Validate(DateTime now, string gameRoot, string modPath, string nativePath, string settingsPath)
         {
             Guid nonce;
-            if (Schema != 1 || (Mode != "Observe" && Mode != "Apply") || !Guid.TryParseExact(Nonce, "N", out nonce) || nonce == Guid.Empty)
+            if (Schema != 1 || (Mode != "Observe" && Mode != "Apply" && Mode != "Trial") || !Guid.TryParseExact(Nonce, "N", out nonce) || nonce == Guid.Empty)
                 throw new InvalidDataException("invalid probe request");
+            if (Mode == "Trial" && !String.Equals(ShimSha256, LatchedShimSha256, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("Trial needs the reviewed latched bridge build");
             if (Deadline <= now || Deadline > now.AddMinutes(30)) throw new InvalidDataException("probe request expired or beyond 30 minutes");
             if (SamePath(GameRoot, SourceGameRoot) || !SamePath(GameRoot, gameRoot) || !Path.GetFullPath(modPath).StartsWith(Path.GetFullPath(GameRoot).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException("probe requires its exact disposable game root");
@@ -58,14 +93,14 @@ namespace ArtOfSimRally.Mod.Shim
         }
         internal void ValidateApply(ProbeReceipt prior, Guid[] instances, OwnedDeviceIdentity[] owned, Guid[] rewired)
         {
-            if (Mode != "Apply") return;
+            if (Mode == "Observe") return;
             if (prior == null || prior.Mode != "Observe" || !prior.IdentityQualified || !prior.IdentityRestored || !prior.FlagsDisabled || !prior.FlagsRestored ||
                 !prior.RawAxesNeutralAfterDisable || prior.ModSha256 != ModSha256 || prior.NativeSha256 != NativeSha256 ||
                 prior.ShimSha256 != ShimSha256 || prior.SettingsSha256 != SettingsSha256 || prior.ProfileSha256 != ProfileSha256 ||
                 prior.Instances == null || !new System.Collections.Generic.HashSet<Guid>(prior.Instances).SetEquals(instances) ||
                 prior.RewiredInstances == null || rewired == null || !new System.Collections.Generic.HashSet<Guid>(prior.RewiredInstances).SetEquals(rewired) ||
                 !ProbeIdentityMapper.SameBindings(prior.OwnedDevices, owned))
-                throw new InvalidDataException("Apply probe needs matching observed identities, disable/restore and neutral raw-axis receipt");
+                throw new InvalidDataException(Mode + " probe needs matching observed identities, disable/restore and neutral raw-axis receipt");
         }
     }
 
@@ -86,6 +121,10 @@ namespace ArtOfSimRally.Mod.Shim
         [DataMember] public float[] LastAxisValues;
         [DataMember] public JoystickObservation[] Before, Disabled, Restored;
         [DataMember] public string RawAxisQualification;
+        // Trial: the fence check, Core's last run state and the selection before, after navDown and after navUp.
+        [DataMember] public string TrialFences, TrialStatus;
+        [DataMember] public string[] TrialSelections;
+        [DataMember] public int TrialRun;
         internal ProbeReceipt() { }
         internal ProbeReceipt(ProbeRequest request)
         {

@@ -223,3 +223,50 @@ broker launch at Medium, `DBCE_FFB_MUTE=1`, no input or force, no owner install.
   and is not qualified (scoped follow-up).
 
 Evidence (ignored): `E:/Source/games/.worktrees/art-shim-probe-evidence/shared-smoke-20261012-032314`.
+
+## Slice B: the latched Trial probe (source; not run in game yet)
+
+A third probe mode, `Trial`, beside Observe and Apply. Request and runner:
+`Prepare-ShimProbe.ps1 -Mode Trial` (needs an Observe receipt made with the same
+pins, and refuses any shim but the reviewed latched build 0D10F913);
+`Invoke-ShimProbeCopy.ps1` runs it like Apply. The mod validates the same pin.
+
+In game (`ShimStartup`, menus only, muted from the native load-time latch):
+
+- Fences are asserted only from guards observed in the running process
+  (`LatchedTrial.Fences`): native no-force armed, the settings guard answers
+  without writing, telemetry not sending, our Harmony postfixes attached on the
+  exact Rewired and car-input methods (`InputHooks.Missing`, read from live
+  Harmony state), the inspected game build, the primary player, idle on Art's main
+  menu (`PanelManager.Peek() == MainPanel`), focused. Being on the main menu and
+  focused may be waited for (bounded by the request deadline); any other unmet
+  fence refuses before Core opens.
+- Session file written, then Core opened latched with those fences; the consumer
+  accepts only latched frames and delivers only navUp/navDown (confirm and every
+  other action masked, so nothing can start a race or change a value).
+- `LatchedTrial` (pure): waits for admission (Waiting), reads the selection
+  (`EventSystem.currentSelectedGameObject`, name and instance), injects
+  `navDown 1 ms=300`, reads back (must differ), injects `navUp`, reads back (must
+  equal the start), sends `end`, waits for Completed plus a short settle so Core's
+  control journal completes, then the probe stops and restores as before. Leaving
+  the main menu, driving, a stopped session or no progress for 600 frames fails
+  the trial with its reason in the receipt (`TrialFences`, `TrialStatus`,
+  `TrialSelections`, `TrialRun`).
+- Batches and the session file are replaced whole with a POSIX-semantics rename
+  (`ProbeRequest.Replace`). Core opens them read-only with read+delete sharing and
+  fails the run on a sharing violation; `ReplaceFile` (also used by the bridge's
+  own `shim_first_loop` publisher) collides with that open. A stress test with a
+  Core-style concurrent reader: `File.Replace` refused 53,711 opens, the POSIX
+  rename none.
+
+Open for the first in-game Trial: a fresh launch waits on the title splash, which
+needs a press to reach the main menu; the probe does not advance it. Whether the
+UI's navigation reads the patched Rewired methods is what the readback answers.
+
+Tests: `tests/ShimInput` (net8 and Unity Mono): trial steps against a scripted
+latched Core (pass, no move, no return, no selection, not admitted, never
+injected, stopped), the fence and admission rules, the Trial shim pin, whole-file
+replacement with a held reader and under a concurrent reader.
+`--bridge-latched` against f38b855: the trial against the real Core with a fake
+menu. `ProbeHooks` (Unity Mono, real game assemblies and Harmony): hooks reported
+missing before patching and none after.

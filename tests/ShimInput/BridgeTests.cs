@@ -96,7 +96,39 @@ internal static class BridgeTests
         ActualOne(dll, false); ActualOne(dll, true); ActualActions(dll); LatchedBridgeGate(dll); return checks;
     }
     // Run only against a shim whose copied-provider bridge admits latched control sessions.
-    internal static int ActualLatchedSession(string dll) { checks = 0; ActualLatched(dll); return checks; }
+    internal static int ActualLatchedSession(string dll) { checks = 0; ActualLatched(dll); ActualTrial(dll); return checks; }
+    // Slice B against the real Core: the probe's LatchedTrial drives action-level navDown/navUp through
+    // atomically replaced batches; a fake menu moves its selection on the delivered values.
+    private static void ActualTrial(string dll)
+    {
+        string folder = Path.Combine(Path.GetTempPath(), "art-copied-trial-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(folder);
+        string session = Path.Combine(folder, "shim-session.txt"), batch = Path.Combine(folder, "shim-batch.txt"), nonce = Guid.NewGuid().ToString("N");
+        ProbeRequest.Replace(session, "nonce=" + nonce + "\nexpires=" + (DateTimeOffset.UtcNow.ToUnixTimeSeconds() + 600) + "\n");
+        string r12 = " dev={d71b8350-61b7-11f1-8001-444553540000} prod={0006346e-0000-0000-0000-504944564944}";
+        string profile = "[Controls]\nSchema = 1\nProfile = Trial\nRevision = r1\nTransmission = Sequential\n" +
+            "steer = axis 0" + r12 + " range=0..65535 rest=32768 travel=+1\nconfirm = button 31" + r12 + "\nnavUp = hat 0 0" + r12 + "\nnavDown = hat 0 18000" + r12 + "\n";
+        var native = new ShimBridgeNative(dll, folder, System.Text.Encoding.UTF8.GetBytes(profile),
+            new ShimBridgeNative.LatchedSession { Nonce = nonce, SessionFile = session, BatchFile = batch, FencesVerified = true, ForceAbsent = true });
+        var sink = new ShimAxisConsumer { AcceptLatched = true }; sink.DeliverOnly(LatchedTrial.NavUp, LatchedTrial.NavDown);
+        var source = new DeviceSource(); source.Buttons[0][31] = true; // a physical confirm held throughout stays masked
+        var bridge = new ShimBridge(source, native, sink, new[] { 0 }); int frame = 0; string selected = "Career#11"; bool confirmed = false;
+        var trial = new LatchedTrial(sink, () => selected, text => ProbeRequest.Replace(batch, text), nonce);
+        try
+        {
+            while (frame < 4000 && trial.Current != LatchedTrial.Step.Passed && trial.Current != LatchedTrial.Step.Failed)
+            {
+                Check(bridge.ReadFrame(++frame, (slot, bytes) => { }), "trial frame: " + bridge.Failure);
+                if (sink.Value(LatchedTrial.NavDown, frame) == 1f) selected = "FreeRoam#12";
+                if (sink.Value(LatchedTrial.NavUp, frame) == 1f) selected = "Career#11";
+                confirmed |= sink.Live(9, frame) || sink.Value(9, frame) != 0f;
+                trial.Tick(frame); Thread.Sleep(5);
+            }
+            Check(trial.Current == LatchedTrial.Step.Passed && trial.AfterDown == "FreeRoam#12" && trial.AfterUp == "Career#11", "actual trial: " + trial.Current + " " + trial.Failure);
+            Check(!confirmed && sink.OriginalFrame.Run == LatchedTrial.Completed, "masked confirm delivered or session not completed");
+        }
+        finally { bridge.Stop("trial qualification complete"); }
+        Check(File.ReadAllText(Path.Combine(folder, "host-shutdown.json")).Contains("\"state\":\"resolved\""), "trial bridge stop did not resolve");
+    }
     // The ordinary pin, 574bb88 (7DDC9621), refuses every open flag on the copied-provider bridge;
     // f38b855 (0D10F913, reviewed by romi 28531) admits a fenced latched open. Any other build is
     // unreviewed here, so admitting latched control stays a reviewed change, not a surprise.
@@ -119,13 +151,6 @@ internal static class BridgeTests
         finally { opened?.Stop(); }
         if (hash == OrdinaryShim) Check(opened == null && why.Contains("bridge control/capture provenance is not qualified"), "ordinary pin admitted a latched open or refused differently: " + why);
         else Check(opened != null && opened.Latched && why == "", "reviewed latched build refused a fenced latched open: " + why);
-    }
-    // Core holds the batch file without write sharing: writers replace it whole, never write in place.
-    internal static void WriteBatch(string path, string text)
-    {
-        string temp = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
-        File.WriteAllText(temp, text);
-        if (File.Exists(path)) File.Replace(temp, path, null); else File.Move(temp, path);
     }
     // The real Core latched control session over the copied provider: admission, an action-level
     // injection resolved through the applied profile with Injected provenance, native suppression,
@@ -151,14 +176,14 @@ internal static class BridgeTests
             Check(Until(() => sink.Started && sink.OriginalFrame.Run == 2), "latched session never admitted (Waiting): run " + (sink.Started ? sink.OriginalFrame.Run.ToString() : "-"));
             Check(sink.LatchedDelivery(frame) && sink.OriginalFrame.Latched && sink.OriginalFrame.SuppressNative, "latched frame flags");
             Check(!sink.Live(9, frame) && sink.Value(9, frame) == 0, "masked physical confirm delivered");
-            WriteBatch(batch, "nonce=" + nonce + "\nbatch=1\ninject action navDown 1 ms=300\n");
+            ProbeRequest.Replace(batch, "nonce=" + nonce + "\nbatch=1\ninject action navDown 1 ms=300\n");
             Check(Until(() => sink.Injected(14, frame)), "action-level navDown never injected: run " + sink.OriginalFrame.Run + " navDown " + sink.OriginalFrame[14].Status);
             Check(sink.OriginalFrame.Run == 3 && sink.Value(14, frame) == 1f && !sink.Live(13, frame) || sink.Value(13, frame) == 0f, "injected navDown not Running/Live");
             Check(!sink.Live(9, frame), "masked confirm delivered while injecting");
             var game = new DrivingValues { Steer = .9f, Throttle = .95f }; sink.Compose(frame, true, 0, ref game);
             Check(game.Throttle == 0 && Math.Abs(game.Steer) < .00001f, "latched session kept native/keyboard driving input");
             Check(Until(() => sink.Started && !sink.Injected(14, frame) && sink.Value(14, frame) == 0f), "injected navDown never released");
-            WriteBatch(batch, "nonce=" + nonce + "\nbatch=2\nend\n");
+            ProbeRequest.Replace(batch, "nonce=" + nonce + "\nbatch=2\nend\n");
             Check(Until(() => sink.OriginalFrame.Run == 4), "end batch did not complete the session: run " + sink.OriginalFrame.Run);
         }
         finally { bridge.Stop("latched qualification complete"); }

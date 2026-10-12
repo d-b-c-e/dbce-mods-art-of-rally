@@ -24,7 +24,7 @@ $requestPath=Join-Path $Result 'request.json'
 $request=Get-Content -LiteralPath $requestPath -Raw | ConvertFrom-Json
 $GameDir=Full $request.GameRoot; $owner=Full $request.SourceGameRoot
 foreach($p in @($GameDir,$owner)) { Plain $p }
-if($request.Schema -ne 1 -or $request.Mode -notin @('Observe','Apply') -or (Full $request.Result) -ne $Result -or
+if($request.Schema -ne 1 -or $request.Mode -notin @('Observe','Apply','Trial') -or (Full $request.Result) -ne $Result -or
     (Within $GameDir $owner) -or (Within $owner $GameDir) -or (Within $Result $GameDir) -or (Within $Result $owner)) { throw 'Invalid disposable request scope.' }
 if([DateTime]::Parse($request.ExpiresUtc).ToUniversalTime() -lt [DateTime]::UtcNow.AddSeconds($ObserveSeconds+30)) { throw 'Prepare a new request with enough time for the complete observation.' }
 if(Test-Path -LiteralPath "$Result/launch.json") { throw 'Request has already been launched; use a fresh result.' }
