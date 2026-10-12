@@ -43,5 +43,6 @@ those bytes. A copy you changed or placed by hand is left as it is: the uninstal
 keeps it, and installing this package over it stops with a message unless the copy
 is byte-identical to this package's. Move such a file aside first.
 
-Not yet tested by a person: driving with the physical wheel and keyboard through
-the shared profile, and force feedback together with it.
+Not yet tested by a person: driving with the physical wheel, pedals (clutch
+included), H-pattern shifter and keyboard through the shared profile, and force
+feedback together with it.

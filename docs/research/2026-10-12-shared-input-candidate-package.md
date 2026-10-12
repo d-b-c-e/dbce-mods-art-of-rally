@@ -286,19 +286,55 @@ This is evidence for Art's clutch and gate consumers through latched raw Core st
 is not physical shifter or pedal, force or `44E` qualification. Gates 2, 4, 6 and 7 were
 not exercised individually; gear8 is unbound.
 
+## Controls contract v2 (sana 34358 and 34369)
+
+`lib/input-shim/CONTROLS.json` is now schema 2, adapter `art-shim-ini-controls-2`. The
+mod is unchanged: only the metadata and its checks changed. The shared `[Controls]`
+profile schema stays 1.
+- **Writer scope.** `writerOmits` is empty, so a writer may write every delivered action
+  within the transmission conditions:
+  - clutch whenever it is bound;
+  - for an H-pattern profile, the gates. `TransmissionMode=H-pattern` is set only when
+    reverse or a gear gate is bound (neutral alone selects nothing), and no gate is
+    written when two gates share one control.
+- **Labels.** Written does not mean qualified. Each delivered action is labelled once,
+  as runtime-shown or fixture-only:
+  - runtime-shown, latched on `DD301314`: clutch, gear1, gear3 and reverse
+    (`gears-drive-20261012-125509`). The return to neutral and the ignored gear5 are
+    recorded as behaviour, not as qualified actions;
+  - runtime-shown, ordinary on `44E46799` with force off: steer, throttle, brake and
+    handbrake (`native44e-script-20261012-082728`, `native44e-wheelkit-20261012-084243`).
+    The v1 contract had not yet recorded these runs;
+  - fixture-only: neutral, gear2, gear4 to gear8 in range, and the menu actions not shown;
+  - not qualified: clutch and gates from a physical pedal or shifter, or in any unlatched
+    session.
+- **Checks.** `tests/ShimInput` asserts three things:
+  - the identity;
+  - an empty `writerOmits`;
+  - that runtime-shown and fixture-only partition the delivered actions.
+
+  Five contract mutants fail it: an omission, a doubly labelled clutch, an unlabelled
+  gear5, schema 1 and a duplicate label. ShimInput passes 12232 on net8 and Mono.
+- **Packaging.** `package.ps1` accepts only schema 2. An empty `writerOmits` survives
+  `ConvertTo-Json -Depth 8` in pwsh and in Windows PowerShell 5.1. Nothing was rebaked:
+  rc.14 (`F4930FA2`) still carries v1.
+- **Coupling.** Wheelkit `a2edcfc` admits only v1, so a v2 package needs the Wheelkit change
+  on `mufa/wheelkit-art-controls-v2`. That change keeps v1 exactly, so rc.14 is still
+  admitted as v1.
+
 ## Remaining gaps
 
-1. **No Wheelkit writer for Art's profile.** Wheelkit writes `dbce-controls.ini` only for
-   DRIVE (`DriveShimControls`, `BepInEx\config`). An Art adapter for
-   `Mods/ArtOfSimRally/dbce-controls.ini`, with STD-034 closed-loop qualification, is a
-   later small task. Until then the owner copies the Wheelkit-applied file by hand. The
-   README and the mod's refusal text now say so; the old wording claimed Wheelkit could
-   apply it.
+1. **Wheelkit's Art writer is not released.** Wheelkit main `a2edcfc` writes Art's
+   profile for the private candidate (v1: no clutch or gates); v2 support is under review.
+   The README and the mod's refusal text still tell the owner to copy a Wheelkit-applied
+   file by hand. Change them once a Wheelkit release with the writer ships.
 2. **Physical qualification needs the owner.** Wheel, pedals and keyboard through an
    ordinary session were shown only with scripted Rewired values. Force feedback together
    with the shared profile has never run.
 3. **Keyboard steering needs a centred wheel.** Without force the wheel rests off centre,
    so steering stays the wheel's (07:01 run).
-4. **Clutch and H-pattern are untested.** Profile clutch is unbound on the owner profile.
+4. **Clutch and H-pattern are shown only with latched stimuli.** No physical pedal or
+   shifter, and no unlatched session, has carried them. Gates 2 and 4 to 8 in range, and
+   reverse precedence on a shared gate, have fixture evidence only.
 5. **The probe code ships dormant.** It is gated by an environment variable, a nonce and
    pins. Keep it or strip it from release builds: a review choice.
