@@ -71,6 +71,7 @@ $ownerInput=Join-Path $HubRepo 'tools/Owner-Input.ps1'
 if([double](& $ownerInput -IdleSeconds) -lt 300) { throw 'Owner input is recent; no launch or shared-state mutation.' }
 $artLocal=Join-Path $env:LOCALAPPDATA 'ArtOfSimRally'
 $localLow=Join-Path $env:USERPROFILE 'AppData/LocalLow/Funselektor Labs/Art of Rally'
+$customRally=Join-Path $localLow 'customrally' # read by SessionEnvironment.ps1's Get-SessionFiles
 . (Join-Path $PSScriptRoot 'SessionEnvironment.ps1')
 . (Join-Path $ToolkitRepo 'tools/playback/Stage-RigLease.ps1')
 $snapshots=[Collections.Generic.List[object]]::new(); $ownerPins=[Collections.Generic.List[object]]::new()
