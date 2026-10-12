@@ -47,9 +47,11 @@ namespace ArtOfSimRally.Mod
             Shifter.Update(_drivetrain);
         }
 
-        // Shared gates and sequential presses, through the same Drivetrain.Shift call as
-        // Art's shifter and the game's own sequential path. The current car's gear-ratio
-        // range is checked every time; a missing gear is ignored, never clamped.
+        // Shared gates or sequential presses, through the same Drivetrain.Shift call as
+        // Art's shifter and the game's own sequential path. Only the shared profile's own
+        // transmission mode applies, never while the gearbox is automatic, and at most one
+        // change per physics step. The current car's gear-ratio range is checked every time;
+        // a missing gear is ignored, never clamped.
         private static void ApplySharedGear(CarDynamics car)
         {
             var consumer = Shim.ShimInput.Consumer;
@@ -64,16 +66,14 @@ namespace ArtOfSimRally.Mod
             // A press made in a panel or while unfocused must not shift on return.
             if (Main.SettingsVisible || !UnityEngine.Application.isFocused) { consumer.ClearShifts(); return; }
             WheelInput.EnsureSharedFrame();
+            var mode = WheelInput.SharedTransmission;
+            bool sequential = mode == Shim.ShimTransmission.Mode.Sequential && !_drivetrain.automatic;
+            int step = sequential ? consumer.TakeShift() : 0;
+            if (!sequential) consumer.ClearShifts();
+            var gate = mode == Shim.ShimTransmission.Mode.HPattern ? Shim.ShimTransmission.Gate(consumer, UnityEngine.Time.frameCount) : null;
             int max = _drivetrain.gearRatios != null ? _drivetrain.gearRatios.Length - 1 : -1;
-            int frame = UnityEngine.Time.frameCount;
-            var gate = Shim.ShimTransmission.Gate(consumer, frame);
-            if (gate.HasValue && gate.Value != _sharedApplied)
-            {
-                _sharedApplied = gate.Value;
-                if (Shim.ShimTransmission.Exists(gate.Value, max)) _drivetrain.Shift(gate.Value, true);
-            }
-            var step = Shim.ShimTransmission.Step(_drivetrain.gear, consumer.TakeShift(), Main.Settings.SkipNeutral, max);
-            if (step.HasValue) _drivetrain.Shift(step.Value, true);
+            var target = Shim.ShimTransmission.Next(mode, _drivetrain.automatic, _drivetrain.gear, gate, ref _sharedApplied, step, Main.Settings.SkipNeutral, max);
+            if (target.HasValue) _drivetrain.Shift(target.Value, true);
         }
     }
 }

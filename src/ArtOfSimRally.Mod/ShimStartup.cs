@@ -116,7 +116,7 @@ namespace ArtOfSimRally.Mod
                 ProbeObservation.CompareDisabled(receipt, receipt.RewiredInstances);
                 if (request.Mode == "Observe") { Finish("Observe complete: " + receipt.RawAxisQualification); return; }
                 if (!receipt.FlagsDisabled || !receipt.RawAxesNeutralAfterDisable) { Finish("Apply refused: current disable/raw-axis check unqualified"); return; }
-                WheelInput.AttachSharedInput(source, native, VerifyIsolation, () => isolation.Restore());
+                WheelInput.AttachSharedInput(source, native, VerifyIsolation, () => isolation.Restore(), native.Transmission());
                 attached = true; receipt.Applied = true;
                 ModLog.Info("Shared input Apply PROBE attached to existing readers for 120 menu frames; saved backend unchanged.");
             }

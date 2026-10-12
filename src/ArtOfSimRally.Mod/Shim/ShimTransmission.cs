@@ -38,5 +38,27 @@ namespace ArtOfSimRally.Mod.Shim
         }
 
         internal static bool Exists(int gear, int maxIndex) => gear >= 0 && gear <= maxIndex;
+
+        // The shared profile's Transmission (Core's parse; contract words Automatic | Sequential | H-pattern).
+        // Core does not enforce it, so the adapter does: exactly one gear input mode per session.
+        internal enum Mode { None, Sequential, HPattern }
+        internal static Mode ParseMode(string transmission) =>
+            transmission == "Sequential" ? Mode.Sequential : transmission == "H-pattern" ? Mode.HPattern : Mode.None;
+
+        // The single gear change for one physics step, or null. An automatic gearbox, an Automatic or unknown
+        // profile, and the other mode's actions never shift. A gate applies once per change; a gear this car
+        // lacks is recorded as applied (not retried) and never clamped onto another gear.
+        internal static int? Next(Mode mode, bool automatic, int engaged, int? gate, ref int lastGate, int step, bool skipNeutral, int maxIndex)
+        {
+            if (automatic || mode == Mode.None) { lastGate = int.MinValue; return null; }
+            if (mode == Mode.HPattern)
+            {
+                if (!gate.HasValue || gate.Value == lastGate) return null;
+                lastGate = gate.Value;
+                return Exists(gate.Value, maxIndex) ? gate : null;
+            }
+            lastGate = int.MinValue;
+            return Step(engaged, step, skipNeutral, maxIndex);
+        }
     }
 }

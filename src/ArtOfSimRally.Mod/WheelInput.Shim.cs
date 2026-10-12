@@ -54,7 +54,9 @@ namespace ArtOfSimRally.Mod
 
         // Explicit muted probe handoff only; no saved backend flag. Ordinary
         // copied-provider mode is used: extension 1 has no capture/test fences.
-        internal static void AttachSharedInput(IPhysicalSnapshotSource source, IShimBridge native, Func<bool> isolation, Func<bool> restore = null)
+        // The shared profile's transmission (Core's parse), fixed for the session.
+        internal static ShimTransmission.Mode SharedTransmission { get; private set; }
+        internal static void AttachSharedInput(IPhysicalSnapshotSource source, IShimBridge native, Func<bool> isolation, Func<bool> restore = null, string transmission = null)
         {
             if (sharedInput != null || !_open || _devices.Count == 0 || isolation == null || !isolation())
                 throw new InvalidOperationException("shared input needs an idle, qualified reader and native isolation");
@@ -62,6 +64,7 @@ namespace ArtOfSimRally.Mod
             try { sharedInput = new ShimBridge(source, native, ShimInput.Consumer, slots); }
             catch { if (restore != null) restore(); throw; }
             verifyNativeIsolation = isolation; restoreNativeInput = restore;
+            SharedTransmission = ShimTransmission.ParseMode(transmission);
         }
 
         private static bool ReadSharedSnapshot()

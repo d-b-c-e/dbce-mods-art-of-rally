@@ -319,10 +319,16 @@ static class Program
         menu = 1; Frame(); Check(WheelInput.ShortcutPressed(WheelInput.Channel.SettingsButton), "shared shortcut edge");
         Frame(); Check(!WheelInput.ShortcutPressed(WheelInput.Channel.SettingsButton), "held shortcut repeated");
         // Car input can run before the watchdog: it must publish and use this frame's snapshot.
-        Clock.frameCount++; int reads = source.Reads; float t = 0, b = 0, s = 0, h = 0, c = 0; bool e = false;
+        confirm = 1; Clock.frameCount++; int reads = source.Reads; float t = 0, b = 0, s = 0, h = 0, c = 0; bool e = false;
         Check(ArtOfSimRally.Mod.Shim.ShimInput.TryOverride(new AxisCarController(), ref t, ref b, ref s, ref h, ref c, ref e), "car input not owned");
         Check(source.Reads == reads + 1 && ArtOfSimRally.Mod.Shim.ShimInput.Consumer.Fresh(Clock.frameCount), "car input composed a previous frame");
+        // The first Rewired query after that read must still project this frame's buttons, without another read.
+        WheelInput.PrepareGameQuery();
+        Check(WheelInput.GameButton(WheelInput.Channel.Confirm, true) && WheelInput.GameButton(WheelInput.Channel.Confirm, false), "button query after car input saw a stale projection");
+        Check(source.Reads == reads + 1, "button projection read again");
         WheelInput.EnsureUpdatedThisFrame(); Check(source.Reads == reads + 1 && native.Ticks == reads + 1, "same frame polled twice");
+        Check(WheelInput.GameButton(WheelInput.Channel.Confirm, false), "watchdog reprojection dropped the held button");
+        confirm = 0;
         // A refused frame keeps the owned channels neutral; nothing falls back to Art's binding.
         native.Script = () => new[] { (9, L, 1f), (21, L, 1f), (10, L, 1f) };
         menu = 0; Frame();

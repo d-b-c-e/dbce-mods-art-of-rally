@@ -144,6 +144,7 @@ internal static class BridgeTests
         var native = new ShimBridgeNative(dll, folder, System.Text.Encoding.UTF8.GetBytes(profile));
         var ids = new System.Collections.Generic.HashSet<Guid>(native.BoundInstances());
         Check(ids.SetEquals(DeviceSource.Ids), "Core did not bind both owning devices");
+        Check(native.Transmission() == "Sequential" && native.ProfileValue("profile") == "Actions", "Core profile transmission/identity");
         var bridge = new ShimBridge(source, native, sink, new[] { 0, 1 }); int frame = 0;
         bool Step() { Check(bridge.ReadFrame(++frame, (slot, bytes) => { }), "actual action frame: " + bridge.Failure); Thread.Sleep(5); return true; }
         bool AllLive() => sink.Started && sink.Live(9, frame) && sink.Live(14, frame) && sink.Live(5, frame) && sink.Live(6, frame);

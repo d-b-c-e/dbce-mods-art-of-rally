@@ -184,6 +184,23 @@ internal static class Program
         Check(ShimTransmission.Step(2, -1, true, 6) == 0 && ShimTransmission.Step(0, 1, true, 6) == 2, "skip neutral");
         Check(ShimTransmission.Step(6, 1, false, 6) == null && ShimTransmission.Step(0, -1, false, 6) == null, "out-of-range step clamped");
         Check(ShimTransmission.Step(3, 0, false, 6) == null && ShimTransmission.Step(3, 1, false, -1) == null, "no step or no ratios shifted");
+
+        // Transmission policy: the profile's own mode only, never an automatic gearbox, one change per step.
+        var S = ShimTransmission.Mode.Sequential; var H = ShimTransmission.Mode.HPattern; var N = ShimTransmission.Mode.None;
+        Check(ShimTransmission.ParseMode("Sequential") == S && ShimTransmission.ParseMode("H-pattern") == H && ShimTransmission.ParseMode("Automatic") == N &&
+            ShimTransmission.ParseMode(null) == N && ShimTransmission.ParseMode("sequential") == N, "transmission contract words");
+        int last = 4;
+        Check(ShimTransmission.Next(H, true, 2, 4, ref last, 0, false, 6) == null && last == int.MinValue, "automatic gearbox shifted by a gate");
+        Check(ShimTransmission.Next(S, true, 2, null, ref last, 1, false, 6) == null, "automatic gearbox shifted by a press");
+        Check(ShimTransmission.Next(H, false, 2, 4, ref last, 1, false, 6) == 4 && last == 4, "gate not applied, or step mixed in");
+        Check(ShimTransmission.Next(H, false, 4, 4, ref last, 1, false, 6) == null, "unchanged gate reapplied or step mixed in");
+        Check(ShimTransmission.Next(H, false, 4, 7, ref last, 0, false, 6) == null && last == 7, "missing gear clamped");
+        Check(ShimTransmission.Next(H, false, 4, 7, ref last, 0, false, 6) == null, "missing gear retried");
+        Check(ShimTransmission.Next(H, false, 4, null, ref last, 1, false, 6) == null, "stale gate or step shifted");
+        last = int.MinValue;
+        Check(ShimTransmission.Next(S, false, 2, 5, ref last, 0, false, 6) == null, "gate applied in a sequential profile");
+        Check(ShimTransmission.Next(S, false, 2, 5, ref last, 1, false, 6) == 3, "sequential step");
+        Check(ShimTransmission.Next(N, false, 2, 4, ref last, 1, false, 6) == null, "automatic or unknown profile shifted");
     }
     private static int Main(string[] args)
     {

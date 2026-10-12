@@ -36,7 +36,7 @@ namespace ArtOfSimRally.Mod.Shim
         private readonly DevicesWithPathsCall devicesWithPaths;
         private readonly TickCall tick;
         private readonly StopCall stop;
-        private readonly ReportsCall reports;
+        private readonly ReportsCall reports, profileInfo;
         private readonly int owner = System.Threading.Thread.CurrentThread.ManagedThreadId;
         internal ShimBridgeNative(string dllPath, string runFolder, byte[] exactProfile)
         {
@@ -56,6 +56,7 @@ namespace ArtOfSimRally.Mod.Shim
                 devices = Export<DevicesCall>(module, "dbce_shim_bridge_devices"); tick = Export<TickCall>(module, "dbce_shim_bridge_tick"); stop = Export<StopCall>(module, "dbce_shim_stop");
                 try { devicesWithPaths = Export<DevicesWithPathsCall>(module, "dbce_shim_bridge_devices_with_paths"); } catch (EntryPointNotFoundException) { }
                 reports = Export<ReportsCall>(module, "dbce_shim_device_reports");
+                profileInfo = Export<ReportsCall>(module, "dbce_shim_profile_info");
                 var args = new byte[128]; BitConverter.GetBytes(128).CopyTo(args, 0); BitConverter.GetBytes(exactProfile.Length).CopyTo(args, 8);
                 var folder = Marshal.StringToHGlobalUni(Path.GetFullPath(runFolder)); memory.Add(folder); BitConverter.GetBytes(folder.ToInt64()).CopyTo(args, 16);
                 Put(args, 24, Encoding.UTF8.GetBytes("artbridge1\0"), memory);
@@ -81,6 +82,20 @@ namespace ArtOfSimRally.Mod.Shim
             [DataMember(Name = "instance", IsRequired = true)] public string Instance = null;
             [DataMember(Name = "product", IsRequired = true)] public string Product = null;
         }
+        // Core's own parse of the exact profile ("key=value" lines), fixed at open.
+        internal string ProfileValue(string key)
+        {
+            CheckThread(); int needed;
+            if (handle == IntPtr.Zero || profileInfo(handle, null, 0, out needed) != 0 || needed < 1 || needed > 65536)
+                throw new InvalidOperationException("Core profile information unavailable");
+            var bytes = new byte[needed]; int written;
+            if (profileInfo(handle, bytes, bytes.Length, out written) != 0 || written > bytes.Length || written < 1 || bytes[written - 1] != 0)
+                throw new InvalidOperationException("Core profile information changed or truncated");
+            foreach (var line in Encoding.UTF8.GetString(bytes, 0, written - 1).Split('\n'))
+                if (line.StartsWith(key + "=", StringComparison.Ordinal)) return line.Substring(key.Length + 1).TrimEnd('\r');
+            return null;
+        }
+        internal string Transmission() => ProfileValue("ok") == "1" ? ProfileValue("transmission") : null;
         internal Guid[] BoundInstances()
         {
             var values = BoundProducts(); var result = new Guid[values.Count]; values.Keys.CopyTo(result, 0); return result;

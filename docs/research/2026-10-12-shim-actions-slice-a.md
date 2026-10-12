@@ -25,7 +25,13 @@ Still reported Unsupported to Core at open: `select`, `lookBack`, `reset`, `horn
 - Gear indices are checked against the current car's `gearRatios` every physics
   step; a gate or sequential step the car lacks is ignored, never clamped.
   Art's own shifter reader is not opened alongside a started shared session.
-  Art's `TransmissionMode` setting remains authoritative for automatic/manual.
+- Transmission policy (Core parses the profile's `Transmission` but does not
+  enforce it, so the adapter does): the session's mode is Core's parsed value,
+  read once through `dbce_shim_profile_info`. `Sequential` applies only press
+  edges; `H-pattern` applies only gates; `Automatic` or anything else applies
+  neither. Nothing shifts while the car's gearbox is automatic (Art's
+  `TransmissionMode` still sets that flag), and at most one change happens per
+  physics step; the other mode's queued presses are discarded.
 - Exact HID isolation is unchanged: `NativeInputIsolation` disables only devices
   owning bound actions (with the owner's profile now the R12 and the DS-8X).
   Keyboard is a separate Rewired controller: `GameButtonPatch` ORs shared buttons
@@ -38,21 +44,24 @@ watchdog that published it can run after game scripts. The first shared consumer
 in a frame (car input, the physics gear step, a Rewired query or the watchdog) now
 publishes this frame's snapshot (`EnsureSharedFrame`); later consumers reuse it,
 still one read per frame. Menu probes could not reveal this; car input could have
-composed a previous frame and read neutral.
+composed a previous frame and read neutral. Snapshot and button projection are
+stamped separately: a Rewired query after a car or gear consumer already read the
+frame still projects this frame's buttons once, without another read (review
+finding on 4774fc9).
 
 ## Validation
 
-- `tests/ShimInput` (net8.0, net48, game Unity Mono): 528 assertions, including
+- `tests/ShimInput` (net8.0, net48, game Unity Mono): 539 assertions, including
   the supported set, Live/current/owned-only button state, ownership changes after
   open, Core press edges latched and capped at two, simultaneous up/down, non-Live
   edges, clear/terminal, H-gate decisions (reverse first, explicit and implicit
   neutral, sixth gate, stale, terminal) and never-clamping sequential targets.
-- Actual `dbce_shim.dll` (`--bridge`, net8.0 and net48): 564 assertions. With the
+- Actual `dbce_shim.dll` (`--bridge`, net8.0 and net48): 576 assertions. With the
   pinned profile's shapes (R12 button 31 confirm, hat 0 navDown, button 5 select,
   DS-8X buttons 9/10 shiftUp/Down) Core binds both devices, reports select
   Unsupported, resolves confirm/hat presses with edges, and one DS-8X press queues
   exactly one sequential step each way.
-- `tests/WheelInput --shim-actions-only` (14): owned confirm ignores Art's pressed
+- `tests/WheelInput --shim-actions-only` (17): owned confirm ignores Art's pressed
   binding while unowned back keeps it on the same read; shared press/hold/release;
   shared shortcut edge; car input publishes and uses the current frame with one
   read; a refused frame leaves owned channels neutral with no fallback. Mutants

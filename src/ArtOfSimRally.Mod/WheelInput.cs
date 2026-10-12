@@ -270,11 +270,13 @@ namespace ArtOfSimRally.Mod
         }
         internal static void PrepareGameQuery()
         {
-            if (_sampledFrame == Time.frameCount || !_open || !Enabled ||
-                _assigning.HasValue || Main.SettingsVisible || !Application.isFocused) return;
+            if (!_open || !Enabled || _assigning.HasValue || Main.SettingsVisible || !Application.isFocused) return;
             // Only already-open, non-exclusive readers. No discovery, binding
             // edits, range learning, logging, persistence or scene transitions.
-            ReadSnapshot();
+            // Snapshot and button projection are stamped separately: a car or gear
+            // consumer may already have read this frame without projecting buttons.
+            if (_sampledFrame != Time.frameCount) ReadSnapshot();
+            if (_buttonFrame == Time.frameCount) return;
             UpdateValues(Main.Settings, false);
             TickGameButtons();
         }
