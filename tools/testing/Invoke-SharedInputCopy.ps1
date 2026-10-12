@@ -14,6 +14,8 @@
 param([Parameter(Mandatory)][string]$Result,
       [switch]$PreflightOnly,
       [string]$RouteSource,
+      # A cold replay of a recording made here (sana 36236): the tape's start state, then no input or force device.
+      [string]$ReplayTape,
       [ValidateRange(30,300)][int]$ObserveSeconds=120,
       [ValidateRange(0,60)][int]$SettleSeconds=10,
       [ValidateRange(10,60)][int]$CaptureSeconds=12,
@@ -40,18 +42,31 @@ function Read-Shared([string]$p) {
 }
 $Result=Full $Result; Plain $Result
 $native=[bool]$RouteSource
+$replay=[bool]$ReplayTape
+if($native -and $replay) { throw 'Choose -RouteSource (record) or -ReplayTape (replay), not both.' }
 if($native) {
     $RouteSource=Full $RouteSource; Plain $RouteSource
     . (Join-Path $PSScriptRoot 'RouteEnvironment.ps1')
     Assert-RouteSource $RouteSource
     if(!$PSBoundParameters.ContainsKey('ObserveSeconds')) { $ObserveSeconds=300 }
 }
+if($replay) {
+    $ReplayTape=Full $ReplayTape; Plain $ReplayTape
+    foreach($n in @('session.txt','end.txt','complete.tsv','environment-at-start/state.json')) {
+        if(!(Test-Path -LiteralPath (Join-Path $ReplayTape $n) -PathType Leaf)) { throw "Replay tape incomplete: $n" }
+    }
+    if(Test-Path -LiteralPath (Join-Path $ReplayTape 'incomplete.txt')) { throw 'Replay tape is marked incomplete.' }
+    . (Join-Path $PSScriptRoot 'ReplayInputIsolation.ps1')
+    if(!$PSBoundParameters.ContainsKey('ObserveSeconds')) { $ObserveSeconds=300 }
+}
 $staged=Get-Content -LiteralPath (Join-Path $Result 'staged.json') -Raw | ConvertFrom-Json
 if($staged.schema -ne 1 -or $staged.kind -ne 'shared-input-ordinary') { throw 'Not a SharedInput staging result.' }
 $GameDir=Full $staged.gameCopy; $owner=Full $staged.sourceGame
 foreach($p in @($GameDir,$owner)) { Plain $p }
-if((Within $GameDir $owner) -or (Within $owner $GameDir) -or (Within $Result $GameDir) -or (Within $Result $owner) -or ($native -and (Within $RouteSource $GameDir))) { throw 'Invalid disposable scope.' }
-if($native -ne [bool]$staged.recorder) { throw $(if($native) { 'A native-script run needs Prepare-SharedInputCopy -Recorder.' } else { 'Staged with the recorder; the ordinary smoke runs without it.' }) }
+if((Within $GameDir $owner) -or (Within $owner $GameDir) -or (Within $Result $GameDir) -or (Within $Result $owner) -or ($native -and (Within $RouteSource $GameDir)) -or
+    ($replay -and ((Within $ReplayTape $GameDir) -or (Within $ReplayTape $Result)))) { throw 'Invalid disposable scope.' }
+$recorded=$native -or $replay
+if($recorded -ne [bool]$staged.recorder) { throw $(if($recorded) { 'A native-script run or replay needs Prepare-SharedInputCopy -Recorder.' } else { 'Staged with the recorder; the ordinary smoke runs without it.' }) }
 if(Test-Path -LiteralPath "$Result/launch.json") { throw 'This staging has already been launched; stage a fresh result.' }
 $mod=Join-Path $GameDir 'Mods/ArtOfSimRally'
 $umLog=Join-Path $GameDir 'artofrally_Data/Managed/UnityModManager/Log.txt'
@@ -73,12 +88,12 @@ $forceOff=$staged.files.'Mods/ArtOfSimRally/UnityForceFeedback.dll' -notin $latc
 if($forceOff -and ($staged.forceFeedbackOff -ne $true -or $copySettings.DocumentElement.ForceFeedbackEnabled -ne 'false')) {
     throw 'This native has no DBCE_FFB_MUTE latch: stage with Prepare-SharedInputCopy -ForceFeedbackOff.'
 }
-$allowed=@('ArtOfSimRally') + $(if($native) { @('ArtOfSimRally.DevRecorder') } else { @() })
+$allowed=@('ArtOfSimRally') + $(if($recorded) { @('ArtOfSimRally.DevRecorder') } else { @() })
 $otherMods=@(Get-ChildItem -LiteralPath (Join-Path $GameDir 'Mods') -Directory | Where-Object Name -NotIn $allowed)
 if($otherMods.Count) { throw 'Disposable copy contains optional mod folders; stage only ArtOfSimRally (and the recorder for a native-script run).' }
 [xml]$umm=Get-Content -LiteralPath (Join-Path $GameDir 'artofrally_Data/Managed/UnityModManager/Params.xml') -Raw
 if(@($umm.Param.ModParams.Mod | Where-Object { $_.Id -eq 'ArtOfSimRally' -and $_.Enabled -eq 'true' }).Count -ne 1) { throw 'Candidate UMM mod is not enabled.' }
-if($native -and @($umm.Param.ModParams.Mod | Where-Object { $_.Id -eq 'ArtOfSimRally.DevRecorder' -and $_.Enabled -eq 'false' }).Count) { throw 'The recorder is disabled in the copy UMM parameters.' }
+if($recorded -and @($umm.Param.ModParams.Mod | Where-Object { $_.Id -eq 'ArtOfSimRally.DevRecorder' -and $_.Enabled -eq 'false' }).Count) { throw 'The recorder is disabled in the copy UMM parameters.' }
 # Ordinary mode only: no probe request, developer marker or injection switch may be present (a native-script
 # run writes its own recorder request once it holds the lease; restoration removes it).
 if($env:DBCE_ART_SHIM_REQUEST) { throw 'DBCE_ART_SHIM_REQUEST is set; the ordinary smoke never runs the probe.' }
@@ -92,7 +107,7 @@ Assert-GameClosed
 $context=Get-SteamLaunchContext
 $context | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath "$Result/preflight-steam-context.json"
 if($context.decision -eq 'refuse') { throw "Steam launch context refused: $($context.reason)" }
-if($PreflightOnly) { Write-Output "Staged pins, settings, app id, UMM, $(if($native) { 'recorder, route, ' })marker and Steam context ($($context.decision)) checks passed. No launch or shared-state mutation."; return }
+if($PreflightOnly) { Write-Output "Staged pins, settings, app id, UMM, $(if($native) { 'recorder, route, ' } elseif($replay) { 'recorder, replay tape, ' })marker and Steam context ($($context.decision)) checks passed. No launch or shared-state mutation."; return }
 $ownerInput=Join-Path $HubRepo 'tools/Owner-Input.ps1'
 . (Join-Path $ToolkitRepo 'tools/playback/Stage-OwnerIdle.ps1')
 . (Join-Path $PSScriptRoot 'OwnerActivity.ps1')
@@ -106,6 +121,7 @@ $customRally=Join-Path $localLow 'customrally' # read by SessionEnvironment.ps1'
 $snapshots=[Collections.Generic.List[object]]::new(); $ownerPins=[Collections.Generic.List[object]]::new()
 $lease=$null; $game=$null; $ready=$false; $environmentSaved=$false; $launchAttempted=$false; $routeApplied=$false; $localBefore=@(); $artBefore=@()
 $capture=Join-Path $Result 'capture'
+$replayOut=Join-Path $Result 'replay'; $replayResult=Join-Path $replayOut 'result.txt'; $ffbBefore=$null
 function Save-File([string]$p) {
     Plain $p; $p=Full $p
     if($snapshots.path -contains $p) { return }
@@ -116,7 +132,7 @@ function Save-File([string]$p) {
 function Files([string]$p,[switch]$Recurse) {
     if(Test-Path -LiteralPath $p) { Get-ChildItem -LiteralPath $p -File -Recurse:$Recurse | ForEach-Object { Plain $_.FullName; $_.FullName } }
 }
-$lease=Enter-StageRigLease -Path (Join-Path $env:LOCALAPPDATA 'dbce/test-slot.txt') -Owner art-shared-input -Purpose $(if($native) { 'Disposable Art SharedInput ordinary native-script coexistence at a recorder-reached stage; muted, no force or OS input; restore shared state' } else { 'Disposable Art SharedInput ordinary startup smoke; muted, no force or input; restore shared state' })
+$lease=Enter-StageRigLease -Path (Join-Path $env:LOCALAPPDATA 'dbce/test-slot.txt') -Owner art-shared-input -Purpose $(if($replay) { 'Disposable Art cold replay of a SharedInput recording with every input and force device off; no OS input; restore shared state' } elseif($native) { 'Disposable Art SharedInput ordinary native-script coexistence at a recorder-reached stage; muted, no force or OS input; restore shared state' } else { 'Disposable Art SharedInput ordinary startup smoke; muted, no force or input; restore shared state' })
 try {
     Assert-GameClosed
     New-Item -ItemType Directory -Path "$Result/shared-files","$Result/after" | Out-Null
@@ -140,6 +156,18 @@ try {
     Assert-Pins # close the preparation-to-launch gap while holding the lease
     $context=Get-SteamLaunchContext # Steam may have stopped or changed since preflight
     if($context.decision -eq 'refuse') { $context | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath "$Result/launch-steam-context.json"; throw "Steam launch context refused: $($context.reason)" }
+    if($replay) {
+        # The tape's recorded start state, this rig's own display settings, then no input or force device: the
+        # tape supplies every input (replay-input.json). Restoration below returns the copy and shared state.
+        $routeApplied=$true
+        Restore-SessionEnvironment (Join-Path $ReplayTape 'environment-at-start') -NoReceipt
+        Restore-SessionPresentation "$Result/shared-environment"
+        Set-ReplayInputIsolation (Join-Path $mod 'Settings.xml') $Result
+        $ffbLog=Join-Path $artLocal 'ffb.log'; $ffbBefore=if(Test-Path -LiteralPath $ffbLog) { [IO.File]::ReadAllText($ffbLog) } else { '' }
+        @("mode=replay","playback=trajectory","tape=$ReplayTape","out=$replayOut","poseThreshold=0",
+          "expiresUtc=$([DateTime]::UtcNow.AddMinutes(10).ToString('o'))") | Set-Content -LiteralPath $sessionRequest -Encoding ascii
+        Copy-Item -LiteralPath $sessionRequest -Destination (Join-Path $Result 'session-request.txt')
+    }
     if($native) {
         $routeApplied=$true; Set-RouteEnvironment $RouteSource "$Result/shared-environment"
         # The recorder's request (a shared marker, absent before; restoration removes it and its .taken rename).
@@ -188,7 +216,7 @@ try {
         launchMode=$context.decision;brokerSha256=$brokerSha256;steam=$context.steam[0];launcher=$context.launcher;game=$gameIntegrity;integrityMatchesSteam=$matchesSteam;muted=$true} |
         ConvertTo-Json -Depth 4 | Set-Content -LiteralPath "$Result/launch.json"
     if(!$matchesSteam) { throw 'Launched copy integrity differs from Steam; SteamAPI_Init cannot succeed. Closing the exact child without observation.' }
-    Write-Output "Disposable Art started (muted SharedInput $(if($native) { 'native-script coexistence' } else { 'smoke' })): pid=$($game.Id), path=$imagePath. No OS input sent."
+    Write-Output "Disposable Art started (muted SharedInput $(if($replay) { 'cold replay' } elseif($native) { 'native-script coexistence' } else { 'smoke' })): pid=$($game.Id), path=$imagePath. No OS input sent."
     # Ends on a terminal shared line; after "first frame accepted" it keeps watching SettleSeconds for a stop.
     # A native-script run instead ends when the recorder has closed its capture.
     $deadline=[DateTime]::UtcNow.AddSeconds($ObserveSeconds); $outcome='timeout'; $settleUntil=$null
@@ -197,8 +225,9 @@ try {
         if(@(Get-Process artofrally -ErrorAction SilentlyContinue | Where-Object Id -NE $game.Id).Count) { throw 'Another Art process appeared; do not answer Steam session dialogs.' }
         if(!(Test-OwnerGate $ownerInput 'observation' 5 $ownerRecord)) { 'Owner input resumed; ending observation.' | Set-Content -LiteralPath "$Result/interrupted.txt"; $outcome='interrupted'; break }
         $lines=Read-Shared $umLog
-        if($lines -match 'Shared input (not used|stopped)') { $outcome='refused-or-stopped'; break }
-        if($native) { if(Test-Path -LiteralPath (Join-Path $capture 'end.txt')) { $outcome='captured'; break } }
+        if($replay) { if(Test-Path -LiteralPath $replayResult) { $outcome='replayed'; break } }
+        elseif($lines -match 'Shared input (not used|stopped)') { $outcome='refused-or-stopped'; break }
+        elseif($native) { if(Test-Path -LiteralPath (Join-Path $capture 'end.txt')) { $outcome='captured'; break } }
         else {
             if(!$settleUntil -and ($lines -match 'Shared input: first frame accepted')) { $settleUntil=[DateTime]::UtcNow.AddSeconds($SettleSeconds) }
             if($settleUntil -and [DateTime]::UtcNow -ge $settleUntil) { $outcome='attached'; break }
@@ -209,8 +238,9 @@ try {
     $lines=Read-Shared $umLog; $lines | Set-Content -LiteralPath "$Result/shared-lines.txt"
     $verdictPath=Join-Path $capture 'native-verdict.txt'
     $nativeVerdict=if(Test-Path -LiteralPath $verdictPath -PathType Leaf) { (Get-Content -LiteralPath $verdictPath -Raw).Trim() } else { $null }
-    @{outcome=$outcome;exited=$game.HasExited;windowTitle=$game.MainWindowTitle;observedUtc=[DateTime]::UtcNow.ToString('o');sharedLines=$lines;nativeVerdict=$nativeVerdict} | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath "$Result/observation.json"
-    Write-Output "Observation: $outcome$(if($native) { '; ' + $(if($nativeVerdict) { $nativeVerdict -replace "`n", '; ' } else { 'no native verdict (inspect capture and logs)' }) })"
+    $replayLines=if($replay -and (Test-Path -LiteralPath $replayResult -PathType Leaf)) { @(Get-Content -LiteralPath $replayResult) } else { @() }
+    @{outcome=$outcome;exited=$game.HasExited;windowTitle=$game.MainWindowTitle;observedUtc=[DateTime]::UtcNow.ToString('o');sharedLines=$lines;nativeVerdict=$nativeVerdict;replayResult=$replayLines} | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath "$Result/observation.json"
+    Write-Output "Observation: $outcome$(if($native) { '; ' + $(if($nativeVerdict) { $nativeVerdict -replace "`n", '; ' } else { 'no native verdict (inspect capture and logs)' }) } elseif($replay) { '; ' + $(if($replayLines.Count) { $replayLines[0] } else { 'no replay result (inspect replay and logs)' }) })"
 } finally {
     if($game -and !$game.HasExited) {
         $game.Refresh()
@@ -230,8 +260,19 @@ try {
         @{loadedWithFfbOff=$loadedOff;forceAttempts=$attempts} | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath "$Result/force-check.json"
         if(!$loadedOff -or $attempts.Count) { $forceViolation='Force feedback was not verifiably off in this launch; see force-check.json.' }
     }
+    if($replay -and $launchAttempted -and $null -ne $ffbBefore) {
+        # Replay reads no input or force device (sana 36236): this launch's native log opens none. The log may
+        # have rotated at startup, in which case all of it belongs to this launch.
+        $ffbLog=Join-Path $artLocal 'ffb.log'
+        $ffbAfter=if(Test-Path -LiteralPath $ffbLog) { [IO.File]::ReadAllText($ffbLog) } else { '' }
+        $rotated=!$ffbAfter.StartsWith($ffbBefore,[StringComparison]::Ordinal)
+        $launchLines=@(($(if($rotated) { $ffbAfter } else { $ffbAfter.Substring($ffbBefore.Length) })) -split "`r?`n" | Where-Object { $_ })
+        $opens=@($launchLines | Where-Object { $_ -match 'OpenReadDevice|OpenAuxDevice|InitDirectInput|OpenCandidate' })
+        @{rotated=$rotated;launchLines=$launchLines.Count;deviceOpens=$opens} | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath "$Result/device-check.json"
+        if($opens.Count) { $forceViolation='Replay opened an input or force device; see device-check.json.' }
+    }
     function Attempt([scriptblock]$work) { try { & $work } catch { $errors.Add($_.Exception.Message); Write-Warning $_.Exception.Message } }
-    if($ready -and $native) {
+    if($ready -and $recorded) {
         # The recorder's request marker never outlives the run, launched or not.
         Attempt { if(Test-Path -LiteralPath $sessionRequest) { Remove-Item -LiteralPath $sessionRequest } }
     }
