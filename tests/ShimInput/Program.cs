@@ -699,6 +699,19 @@ internal static class Program
         [System.Runtime.Serialization.DataMember(Name = "adapter")] public string Adapter = null;
         [System.Runtime.Serialization.DataMember(Name = "delivered")] public string[] Delivered = null;
         [System.Runtime.Serialization.DataMember(Name = "unsupported")] public System.Collections.Generic.Dictionary<string, string> Unsupported = null;
+        [System.Runtime.Serialization.DataMember(Name = "qualification")] public ControlsQualification Qualification = null;
+    }
+    [System.Runtime.Serialization.DataContract]
+    private sealed class ControlsQualification
+    {
+        [System.Runtime.Serialization.DataMember(Name = "runtimeShown")] public ControlsShown[] RuntimeShown = null;
+        [System.Runtime.Serialization.DataMember(Name = "fixtureOnly")] public string[] FixtureOnly = null;
+        [System.Runtime.Serialization.DataMember(Name = "writerOmits")] public System.Collections.Generic.Dictionary<string, string> WriterOmits = null;
+    }
+    [System.Runtime.Serialization.DataContract]
+    private sealed class ControlsShown
+    {
+        [System.Runtime.Serialization.DataMember(Name = "actions")] public string[] Actions = null;
     }
     private static void ControlsContractMatches()
     {
@@ -718,7 +731,17 @@ internal static class Program
         var unsupported = new System.Collections.Generic.Dictionary<string, string>();
         foreach (var line in ShimAxisConsumer.UnsupportedActions.Split('\n'))
             if (line.Length > 0) unsupported[line.Substring(0, line.IndexOf('='))] = line.Substring(line.IndexOf('=') + 1);
-        Check(contract.Schema == 1 && contract.Adapter == "art-shim-ini-controls-1", "controls contract identity changed");
+        Check(contract.Schema == 2 && contract.Adapter == "art-shim-ini-controls-2", "controls contract identity changed");
+        // Schema 2 (sana 34369) lets a writer write every delivered action, so each one must be labelled exactly once:
+        // shown at runtime in some run, or fixture-only.
+        var q = contract.Qualification;
+        Check(q != null && q.WriterOmits != null && q.WriterOmits.Count == 0, "schema 2 must not omit writer actions");
+        var shown = new System.Collections.Generic.HashSet<string>();
+        foreach (var run in q.RuntimeShown) foreach (var action in run.Actions) shown.Add(action);
+        var fixture = new System.Collections.Generic.HashSet<string>(q.FixtureOnly);
+        Check(fixture.Count == q.FixtureOnly.Length && !fixture.Overlaps(shown), "CONTROLS.json labels an action both shown and fixture-only");
+        fixture.UnionWith(shown);
+        Check(fixture.SetEquals(delivered), "CONTROLS.json qualification labels differ from delivered");
         Check(contract.Delivered != null && string.Join(",", contract.Delivered) == string.Join(",", delivered.ToArray()),
             "CONTROLS.json delivered differs from this build: " + string.Join(",", delivered.ToArray()));
         Check(contract.Unsupported != null && contract.Unsupported.Count == unsupported.Count, "CONTROLS.json unsupported count differs");
