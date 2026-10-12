@@ -27,7 +27,10 @@ function Within([string]$p,[string]$parent) { $p.Equals($parent,[StringCompariso
 function Assert-GameClosed { if(Get-Process artofrally -ErrorAction SilentlyContinue) { throw 'Art remains open; retain backup and lease, no restoration.' } }
 $Result=Full $Result; Plain $Result
 $RouteSource=Full $RouteSource; Plain $RouteSource
-foreach($n in @('input.tape','markers.tsv','session.txt')) { if(!(Test-Path -LiteralPath (Join-Path $RouteSource $n) -PathType Leaf)) { throw "Route source lacks $n" } }
+foreach($n in @('input.tape','markers.tsv','session.txt','environment-at-start/state.json','environment-at-start/playerprefs-raw.json')) { if(!(Test-Path -LiteralPath (Join-Path $RouteSource $n) -PathType Leaf)) { throw "Route source lacks $n" } }
+# The route's menu path depends on the start state it was taped with (2026-10-12 05:45: a custom rally in
+# progress showed RallyInProgress instead of Custom Event). It must record the custom rally state.
+if(!(Test-Path -LiteralPath (Join-Path $RouteSource 'customrally-at-start') -PathType Leaf) -and !(Test-Path -LiteralPath (Join-Path $RouteSource 'customrally-absent-at-start') -PathType Leaf)) { throw 'Route records no custom rally start state.' }
 $requestPath=Join-Path $Result 'request.json'
 $request=Get-Content -LiteralPath $requestPath -Raw | ConvertFrom-Json
 $prepared=Get-Content -LiteralPath (Join-Path $Result 'prepared.json') -Raw | ConvertFrom-Json
@@ -77,13 +80,30 @@ $artLocal=Join-Path $env:LOCALAPPDATA 'ArtOfSimRally'
 . (Join-Path $PSScriptRoot 'SessionEnvironment.ps1')
 . (Join-Path $ToolkitRepo 'tools/playback/Stage-RigLease.ps1')
 $snapshots=[Collections.Generic.List[object]]::new(); $ownerPins=[Collections.Generic.List[object]]::new()
-$lease=$null; $game=$null; $ready=$false; $environmentSaved=$false; $launchAttempted=$false; $localBefore=@(); $artBefore=@(); $processStart=$null
+$lease=$null; $game=$null; $ready=$false; $environmentSaved=$false; $launchAttempted=$false; $routeApplied=$false; $localBefore=@(); $artBefore=@(); $processStart=$null
 function Save-File([string]$p) {
     Plain $p; $p=Full $p
     if($snapshots.path -contains $p) { return }
     $before=Hash $p; $backup=Join-Path $Result ('shared-files/'+$snapshots.Count+'.bin')
     if($before -ne 'absent') { Copy-Item -LiteralPath $p -Destination $backup; if((Hash $backup) -ne $before) { throw 'Snapshot changed during copy.' } }
     $snapshots.Add([pscustomobject]@{path=$p;before=$before;backup=$backup})
+}
+# The route's taped start state, exactly as Session.ps1 replay applies a tape's: the game's preferences
+# (raw, verified) and its custom rally save; never its mod or triple settings (the staged copy's are pinned).
+# Display preferences stay this rig's. The owner environment is restored afterwards.
+function Set-RouteEnvironment([string]$Route) {
+    $directory=Join-Path $Route 'environment-at-start'
+    $state=Get-Content -LiteralPath (Join-Path $directory 'state.json') -Raw | ConvertFrom-Json
+    if(!$state.prefsRawHash) { throw 'Route has no raw preference snapshot.' }
+    $raw=@(Get-SessionRegistryBackup $directory $state)
+    $key='HKCU:\Software\Funselektor Labs\art of rally'
+    foreach($name in (Get-Item -LiteralPath $key).GetValueNames()) { if($name -notin $state.prefsNames) { Remove-ItemProperty -LiteralPath $key -Name $name } }
+    foreach($value in $raw) { Set-SessionRegistryValue $value }
+    foreach($value in $raw) { $actual=Get-SessionRegistryValue $value.name; if($actual.type -ne $value.type -or $actual.data -cne $value.data) { throw 'Route preference application not verified.' } }
+    $taped=Join-Path $Route 'customrally-at-start'
+    if(Test-Path -LiteralPath $taped -PathType Leaf) { Copy-Item -LiteralPath $taped -Destination $customRally -Force }
+    elseif(Test-Path -LiteralPath $customRally) { Remove-Item -LiteralPath $customRally }
+    Restore-SessionPresentation "$Result/shared-environment"
 }
 function Files([string]$p,[switch]$Recurse) {
     if(Test-Path -LiteralPath $p) { Get-ChildItem -LiteralPath $p -File -Recurse:$Recurse | ForEach-Object { Plain $_.FullName; $_.FullName } }
@@ -112,6 +132,7 @@ try {
     Assert-Pins # close the preparation-to-launch gap while holding the lease
     $context=Get-SteamLaunchContext
     if($context.decision -eq 'refuse') { $context | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath "$Result/launch-steam-context.json"; throw "Steam launch context refused: $($context.reason)" }
+    $routeApplied=$true; Set-RouteEnvironment $RouteSource
     # The recorder's request (a shared marker, absent before; restoration removes it and its .taken rename).
     $capture=Join-Path $Result 'capture'
     @("mode=record","tape=$capture","captureDriver=$RouteSource","carInput=shared","captureSeconds=$CaptureSeconds",
@@ -207,7 +228,7 @@ try {
             } }
         }
     }
-    if($environmentSaved -and $launchAttempted) { Attempt { Restore-SessionEnvironment "$Result/shared-environment" } }
+    if($environmentSaved -and ($launchAttempted -or $routeApplied)) { Attempt { Restore-SessionEnvironment "$Result/shared-environment" } }
     foreach($pin in $ownerPins) { Attempt { if((Hash $pin.path) -ne $pin.sha256) { throw "Owner file differs; retained for review, never overwritten: $($pin.path)" } } }
     if($errors.Count) { $errors | Set-Content -LiteralPath "$Result/restore-errors.txt"; throw "Restoration incomplete; backup and lease retained: $Result" }
     [DateTime]::UtcNow.ToString('o') | Set-Content -LiteralPath "$Result/restored.txt"
