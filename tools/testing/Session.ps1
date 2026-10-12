@@ -31,7 +31,7 @@ param(
     # Kept only to reject obsolete automation with an actionable error.
     [Parameter(ParameterSetName = 'Replay')][switch]$Assist,
     [Parameter(ParameterSetName = 'Replay')][double]$PoseThreshold = 2,
-    [Parameter(ParameterSetName = 'Replay')][int]$TimeoutMinutes = 30,
+    [Parameter(ParameterSetName = 'Replay')][Parameter(ParameterSetName = 'Record')][int]$TimeoutMinutes = 30,
     [Parameter(ParameterSetName = 'Replay')][switch]$KeepGameOpen
 )
 $ErrorActionPreference = 'Stop'
@@ -92,9 +92,27 @@ switch ($PSCmdlet.ParameterSetName) {
     'Record' {
         $tape = Join-Path $sessions $Name
         if (Test-Path -LiteralPath $tape) { throw "Session '$Name' already exists: $tape" }
+        # An automated recording (sana 37706): muted, from a verified route in this library, under that route's own
+        # start state. Unlike a player recording it runs to completion: it closes the game and restores the owner's
+        # environment itself.
+        $route = $null
+        if ($ScriptedFrom) {
+            if (-not $MuteOutputs) { throw 'An automated recording must mute outputs: add -MuteOutputs.' }
+            $route = Join-Path $sessions $ScriptedFrom
+            . (Join-Path $PSScriptRoot 'RouteEnvironment.ps1')
+            Assert-RouteSource $route
+            if (Test-Path -LiteralPath (Join-Path $route 'incomplete.txt')) { throw 'The route recording is marked incomplete.' }
+        }
         Assert-GameClosed
         Assert-TestSlot
         New-Item -ItemType Directory -Force -Path $tape | Out-Null
+        if ($route) {
+            # The owner's state first, then the route's start state (its preferences and custom rally; this rig's
+            # display and the owner's mod settings stay). environment-at-start then records where this tape began.
+            $ownerState = Join-Path $tape 'automation/owner-environment'
+            Save-SessionEnvironment $ownerState
+            Set-RouteEnvironment $route $ownerState
+        }
         Save-SessionEnvironment (Join-Path $tape 'environment-at-start')
         # Reference copy of the game's local preferences (stage/car choices may live here).
         & reg export 'HKCU\Software\Funselektor Labs\art of rally' (Join-Path $tape 'playerprefs-at-start.reg') /y | Out-Null
@@ -103,9 +121,42 @@ switch ($PSCmdlet.ParameterSetName) {
         $values = @{ mode = 'record'; tape = $tape }
         if ($MuteOutputs) { $values['muteOutputs'] = '1' }
         if ($ScriptedFrom) { $values['captureDriver'] = Join-Path $sessions $ScriptedFrom }
-        Write-Request $values
-        Start-Game
-        Write-Output "Recording session '$Name' from launch into $tape"
+        if (-not $route) {
+            Write-Request $values
+            Start-Game
+            Write-Output "Recording session '$Name' from launch into $tape"
+            break
+        }
+        $sealed = $false; $restored = $false
+        try {
+            Write-Request $values
+            Start-Game
+            Write-Output "Recording automated session '$Name' from route '$ScriptedFrom' into $tape (outputs muted)"
+            $deadline = (Get-Date).AddMinutes($TimeoutMinutes)
+            while (-not (Test-Path -LiteralPath (Join-Path $tape 'complete.tsv')) -and -not (Test-Path -LiteralPath (Join-Path $tape 'incomplete.txt'))) {
+                if (-not (Get-Process artofrally -ErrorAction SilentlyContinue)) { Start-Sleep 2; break }
+                if ((Get-Date) -gt $deadline) {
+                    $status = try { Send-Probe 'SESSION-STATUS' } catch { 'status unavailable: ' + $_.Exception.Message }
+                    Write-Warning "No sealed recording after $TimeoutMinutes minutes; $status"; break
+                }
+                Start-Sleep -Seconds 2
+            }
+            $sealed = (Test-Path -LiteralPath (Join-Path $tape 'complete.tsv')) -and -not (Test-Path -LiteralPath (Join-Path $tape 'incomplete.txt'))
+        } finally {
+            Remove-Item -LiteralPath $request -ErrorAction SilentlyContinue
+            $game = Get-Process artofrally -ErrorAction SilentlyContinue
+            if ($game) { $null = $game.CloseMainWindow(); $null = $game.WaitForExit(20000) }
+            if (Get-Process artofrally -ErrorAction SilentlyContinue) {
+                $pending = "Environment restore pending until the game closes. Close it, then run: Session.ps1 -RestoreEnvironment `"$ownerState`""
+                Set-Content -LiteralPath (Join-Path $tape 'automation/restore-pending.txt') -Value $pending
+                Write-Warning $pending
+            }
+            else { Restore-SessionEnvironment $ownerState; $restored = $true }
+        }
+        Write-Output "Evidence: $tape"
+        # 0 sealed and the owner environment restored; 1 not sealed (restored); 4 restoration pending. A restore failure throws.
+        if (-not $restored) { exit 4 }
+        if ($sealed) { exit 0 } else { exit 1 }
     }
     'Stop' { Write-Output (Send-Probe 'SESSION-STOP') }
     'Status' { Write-Output (Send-Probe 'SESSION-STATUS') }
