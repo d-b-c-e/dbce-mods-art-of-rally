@@ -32,7 +32,7 @@ if (Get-Process artofrally -ErrorAction SilentlyContinue) { throw 'Art is runnin
 if ((Hash $Shim) -ne $ExpectedShimSha256) { throw 'dbce_shim.dll is not the qualified copied-provider build.' }
 if ((Hash $Native) -ne $ExpectedNativeSha256) { throw 'UnityForceFeedback.dll is not the pinned snapshot candidate native.' }
 $build = Join-Path $repo 'src/ArtOfSimRally.Mod/bin/Release'
-$payload = @('ArtOfSimRally.Mod.dll', 'Dbce.TripleScreen.Core.dll', 'Dbce.TripleScreen.Protocol.dll', 'Dbce.Wheel.Ffb.dll', 'Dbce.Wheel.Telemetry.dll', 'Info.json')
+$payload = @('ArtOfSimRally.Mod.dll', 'Dbce.TripleScreen.Core.dll', 'Dbce.TripleScreen.Protocol.dll', 'Dbce.Wheel.Ffb.dll', 'Dbce.Wheel.Telemetry.dll')
 foreach ($n in $payload) { if (-not (Test-Path -LiteralPath (Join-Path $build $n))) { throw "Build output missing: $n (build the solution first)." } }
 $commit = (git -C $repo rev-parse HEAD).Trim(); $dirty = @(git -C $repo status --porcelain -- src)
 if ($dirty.Count) { throw 'Mod source has uncommitted changes; stage only a committed build.' }
@@ -40,6 +40,7 @@ $ownerSettings = Join-Path $SourceGame 'Mods/ArtOfSimRally/Settings.xml'
 $mod = Join-Path $GameCopy 'Mods/ArtOfSimRally'
 New-Item -ItemType Directory -Path $Result | Out-Null
 foreach ($n in $payload) { Copy-Item -LiteralPath (Join-Path $build $n) -Destination (Join-Path $mod $n) -Force }
+Copy-Item -LiteralPath (Join-Path $repo 'src/ArtOfSimRally.Mod/Info.json') -Destination (Join-Path $mod 'Info.json') -Force # source, not a build output
 Copy-Item -LiteralPath $Native -Destination (Join-Path $mod 'UnityForceFeedback.dll') -Force
 Copy-Item -LiteralPath $Native -Destination (Join-Path $GameCopy 'artofrally_Data/Plugins/x86_64/UnityForceFeedback.dll') -Force
 Copy-Item -LiteralPath $Shim -Destination (Join-Path $mod 'dbce_shim.dll') -Force
@@ -56,7 +57,7 @@ $staged = [ordered]@{
     gameCopy = $GameCopy; sourceGame = $SourceGame; ownerSettingsSha256 = Hash $ownerSettings
     files = [ordered]@{}
 }
-foreach ($n in $payload + @('UnityForceFeedback.dll', 'dbce_shim.dll', 'dbce-controls.ini', 'Settings.xml')) { $staged.files["Mods/ArtOfSimRally/$n"] = Hash (Join-Path $mod $n) }
+foreach ($n in $payload + @('Info.json', 'UnityForceFeedback.dll', 'dbce_shim.dll', 'dbce-controls.ini', 'Settings.xml')) { $staged.files["Mods/ArtOfSimRally/$n"] = Hash (Join-Path $mod $n) }
 $staged.files['artofrally_Data/Plugins/x86_64/UnityForceFeedback.dll'] = Hash (Join-Path $GameCopy 'artofrally_Data/Plugins/x86_64/UnityForceFeedback.dll')
 $staged | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $Result 'staged.json')
 Write-Output "Staged SharedInput candidate $commit into $GameCopy (owner untouched). No process started."
