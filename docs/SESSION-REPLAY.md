@@ -111,7 +111,10 @@ the road and are not a reference racing line.
 existing members by reflection; a mod without them records `sharedEvidence=unavailable`
 and the recording continues.
 - `session.txt` adds:
-  - `inputModIdentity` and `inputModSha256`;
+  - `inputModIdentity` (from `build.json`) and `inputModSha256`;
+  - `inputModVersion`, the loaded mod assembly's informational version. The package build
+    pins it to the same identity, so it stays right where a hand-staged copy carries a
+    stale `build.json`;
   - the mod's `SharedInput`, `WheelInputEnabled`, `ShifterEnabled` and
     `ForceFeedbackEnabled` settings;
   - `sharedInputRequested` and `sharedEvidence`;
