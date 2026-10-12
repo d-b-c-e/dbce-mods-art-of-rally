@@ -524,6 +524,109 @@ internal static class Program
         var recovered = ProfileObjects.Parse("[Controls]\nconfirm = axis 1 dev=" + R12 + "\nconfirm = button 2 dev=" + R12 + "\n");
         Check(recovered.Count == 1 && ProfileObjects.BoundBy(recovered, "button", 2, 0, r12) == "confirm", "an invalid first line blocked a valid later binding");
     }
+    // The owner's saved clutch and gate bindings (Wheelkit "Moza KS Pro Triple": clutch R12 Axis 6, gear1..7 DS-8X Buttons
+    // 0..6, reverse Button 7) over the drive profile, with Transmission H-pattern: the copy-only gear test profile (romi 33299).
+    private static string GearsProfile()
+    {
+        string ds8x = " dev={d9b1d890-6f3f-11f1-8002-444553540000} prod={05310483-0000-0000-0000-504944564944}\n";
+        var text = new System.Text.StringBuilder(BridgeTests.DriveProfile.Replace("Transmission = Sequential", "Transmission = H-pattern"));
+        text.Append("clutch = axis 6 dev={d71b8350-61b7-11f1-8001-444553540000} prod={0006346e-0000-0000-0000-504944564944} range=0..65535 rest=0 travel=+1\n");
+        text.Append("reverse = button 7").Append(ds8x);
+        for (int n = 1; n <= 7; n++) text.Append("gear").Append(n).Append(" = button ").Append(n - 1).Append(ds8x);
+        return text.ToString();
+    }
+    // A scripted latched Core and car for the gear steps: the real consumer composes, and the car's gearbox follows the
+    // production H-pattern decision (ShimTransmission.Gate and Next), one change at a time, with deliberate defects.
+    private static DriveTrial SimulateGears(int maxGear = 6, bool automatic = false, bool hPattern = true, bool clamp = false, bool gateIgnored = false,
+        bool keepGear = false, bool clutchDiffers = false, int startGear = ShimTransmission.Neutral)
+    {
+        const ShimStatus L = ShimStatus.Live, N = ShimStatus.TestNeutral; string why;
+        string profile = GearsProfile();
+        var b = DriveTrial.Bindings(profile, new string[0]);
+        var sink = new ShimAxisConsumer { AcceptLatched = true }; sink.DeliverOnly(DriveTrial.GearsDelivered);
+        var held = new float[ShimFrame.Count]; var until = new int[ShimFrame.Count]; byte run = LatchedTrial.Waiting; string pending = null;
+        int gear = startGear, changing = 0, target = 0, lastGate = int.MinValue;
+        var trial = new DriveTrial(sink, profile, text => pending = text, "n0nce1234", true);
+        for (int frame = 1; frame <= 8000 && !trial.Finished; frame++)
+        {
+            if (pending != null)
+            {
+                foreach (var line in pending.Split('\n'))
+                {
+                    if (line == "end") { run = LatchedTrial.Completed; continue; }
+                    if (!line.StartsWith("inject raw")) continue;
+                    var t = line.Split(' '); int index = int.Parse(t[3]); string dev = t[4].Substring(4);
+                    long raw = long.Parse(t[5].Substring(6)); int ms = int.Parse(t[6].Substring(3));
+                    foreach (var pair in b)
+                    {
+                        if (pair.Value.Index != index || pair.Value.Device != dev || pair.Value.Kind != t[2]) continue;
+                        int action = Array.IndexOf(ShimFrame.Names, pair.Key);
+                        held[action] = pair.Value.Kind == "button" ? 1f : (float)Math.Max(0, Math.Min(1, (raw - pair.Value.Rest) / (double)(pair.Value.Max - pair.Value.Rest)));
+                        until[action] = frame + ms / 10; run = 3;
+                    }
+                }
+                pending = null;
+            }
+            var frameValues = new System.Collections.Generic.List<(int, ShimStatus, float)>();
+            foreach (int a in DriveTrial.GearsDelivered) { bool on = frame < until[a]; frameValues.Add((a, on ? L : N, on ? held[a] : 0f)); }
+            var bytes = Actions((ulong)frame, 0UL, frameValues.ToArray()); bytes[40] = run; bytes[41] = 1; bytes[42] = 1;
+            foreach (int a in DriveTrial.GearsDelivered) if (frame < until[a]) bytes[48 + a * 8 + 5] = 1;
+            Check(sink.Publish(bytes, frame, out why), why);
+            var composed = new DrivingValues(); sink.Compose(frame, true, 0f, ref composed);
+            if (changing > 0 && --changing == 0) gear = target;
+            if (hPattern && changing == 0)
+            {
+                int? gate = gateIgnored ? null : ShimTransmission.Gate(sink, frame);
+                int? next = ShimTransmission.Next(ShimTransmission.Mode.HPattern, automatic, gear, gate, ref lastGate, 0, false, clamp ? int.MaxValue : maxGear);
+                if (next.HasValue && keepGear && next.Value == ShimTransmission.Neutral && gear != ShimTransmission.Neutral) next = null;
+                // A change lasts longer than the release's settle run, as Art's does (several tenths of a second).
+                if (next.HasValue && next.Value != gear) { target = clamp ? Math.Min(next.Value, maxGear) : next.Value; changing = 30; }
+            }
+            var sample = new DriveTrial.Sample
+            {
+                Frame = frame, Underway = true, Composed = true, SteerLive = sink.Live(0, frame),
+                AppliedSteer = sink.Applied(0, frame), AppliedThrottle = sink.Applied(1, frame), AppliedBrake = sink.Applied(2, frame), AppliedHandbrake = sink.Applied(4, frame),
+                AppliedClutch = sink.Applied(3, frame),
+                OutSteer = composed.Steer, OutThrottle = composed.Throttle, OutBrake = composed.Brake, OutHandbrake = composed.Handbrake, OutClutch = composed.Clutch,
+                EngineSteer = composed.Steer, EngineThrottle = composed.Throttle, EngineBrake = composed.Brake, EngineHandbrake = composed.Handbrake,
+                EngineClutch = composed.Clutch + (clutchDiffers && frame > 50 ? .1f : 0f),
+                Gear = gear, MaxGear = maxGear, HPattern = hPattern, Automatic = automatic, ChangingGear = changing > 0, Speed = 0f,
+            };
+            foreach (int a in DriveTrial.GearsDelivered) sample.Injected[a] = sink.Injected(a, frame);
+            trial.Tick(sample);
+        }
+        return trial;
+    }
+    private static void GearSteps()
+    {
+        string profile = GearsProfile();
+        var b = DriveTrial.Bindings(profile, new[] { "clutch", "reverse", "gear1", "gear3" });
+        Check(b["clutch"].Kind == "axis" && b["clutch"].Index == 6 && b["reverse"].Index == 7 && b["gear3"].Index == 2 && b["gear7"].Index == 6, "saved clutch and gate bindings misread");
+        Check(DriveTrial.Raw(b["clutch"], .6f) == 39321 && DriveTrial.Button(b["gear1"], 1000) == "inject raw button 0 dev={d9b1d890-6f3f-11f1-8002-444553540000} value=1 ms=1000", "clutch or gate stimulus encoding");
+        bool refused = false; try { DriveTrial.Bindings(BridgeTests.DriveProfile, new[] { "clutch", "reverse", "gear1", "gear3" }); } catch (FormatException) { refused = true; }
+        Check(refused, "a profile without clutch or gates was accepted for gear steps");
+        refused = false; try { DriveTrial.Bindings(profile.Replace("reverse = button 7", "reverse = axis 7"), new string[0]); } catch (FormatException) { refused = true; }
+        Check(refused, "a gate bound to an axis was accepted");
+        // A five-speed car (indices 0..6): clutch, first, third, reverse, then gear6 (index 7) is beyond it.
+        var passed = SimulateGears();
+        Check(passed.Passed && passed.Failure == null, "gear steps: " + passed.Failure + " " + String.Join(", ", passed.Steps.ConvertAll(x => x.Name + "=" + x.Result + " " + x.Detail)));
+        Check(passed.Steps.Count == 5 && passed.Steps[4].Name == "gear6 gate beyond this car" && passed.Steps.TrueForAll(x => x.Result == "passed" && x.HoldSamples >= DriveTrial.MinHold),
+            "gear step rows: " + String.Join(", ", passed.Steps.ConvertAll(x => x.Name + "=" + x.Result)));
+        Check(passed.Steps[1].GateGear == ShimTransmission.FirstGear && passed.Steps[2].GateGear == ShimTransmission.FirstGear + 2 && passed.Steps[3].GateGear == ShimTransmission.Reverse &&
+            passed.Steps[4].GateGear == ShimTransmission.Neutral, "gate expectations");
+        Check(passed.Samples.ToString().Contains("\tclutch\t") && passed.Samples.ToString().Contains("gear6"), "gear samples did not record the clutch or the out-of-range gate");
+        // Every bound gate exists on a ten-ratio car: the out-of-range row stays open, so the drive does not pass.
+        var allExist = SimulateGears(maxGear: 9);
+        Check(!allExist.Passed && allExist.Failure == null && allExist.Steps[4].Result == "open" && allExist.Steps.GetRange(0, 4).TrueForAll(x => x.Result == "passed"), "missing out-of-range gate not left open");
+        string Fails(DriveTrial t) => t.Failure ?? "";
+        Check(Fails(SimulateGears(clamp: true)).Contains("a gate this car lacks moved the gear"), "a clamped gate passed");
+        Check(Fails(SimulateGears(gateIgnored: true)).Contains("settled frames"), "an ignored gate passed");
+        Check(Fails(SimulateGears(gateIgnored: true, startGear: ShimTransmission.FirstGear)).Contains("before the gate"), "a gate step passed on a car already in that gear");
+        Check(Fails(SimulateGears(keepGear: true)).Contains("expected neutral"), "a gear kept after release passed");
+        Check(Fails(SimulateGears(clutchDiffers: true)).Contains("car clutch"), "a car clutch differing from the composition passed");
+        Check(Fails(SimulateGears(hPattern: false)).Contains("not H-pattern"), "gear steps ran without an H-pattern profile");
+        Check(Fails(SimulateGears(automatic: true)).Contains("automatic gearbox"), "gear steps ran on an automatic gearbox");
+    }
     private static void DriveSteps()
     {
         var b = DriveTrial.Bindings(BridgeTests.DriveProfile);
@@ -631,7 +734,7 @@ internal static class Program
         }
         try
         {
-            Decode(); Consumption(); StatusesAndFailures(); SharedActions(); SharedStatus(); TrialSteps(); DriveSteps(); ProfileControls(); ControlsContractMatches();
+            Decode(); Consumption(); StatusesAndFailures(); SharedActions(); SharedStatus(); TrialSteps(); DriveSteps(); GearSteps(); ProfileControls(); ControlsContractMatches();
             assertions += BridgeTests.Fake();
             assertions += IsolationTests.Run();
             assertions += ProbeTests.Run();

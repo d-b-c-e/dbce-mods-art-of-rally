@@ -76,12 +76,15 @@ namespace ArtOfSimRally.Mod
                     OutSteer = composed.Steer, OutThrottle = composed.Throttle, OutBrake = composed.Brake, OutHandbrake = composed.Handbrake,
                     EngineSteer = __instance.steerInput, EngineThrottle = __instance.throttleInput,
                     EngineBrake = __instance.brakeInput, EngineHandbrake = __instance.handbrakeInput,
+                    AppliedClutch = composed.AppliedClutch, OutClutch = composed.Clutch, EngineClutch = __instance.clutchInput,
+                    MaxGear = drivetrain != null && drivetrain.gearRatios != null ? drivetrain.gearRatios.Length - 1 : -1,
+                    HPattern = WheelInput.SharedTransmission == ShimTransmission.Mode.HPattern,
                     Gear = drivetrain != null ? drivetrain.gear : -1,
                     Automatic = drivetrain != null && drivetrain.automatic,
                     ChangingGear = drivetrain != null && drivetrain.changingGear,
                     Speed = body != null ? body.velocity.magnitude : 0f,
                 };
-                foreach (int action in DriveTrial.Delivered) sample.Injected[action] = consumer.Injected(action, frame);
+                foreach (int action in trial.DeliveredActions) sample.Injected[action] = consumer.Injected(action, frame);
                 trial.Tick(sample);
             }
             catch (Exception ex) { ModLog.Error("Drive probe sample: " + ex.Message); }

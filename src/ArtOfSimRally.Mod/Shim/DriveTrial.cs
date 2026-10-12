@@ -12,8 +12,15 @@ namespace ArtOfSimRally.Mod.Shim
     // supplies samples and an atomic batch writer.
     internal sealed class DriveTrial
     {
-        internal const int Steer = 0, Throttle = 1, Brake = 2, Handbrake = 4, ShiftUp = 5, ShiftDown = 6;
+        internal const int Steer = 0, Throttle = 1, Brake = 2, Clutch = 3, Handbrake = 4, ShiftUp = 5, ShiftDown = 6, ReverseGate = 8, Gear1 = 23;
         internal static readonly int[] Delivered = { Steer, Throttle, Brake, Handbrake, ShiftUp, ShiftDown };
+        // Steps=gears (romi 33299): clutch and H-pattern gates from the owner's saved bindings. The driving axes stay
+        // delivered so every release is judged neutral on them too.
+        internal static readonly int[] GearsDelivered = { Steer, Throttle, Brake, Clutch, Handbrake, ReverseGate, Gear1, Gear1 + 1, Gear1 + 2, Gear1 + 3, Gear1 + 4, Gear1 + 5, Gear1 + 6, Gear1 + 7 };
+        private static readonly string[] DriveRequired = { "steer", "throttle", "brake", "handbrake", "shiftUp", "shiftDown" };
+        private static readonly string[] GearsRequired = { "clutch", "reverse", "gear1", "gear3" };
+        private static readonly string[] Known = { "steer", "throttle", "brake", "clutch", "handbrake", "shiftUp", "shiftDown", "reverse",
+            "gear1", "gear2", "gear3", "gear4", "gear5", "gear6", "gear7", "gear8" };
         internal const int StepFrames = 900, SettleFrames = 20, MinHold = 5;
         internal const float Tolerance = 1e-4f;
 
@@ -26,7 +33,8 @@ namespace ArtOfSimRally.Mod.Shim
 
         // The applied profile's raw objects for the driving actions, from Core's line grammar
         // `name = axis N dev={..} prod={..} range=a..b rest=r travel=+1` or `name = button N dev={..}`.
-        internal static Dictionary<string, Binding> Bindings(string profile)
+        internal static Dictionary<string, Binding> Bindings(string profile) => Bindings(profile, DriveRequired);
+        internal static Dictionary<string, Binding> Bindings(string profile, string[] required)
         {
             var found = new Dictionary<string, Binding>(StringComparer.Ordinal);
             foreach (var raw in profile.Split('\n'))
@@ -35,7 +43,7 @@ namespace ArtOfSimRally.Mod.Shim
                 int eq = line.IndexOf('=');
                 if (eq <= 0 || line.StartsWith("[", StringComparison.Ordinal) || line.StartsWith(";", StringComparison.Ordinal)) continue;
                 string name = line.Substring(0, eq).Trim();
-                if (name != "steer" && name != "throttle" && name != "brake" && name != "handbrake" && name != "shiftUp" && name != "shiftDown") continue;
+                if (Array.IndexOf(Known, name) < 0) continue;
                 var t = line.Substring(eq + 1).Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
                 if (t.Length < 3 || (t[0] != "axis" && t[0] != "button")) throw new FormatException(name + ": expected axis or button");
                 var b = new Binding { Name = name, Kind = t[0], Index = int.Parse(t[1], CultureInfo.InvariantCulture) };
@@ -54,10 +62,12 @@ namespace ArtOfSimRally.Mod.Shim
                 if (String.IsNullOrEmpty(b.Device)) throw new FormatException(name + ": no dev=");
                 found[name] = b;
             }
-            foreach (var name in new[] { "steer", "throttle", "brake", "handbrake", "shiftUp", "shiftDown" })
+            foreach (var name in required)
+                if (!found.TryGetValue(name, out _)) throw new FormatException("profile does not bind " + name);
+            foreach (var pair in found)
             {
-                if (!found.TryGetValue(name, out var b)) throw new FormatException("profile does not bind " + name);
-                if ((name.StartsWith("shift", StringComparison.Ordinal)) != (b.Kind == "button")) throw new FormatException(name + ": unexpected " + b.Kind);
+                bool button = pair.Key.StartsWith("shift", StringComparison.Ordinal) || pair.Key == "reverse" || pair.Key.StartsWith("gear", StringComparison.Ordinal);
+                if (button != (pair.Value.Kind == "button")) throw new FormatException(pair.Key + ": unexpected " + pair.Value.Kind);
             }
             return found;
         }
@@ -97,8 +107,10 @@ namespace ArtOfSimRally.Mod.Shim
             internal float AppliedSteer, AppliedThrottle, AppliedBrake, AppliedHandbrake, Alignment;
             internal float OutSteer, OutThrottle, OutBrake, OutHandbrake;
             internal float EngineSteer, EngineThrottle, EngineBrake, EngineHandbrake;
-            internal bool[] Injected = new bool[7];
-            internal int Gear;
+            internal float AppliedClutch, OutClutch, EngineClutch;
+            internal bool[] Injected = new bool[ShimFrame.Count];
+            internal int Gear, MaxGear = int.MaxValue;   // MaxGear: this car's highest gear-ratio index
+            internal bool HPattern;                      // the session's profile transmission is H-pattern
             internal bool Automatic, ChangingGear;
             internal float Speed;
         }
@@ -151,6 +163,11 @@ namespace ArtOfSimRally.Mod.Shim
             internal string[] Commands;
             internal int Primary, Sign, GearDelta;
             internal int HoldSamples, ReleaseSamples, GearBefore = int.MinValue, GearAfter = int.MinValue;
+            // Gate steps: the gear expected while held (an out-of-range gate: the gear it started in, never clamped)
+            // and after release (neutral: no gate held).
+            internal int? GateGear, ReleaseGear;
+            internal bool OutOfRange;
+            internal int GateFrames;
             internal string Result, Detail;
         }
 
@@ -161,16 +178,34 @@ namespace ArtOfSimRally.Mod.Shim
         private int batch, frames, settled, cleanRun, badRelease, lastFrame = -1;
         private bool seen;
         internal readonly List<Step> Steps = new List<Step>();
+        internal readonly bool Gears;
+        internal readonly int[] DeliveredActions;
+        private readonly Dictionary<string, Binding> gates = new Dictionary<string, Binding>(StringComparer.Ordinal);
         internal State Current { get; private set; } = State.Admission;
         internal int StepIndex { get; private set; }
         internal string Failure { get; private set; }
-        internal readonly StringBuilder Samples = new StringBuilder("step\tframe\tunderway\tcomposed\tappliedSteer\tappliedThrottle\tappliedBrake\tappliedHandbrake\talignment\toutSteer\toutThrottle\toutBrake\toutHandbrake\tengineSteer\tengineThrottle\tengineBrake\tengineHandbrake\tinjected\tgear\tautomatic\tspeed\n");
+        internal readonly StringBuilder Samples = new StringBuilder("step\tframe\tunderway\tcomposed\tappliedSteer\tappliedThrottle\tappliedBrake\tappliedHandbrake\talignment\toutSteer\toutThrottle\toutBrake\toutHandbrake\tengineSteer\tengineThrottle\tengineBrake\tengineHandbrake\tinjected\tgear\tautomatic\tspeed\tappliedClutch\toutClutch\tengineClutch\tmaxGear\n");
 
-        internal DriveTrial(ShimAxisConsumer consumer, string profile, Action<string> writeBatch, string nonce)
+        internal DriveTrial(ShimAxisConsumer consumer, string profile, Action<string> writeBatch, string nonce, bool gears = false)
         {
             this.consumer = consumer ?? throw new ArgumentNullException(nameof(consumer));
             this.writeBatch = writeBatch ?? throw new ArgumentNullException(nameof(writeBatch));
             this.nonce = nonce ?? throw new ArgumentNullException(nameof(nonce));
+            Gears = gears;
+            DeliveredActions = gears ? GearsDelivered : Delivered;
+            if (gears)
+            {
+                // Clutch held alone; each gate held then released (no gate held is neutral); then the lowest bound gate
+                // this car lacks, chosen from the live gear range when its step starts.
+                var g = Bindings(profile, GearsRequired);
+                foreach (var pair in g) if (pair.Key.StartsWith("gear", StringComparison.Ordinal)) gates[pair.Key] = pair.Value;
+                Steps.Add(new Step { Name = "clutch 60%", Commands = new[] { Axis(g["clutch"], .6f, 1500) }, Primary = Clutch, Sign = 1 });
+                Steps.Add(Gate("gear1 gate", g["gear1"], Gear1, ShimTransmission.FirstGear));
+                Steps.Add(Gate("gear3 gate", g["gear3"], Gear1 + 2, ShimTransmission.FirstGear + 2));
+                Steps.Add(Gate("reverse gate", g["reverse"], ReverseGate, ShimTransmission.Reverse));
+                Steps.Add(new Step { Name = "out-of-range gate", OutOfRange = true, Sign = 1, ReleaseGear = ShimTransmission.Neutral });
+                return;
+            }
             var b = Bindings(profile);
             string Throttle40(int ms) => Axis(b["throttle"], .4f, ms);
             Steps.Add(new Step { Name = "throttle 40%", Commands = new[] { Throttle40(1500) }, Primary = Throttle, Sign = 1 });
@@ -205,14 +240,14 @@ namespace ArtOfSimRally.Mod.Shim
                 case State.Holding:
                     if (!s.Injected[step.Primary]) { if (seen) { Current = State.Releasing; settled = 0; } return; }
                     seen = true;
-                    string hold = Check(step, s, true);
+                    string hold = Check(step, s, true) ?? GateHold(step, s);
                     if (hold != null) { step.Result = "failed"; step.Detail = hold; Fail(step.Name + ": " + hold); return; }
                     step.HoldSamples++;
                     return;
                 case State.Releasing:
                     // Judged only once every injection of the step has ended (and a gear change completed).
-                    bool anyInjected = false; foreach (var i in Delivered) anyInjected |= s.Injected[i];
-                    if (anyInjected || (step.GearDelta != 0 && s.ChangingGear)) { cleanRun = 0; return; }
+                    bool anyInjected = false; foreach (var i in DeliveredActions) anyInjected |= s.Injected[i];
+                    if (anyInjected || ((step.GearDelta != 0 || step.GateGear.HasValue) && s.ChangingGear)) { cleanRun = 0; return; }
                     // romi 30996: SettleFrames consecutive clean samples; a bad sample restarts the run, and
                     // bad samples are counted for the whole release (never reset), so flicker fails.
                     string release = Check(step, s, false);
@@ -232,25 +267,55 @@ namespace ArtOfSimRally.Mod.Shim
             }
         }
 
+        private static Step Gate(string name, Binding binding, int action, int gear) =>
+            new Step { Name = name, Commands = new[] { Button(binding, 1000) }, Primary = action, Sign = 1, GateGear = gear, ReleaseGear = ShimTransmission.Neutral };
         private void Begin(Sample s)
         {
-            var step = Steps[StepIndex];
-            step.GearBefore = s.Gear;
-            Send(String.Join("\n", step.Commands), State.Holding);
+            if (Gears && !s.HPattern) { Fail("the profile's transmission is not H-pattern: gates are not applied"); return; }
+            if (Gears && s.Automatic) { Fail("automatic gearbox: shared gates are ignored by policy"); return; }
+            Start(s);
+        }
+        // Starts the current step, or ends the drive. An out-of-range gate is resolved now from the car's live gear range:
+        // the lowest bound gearN whose index (first gear + N - 1) this car lacks. None bound: the step stays open.
+        private void Start(Sample s)
+        {
+            while (StepIndex < Steps.Count && Steps[StepIndex].OutOfRange && Steps[StepIndex].Commands == null)
+            {
+                var step = Steps[StepIndex];
+                for (int n = 1; n <= ShimTransmission.Gates && step.Commands == null; n++)
+                    if (gates.TryGetValue("gear" + n, out var binding) && ShimTransmission.FirstGear + n - 1 > s.MaxGear)
+                    { step.Name = "gear" + n + " gate beyond this car"; step.Commands = new[] { Button(binding, 1000) }; step.Primary = Gear1 + n - 1; }
+                if (step.Commands != null) break;
+                step.Result = "open"; step.Detail = "every bound gate exists on this car (max gear index " + s.MaxGear + ")";
+                StepIndex++;
+            }
+            if (StepIndex >= Steps.Count) { Send("end", State.Ending); return; }
+            var current = Steps[StepIndex];
+            current.GearBefore = s.Gear;
+            if (current.OutOfRange) current.GateGear = s.Gear;
+            // A gate step only shows the gate if the car is not already in that gear.
+            else if (current.GateGear.HasValue && s.Gear == current.GateGear) { current.Result = "failed"; current.Detail = "already in gear " + s.Gear + " before the gate"; Fail(current.Name + ": " + current.Detail); return; }
+            Send(String.Join("\n", current.Commands), State.Holding);
         }
         private void Close(Step step, Sample s)
         {
             step.GearAfter = s.Gear;
             if (step.HoldSamples < MinHold) { step.Result = "failed"; step.Detail = "only " + step.HoldSamples + " held samples"; Fail(step.Name + ": " + step.Detail); return; }
-            if (step.GearDelta != 0)
+            if (step.GateGear.HasValue)
+            {
+                if (step.GateFrames < MinHold) { step.Result = "failed"; step.Detail = "gear " + step.GateGear + " held on only " + step.GateFrames + " settled frames"; Fail(step.Name + ": " + step.Detail); return; }
+                if (s.Gear != step.ReleaseGear) { step.Result = "failed"; step.Detail = "after release gear " + s.Gear + ", expected neutral " + step.ReleaseGear; Fail(step.Name + ": " + step.Detail); return; }
+                step.Result = "passed";
+            }
+            else if (step.GearDelta != 0)
             {
                 if (s.Automatic) { step.Result = "open"; step.Detail = "automatic gearbox: shared gear actions are ignored by policy"; }
                 else if (step.GearAfter - step.GearBefore != step.GearDelta) { step.Result = "failed"; step.Detail = "gear " + step.GearBefore + " -> " + step.GearAfter; Fail(step.Name + ": " + step.Detail); return; }
                 else step.Result = "passed";
             }
             else step.Result = "passed";
-            if (++StepIndex < Steps.Count) { Steps[StepIndex].GearBefore = s.Gear; Send(String.Join("\n", Steps[StepIndex].Commands), State.Holding); }
-            else Send("end", State.Ending);
+            StepIndex++;
+            Start(s);
         }
 
         // Hold: the primary action is applied with the step's sign. Always: the composition is exactly
@@ -259,9 +324,9 @@ namespace ArtOfSimRally.Mod.Shim
         {
             if (!s.Underway) return "event left UNDERWAY";
             if (!s.Composed) return "no shared composition in this frame";
-            if (holding && step.GearDelta == 0)
+            if (holding && step.GearDelta == 0 && !step.GateGear.HasValue && !step.OutOfRange)
             {
-                float applied = step.Primary == Steer ? s.AppliedSteer : step.Primary == Throttle ? s.AppliedThrottle : step.Primary == Brake ? s.AppliedBrake : s.AppliedHandbrake;
+                float applied = step.Primary == Steer ? s.AppliedSteer : step.Primary == Throttle ? s.AppliedThrottle : step.Primary == Brake ? s.AppliedBrake : step.Primary == Clutch ? s.AppliedClutch : s.AppliedHandbrake;
                 if (applied == 0f || Math.Sign(applied) != step.Sign) return "applied " + Name(step.Primary) + " " + applied.ToString("R", CultureInfo.InvariantCulture) + " has the wrong sign";
             }
             if (!holding)
@@ -272,7 +337,10 @@ namespace ArtOfSimRally.Mod.Shim
                 if (s.AppliedThrottle != 0f) return "throttle still applied";
                 if (s.AppliedBrake != 0f) return "brake still applied";
                 if (s.AppliedHandbrake != 0f) return "handbrake still applied";
+                if (s.AppliedClutch != 0f) return "clutch still applied";
             }
+            if (Math.Abs(s.OutClutch - Math.Max(0f, s.AppliedClutch)) > Tolerance) return "composed clutch " + s.OutClutch + " applied " + s.AppliedClutch;
+            if (Math.Abs(s.EngineClutch - s.OutClutch) > Tolerance) return "car clutch " + s.EngineClutch + " differs from the composition " + s.OutClutch;
             float steer = s.AppliedSteer != 0f ? s.AppliedSteer + s.Alignment : s.SteerLive ? s.Alignment : 0f;
             if (Math.Abs(s.OutSteer - steer) > Tolerance) return "composed steer " + s.OutSteer + " expected " + steer;
             if (Math.Abs(s.OutThrottle - Math.Max(0f, s.AppliedThrottle)) > Tolerance) return "composed throttle " + s.OutThrottle + " applied " + s.AppliedThrottle;
@@ -283,18 +351,29 @@ namespace ArtOfSimRally.Mod.Shim
                 return "car inputs differ from the composition" + (s.Automatic ? " (automatic gearbox: Art swaps throttle and brake when nearly stopped)" : "");
             return null;
         }
+        // A held gate reaches its gear once the change settles, and stays there; an out-of-range gate never moves the
+        // gear (no clamping onto another gear).
+        private static string GateHold(Step step, Sample s)
+        {
+            if (!step.GateGear.HasValue) return null;
+            if (step.OutOfRange && (s.ChangingGear || s.Gear != step.GateGear)) return "a gate this car lacks moved the gear " + step.GateGear + " -> " + s.Gear;
+            if (s.ChangingGear) return null;
+            if (s.Gear == step.GateGear) { step.GateFrames++; return null; }
+            return step.GateFrames > 0 ? "gear left " + step.GateGear + " for " + s.Gear + " while the gate was held" : null;
+        }
         private static string Name(int action) => ShimFrame.Names[action];
 
         private void Record(Step step, Sample s)
         {
             var injected = new StringBuilder();
-            foreach (var i in Delivered) if (s.Injected[i]) injected.Append(injected.Length == 0 ? "" : ",").Append(Name(i));
+            for (int i = 0; i < s.Injected.Length; i++) if (s.Injected[i]) injected.Append(injected.Length == 0 ? "" : ",").Append(Name(i));
             string F(float v) => v.ToString("R", CultureInfo.InvariantCulture);
             Samples.Append(step == null ? "-" : step.Name).Append('\t').Append(s.Frame).Append('\t').Append(s.Underway ? 1 : 0).Append('\t').Append(s.Composed ? 1 : 0)
                 .Append('\t').Append(F(s.AppliedSteer)).Append('\t').Append(F(s.AppliedThrottle)).Append('\t').Append(F(s.AppliedBrake)).Append('\t').Append(F(s.AppliedHandbrake))
                 .Append('\t').Append(F(s.Alignment)).Append('\t').Append(F(s.OutSteer)).Append('\t').Append(F(s.OutThrottle)).Append('\t').Append(F(s.OutBrake)).Append('\t').Append(F(s.OutHandbrake))
                 .Append('\t').Append(F(s.EngineSteer)).Append('\t').Append(F(s.EngineThrottle)).Append('\t').Append(F(s.EngineBrake)).Append('\t').Append(F(s.EngineHandbrake))
-                .Append('\t').Append(injected.Length == 0 ? "-" : injected.ToString()).Append('\t').Append(s.Gear).Append('\t').Append(s.Automatic ? 1 : 0).Append('\t').Append(F(s.Speed)).Append('\n');
+                .Append('\t').Append(injected.Length == 0 ? "-" : injected.ToString()).Append('\t').Append(s.Gear).Append('\t').Append(s.Automatic ? 1 : 0).Append('\t').Append(F(s.Speed))
+                .Append('\t').Append(F(s.AppliedClutch)).Append('\t').Append(F(s.OutClutch)).Append('\t').Append(F(s.EngineClutch)).Append('\t').Append(s.MaxGear).Append('\n');
         }
         private void Send(string commands, State next)
         {
