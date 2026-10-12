@@ -16,6 +16,9 @@ param([Parameter(Mandatory)][string]$Result,
       [string]$RouteSource,
       # A cold replay of a recording made here (sana 36236): the tape's start state, then no input or force device.
       [string]$ReplayTape,
+      # A capture-driver recording made here has no environment-at-start of its own: its start state was this route's
+      # (Set-RouteEnvironment). Replay it from the same route.
+      [string]$ReplayRoute,
       [ValidateRange(30,300)][int]$ObserveSeconds=120,
       [ValidateRange(0,60)][int]$SettleSeconds=10,
       [ValidateRange(10,60)][int]$CaptureSeconds=12,
@@ -44,6 +47,7 @@ $Result=Full $Result; Plain $Result
 $native=[bool]$RouteSource
 $replay=[bool]$ReplayTape
 if($native -and $replay) { throw 'Choose -RouteSource (record) or -ReplayTape (replay), not both.' }
+if($ReplayRoute -and !$replay) { throw '-ReplayRoute only gives a replayed tape its start state.' }
 if($native) {
     $RouteSource=Full $RouteSource; Plain $RouteSource
     . (Join-Path $PSScriptRoot 'RouteEnvironment.ps1')
@@ -52,10 +56,16 @@ if($native) {
 }
 if($replay) {
     $ReplayTape=Full $ReplayTape; Plain $ReplayTape
-    foreach($n in @('session.txt','end.txt','complete.tsv','environment-at-start/state.json')) {
+    foreach($n in @('session.txt','end.txt','complete.tsv') + $(if($ReplayRoute) { @() } else { @('environment-at-start/state.json') })) {
         if(!(Test-Path -LiteralPath (Join-Path $ReplayTape $n) -PathType Leaf)) { throw "Replay tape incomplete: $n" }
     }
     if(Test-Path -LiteralPath (Join-Path $ReplayTape 'incomplete.txt')) { throw 'Replay tape is marked incomplete.' }
+    if($ReplayRoute) {
+        if(Test-Path -LiteralPath (Join-Path $ReplayTape 'environment-at-start')) { throw 'This tape has its own start state; omit -ReplayRoute.' }
+        $ReplayRoute=Full $ReplayRoute; Plain $ReplayRoute
+        . (Join-Path $PSScriptRoot 'RouteEnvironment.ps1')
+        Assert-RouteSource $ReplayRoute
+    }
     . (Join-Path $PSScriptRoot 'ReplayInputIsolation.ps1')
     if(!$PSBoundParameters.ContainsKey('ObserveSeconds')) { $ObserveSeconds=300 }
 }
@@ -64,7 +74,7 @@ if($staged.schema -ne 1 -or $staged.kind -ne 'shared-input-ordinary') { throw 'N
 $GameDir=Full $staged.gameCopy; $owner=Full $staged.sourceGame
 foreach($p in @($GameDir,$owner)) { Plain $p }
 if((Within $GameDir $owner) -or (Within $owner $GameDir) -or (Within $Result $GameDir) -or (Within $Result $owner) -or ($native -and (Within $RouteSource $GameDir)) -or
-    ($replay -and ((Within $ReplayTape $GameDir) -or (Within $ReplayTape $Result)))) { throw 'Invalid disposable scope.' }
+    ($replay -and ((Within $ReplayTape $GameDir) -or (Within $ReplayTape $Result))) -or ($ReplayRoute -and (Within $ReplayRoute $GameDir))) { throw 'Invalid disposable scope.' }
 $recorded=$native -or $replay
 if($recorded -ne [bool]$staged.recorder) { throw $(if($recorded) { 'A native-script run or replay needs Prepare-SharedInputCopy -Recorder.' } else { 'Staged with the recorder; the ordinary smoke runs without it.' }) }
 if(Test-Path -LiteralPath "$Result/launch.json") { throw 'This staging has already been launched; stage a fresh result.' }
@@ -160,8 +170,11 @@ try {
         # The tape's recorded start state, this rig's own display settings, then no input or force device: the
         # tape supplies every input (replay-input.json). Restoration below returns the copy and shared state.
         $routeApplied=$true
-        Restore-SessionEnvironment (Join-Path $ReplayTape 'environment-at-start') -NoReceipt
-        Restore-SessionPresentation "$Result/shared-environment"
+        if($ReplayRoute) { Set-RouteEnvironment $ReplayRoute "$Result/shared-environment" } # the recording's own start state
+        else {
+            Restore-SessionEnvironment (Join-Path $ReplayTape 'environment-at-start') -NoReceipt
+            Restore-SessionPresentation "$Result/shared-environment"
+        }
         Set-ReplayInputIsolation (Join-Path $mod 'Settings.xml') $Result
         $ffbLog=Join-Path $artLocal 'ffb.log'; $ffbBefore=if(Test-Path -LiteralPath $ffbLog) { [IO.File]::ReadAllText($ffbLog) } else { '' }
         @("mode=replay","playback=trajectory","tape=$ReplayTape","out=$replayOut","poseThreshold=0",
