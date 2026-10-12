@@ -5,11 +5,18 @@
 # attended owner test. Never installs into the owner game, sends input or force, or answers Steam
 # prompts. Observes the copy's UMM log for the shared phases, closes the exact child, then restores
 # shared state.
+# -RouteSource (romi 31616, staged with Prepare-SharedInputCopy -Recorder): the dev recorder's capture driver replays
+# the route's taped menus to the stage under the route's start state, then scripts the Rewired values Art reads
+# (carInput=native) while the ordinary session owns the wheel at rest; its native-verdict.txt judges whether the mod
+# returned Art's own result unchanged. Scripted Rewired native-path evidence, not physical keyboard or wheel/FFB
+# qualification.
 [CmdletBinding()]
 param([Parameter(Mandatory)][string]$Result,
       [switch]$PreflightOnly,
-      [ValidateRange(30,180)][int]$ObserveSeconds=120,
+      [string]$RouteSource,
+      [ValidateRange(30,300)][int]$ObserveSeconds=120,
       [ValidateRange(0,60)][int]$SettleSeconds=10,
+      [ValidateRange(16,60)][int]$CaptureSeconds=18,
       [string]$ToolkitRepo='E:/Source/toolkits/dbce-wheel-mod-toolkit',
       [string]$HubRepo='E:/Source/dbce-project-mgmt')
 $ErrorActionPreference='Stop'
@@ -32,11 +39,19 @@ function Read-Shared([string]$p) {
     finally { $stream.Dispose() }
 }
 $Result=Full $Result; Plain $Result
+$native=[bool]$RouteSource
+if($native) {
+    $RouteSource=Full $RouteSource; Plain $RouteSource
+    . (Join-Path $PSScriptRoot 'RouteEnvironment.ps1')
+    Assert-RouteSource $RouteSource
+    if(!$PSBoundParameters.ContainsKey('ObserveSeconds')) { $ObserveSeconds=300 }
+}
 $staged=Get-Content -LiteralPath (Join-Path $Result 'staged.json') -Raw | ConvertFrom-Json
 if($staged.schema -ne 1 -or $staged.kind -ne 'shared-input-ordinary') { throw 'Not a SharedInput staging result.' }
 $GameDir=Full $staged.gameCopy; $owner=Full $staged.sourceGame
 foreach($p in @($GameDir,$owner)) { Plain $p }
-if((Within $GameDir $owner) -or (Within $owner $GameDir) -or (Within $Result $GameDir) -or (Within $Result $owner)) { throw 'Invalid disposable scope.' }
+if((Within $GameDir $owner) -or (Within $owner $GameDir) -or (Within $Result $GameDir) -or (Within $Result $owner) -or ($native -and (Within $RouteSource $GameDir))) { throw 'Invalid disposable scope.' }
+if($native -ne [bool]$staged.recorder) { throw $(if($native) { 'A native-script run needs Prepare-SharedInputCopy -Recorder.' } else { 'Staged with the recorder; the ordinary smoke runs without it.' }) }
 if(Test-Path -LiteralPath "$Result/launch.json") { throw 'This staging has already been launched; stage a fresh result.' }
 $mod=Join-Path $GameDir 'Mods/ArtOfSimRally'
 $umLog=Join-Path $GameDir 'artofrally_Data/Managed/UnityModManager/Log.txt'
@@ -51,12 +66,16 @@ function Assert-Pins {
 Assert-Pins
 [xml]$copySettings=Get-Content -LiteralPath (Join-Path $mod 'Settings.xml') -Raw
 if($copySettings.DocumentElement.SharedInput -ne 'true') { throw 'Staged settings do not turn SharedInput on.' }
-$otherMods=@(Get-ChildItem -LiteralPath (Join-Path $GameDir 'Mods') -Directory | Where-Object Name -NE 'ArtOfSimRally')
-if($otherMods.Count) { throw 'Disposable copy contains optional mod folders; stage only ArtOfSimRally.' }
+$allowed=@('ArtOfSimRally') + $(if($native) { @('ArtOfSimRally.DevRecorder') } else { @() })
+$otherMods=@(Get-ChildItem -LiteralPath (Join-Path $GameDir 'Mods') -Directory | Where-Object Name -NotIn $allowed)
+if($otherMods.Count) { throw 'Disposable copy contains optional mod folders; stage only ArtOfSimRally (and the recorder for a native-script run).' }
 [xml]$umm=Get-Content -LiteralPath (Join-Path $GameDir 'artofrally_Data/Managed/UnityModManager/Params.xml') -Raw
 if(@($umm.Param.ModParams.Mod | Where-Object { $_.Id -eq 'ArtOfSimRally' -and $_.Enabled -eq 'true' }).Count -ne 1) { throw 'Candidate UMM mod is not enabled.' }
-# Ordinary mode only: no probe request, developer marker or injection switch may be present.
+if($native -and @($umm.Param.ModParams.Mod | Where-Object { $_.Id -eq 'ArtOfSimRally.DevRecorder' -and $_.Enabled -eq 'false' }).Count) { throw 'The recorder is disabled in the copy UMM parameters.' }
+# Ordinary mode only: no probe request, developer marker or injection switch may be present (a native-script
+# run writes its own recorder request once it holds the lease; restoration removes it).
 if($env:DBCE_ART_SHIM_REQUEST) { throw 'DBCE_ART_SHIM_REQUEST is set; the ordinary smoke never runs the probe.' }
+$sessionRequest=Join-Path $env:LOCALAPPDATA 'ArtOfSimRally/session-request.txt'
 foreach($p in @('ArtOfSimRally/controls-request.txt','ArtOfSimRally/session-request.txt','dbce/art-of-rally/inject.on')) {
     if(Test-Path -LiteralPath (Join-Path $env:LOCALAPPDATA $p)) { throw "Existing developer marker refused: $p" }
 }
@@ -66,7 +85,7 @@ Assert-GameClosed
 $context=Get-SteamLaunchContext
 $context | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath "$Result/preflight-steam-context.json"
 if($context.decision -eq 'refuse') { throw "Steam launch context refused: $($context.reason)" }
-if($PreflightOnly) { Write-Output "Staged pins, settings, app id, UMM, marker and Steam context ($($context.decision)) checks passed. No launch or shared-state mutation."; return }
+if($PreflightOnly) { Write-Output "Staged pins, settings, app id, UMM, $(if($native) { 'recorder, route, ' })marker and Steam context ($($context.decision)) checks passed. No launch or shared-state mutation."; return }
 $ownerInput=Join-Path $HubRepo 'tools/Owner-Input.ps1'
 if([double](& $ownerInput -IdleSeconds) -lt 300) { throw 'Owner input is recent; no launch or shared-state mutation.' }
 $artLocal=Join-Path $env:LOCALAPPDATA 'ArtOfSimRally'
@@ -75,7 +94,8 @@ $customRally=Join-Path $localLow 'customrally' # read by SessionEnvironment.ps1'
 . (Join-Path $PSScriptRoot 'SessionEnvironment.ps1')
 . (Join-Path $ToolkitRepo 'tools/playback/Stage-RigLease.ps1')
 $snapshots=[Collections.Generic.List[object]]::new(); $ownerPins=[Collections.Generic.List[object]]::new()
-$lease=$null; $game=$null; $ready=$false; $environmentSaved=$false; $launchAttempted=$false; $localBefore=@(); $artBefore=@()
+$lease=$null; $game=$null; $ready=$false; $environmentSaved=$false; $launchAttempted=$false; $routeApplied=$false; $localBefore=@(); $artBefore=@()
+$capture=Join-Path $Result 'capture'
 function Save-File([string]$p) {
     Plain $p; $p=Full $p
     if($snapshots.path -contains $p) { return }
@@ -86,7 +106,7 @@ function Save-File([string]$p) {
 function Files([string]$p,[switch]$Recurse) {
     if(Test-Path -LiteralPath $p) { Get-ChildItem -LiteralPath $p -File -Recurse:$Recurse | ForEach-Object { Plain $_.FullName; $_.FullName } }
 }
-$lease=Enter-StageRigLease -Path (Join-Path $env:LOCALAPPDATA 'dbce/test-slot.txt') -Owner art-shared-input -Purpose 'Disposable Art SharedInput ordinary startup smoke; muted, no force or input; restore shared state'
+$lease=Enter-StageRigLease -Path (Join-Path $env:LOCALAPPDATA 'dbce/test-slot.txt') -Owner art-shared-input -Purpose $(if($native) { 'Disposable Art SharedInput ordinary native-script coexistence at a recorder-reached stage; muted, no force or OS input; restore shared state' } else { 'Disposable Art SharedInput ordinary startup smoke; muted, no force or input; restore shared state' })
 try {
     Assert-GameClosed
     New-Item -ItemType Directory -Path "$Result/shared-files","$Result/after" | Out-Null
@@ -110,6 +130,13 @@ try {
     Assert-Pins # close the preparation-to-launch gap while holding the lease
     $context=Get-SteamLaunchContext # Steam may have stopped or changed since preflight
     if($context.decision -eq 'refuse') { $context | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath "$Result/launch-steam-context.json"; throw "Steam launch context refused: $($context.reason)" }
+    if($native) {
+        $routeApplied=$true; Set-RouteEnvironment $RouteSource "$Result/shared-environment"
+        # The recorder's request (a shared marker, absent before; restoration removes it and its .taken rename).
+        @("mode=record","tape=$capture","captureDriver=$RouteSource","carInput=native","captureSeconds=$CaptureSeconds",
+          "muteOutputs=1","expiresUtc=$([DateTime]::UtcNow.AddMinutes(10).ToString('o'))") | Set-Content -LiteralPath $sessionRequest -Encoding ascii
+        Copy-Item -LiteralPath $sessionRequest -Destination (Join-Path $Result 'session-request.txt')
+    }
     $exe=Join-Path $GameDir 'artofrally.exe'
     $childEnvironment=[ordered]@{
         SteamAppId='550320'; SteamGameId='550320'
@@ -147,12 +174,13 @@ try {
     if(![string]::Equals($imagePath,$exe,[StringComparison]::OrdinalIgnoreCase)) { throw 'Launched executable path unavailable or differs; no replacement process action authorized.' }
     $gameIntegrity=try { Get-ProcessIntegrity $game.Id } catch { $null }
     $matchesSteam=$null -ne $gameIntegrity -and $gameIntegrity.integrity -eq $context.steam[0].integrity
-    @{pid=$game.Id;startUtc=$processStart.ToString('o');executable=$imagePath;stagedSha256=(Hash "$Result/staged.json");sourceCommit=$staged.sourceCommit;lease=$lease
+    @{pid=$game.Id;startUtc=$processStart.ToString('o');executable=$imagePath;stagedSha256=(Hash "$Result/staged.json");sourceCommit=$staged.sourceCommit;lease=$lease;routeSource=$RouteSource
         launchMode=$context.decision;brokerSha256=$brokerSha256;steam=$context.steam[0];launcher=$context.launcher;game=$gameIntegrity;integrityMatchesSteam=$matchesSteam;muted=$true} |
         ConvertTo-Json -Depth 4 | Set-Content -LiteralPath "$Result/launch.json"
     if(!$matchesSteam) { throw 'Launched copy integrity differs from Steam; SteamAPI_Init cannot succeed. Closing the exact child without observation.' }
-    Write-Output "Disposable Art started (muted SharedInput smoke): pid=$($game.Id), path=$imagePath. No input sent."
+    Write-Output "Disposable Art started (muted SharedInput $(if($native) { 'native-script coexistence' } else { 'smoke' })): pid=$($game.Id), path=$imagePath. No OS input sent."
     # Ends on a terminal shared line; after "first frame accepted" it keeps watching SettleSeconds for a stop.
+    # A native-script run instead ends when the recorder has closed its capture.
     $deadline=[DateTime]::UtcNow.AddSeconds($ObserveSeconds); $outcome='timeout'; $settleUntil=$null
     while(!$game.HasExited -and [DateTime]::UtcNow -lt $deadline) {
         Assert-StageRigLease -Path $lease.path -Token $lease.token
@@ -160,14 +188,19 @@ try {
         if([double](& $ownerInput -IdleSeconds) -lt 5) { 'Owner input resumed; ending observation.' | Set-Content -LiteralPath "$Result/interrupted.txt"; $outcome='interrupted'; break }
         $lines=Read-Shared $umLog
         if($lines -match 'Shared input (not used|stopped)') { $outcome='refused-or-stopped'; break }
-        if(!$settleUntil -and ($lines -match 'Shared input: first frame accepted')) { $settleUntil=[DateTime]::UtcNow.AddSeconds($SettleSeconds) }
-        if($settleUntil -and [DateTime]::UtcNow -ge $settleUntil) { $outcome='attached'; break }
+        if($native) { if(Test-Path -LiteralPath (Join-Path $capture 'end.txt')) { $outcome='captured'; break } }
+        else {
+            if(!$settleUntil -and ($lines -match 'Shared input: first frame accepted')) { $settleUntil=[DateTime]::UtcNow.AddSeconds($SettleSeconds) }
+            if($settleUntil -and [DateTime]::UtcNow -ge $settleUntil) { $outcome='attached'; break }
+        }
         $null=$game.WaitForExit(500); $game.Refresh()
     }
     if($game.HasExited -and $outcome -eq 'timeout') { $outcome='exited' }
     $lines=Read-Shared $umLog; $lines | Set-Content -LiteralPath "$Result/shared-lines.txt"
-    @{outcome=$outcome;exited=$game.HasExited;windowTitle=$game.MainWindowTitle;observedUtc=[DateTime]::UtcNow.ToString('o');sharedLines=$lines} | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath "$Result/observation.json"
-    Write-Output "Observation: $outcome"
+    $verdictPath=Join-Path $capture 'native-verdict.txt'
+    $nativeVerdict=if(Test-Path -LiteralPath $verdictPath -PathType Leaf) { (Get-Content -LiteralPath $verdictPath -Raw).Trim() } else { $null }
+    @{outcome=$outcome;exited=$game.HasExited;windowTitle=$game.MainWindowTitle;observedUtc=[DateTime]::UtcNow.ToString('o');sharedLines=$lines;nativeVerdict=$nativeVerdict} | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath "$Result/observation.json"
+    Write-Output "Observation: $outcome$(if($native) { '; ' + $(if($nativeVerdict) { $nativeVerdict -replace "`n", '; ' } else { 'no native verdict (inspect capture and logs)' }) })"
 } finally {
     if($game -and !$game.HasExited) {
         $game.Refresh()
@@ -179,6 +212,10 @@ try {
     if(Test-Path -LiteralPath $umLog) { Copy-Item -LiteralPath $umLog -Destination (Join-Path $Result 'umm-log.txt') }
     $errors=[Collections.Generic.List[string]]::new()
     function Attempt([scriptblock]$work) { try { & $work } catch { $errors.Add($_.Exception.Message); Write-Warning $_.Exception.Message } }
+    if($ready -and $native) {
+        # The recorder's request marker never outlives the run, launched or not.
+        Attempt { if(Test-Path -LiteralPath $sessionRequest) { Remove-Item -LiteralPath $sessionRequest } }
+    }
     if($ready -and $launchAttempted) {
         foreach($item in $snapshots) { Attempt {
             Plain $item.path; Plain $item.backup
@@ -201,7 +238,7 @@ try {
         }
         Attempt { $runs=Join-Path $artLocal 'shared-input'; if((Test-Path -LiteralPath $runs) -and !@(Get-ChildItem -LiteralPath $runs -Recurse -File).Count -and !($artBefore | Where-Object { Within $_ $runs })) { Remove-Item -LiteralPath $runs -Recurse } }
     }
-    if($environmentSaved -and $launchAttempted) { Attempt { Restore-SessionEnvironment "$Result/shared-environment" } }
+    if($environmentSaved -and ($launchAttempted -or $routeApplied)) { Attempt { Restore-SessionEnvironment "$Result/shared-environment" } }
     foreach($pin in $ownerPins) { Attempt { if((Hash $pin.path) -ne $pin.sha256) { throw "Owner file differs; retained for review, never overwritten: $($pin.path)" } } }
     if($errors.Count) { $errors | Set-Content -LiteralPath "$Result/restore-errors.txt"; throw "Restoration incomplete; backup and lease retained: $Result" }
     [DateTime]::UtcNow.ToString('o') | Set-Content -LiteralPath "$Result/restored.txt"

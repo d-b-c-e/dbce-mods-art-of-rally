@@ -60,7 +60,15 @@ namespace ArtOfSimRally.Testing
 
         // Recording.
         private static readonly Dictionary<string, string> _frameValues = new Dictionary<string, string>();
-        private static TextWriter _inputWriter, _carWriter, _shiftWriter;
+        private static TextWriter _inputWriter, _carWriter, _shiftWriter, _nativeWriter;
+        // carInput=native: Art's own GetInput result this frame (before any mod postfix) and the mod's shared state.
+        private static readonly float[] _art = new float[5];
+        private static bool _artStart;
+        private static int _artFrame = -1;
+        private static FieldInfo _isolatedFrame, _lastComposition;
+        private static FieldInfo[] _compositionFields;
+        private static object _consumer;
+        private static PropertyInfo _consumerStarted;
         private static StreamWriter _eventWriter;
         private static string _incomplete;
         private static int _drivetrainTick = int.MinValue;
@@ -156,7 +164,9 @@ namespace ArtOfSimRally.Testing
                 {
                     if (replay) throw new InvalidDataException("capture driver is only valid for recording");
                     PatchOutputs();
-                    _captureDriver = new CaptureDriver(driverSource, _capturePolicy = CapturePolicy.Parse(request));
+                    _capturePolicy = CapturePolicy.Parse(request);
+                    if (_capturePolicy.NativeCarInput) PatchNativeEvidence();
+                    _captureDriver = new CaptureDriver(driverSource, _capturePolicy, _capturePolicy.NativeCarInput ? SharedStarted : (Func<bool>)null);
                 }
                 if (replay) { PatchOutputs(); LoadReplay(request.TryGetValue("out", out var o) && o.Length > 0 ? o : Path.Combine(_dir, "replay-" + DateTime.Now.ToString("yyyyMMdd-HHmmss"))); }
                 else if (string.Equals(mode, "record", StringComparison.OrdinalIgnoreCase)) OpenRecording();
@@ -173,7 +183,7 @@ namespace ArtOfSimRally.Testing
                 // Remove input hooks; keep the output mutes if they went in.
                 try { _harmony?.UnpatchAll(HarmonyId); if (_muteOutputs) PatchOutputs(); } catch (Exception muteError) { _log?.Invoke("OUTPUT MUTE FAILURE: " + muteError); }
                 _mode = Mode.Off;
-                _inputWriter?.Dispose(); _carWriter?.Dispose(); _shiftWriter?.Dispose();
+                _inputWriter?.Dispose(); _carWriter?.Dispose(); _shiftWriter?.Dispose(); _nativeWriter?.Dispose();
                 if (replay && request.TryGetValue("out", out var failedOut))
                 {
                     Directory.CreateDirectory(failedOut);
@@ -196,6 +206,11 @@ namespace ArtOfSimRally.Testing
             _eventWriter = Create(Path.Combine(_dir, "events.log"));
             _carWriter.WriteLine("step\tmarker\tsteer\tthrottle\tbrake\thandbrake\tclutch\tstart\tgear\tpx\tpy\tpz\tqx\tqy\tqz\tqw\tvx\tvy\tvz\tavx\tavy\tavz\ttick\tresolvedSteer\tresolvedThrottle\tresolvedBrake\trpm");
             _shiftWriter.WriteLine("tick\tgear\tchangeTarget\tphase");
+            if (_capturePolicy?.NativeCarInput == true)
+            {
+                _nativeWriter = new BufferedTapeWriter(Path.Combine(_dir, "native.tape"));
+                _nativeWriter.WriteLine(NativeEvidence.Header);
+            }
             File.WriteAllText(Path.Combine(_dir, "session.txt"),
                 "format=" + Format + "\ngame=" + Application.version + "\nunity=" + Application.unityVersion +
                 "\ngameAssemblySha256=" + ArtifactHash.FileHash(typeof(CarDynamics).Assembly.Location) +
@@ -538,15 +553,66 @@ namespace ArtOfSimRally.Testing
         }
 
         // Replay only: keep the per-frame read consistent with the taped tick.
-        private static void AfterCarInput(ref float throttleInput, ref float brakeInput, ref float steerInput,
+        private static void AfterCarInput(AxisCarController __instance, ref float throttleInput, ref float brakeInput, ref float steerInput,
             ref float handbrakeInput, ref float clutchInput, ref bool startEngineInput)
         {
             if (_mode == Mode.Record && _captureDriver != null)
-            { _captureDriver.Input(ref throttleInput, ref brakeInput, ref steerInput, ref handbrakeInput, ref clutchInput, ref startEngineInput); return; }
+            {
+                _captureDriver.Input(ref throttleInput, ref brakeInput, ref steerInput, ref handbrakeInput, ref clutchInput, ref startEngineInput);
+                if (_nativeWriter != null && _artFrame == Time.frameCount && IsPlayer(__instance))
+                    NativeRow(steerInput, throttleInput, brakeInput, handbrakeInput, clutchInput, startEngineInput);
+                return;
+            }
             if (_mode != Mode.Replay) return;
             if (!_carActive) { throttleInput = brakeInput = steerInput = handbrakeInput = clutchInput = 0; startEngineInput = false; return; }
             steerInput = _carPlaying.Steer; throttleInput = _carPlaying.Throttle; brakeInput = _carPlaying.Brake;
             handbrakeInput = _carPlaying.Handbrake; clutchInput = _carPlaying.Clutch; startEngineInput = _carPlaying.StartEngine;
+        }
+
+        // Native: Art's own result, ahead of every mod postfix (the recorder's AfterCarInput runs last), and the
+        // mod's shared state that frame, read from its ShimInput (absent or changed members refuse the capture).
+        private static void PatchNativeEvidence()
+        {
+            var shim = AccessTools.TypeByName("ArtOfSimRally.Mod.Shim.ShimInput") ?? throw new MissingMemberException("ShimInput");
+            _isolatedFrame = AccessTools.Field(shim, "IsolatedFrame") ?? throw new MissingFieldException("ShimInput.IsolatedFrame");
+            _lastComposition = AccessTools.Field(shim, "Last") ?? throw new MissingFieldException("ShimInput.Last");
+            _compositionFields = new[] { "Frame", "SteerLive", "AppliedSteer", "AppliedThrottle", "AppliedBrake", "AppliedHandbrake", "Alignment" }
+                .Select(n => AccessTools.Field(_lastComposition.FieldType, n) ?? throw new MissingFieldException("ShimInput.Composition." + n)).ToArray();
+            _consumer = (AccessTools.Field(shim, "Consumer") ?? throw new MissingFieldException("ShimInput.Consumer")).GetValue(null);
+            _consumerStarted = AccessTools.Property(_consumer.GetType(), "Started") ?? throw new MissingMemberException("ShimAxisConsumer.Started");
+            _harmony.Patch(AccessTools.Method(typeof(AxisCarController), "GetInput"),
+                postfix: new HarmonyMethod(typeof(SessionTape), nameof(BeforeModCarInput)) { priority = Priority.First });
+        }
+        private static bool SharedStarted() => (bool)_consumerStarted.GetValue(_consumer, null);
+        private static void BeforeModCarInput(AxisCarController __instance, float throttleInput, float brakeInput, float steerInput,
+            float handbrakeInput, float clutchInput, bool startEngineInput)
+        {
+            if (_mode != Mode.Record || _nativeWriter == null || !IsPlayer(__instance)) return;
+            _art[0] = steerInput; _art[1] = throttleInput; _art[2] = brakeInput; _art[3] = handbrakeInput; _art[4] = clutchInput;
+            _artStart = startEngineInput; _artFrame = Time.frameCount;
+        }
+        private static void NativeRow(float steer, float throttle, float brake, float handbrake, float clutch, bool start)
+        {
+            try
+            {
+                int frame = Time.frameCount;
+                var last = _lastComposition.GetValue(null);
+                var line = new StringBuilder();
+                void Add(string value) { if (line.Length > 0) line.Append('\t'); line.Append(value); }
+                Add(frame.ToString(CultureInfo.InvariantCulture)); Add(MarkerId(Marker()).ToString(CultureInfo.InvariantCulture)); Add(Application.isFocused ? "1" : "0");
+                foreach (var action in NativeEvidence.AxisNames)
+                    Add(_captureDriver.Values.TryGetValue("R0.GetAxisRaw.s" + action, out var scripted) ? scripted : "0");
+                foreach (var value in _art) Add(N(value));
+                Add(_artStart ? "1" : "0");
+                foreach (var value in new[] { steer, throttle, brake, handbrake, clutch }) Add(N(value));
+                Add(start ? "1" : "0");
+                Add((int)_compositionFields[0].GetValue(last) == frame ? "1" : "0");
+                Add((int)_isolatedFrame.GetValue(null) == frame ? "1" : "0");
+                Add((bool)_compositionFields[1].GetValue(last) ? "1" : "0");
+                for (int i = 2; i < _compositionFields.Length; i++) Add(N((float)_compositionFields[i].GetValue(last)));
+                _nativeWriter.WriteLine(line.ToString());
+            }
+            catch (Exception ex) { MarkIncomplete("native evidence: " + ex.Message); }
         }
 
         private static bool IsPlayer(Component component)
@@ -758,7 +824,7 @@ namespace ArtOfSimRally.Testing
                     _frameValues.Clear();
                     _clicksInFrame = 0;
                     if (marker != _lastMarker) { _lastMarker = marker; Reseed(marker); Event("segment " + MarkerText(marker)); Shot(_dir, marker); }
-                    if (_frame % 60 == 0) { _inputWriter.Flush(); _carWriter.Flush(); _shiftWriter.Flush(); _eventWriter.Flush(); }
+                    if (_frame % 60 == 0) { _inputWriter.Flush(); _carWriter.Flush(); _shiftWriter.Flush(); _nativeWriter?.Flush(); _eventWriter.Flush(); }
                 }
                 else
                 {
@@ -803,9 +869,21 @@ namespace ArtOfSimRally.Testing
                 Event("record stopped: " + why + (_incomplete != null ? "; INCOMPLETE: " + _incomplete : ""));
                 try { RecorderMain.StopSessionSignals(_dir); }
                 catch (Exception ex) { MarkIncomplete("signal capture: " + ex.Message); }
-                try { _inputWriter?.Dispose(); _carWriter?.Dispose(); _shiftWriter?.Dispose(); _eventWriter?.Dispose(); }
+                bool native = _nativeWriter != null;
+                try { _inputWriter?.Dispose(); _carWriter?.Dispose(); _shiftWriter?.Dispose(); _nativeWriter?.Dispose(); _eventWriter?.Dispose(); }
                 catch (Exception ex) { MarkIncomplete("closing files: " + ex.Message); }
-                _inputWriter = _carWriter = _shiftWriter = null; _eventWriter = null;
+                _inputWriter = _carWriter = _shiftWriter = _nativeWriter = null; _eventWriter = null;
+                if (native && _incomplete == null)
+                {
+                    // The verdict is sealed with the tapes it was computed from.
+                    try
+                    {
+                        string verdict = NativeEvidence.Evaluate(File.ReadLines(Path.Combine(_dir, "native.tape")), File.ReadLines(Path.Combine(_dir, "car.tape")),
+                            m => MarkerText(m).EndsWith("|UNDERWAY"), out bool passed);
+                        File.WriteAllText(Path.Combine(_dir, "native-verdict.txt"), "passed=" + (passed ? "true" : "false") + "\nverdict=" + verdict + "\n");
+                    }
+                    catch (Exception ex) { MarkIncomplete("native verdict: " + ex.Message); }
+                }
                 if (_incomplete == null)
                 {
                     try

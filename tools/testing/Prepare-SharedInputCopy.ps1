@@ -10,7 +10,10 @@ param([Parameter(Mandatory)][string]$GameCopy,
       [Parameter(Mandatory)][string]$Result,
       [string]$ExpectedShimSha256 = '7DDC962132819EDAE76EF84CE6509F1936B8C38177A36D498B8ABBCFDCFFBCAF',
       # The toolkit snapshot candidate WheelFfb with the shared read exports (Observe/Apply pin).
-      [string]$ExpectedNativeSha256 = 'DD3013147821364AD8795F76B4500FB479F669E6BD89576F83E725A677273414')
+      [string]$ExpectedNativeSha256 = 'DD3013147821364AD8795F76B4500FB479F669E6BD89576F83E725A677273414',
+      # Native-script coexistence (Invoke-SharedInputCopy -RouteSource): also stage the dev recorder. Without it any
+      # earlier recorder is removed from the copy.
+      [switch]$Recorder)
 $ErrorActionPreference = 'Stop'
 function Full([string]$p) { [IO.Path]::GetFullPath($p).TrimEnd('\') }
 function Hash([string]$p) { (Get-FileHash -LiteralPath $p -Algorithm SHA256).Hash }
@@ -34,8 +37,11 @@ if ((Hash $Native) -ne $ExpectedNativeSha256) { throw 'UnityForceFeedback.dll is
 $build = Join-Path $repo 'src/ArtOfSimRally.Mod/bin/Release'
 $payload = @('ArtOfSimRally.Mod.dll', 'Dbce.TripleScreen.Core.dll', 'Dbce.TripleScreen.Protocol.dll', 'Dbce.Wheel.Ffb.dll', 'Dbce.Wheel.Telemetry.dll')
 foreach ($n in $payload) { if (-not (Test-Path -LiteralPath (Join-Path $build $n))) { throw "Build output missing: $n (build the solution first)." } }
-$commit = (git -C $repo rev-parse HEAD).Trim(); $dirty = @(git -C $repo status --porcelain -- src)
-if ($dirty.Count) { throw 'Mod source has uncommitted changes; stage only a committed build.' }
+$recorderSources = @((Join-Path $repo 'tools/testing/Recorder/bin/Release/net48/ArtOfSimRally.DevRecorder.dll'), (Join-Path $repo 'tools/testing/Recorder/Info.json'), (Join-Path $repo 'lib/playback/Dbce.Wheel.Playback.dll'))
+if ($Recorder) { foreach ($p in $recorderSources) { if (-not (Test-Path -LiteralPath $p -PathType Leaf)) { throw "Build the recorder first: $p" } } }
+$sources = @('src') + $(if ($Recorder) { @('tools/testing/Recorder', 'lib/playback') } else { @() })
+$commit = (git -C $repo rev-parse HEAD).Trim(); $dirty = @(git -C $repo status --porcelain -- @sources)
+if ($dirty.Count) { throw 'Mod or recorder source has uncommitted changes; stage only a committed build.' }
 $ownerSettings = Join-Path $SourceGame 'Mods/ArtOfSimRally/Settings.xml'
 $mod = Join-Path $GameCopy 'Mods/ArtOfSimRally'
 New-Item -ItemType Directory -Path $Result | Out-Null
@@ -45,6 +51,12 @@ Copy-Item -LiteralPath $Native -Destination (Join-Path $mod 'UnityForceFeedback.
 Copy-Item -LiteralPath $Native -Destination (Join-Path $GameCopy 'artofrally_Data/Plugins/x86_64/UnityForceFeedback.dll') -Force
 Copy-Item -LiteralPath $Shim -Destination (Join-Path $mod 'dbce_shim.dll') -Force
 Copy-Item -LiteralPath $Profile -Destination (Join-Path $mod 'dbce-controls.ini') -Force
+$recorderDir = Join-Path $GameCopy 'Mods/ArtOfSimRally.DevRecorder'
+if (Test-Path -LiteralPath $recorderDir) { Plain $recorderDir; Get-ChildItem -LiteralPath $recorderDir -File | Remove-Item; Remove-Item -LiteralPath $recorderDir }
+if ($Recorder) {
+    New-Item -ItemType Directory -Path $recorderDir | Out-Null
+    foreach ($p in $recorderSources) { Copy-Item -LiteralPath $p -Destination (Join-Path $recorderDir ([IO.Path]::GetFileName($p))) }
+}
 # The owner's exact settings with only SharedInput turned on (the owner file is read, never written).
 [xml]$settings = Get-Content -LiteralPath $ownerSettings -Raw
 $node = $settings.DocumentElement.SelectSingleNode('SharedInput')
@@ -53,11 +65,12 @@ $node.InnerText = 'true'
 $settings.Save((Join-Path $mod 'Settings.xml'))
 [IO.File]::WriteAllText((Join-Path $GameCopy 'steam_appid.txt'), '550320', [Text.Encoding]::ASCII)
 $staged = [ordered]@{
-    schema = 1; kind = 'shared-input-ordinary'; utc = [DateTime]::UtcNow.ToString('o'); sourceCommit = $commit
+    schema = 1; kind = 'shared-input-ordinary'; utc = [DateTime]::UtcNow.ToString('o'); sourceCommit = $commit; recorder = [bool]$Recorder
     gameCopy = $GameCopy; sourceGame = $SourceGame; ownerSettingsSha256 = Hash $ownerSettings
     files = [ordered]@{}
 }
 foreach ($n in $payload + @('Info.json', 'UnityForceFeedback.dll', 'dbce_shim.dll', 'dbce-controls.ini', 'Settings.xml')) { $staged.files["Mods/ArtOfSimRally/$n"] = Hash (Join-Path $mod $n) }
 $staged.files['artofrally_Data/Plugins/x86_64/UnityForceFeedback.dll'] = Hash (Join-Path $GameCopy 'artofrally_Data/Plugins/x86_64/UnityForceFeedback.dll')
+if ($Recorder) { foreach ($p in $recorderSources) { $n = [IO.Path]::GetFileName($p); $staged.files["Mods/ArtOfSimRally.DevRecorder/$n"] = Hash (Join-Path $recorderDir $n) } }
 $staged | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $Result 'staged.json')
-Write-Output "Staged SharedInput candidate $commit into $GameCopy (owner untouched). No process started."
+Write-Output "Staged SharedInput candidate $commit$(if ($Recorder) { ' with the dev recorder' }) into $GameCopy (owner untouched). No process started."

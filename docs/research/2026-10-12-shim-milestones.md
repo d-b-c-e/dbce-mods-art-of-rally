@@ -31,6 +31,59 @@ settings `91090837181C1D617F3C0EE52F1DE797A2592C6FEA4C7B2D8E93138318EE36ED`.
   composition. The recorder's car tape (485 UNDERWAY ticks) agrees: steer +-0.3,
   throttle 0.4, brake 0.6, handbrake 1.0, gear 2 -> 3 -> 2.
 
+## Ordinary native-script coexistence (prepared, not yet run)
+
+Accepted for source and fixtures in romi 31616. Scripted Rewired native-path evidence,
+not physical keyboard or wheel/FFB qualification.
+
+- Stage with `Prepare-SharedInputCopy.ps1 -Recorder`. This stages the ordinary
+  copied-provider shim `7DDC9621`, native `DD301314`, profile `5206EDFB`, the owner
+  settings with SharedInput on, and the dev recorder. There is no probe request and no
+  latched session.
+- Run with `Invoke-SharedInputCopy.ps1 -Result <staged> -RouteSource <rc13 capture>`,
+  after a `-PreflightOnly` pass. The run is muted: `DBCE_FFB_MUTE=1` plus the recorder's
+  output, save and upload guards. The route's start state is applied and the owner
+  environment restored. The recorder request is runner-owned and removed afterwards.
+- The ordinary session qualifies only in the menus. In the 03:23 smoke it began about
+  29 s after launch, and the route reaches the stage about 28 s after recording starts.
+  The recorder therefore holds the route, untouched at the title, until the mod's
+  consumer has started. It gives up after 120 s.
+- At the stage the recorder (`carInput=native`, `NativeEvidence.At`) scripts the Rewired
+  axes that Art's `AxisCarController` reads. Every value clears Art's largest deadzone
+  (0.75):
+
+  | Seconds | Scripted values |
+  |---|---|
+  | 0-11 | throttle 0.8 |
+  | 5-8 | steer +0.8 |
+  | 8-11 | steer -0.8 |
+  | 11-12.5 | brake 0.8 |
+  | 12.5-14 | handbrake 1 |
+  | 14-18 | released |
+
+- `native.tape` has one row per player `GetInput` call, with:
+  - the script values;
+  - Art's own result, from a `Priority.First` postfix that runs before the mod;
+  - the final result, from the recorder's `Priority.Last` postfix;
+  - whether the shared composition ran that frame, Rewired isolation, and live steering;
+  - the shared applied values and the alignment term.
+
+  `native-verdict.txt` is sealed with the capture.
+- What we expect with the wheel untouched:
+  - Without force the wheel rests off centre (shared steer 0.1407 in the 02:11 Apply
+    receipt). Steering therefore stays the wheel's (plus Art's alignment term) while Art
+    reads the scripted ±0.8. This is the ordinary exclusive ownership.
+  - Throttle, brake and handbrake pass Art's scripted values through unchanged, because
+    the composition takes the larger value and the pedals are neutral.
+  - The car tape carries the composed values.
+  - Scripted steering passes through only with the wheel at exact centre, which needs an
+    attended run.
+- Fixtures: `tests/Recorder` `Native()` covers a centred and an off-centre clean session,
+  the alignment term, the automatic-reverse swap, and refusals. The refusals are:
+  unfocused, no composition, no isolation, steering not live, a moved wheel, a pressed
+  pedal, script leaking into wheel-owned steering, changed pedals, a swallowed script,
+  a short capture, missing coverage, a stale car tick.
+
 ## Claims and limits
 
 Claimed: ordinary startup attaches and accepts frames (no physical input); latched

@@ -518,6 +518,9 @@ internal static class Program
             ProfileObjects.BoundBy(grammar, "button", 10, 0, r12) == null, "comment, unknown action, misfit, unbraced id or other section bound");
         Check(ProfileObjects.BoundBy(grammar, "button", 8, 0, r12) == "start" && ProfileObjects.BoundBy(grammar, "button", 9, 0, r12) == null &&
             ProfileObjects.BoundBy(grammar, "hat", 0, 0, ds8x) == "navUp", "duplicate action or tab before dev");
+        // navUp at 0: 0/9000 both press at 4500 and 27000/0 wrap to meet at 31500 (romi 31674); one step further does not.
+        Check(ProfileObjects.BoundBy(grammar, "hat", 0, 9000, ds8x) == "navUp" && ProfileObjects.BoundBy(grammar, "hat", 0, 27000, ds8x) == "navUp" &&
+            ProfileObjects.BoundBy(grammar, "hat", 0, 9001, ds8x) == null && ProfileObjects.BoundBy(grammar, "hat", 0, 26999, ds8x) == null, "touching or wrapped hat sectors");
         var recovered = ProfileObjects.Parse("[Controls]\nconfirm = axis 1 dev=" + R12 + "\nconfirm = button 2 dev=" + R12 + "\n");
         Check(recovered.Count == 1 && ProfileObjects.BoundBy(recovered, "button", 2, 0, r12) == "confirm", "an invalid first line blocked a valid later binding");
     }
