@@ -20,15 +20,17 @@ namespace ArtOfSimRally.Testing
         private const int Script = 3, Art = 7, Final = 13, Composed = 19, Isolated = 20, SteerLive = 21, Applied = 22, Alignment = 26;
 
         // The stage script by seconds since UNDERWAY. Every value clears Art's largest deadzone (0.75, a
-        // 0 setting); each action is held alone or with throttle; the tail releases everything.
+        // 0 setting); each action is held alone; the tail releases everything. The car stays near the start:
+        // a wheel resting off centre steers it, and at 06:52 an 11 s throttle drove it off the road into two of
+        // Art's out-of-bounds resets, which force the car's handbrake outside GetInput.
         internal static Dictionary<string, string> At(float seconds)
         {
             float steer = 0, throttle = 0, brake = 0, handbrake = 0;
-            if (seconds < 11f) throttle = 0.8f;
-            if (seconds >= 5f && seconds < 8f) steer = 0.8f;
-            else if (seconds >= 8f && seconds < 11f) steer = -0.8f;
-            if (seconds >= 11f && seconds < 12.5f) brake = 0.8f;
-            if (seconds >= 12.5f && seconds < 14f) handbrake = 1f;
+            if (seconds < 1.5f) throttle = 0.8f;
+            else if (seconds < 2.5f) brake = 0.8f;
+            else if (seconds < 4f) handbrake = 1f;
+            else if (seconds < 5.5f) steer = 0.8f;
+            else if (seconds < 7f) steer = -0.8f;
             var values = new Dictionary<string, string>();
             void Put(string action, float value) { if (value != 0f) values["R0.GetAxisRaw.s" + action] = value.ToString("R", CultureInfo.InvariantCulture); }
             Put(AxisNames[0], steer); Put(AxisNames[1], throttle); Put(AxisNames[2], brake); Put(AxisNames[3], handbrake);
@@ -50,6 +52,7 @@ namespace ArtOfSimRally.Testing
         {
             passed = false;
             var finals = new HashSet<string>(StringComparer.Ordinal);
+            var unbraked = new HashSet<string>(StringComparer.Ordinal); // the same without handbrake, for naming Art's resets
             int rows = 0, right = 0, left = 0, throttle = 0, brake = 0, handbrake = 0, released = 0, wheelSteered = 0, artSteered = 0;
             float rest = 0f;
             bool header = true;
@@ -85,6 +88,7 @@ namespace ArtOfSimRally.Testing
                 if (Enumerable.Range(Script, 4).All(i => Value(f[i]) == 0f) && Value(f[Final + 1]) == 0f && Value(f[Final + 2]) == 0f && Value(f[Final + 3]) == 0f) released++;
                 finals.Add(Key(f[Final], f[Final + 1], f[Final + 2], f[Final + 3]));
                 finals.Add(Key(f[Final], f[Final + 2], f[Final + 1], f[Final + 3]));
+                unbraked.Add(Key(f[Final], f[Final + 1], f[Final + 2], "")); unbraked.Add(Key(f[Final], f[Final + 2], f[Final + 1], ""));
             }
             if (header) return "native.tape is empty";
             if (rows < MinRows) return "only " + rows + " stage frames";
@@ -100,7 +104,8 @@ namespace ArtOfSimRally.Testing
                 if (!underway(marker)) continue;
                 ticks++;
                 if (finals.Contains(Key(c[2], c[3], c[4], c[5]))) matched++;
-                else if (matched > 0) return "car input at step " + c[0] + " is no composed result";
+                else if (matched > 0) return "car input at step " + c[0] + " is no composed result" +
+                    (c[5] == "1" && unbraked.Contains(Key(c[2], c[3], c[4], "")) ? " (handbrake forced over a composed result: Art's out-of-bounds reset?)" : "");
                 else leading++;
             }
             if (matched == 0) return "no car tick carried a composed result";

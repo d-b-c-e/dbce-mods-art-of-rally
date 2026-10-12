@@ -31,7 +31,28 @@ settings `91090837181C1D617F3C0EE52F1DE797A2592C6FEA4C7B2D8E93138318EE36ED`.
   composition. The recorder's car tape (485 UNDERWAY ticks) agrees: steer +-0.3,
   throttle 0.4, brake 0.6, handbrake 1.0, gear 2 -> 3 -> 2.
 
-## Ordinary native-script coexistence (prepared, not yet run)
+## Ordinary native-script coexistence
+
+First run, 06:52 (`40acdf9`, `native-script-20261012-065119`): **FAILED** as sealed
+("car input at step 736 is no composed result"). Kept as the original failure.
+
+What held:
+- The title hold waited 26 s for the shared consumer.
+- All 1976 stage frames were composed, isolated, live and focused.
+- The wheel stayed at rest: steer 0.140733957, with a one-count jitter on 146 frames.
+- Art read the script exactly.
+- Steering stayed the wheel's while Art read ±0.8.
+- The pedals and handbrake passed through unchanged.
+
+Why it failed:
+- 959 of the 1080 stage car ticks matched.
+- The other 121 ticks were two of Art's out-of-bounds resets (steps 736-796 and
+  1017-1076). The resting wheel and an 11 s throttle took the car off the road.
+- `OutOfBoundsManager` then calls `PlayerManager.InternalInertialDampeners` every frame
+  for 1 s. That forces `handbrakeInput = 1` outside GetInput, over a composed
+  steer/throttle/brake.
+- The fix (accepted, romi 32048) shortens the script. The verdict stays as strict, and
+  its failure text now names that signature.
 
 Accepted for source and fixtures in romi 31616. Scripted Rewired native-path evidence,
 not physical keyboard or wheel/FFB qualification.
@@ -50,16 +71,16 @@ not physical keyboard or wheel/FFB qualification.
   consumer has started. It gives up after 120 s.
 - At the stage the recorder (`carInput=native`, `NativeEvidence.At`) scripts the Rewired
   axes that Art's `AxisCarController` reads. Every value clears Art's largest deadzone
-  (0.75):
+  (0.75). Each action is held alone and briefly, so the car stays near the start:
 
   | Seconds | Scripted values |
   |---|---|
-  | 0-11 | throttle 0.8 |
-  | 5-8 | steer +0.8 |
-  | 8-11 | steer -0.8 |
-  | 11-12.5 | brake 0.8 |
-  | 12.5-14 | handbrake 1 |
-  | 14-18 | released |
+  | 0-1.5 | throttle 0.8 |
+  | 1.5-2.5 | brake 0.8 |
+  | 2.5-4 | handbrake 1 |
+  | 4-5.5 | steer +0.8 |
+  | 5.5-7 | steer -0.8 |
+  | 7-12 | released |
 
 - `native.tape` has one row per player `GetInput` call, with:
   - the script values;

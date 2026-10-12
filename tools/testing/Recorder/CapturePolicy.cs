@@ -29,7 +29,7 @@ namespace ArtOfSimRally.Testing
                 if (input == "shared") policy.SharedCarInput = true;
                 else if (input == "native") policy.NativeCarInput = true;
                 else throw new InvalidDataException("carInput must be synthetic, shared or native");
-                policy.Seconds = input == "native" ? 18f : 30f;
+                policy.Seconds = input == "native" ? 12f : 30f;
             }
             if (request.TryGetValue("captureSeconds", out var seconds))
             {

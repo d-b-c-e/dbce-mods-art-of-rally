@@ -16,7 +16,7 @@ param([Parameter(Mandatory)][string]$Result,
       [string]$RouteSource,
       [ValidateRange(30,300)][int]$ObserveSeconds=120,
       [ValidateRange(0,60)][int]$SettleSeconds=10,
-      [ValidateRange(16,60)][int]$CaptureSeconds=18,
+      [ValidateRange(10,60)][int]$CaptureSeconds=12,
       [string]$ToolkitRepo='E:/Source/toolkits/dbce-wheel-mod-toolkit',
       [string]$HubRepo='E:/Source/dbce-project-mgmt')
 $ErrorActionPreference='Stop'
