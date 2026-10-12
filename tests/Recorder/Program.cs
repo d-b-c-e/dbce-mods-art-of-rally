@@ -202,6 +202,7 @@ static class Program
         var shared = Parse("carInput", "shared", "captureSeconds", "40", "stopWhenFile", stop);
         Check(shared.SharedCarInput && shared.Seconds == 40f && shared.StopFile == stop && shared.Source == "shared-shim-integration", "shared policy not parsed");
         Check(Refusal("carInput", "keyboard").Contains("synthetic or shared") && Refusal("carInput", "shared", "captureSeconds", "600").Contains("5..120") &&
+            Refusal("carInput", "shared", "captureSeconds", "NaN").Contains("5..120") && Refusal("carInput", "shared", "captureSeconds", "Infinity").Contains("5..120") &&
             Refusal("stopWhenFile", stop).Contains("needs carInput=shared") && Refusal("carInput", "shared", "stopWhenFile", "receipt.json").Contains("absolute"), "bad capture policy accepted");
         float underwayAt = -1; bool present = false;
         Func<string, bool> exists = p => present && p == stop;

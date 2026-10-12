@@ -26,7 +26,8 @@ namespace ArtOfSimRally.Testing
             }
             if (request.TryGetValue("captureSeconds", out var seconds))
             {
-                if (!float.TryParse(seconds, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) || value < 5 || value > 120)
+                // NaN fails both comparisons, so finiteness is checked first (romi 31018).
+                if (!float.TryParse(seconds, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) || float.IsNaN(value) || float.IsInfinity(value) || value < 5 || value > 120)
                     throw new InvalidDataException("captureSeconds must be 5..120");
                 policy.Seconds = value;
             }

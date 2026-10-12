@@ -156,7 +156,7 @@ namespace ArtOfSimRally.Mod.Shim
         private readonly ShimAxisConsumer consumer;
         private readonly Action<string> writeBatch;
         private readonly string nonce;
-        private int batch, frames, settled, lastFrame = -1;
+        private int batch, frames, settled, cleanRun, badRelease, lastFrame = -1;
         private bool seen;
         internal readonly List<Step> Steps = new List<Step>();
         internal State Current { get; private set; } = State.Admission;
@@ -208,13 +208,20 @@ namespace ArtOfSimRally.Mod.Shim
                     step.HoldSamples++;
                     return;
                 case State.Releasing:
-                    // Every injection of the step has ended; then the menu-free release must read neutral.
+                    // Judged only once every injection of the step has ended (and a gear change completed).
                     bool anyInjected = false; foreach (var i in Delivered) anyInjected |= s.Injected[i];
-                    if (anyInjected || (step.GearDelta != 0 && s.ChangingGear)) { settled = 0; return; }
+                    if (anyInjected || (step.GearDelta != 0 && s.ChangingGear)) { cleanRun = 0; return; }
+                    // romi 30996: SettleFrames consecutive clean samples; a bad sample restarts the run, and
+                    // bad samples are counted for the whole release (never reset), so flicker fails.
                     string release = Check(step, s, false);
-                    if (release != null) { if (++settled > SettleFrames) { step.Result = "failed"; step.Detail = release; Fail(step.Name + " release: " + release); } return; }
-                    step.ReleaseSamples++;
-                    if (++settled < SettleFrames) return;
+                    if (release != null)
+                    {
+                        cleanRun = 0;
+                        if (++badRelease > SettleFrames) { step.Result = "failed"; step.Detail = release; Fail(step.Name + " release: " + release); }
+                        return;
+                    }
+                    step.ReleaseSamples = ++cleanRun;
+                    if (cleanRun < SettleFrames) return;
                     Close(step, s);
                     return;
                 case State.Ending:
@@ -257,10 +264,12 @@ namespace ArtOfSimRally.Mod.Shim
             }
             if (!holding)
             {
-                if (step.Primary == Steer && s.AppliedSteer != 0f) return "steer still applied";
-                if (step.Primary == Throttle && s.AppliedThrottle != 0f) return "throttle still applied";
-                if (step.Primary == Brake && s.AppliedBrake != 0f) return "brake still applied";
-                if (step.Primary == Handbrake && s.AppliedHandbrake != 0f) return "handbrake still applied";
+                // Every driving axis, not only the step's primary: a companion (the throttle under a steer or
+                // shift step) must be neutral after its injection too.
+                if (s.AppliedSteer != 0f) return "steer still applied";
+                if (s.AppliedThrottle != 0f) return "throttle still applied";
+                if (s.AppliedBrake != 0f) return "brake still applied";
+                if (s.AppliedHandbrake != 0f) return "handbrake still applied";
             }
             float steer = s.AppliedSteer != 0f ? s.AppliedSteer + s.Alignment : s.SteerLive ? s.Alignment : 0f;
             if (Math.Abs(s.OutSteer - steer) > Tolerance) return "composed steer " + s.OutSteer + " expected " + steer;
@@ -288,7 +297,7 @@ namespace ArtOfSimRally.Mod.Shim
         private void Send(string commands, State next)
         {
             writeBatch("nonce=" + nonce + "\nbatch=" + (++batch) + "\n" + commands + "\n");
-            Current = next; frames = 0; settled = 0; seen = false;
+            Current = next; frames = 0; settled = 0; cleanRun = 0; badRelease = 0; seen = false;
         }
         private void Fail(string why) { if (Failure == null) Failure = why; Current = State.Done; }
     }

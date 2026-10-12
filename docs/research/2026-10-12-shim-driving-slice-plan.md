@@ -110,3 +110,11 @@ divergence in steer or throttle, wrong sign, stuck gear, sticky throttle, compos
 off, short hold, never injected, stopped, countdown); `--drive-trial-only` 597 against
 the real 0D10F913 Core through the production composition; recorder 82; full suite
 20/20; 12 DriveTrial mutants all fail.
+
+Review fixes (romi 30996, 31018): a release verdict now needs 20 consecutive clean
+samples, bad release samples are counted for the whole release (never reset) and fail
+past 20, and every driving axis (steer, throttle, brake, handbrake) must read neutral
+once all injections end, not only the step's primary. Reproductions that passed the
+earlier code: 19 judged bad frames then one clean frame; a companion throttle left
+applied after a steer step; plus separating patterns (1 bad in 11; 15 bad then 1 clean).
+`captureSeconds` now refuses NaN and infinities.

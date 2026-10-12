@@ -405,18 +405,20 @@ internal static class Program
     // A scripted latched Core and car: batches inject the normalized values their raw objects encode, the real
     // consumer composes, and the car stores what GetInput returned (unless told to differ).
     private static DriveTrial SimulateDrive(bool automatic = false, bool carDiffers = false, bool invertSteer = false, bool injects = true, int stopAt = -1, int underwayFrom = 1,
-        bool gearStuck = false, bool sticky = false, bool composeOff = false, bool shortHold = false, bool slowShift = false, bool steerDiffers = false)
+        bool gearStuck = false, bool sticky = false, bool composeOff = false, bool shortHold = false, bool slowShift = false, bool steerDiffers = false,
+        Func<int, bool> releaseBad = null, bool companion = false)
     {
         const ShimStatus L = ShimStatus.Live, N = ShimStatus.TestNeutral; string why;
         var b = DriveTrial.Bindings(BridgeTests.DriveProfile);
         var sink = new ShimAxisConsumer { AcceptLatched = true }; sink.DeliverOnly(DriveTrial.Delivered);
         var held = new float[7]; var until = new int[7]; byte run = LatchedTrial.Waiting; string pending = null;
-        int gear = 2, changing = 0, slowTarget = 0; bool upWas = false, downWas = false;
+        int gear = 2, changing = 0, slowTarget = 0, batchIndex = 0, firstThrottleEnd = -1; bool upWas = false, downWas = false, batchSteer = false;
         var trial = new DriveTrial(sink, BridgeTests.DriveProfile, text => pending = text, "n0nce1234");
         for (int frame = 1; frame <= 6000 && !trial.Finished; frame++)
         {
             if (pending != null)
             {
+                batchIndex++; batchSteer = pending.Contains("inject raw axis 0 ");
                 foreach (var line in pending.Split('\n'))
                 {
                     if (line == "end") { run = LatchedTrial.Completed; continue; }
@@ -437,6 +439,7 @@ internal static class Program
                     }
                 }
                 pending = null;
+                if (batchIndex == 1) firstThrottleEnd = until[1];
             }
             var frameValues = new System.Collections.Generic.List<(int, ShimStatus, float)>();
             var injected = new bool[7];
@@ -446,6 +449,11 @@ internal static class Program
                 injected[a] = on;
                 // sticky: the throttle stays applied (Live, not injected) after its injection ends.
                 bool stuck = sticky && a == 1 && !on && until[a] > 0;
+                // 30996 reproductions: (flicker) after the throttle step 19 bad release frames, one clean,
+                // then bad again; (companion) the throttle stays applied after each steer step.
+                // releaseBad(offset) decides, after the throttle step's injection ends, which frames stay applied.
+                if (releaseBad != null && a == 1 && batchIndex == 1 && !on && frame >= firstThrottleEnd && releaseBad(frame - firstThrottleEnd)) stuck = true;
+                if (companion && a == 1 && batchSteer && !on && frame >= until[a]) stuck = true;
                 frameValues.Add((a, on || stuck ? L : N, on ? held[a] : stuck ? .4f : 0f));
             }
             ulong down = (injected[5] ? 1UL << 5 : 0) | (injected[6] ? 1UL << 6 : 0);
@@ -510,7 +518,12 @@ internal static class Program
             ("gear stuck", SimulateDrive(gearStuck: true), "shiftUp with throttle: gear 2 -> 2"),
             ("sticky throttle", SimulateDrive(sticky: true), "throttle still applied"),
             ("composition off", SimulateDrive(composeOff: true), "composed throttle"),
-            ("short hold", SimulateDrive(shortHold: true), "held samples") })
+            ("short hold", SimulateDrive(shortHold: true), "held samples"),
+            // offset 0 is the hold->release transition, not judged: 19 judged bad frames, one clean, then bad again.
+            ("one clean release frame after 19 bad", SimulateDrive(releaseBad: r => r != 20), "throttle 40% release: throttle still applied"),
+            ("intermittent release (1 bad in 11)", SimulateDrive(releaseBad: r => r % 11 == 10), "throttle 40% release: throttle still applied"),
+            ("pulsed release (15 bad, 1 clean)", SimulateDrive(releaseBad: r => r % 16 != 15), "throttle 40% release: throttle still applied"),
+            ("companion throttle left applied", SimulateDrive(companion: true), "steer -30% with throttle release: throttle still applied") })
             Check(trial.Finished && !trial.Passed && trial.Failure != null && trial.Failure.Contains(expected), name + ": " + trial.Failure);
         var countdown = SimulateDrive(underwayFrom: 300);
         Check(countdown.Passed && countdown.Samples.ToString().Contains("\n-\t299\t0\t"), "drive began before the countdown ended: " + countdown.Failure);
