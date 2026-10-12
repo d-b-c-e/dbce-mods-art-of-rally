@@ -587,6 +587,41 @@ internal static class Program
             Check(why != null && why.Contains(expected) && !wait, "drive fence waited for or not refused: " + expected + " -> " + why);
         }
     }
+    // lib/input-shim/CONTROLS.json is the Wheelkit-facing contract a candidate's build.json carries (romi 33009).
+    // It must name exactly the actions this build delivers and the ones it refuses, with the same reasons.
+    [System.Runtime.Serialization.DataContract]
+    private sealed class ControlsContract
+    {
+        [System.Runtime.Serialization.DataMember(Name = "schema")] public int Schema = 0;
+        [System.Runtime.Serialization.DataMember(Name = "adapter")] public string Adapter = null;
+        [System.Runtime.Serialization.DataMember(Name = "delivered")] public string[] Delivered = null;
+        [System.Runtime.Serialization.DataMember(Name = "unsupported")] public System.Collections.Generic.Dictionary<string, string> Unsupported = null;
+    }
+    private static void ControlsContractMatches()
+    {
+        string path = null;
+        for (var d = new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory); d != null && path == null; d = d.Parent)
+        {
+            string candidate = Path.Combine(d.FullName, "lib", "input-shim", "CONTROLS.json");
+            if (File.Exists(candidate)) path = candidate;
+        }
+        Check(path != null, "lib/input-shim/CONTROLS.json not found above the test binary");
+        ControlsContract contract;
+        var settings = new System.Runtime.Serialization.Json.DataContractJsonSerializerSettings { UseSimpleDictionaryFormat = true };
+        using (var stream = File.OpenRead(path))
+            contract = (ControlsContract)new System.Runtime.Serialization.Json.DataContractJsonSerializer(typeof(ControlsContract), settings).ReadObject(stream);
+        var delivered = new System.Collections.Generic.List<string>();
+        for (int i = 0; i < ShimFrame.Count; i++) if (ShimAxisConsumer.Supported(i)) delivered.Add(ShimFrame.Names[i]);
+        var unsupported = new System.Collections.Generic.Dictionary<string, string>();
+        foreach (var line in ShimAxisConsumer.UnsupportedActions.Split('\n'))
+            if (line.Length > 0) unsupported[line.Substring(0, line.IndexOf('='))] = line.Substring(line.IndexOf('=') + 1);
+        Check(contract.Schema == 1 && contract.Adapter == "art-shim-ini-controls-1", "controls contract identity changed");
+        Check(contract.Delivered != null && string.Join(",", contract.Delivered) == string.Join(",", delivered.ToArray()),
+            "CONTROLS.json delivered differs from this build: " + string.Join(",", delivered.ToArray()));
+        Check(contract.Unsupported != null && contract.Unsupported.Count == unsupported.Count, "CONTROLS.json unsupported count differs");
+        foreach (var pair in unsupported)
+            Check(contract.Unsupported.TryGetValue(pair.Key, out var reason) && reason == pair.Value, "CONTROLS.json unsupported reason differs: " + pair.Key);
+    }
     private static int Main(string[] args)
     {
         if (args.Length == 1 && args[0] == "--replace-race")
@@ -596,7 +631,7 @@ internal static class Program
         }
         try
         {
-            Decode(); Consumption(); StatusesAndFailures(); SharedActions(); SharedStatus(); TrialSteps(); DriveSteps(); ProfileControls();
+            Decode(); Consumption(); StatusesAndFailures(); SharedActions(); SharedStatus(); TrialSteps(); DriveSteps(); ProfileControls(); ControlsContractMatches();
             assertions += BridgeTests.Fake();
             assertions += IsolationTests.Run();
             assertions += ProbeTests.Run();
