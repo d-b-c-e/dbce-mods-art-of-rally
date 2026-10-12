@@ -86,7 +86,8 @@ try {
     Assert ($shimInput.status -eq 'passed' -and $shimInput.assertions -gt 0) 'Shared input consumer runner ran no assertions'
     $null = Run 'shim-axis-mono-build' 'dotnet' @('build','tests/ShimInput/ShimInput.csproj','-f','net48','-c','Release','--nologo','-warnaserror')
     $result = Run 'shim-axis-mono' 'python' @('tools/testing/Run-UnityMono.py','tests/ShimInput/bin/Release/net48/ShimInput.exe')
-    $shimMono = $result | Select-Object -Last 1 | ConvertFrom-Json
+    # As for the other Mono gates: a BOM-only line can follow the JSON when the streams close.
+    $shimMono = @($result | ForEach-Object { ([string]$_).TrimStart([char]0xfeff) } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) | Select-Object -Last 1 | ConvertFrom-Json
     Assert ($shimMono.status -eq 'passed' -and $shimMono.assertions -gt 0) 'Shared input Mono runner ran no assertions'
     $result = Run 'settings-ui' 'dotnet' @('run','--project','tests/SettingsUi/SettingsUi.csproj','-c','Release')
     $settingsUi = $result | Select-Object -Last 1 | ConvertFrom-Json
