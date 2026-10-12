@@ -20,6 +20,7 @@ namespace ArtOfSimRally.Mod
         private static bool finished, attached;
         private static int applyFrames;
         private static LatchedTrial trial;
+        private static bool titleAdvanced;
         private static bool Trial => request != null && request.Mode == "Trial";
         internal static string NativeLogPath => request == null ? null : Path.Combine(request.Result, "native.log");
         internal static bool Prepare(string modDirectory)
@@ -92,7 +93,16 @@ namespace ArtOfSimRally.Mod
                         // The fence byte is asserted only from guards observed now, in this process. Being on
                         // the main menu and focused may still come (bounded by the request deadline); any
                         // other unmet fence refuses.
-                        string unmet = LatchedTrial.Admission(ObserveFences(), out bool wait);
+                        var fences = ObserveFences();
+                        string unmet = LatchedTrial.Admission(fences, out bool wait);
+                        if (LatchedTrial.AdvanceTitle(request.AdvanceTitle, titleAdvanced, OnSplash(), fences))
+                        {
+                            // Once, from the actual splash, through the game's own call; the main menu is still
+                            // verified before Core opens and on every Trial frame.
+                            titleAdvanced = receipt.TitleAdvanced = true;
+                            SplashScreenControl.Instance.EndSplashScreen();
+                            ModLog.Info("Shared input Trial PROBE: ended the title splash once (request flag) to reach the main menu.");
+                        }
                         if (unmet != null)
                         {
                             receipt.TrialFences = (wait ? "waiting: " : "") + unmet;
@@ -141,6 +151,12 @@ namespace ArtOfSimRally.Mod
         }
         internal static void Shutdown() { if (Requested && !finished && receipt != null) Finish("probe shutdown"); }
 
+        private static bool OnSplash()
+        {
+            var splash = SplashScreenControl.Instance;
+            var panels = UIManager.Instance == null ? null : UIManager.Instance.PanelManager;
+            return splash != null && splash.isActiveAndEnabled && panels != null && panels.Peek() == panels.SplashScreenPanel;
+        }
         private static bool OnMainMenu()
         {
             var panels = UIManager.Instance == null ? null : UIManager.Instance.PanelManager;

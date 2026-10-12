@@ -18,6 +18,8 @@ namespace ArtOfSimRally.Mod.Shim
         [DataMember(IsRequired = true)] public string ModSha256, NativeSha256, ShimSha256, SettingsSha256, ProfileSha256;
         [DataMember(IsRequired = true)] public string ShimPath, ProfilePath;
         [DataMember] public string ObserveReceipt;
+        // Trial only, diagnostic: may end the title splash once to reach the main menu (romi 29497).
+        [DataMember] public bool AdvanceTitle;
         // Trial (Slice B) runs only on the reviewed latched bridge build, art-shim-bridge f38b855 (romi 28531).
         internal const string LatchedShimSha256 = "0D10F913C998C97D7DDF3A8F5F470D010092C3681152059DC88D7E0A7BB0386B";
         internal DateTime Deadline => DateTime.Parse(ExpiresUtc, System.Globalization.CultureInfo.InvariantCulture,
@@ -82,6 +84,7 @@ namespace ArtOfSimRally.Mod.Shim
                 throw new InvalidDataException("invalid probe request");
             if (Mode == "Trial" && !String.Equals(ShimSha256, LatchedShimSha256, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException("Trial needs the reviewed latched bridge build");
+            if (AdvanceTitle && Mode != "Trial") throw new InvalidDataException("only a Trial may advance the title");
             if (Deadline <= now || Deadline > now.AddMinutes(30)) throw new InvalidDataException("probe request expired or beyond 30 minutes");
             if (SamePath(GameRoot, SourceGameRoot) || !SamePath(GameRoot, gameRoot) || !Path.GetFullPath(modPath).StartsWith(Path.GetFullPath(GameRoot).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException("probe requires its exact disposable game root");
@@ -125,6 +128,7 @@ namespace ArtOfSimRally.Mod.Shim
         [DataMember] public string TrialFences, TrialStatus;
         [DataMember] public string[] TrialSelections;
         [DataMember] public int TrialRun;
+        [DataMember] public bool TitleAdvanced;
         internal ProbeReceipt() { }
         internal ProbeReceipt(ProbeRequest request)
         {

@@ -104,6 +104,14 @@ namespace ArtOfSimRally.Mod.Shim
             wait = Unfenced(later) == null;
             return unmet;
         }
+        // romi 29497: with the explicit diagnostic request flag only, a Trial may end the title splash
+        // once (the game's own EndSplashScreen) when that is all that stands between it and its fences.
+        internal static bool AdvanceTitle(bool requested, bool alreadyAdvanced, bool onSplash, Fences f)
+        {
+            if (!requested || alreadyAdvanced || !onSplash || f == null || f.MainMenu) return false;
+            bool wait;
+            return Admission(f, out wait) != null && wait;
+        }
         // Null when every fence holds; otherwise the first that does not.
         internal static string Unfenced(Fences f)
         {

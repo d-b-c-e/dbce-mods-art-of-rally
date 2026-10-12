@@ -287,3 +287,14 @@ missing before patching and none after.
 Not yet qualified on the rig; `--shared-transport-only` covers it offline, and
 four mutants (loss not sticky, released still stamped, close not releasing,
 keyboard not retained) fail.
+
+Update (romi 29497): the first in-game Trial may pass the title splash only with
+the explicit diagnostic request flag `AdvanceTitle` (`Prepare-ShimProbe.ps1
+-Mode Trial -AdvanceTitle`; refused for other modes). The probe then calls the
+game's own `SplashScreenControl.EndSplashScreen()` once, only while the splash is
+the top panel and every other fence holds; the main menu is still verified before
+Core opens and on every Trial frame. Ordinary startup is unchanged. The sharing
+repro is preserved as `tests/ShimInput --replace-race` (Core-style reader against
+400 replacements; for example ReplaceFileW 21,679 refused opens, POSIX rename 0)
+with the two failing Core journals under the ignored evidence folder
+`bridge-sharing-repro-20261012`.

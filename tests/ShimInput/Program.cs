@@ -314,6 +314,14 @@ internal static class Program
         var driving = All(); driving.Driving = true; Check(LatchedTrial.Admission(driving, out wait) != null && !wait, "driving waited for");
         driving.MainMenu = false; Check(LatchedTrial.Admission(driving, out wait) != null && !wait, "driving away from the menu waited for");
         Check(LatchedTrial.Admission(All(), out wait) == null && !wait, "fenced admission refused");
+        // The title splash is ended only on request, once, from the splash, when nothing else is unmet.
+        var splash = All(); splash.MainMenu = false;
+        Check(LatchedTrial.AdvanceTitle(true, false, true, splash), "requested title advance refused");
+        Check(!LatchedTrial.AdvanceTitle(false, false, true, splash) && !LatchedTrial.AdvanceTitle(true, true, true, splash) &&
+            !LatchedTrial.AdvanceTitle(true, false, false, splash) && !LatchedTrial.AdvanceTitle(true, false, true, All()), "title advanced without request, twice, off the splash or on the menu");
+        var unarmed = All(); unarmed.MainMenu = false; unarmed.NoForceArmed = false;
+        var drivingSplash = All(); drivingSplash.MainMenu = false; drivingSplash.Driving = true;
+        Check(!LatchedTrial.AdvanceTitle(true, false, true, unarmed) && !LatchedTrial.AdvanceTitle(true, false, true, drivingSplash), "title advanced with another fence unmet");
         // Trial runs only on the reviewed latched build.
         string Refusal(string shim)
         {
@@ -321,6 +329,10 @@ internal static class Program
             catch (Exception e) { return e.Message; }
         }
         Check(Refusal(BridgeTests.OrdinaryShim).Contains("reviewed latched bridge build") && !Refusal(ProbeRequest.LatchedShimSha256).Contains("reviewed latched bridge build"), "Trial shim pin");
+        string advanceApply;
+        try { new ProbeRequest { Schema = 1, Mode = "Apply", Nonce = Guid.NewGuid().ToString("N"), AdvanceTitle = true, ExpiresUtc = DateTime.UtcNow.AddMinutes(5).ToString("o") }.Validate(DateTime.UtcNow, "x", "y", "z", "w"); advanceApply = ""; }
+        catch (Exception e) { advanceApply = e.Message; }
+        Check(advanceApply.Contains("only a Trial may advance the title"), "title advance accepted outside a Trial: " + advanceApply);
         // Whole-file replacement while a reader holds the old file the way Core does (read + delete sharing).
         string folder = Path.Combine(Path.GetTempPath(), "art-trial-replace-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(folder);
         string batch = Path.Combine(folder, "shim-batch.txt");
@@ -347,8 +359,40 @@ internal static class Program
         Volatile.Write(ref stop, true); reader.Join();
         Check(refused == 0 && torn == 0 && reads > 0 && Directory.GetFiles(folder).Length == 1, "concurrent reader refused " + refused + " / torn " + torn + " of " + reads);
     }
+    // Preserved repro (romi 29497): a Core-style reader (GENERIC_READ, FILE_SHARE_READ|DELETE, as
+    // art-shim-bridge windows/host/control_snapshot.hpp SnapshotFile) against 400 whole-file
+    // replacements by File.Replace (ReplaceFileW, as tests/shim_first_loop/run.py replace_file) and by
+    // ProbeRequest.Replace (POSIX-semantics rename). Reports counts; asserts nothing about the first.
+    private static string ReplaceRace(string writer, Action<string, string> replace)
+    {
+        string folder = Path.Combine(Path.GetTempPath(), "art-replace-race-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(folder);
+        string batch = Path.Combine(folder, "inject.txt");
+        File.WriteAllText(batch, "batch 0 end\n");
+        int refused = 0, torn = 0, reads = 0; bool stop = false;
+        var reader = new Thread(() =>
+        {
+            while (!Volatile.Read(ref stop))
+            {
+                try { using (var r = new FileStream(batch, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete)) { reads++; var t = new StreamReader(r).ReadToEnd(); if (!t.StartsWith("batch ") || !t.EndsWith(" end\n")) torn++; } }
+                catch (IOException) { refused++; }
+            }
+        });
+        reader.Start();
+        for (int i = 1; i <= 400; i++) replace(batch, "batch " + i + " " + new string('x', i % 97) + " end\n");
+        Volatile.Write(ref stop, true); reader.Join();
+        return "\"" + writer + "\":{\"refused\":" + refused + ",\"torn\":" + torn + ",\"reads\":" + reads + "}";
+    }
+    private static void FileReplace(string path, string text)
+    {
+        string temp = path + "." + Guid.NewGuid().ToString("N") + ".tmp"; File.WriteAllText(temp, text); File.Replace(temp, path, null);
+    }
     private static int Main(string[] args)
     {
+        if (args.Length == 1 && args[0] == "--replace-race")
+        {
+            Console.WriteLine("{\"status\":\"measured\"," + ReplaceRace("replaceFileW", FileReplace) + "," + ReplaceRace("posixRename", ProbeRequest.Replace) + "}");
+            return 0;
+        }
         try
         {
             Decode(); Consumption(); StatusesAndFailures(); SharedActions(); SharedStatus(); TrialSteps();

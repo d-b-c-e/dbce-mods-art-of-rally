@@ -11,6 +11,8 @@ param(
     [Parameter(Mandatory)][string]$ShimCandidate,
     [ValidateSet('Observe','Apply','Trial')][string]$Mode = 'Observe',
     [string]$ObserveReceipt,
+    # Trial only, diagnostic: the mod may end the title splash once to reach the main menu (romi 29497).
+    [switch]$AdvanceTitle,
     [ValidateRange(1,30)][int]$ExpiresMinutes = 15
 )
 $ErrorActionPreference = 'Stop'
@@ -36,6 +38,7 @@ foreach ($file in $files) { if (-not (Test-Path -LiteralPath (Join-Path $bin $fi
 foreach ($path in @($Settings,$Profile,$NativeCandidate,$ShimCandidate)) { if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Input missing: $path" } }
 if ($Mode -ne 'Observe' -and (-not $ObserveReceipt -or -not (Test-Path -LiteralPath $ObserveReceipt -PathType Leaf))) { throw "$Mode probe needs its earlier Observe receipt." }
 # Trial (Slice B, latched Core) runs only on the reviewed latched bridge build, art-shim-bridge f38b855.
+if ($AdvanceTitle -and $Mode -ne 'Trial') { throw 'Only a Trial may advance the title.' }
 if ($Mode -eq 'Trial' -and (Get-FileHash -LiteralPath $ShimCandidate -Algorithm SHA256).Hash -ne '0D10F913C998C97D7DDF3A8F5F470D010092C3681152059DC88D7E0A7BB0386B') { throw 'Trial needs the reviewed latched bridge dbce_shim.dll (0D10F913).' }
 $payload = Join-Path $Result 'payload/ArtOfSimRally'
 New-Item -ItemType Directory -Path $payload | Out-Null
@@ -54,6 +57,7 @@ $request = [ordered]@{
     ShimSha256=(Hash (Join-Path $Result 'dbce_shim.dll')); SettingsSha256=(Hash (Join-Path $payload 'Settings.xml')); ProfileSha256=(Hash (Join-Path $Result 'controls.ini'))
     ShimPath=(Join-Path $Result 'dbce_shim.dll'); ProfilePath=(Join-Path $Result 'controls.ini')
     ObserveReceipt=$(if ($Mode -ne 'Observe') { Join-Path $Result 'observe-receipt.json' } else { $null })
+    AdvanceTitle=[bool]$AdvanceTitle
 }
 $utf8 = New-Object Text.UTF8Encoding($false)
 [IO.File]::WriteAllText((Join-Path $Result 'request.json'), ($request | ConvertTo-Json -Depth 5), $utf8)
