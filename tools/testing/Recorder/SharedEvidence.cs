@@ -19,6 +19,10 @@ namespace ArtOfSimRally.Testing
     /// </summary>
     internal sealed class SharedEvidence
     {
+        // Per row: frame, marker, phase, started, terminal, fresh, isolated and held describe this rendered frame.
+        // The composition columns (steerLive through keyboardSteered) are the mod's last composition, made in the
+        // frame named by lastFrame. The recorder ticks before the car reads input, so that is normally the previous
+        // rendered frame. The header is unchanged since slice A (sana 37320).
         internal const string Header = "frame\tmarker\tphase\tstarted\tterminal\tfresh\tisolated\tlastFrame\tsteerLive\t" +
             "appliedSteer\tappliedThrottle\tappliedBrake\tappliedClutch\tappliedHandbrake\talignment\t" +
             "steer\tthrottle\tbrake\tclutch\thandbrake\tkeyboard\tkeyboardSteered\theld";
@@ -101,13 +105,21 @@ namespace ArtOfSimRally.Testing
             string mod = null, controls = null;
             Dictionary<string, string> profile = null;
             object settings = null;
+            // build.json beside the mod, and the loaded assembly's own informational version, which the package
+            // build pins to the same identity; a hand-staged copy can carry a stale build.json (sana 37320).
             Add("inputModIdentity", () => BuildIdentity(Path.Combine(mod = modDirectory(), "build.json")));
+            Add("inputModVersion", () => Find("ArtOfSimRally.Mod.Main") is Type main
+                ? main.Assembly.GetCustomAttributes(typeof(AssemblyInformationalVersionAttribute), false).OfType<AssemblyInformationalVersionAttribute>()
+                    .Select(a => a.InformationalVersion).FirstOrDefault() ?? "absent"
+                : "unknown");
             Add("inputModSha256", () => HashOrAbsent(Path.Combine(mod ?? modDirectory(), "ArtOfSimRally.Mod.dll")));
             Add("settingsRead", () => { settings = Find("ArtOfSimRally.Mod.Main") is Type main ? Setting(main) : null; return settings == null ? "unknown" : "true"; });
             foreach (var name in new[] { "SharedInput", "WheelInputEnabled", "ShifterEnabled", "ForceFeedbackEnabled" })
                 Add("setting" + name, () => settings == null ? "unknown" : Flag(settings, name));
             Add("sharedInputRequested", () => shared == null ? "unknown" : shared.Requested ? "true" : "false");
             Add("sharedEvidence", () => shared != null ? "bound" : "unavailable: " + bindFailure);
+            // shared.tape's composition columns belong to lastFrame, not frame (see Header).
+            Add("sharedTapeComposition", () => "lastFrame");
             Add("controlsSha256", () => HashOrAbsent(controls = Path.Combine(mod ?? modDirectory(), "dbce-controls.ini")));
             foreach (var key in new[] { "Profile", "Revision", "Transmission" })
                 Add("controls" + key, () => (profile = profile ?? ControlsHeader(controls ?? Path.Combine(mod ?? modDirectory(), "dbce-controls.ini")))
