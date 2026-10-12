@@ -23,9 +23,14 @@ namespace ArtOfSimRally.Mod
         private static CarDynamics _cachedFor;
         private static Drivetrain _drivetrain;
 
+        private static int _sharedApplied = int.MinValue;
+
         [HarmonyPostfix]
         private static void ApplyGear(CarDynamics __instance)
         {
+            // A started shared session owns transmission input; Art's own shifter
+            // reader is never opened alongside it, so the two never both apply.
+            if (Shim.ShimInput.Consumer.Started) { ApplySharedGear(__instance); return; }
             var cfg = Main.Settings;
             if (!Main.Enabled || cfg == null || !cfg.ShifterEnabled) return;
             if (!Shifter.IsOpen) return;
@@ -40,6 +45,35 @@ namespace ArtOfSimRally.Mod
             }
 
             Shifter.Update(_drivetrain);
+        }
+
+        // Shared gates or sequential presses, through the same Drivetrain.Shift call as
+        // Art's shifter and the game's own sequential path. Only the shared profile's own
+        // transmission mode applies, never while the gearbox is automatic, and at most one
+        // change per physics step. The current car's gear-ratio range is checked every time;
+        // a missing gear is ignored, never clamped.
+        private static void ApplySharedGear(CarDynamics car)
+        {
+            var consumer = Shim.ShimInput.Consumer;
+            if (!Main.Enabled || Main.Settings == null || !GameState.IsDriving)
+            { consumer.ClearShifts(); _sharedApplied = int.MinValue; return; }
+            if (!ReferenceEquals(_cachedFor, car))
+            {
+                _cachedFor = car; _drivetrain = car.GetComponent<Drivetrain>();
+                consumer.ClearShifts(); _sharedApplied = int.MinValue;
+            }
+            if (_drivetrain == null) return;
+            // A press made in a panel or while unfocused must not shift on return.
+            if (Main.SettingsVisible || !UnityEngine.Application.isFocused) { consumer.ClearShifts(); return; }
+            WheelInput.EnsureSharedFrame();
+            var mode = WheelInput.SharedTransmission;
+            bool sequential = mode == Shim.ShimTransmission.Mode.Sequential && !_drivetrain.automatic;
+            int step = sequential ? consumer.TakeShift() : 0;
+            if (!sequential) consumer.ClearShifts();
+            var gate = mode == Shim.ShimTransmission.Mode.HPattern ? Shim.ShimTransmission.Gate(consumer, UnityEngine.Time.frameCount) : null;
+            int max = _drivetrain.gearRatios != null ? _drivetrain.gearRatios.Length - 1 : -1;
+            var target = Shim.ShimTransmission.Next(mode, _drivetrain.automatic, _drivetrain.gear, gate, ref _sharedApplied, step, Main.Settings.SkipNeutral, max);
+            if (target.HasValue) _drivetrain.Shift(target.Value, true);
         }
     }
 }

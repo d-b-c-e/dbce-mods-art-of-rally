@@ -49,6 +49,14 @@ namespace ArtOfSimRally.Mod
         /// </summary>
         public bool UseDirectInputBackend = false;
 
+        /// <summary>
+        /// Opt-in candidate: drive the wheel, pedals, menu buttons, shortcuts and
+        /// gears from the shared Wheelkit profile (dbce-controls.ini beside the mod)
+        /// through the copied input provider. Off keeps Art's own bindings. Read at
+        /// startup only; never migrates bindings, tune or force settings.
+        /// </summary>
+        public bool SharedInput = false;
+
         // ---- Direct wheel input (bypasses the game's input library) ---------
         /// <summary>Read steering and pedals straight from the device. See WheelInput.cs.</summary>
         public bool WheelInputEnabled = false;

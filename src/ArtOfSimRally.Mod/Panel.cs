@@ -44,6 +44,13 @@ namespace ArtOfSimRally.Mod
         {
             var cfg = Main.Settings;
             if (GameState.IsDriving) { GUILayout.Label("Pause before changing the FFB device.", Wrap); return; }
+            // An FFB device change reopens every wheel reader, which would stop the shared profile.
+            if (WheelInput.SharedReadersRequired)
+            {
+                GUILayout.Label("FFB device: " + (FfbSelection.TryTarget(cfg, out var name, out _, out _, out var why) ? name : why), Wrap);
+                GUILayout.Label(WheelInput.SharedDeviceChange, Wrap);
+                return;
+            }
             if (!_ffbListed) { _ffbDevices = FfbNative.ListDevices(); _ffbLabels = FfbNative.ListDeviceLabels(_ffbDevices); _ffbListed = true; }
             bool follow = FfbSelection.FollowsSteering(cfg);
             var steering = WheelInput.Binding.Parse(cfg.SteerBinding);

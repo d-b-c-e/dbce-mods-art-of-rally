@@ -15,10 +15,19 @@
     artofrally_Data/Plugins/x86_64 as well.
 .EXAMPLE
     .\tools\package\package.ps1 -Version 0.1.0
+.EXAMPLE
+    .\tools\package\package.ps1 -Version 0.1.0-rc.2 -SharedInputCandidate -SharedInputShim D:\private\dbce_shim.dll
+    A private owner-test candidate for the opt-in shared Wheelkit profile (romi 32354). It
+    also ships the copied-provider dbce_shim.dll and swaps in the native with the read-snapshot
+    exports, both pinned in lib/input-shim/CANDIDATE.json. The shim binary is not kept in this
+    public repository (romi 32775): pass a private copy, checked against the pin. Without the
+    switch nothing changes.
 #>
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)][string]$Version
+    [Parameter(Mandatory)][string]$Version,
+    [switch]$SharedInputCandidate,
+    [string]$SharedInputShim
 )
 
 $ErrorActionPreference = 'Stop'
@@ -29,9 +38,13 @@ $modVersion = [string]$props.Project.PropertyGroup.ModVersion
 if (($Version -split '-')[0] -ne $modVersion) { throw "Version must match Version.props ($modVersion)" }
 $info = Get-Content -LiteralPath (Join-Path $root 'src/ArtOfSimRally.Mod/Info.json') -Raw | ConvertFrom-Json
 if ($info.Version -ne $modVersion) { throw 'Info.json and Version.props disagree' }
+if ($SharedInputCandidate -and $Version -notmatch '-rc\.') { throw 'The shared-input candidate is a private RC only' }
+if ($SharedInputCandidate -and -not $SharedInputShim) { throw 'The shared-input candidate needs -SharedInputShim, a private copy of the pinned dbce_shim.dll' }
+if ($SharedInputShim -and -not $SharedInputCandidate) { throw '-SharedInputShim is only for -SharedInputCandidate' }
+$flavour = if ($SharedInputCandidate) { '-shared-input' } else { '' }
 $dist  = Join-Path $root 'dist'
-$stage = Join-Path $dist "stage-$Version"
-$zip = Join-Path $dist "ArtOfSimRally-$Version.zip"
+$stage = Join-Path $dist "stage-$Version$flavour"
+$zip = Join-Path $dist "ArtOfSimRally-$Version$flavour.zip"
 if ((Test-Path -LiteralPath $stage) -or (Test-Path -LiteralPath $zip)) {
     throw 'Candidate already exists. Keep its evidence; choose a new RC number.'
 }
@@ -66,6 +79,24 @@ if ($toolkitComponents.schemaVersion -ne 1 -or
     $toolkitComponents.nativeSha256 -cne (Get-FileHash -LiteralPath (Join-Path $toolkit 'native/WheelFfb.dll')).Hash) {
     throw 'Native component provenance does not match the packaged toolkit bytes'
 }
+$candidate = $null
+if ($SharedInputCandidate) {
+    $inputShim = Join-Path $root 'lib/input-shim'
+    $candidate = Get-Content -LiteralPath (Join-Path $inputShim 'CANDIDATE.json') -Raw | ConvertFrom-Json
+    if ($candidate.schema -ne 1) { throw 'Unsupported shared-input candidate record' }
+    $SharedInputShim = [IO.Path]::GetFullPath($SharedInputShim)
+    foreach ($part in @(@($SharedInputShim, $candidate.shimSha256), @((Join-Path $inputShim 'native/WheelFfb.dll'), $candidate.nativeSha256))) {
+        if ((Get-FileHash -LiteralPath $part[0] -Algorithm SHA256).Hash -cne $part[1]) { throw "Shared-input candidate hash mismatch: $($part[0])" }
+    }
+    # The mod refuses any other shim build, so the package must carry exactly the one it pins.
+    $startup = Get-Content -LiteralPath (Join-Path $root 'src/ArtOfSimRally.Mod/SharedInputStartup.cs') -Raw
+    if ($startup -notmatch 'ExpectedShimSha256 = "([0-9A-F]{64})"' -or $Matches[1] -cne $candidate.shimSha256) { throw 'dbce_shim.dll is not the build the mod pins' }
+    # Shared input reads Art's own wheel handle through these exports; the toolkit pin's native lacks them.
+    $nativeText = [Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes((Join-Path $inputShim 'native/WheelFfb.dll')))
+    foreach ($export in @('GetReadDeviceInfoV1', 'ReadDeviceSnapshotV1', 'GetReadDevicePathV1')) {
+        if (-not $nativeText.Contains($export + [char]0)) { throw "Shared-input candidate native lacks $export" }
+    }
+}
 
 Write-Host "Building managed mod..." -ForegroundColor Cyan
 & dotnet build (Join-Path $root 'src\ArtOfSimRally.Mod\ArtOfSimRally.Mod.csproj') -c Release -v q --nologo -warnaserror "-p:ReleaseLabel=$Version" "-p:SourceRevisionId=$revision" "-p:BuildSourceState=$sourceState"
@@ -89,7 +120,9 @@ Copy-Item (Join-Path $bin 'Dbce.Wheel.Ffb.dll') $modDir
 Copy-Item (Join-Path $bin 'Dbce.TripleScreen.Core.dll') $modDir
 Copy-Item (Join-Path $bin 'Dbce.TripleScreen.Protocol.dll') $modDir
 Copy-Item (Join-Path $root 'src\ArtOfSimRally.Mod\Info.json') $modDir
-Copy-Item (Join-Path $toolkit 'native\WheelFfb.dll') (Join-Path $modDir 'UnityForceFeedback.dll')   # the file name the mod P/Invokes
+$nativeSource = if ($candidate) { Join-Path $root 'lib\input-shim\native\WheelFfb.dll' } else { Join-Path $toolkit 'native\WheelFfb.dll' }
+Copy-Item $nativeSource (Join-Path $modDir 'UnityForceFeedback.dll')   # the file name the mod P/Invokes
+if ($candidate) { Copy-Item -LiteralPath $SharedInputShim -Destination (Join-Path $modDir 'dbce_shim.dll') }
 Copy-Item (Join-Path $root 'LICENSE') $stage
 Copy-Item (Join-Path $root 'tools\installer\Install.bat')   $stage
 Copy-Item (Join-Path $root 'tools\installer\Uninstall.bat') $stage
@@ -100,6 +133,11 @@ $build = [ordered]@{ schema=1; release=$Version; modVersion=$modVersion; identit
   # Data-only capability used by Wheelkit; older packages do not receive fields
   # that their runtime ignores merely because the catalog knows newer keys.
   $build['controlsProfileSchema'] = 1
+# verify.ps1 accepts dbce_shim.dll only with this record, whose pins must match the payload.
+if ($candidate) {
+    $build['sharedInputCandidate'] = [ordered]@{ shimSha256=$candidate.shimSha256; shimSource=$candidate.shimSource
+        nativeSha256=$candidate.nativeSha256; nativeSource=$candidate.nativeSource; nativeBase=$candidate.nativeBase }
+}
 $build | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $modDir 'build.json') -Encoding UTF8
 $fileVersion = [Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $modDir 'ArtOfSimRally.Mod.dll'))
 if ($fileVersion.ProductVersion -ne $identity -or $fileVersion.FileVersion -ne "$modVersion.0") { throw 'Built assembly identity does not match candidate' }
@@ -107,10 +145,12 @@ if ($fileVersion.ProductVersion -ne $identity -or $fileVersion.FileVersion -ne "
 # Keep the player-facing readme editable beside the installer; ship a standalone
 # guide with web links, not paths to source-only documents absent from the ZIP.
 $readme = (Get-Content -LiteralPath (Join-Path $root 'tools/installer/README.txt') -Raw).Replace('@RELEASE@', $Version)
+if ($candidate) { $readme += "`r`n" + (Get-Content -LiteralPath (Join-Path $root 'tools/installer/README-shared-input.txt') -Raw) }
 $readme | Set-Content (Join-Path $stage 'README.txt') -Encoding UTF8
 
 $files = [ordered]@{}
-foreach ($relative in $PayloadFiles) { $files[$relative] = (Get-FileHash -LiteralPath (Join-Path $stage $relative) -Algorithm SHA256).Hash }
+$payload = @($PayloadFiles) + $(if ($candidate) { @('ArtOfSimRally/dbce_shim.dll') } else { @() })
+foreach ($relative in $payload) { $files[$relative] = (Get-FileHash -LiteralPath (Join-Path $stage $relative) -Algorithm SHA256).Hash }
 [ordered]@{ schema=1; release=$Version; files=$files } | ConvertTo-Json -Depth 4 |
     Set-Content -LiteralPath (Join-Path $stage 'manifest.json') -Encoding UTF8
 $null = Assert-Payload $stage

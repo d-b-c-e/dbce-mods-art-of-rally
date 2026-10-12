@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "purpose": "Private owner-test candidate for the opt-in shared Wheelkit profile (romi 32354). Used only by tools/package/package.ps1 -SharedInputCandidate; the default package keeps lib/toolkit's native and ships no shim.",
+  "shimSha256": "7DDC962132819EDAE76EF84CE6509F1936B8C38177A36D498B8ABBCFDCFFBCAF",
+  "shimSource": "art-shim-bridge 574bb8827098779257bd08a89038c787403d15b0 (copied provider; P21 receipt research/.worktrees/art-shim-bridge-evidence/p21-path-20261011/receipt.json)",
+  "shimBytesFrom": "Not kept in this public repository (romi 32775); package.ps1 takes a private copy via -SharedInputShim and checks it against shimSha256. The bytes are those of games/.worktrees/art-shim-probe-evidence/apply-20261012-021108/dbce_shim.dll, the copy used by every ordinary shared run.",
+  "nativeSha256": "44E46799945438BC07DF738472602DB1E3ECC04C3F77CAD5B12FCACF49C69272",
+  "nativeSource": "dbce-wheel-mod-toolkit mufa/native-091-read-snapshots bbbf6e3 (native/wheelffb build.ps1, x64)",
+  "nativeBase": "c8ec2ee7fc389b2b3a20be849bc39f1203628f26 (native-0.9.1-fleet-candidate; Art's F8361A08) plus only the read-snapshot and interface-path exports from ecc49bd and 64ccf67",
+  "nativeVersion": 901,
+  "nativeExportCount": 51,
+  "nativeAddedExports": [
+    "GetReadDeviceInfoV1",
+    "ReadDeviceSnapshotV1",
+    "GetReadDevicePathV1"
+  ]
+}

@@ -41,6 +41,9 @@ internal static class Program
                 uiProcessor.GetType().GetMethod("Patch").Invoke(uiProcessor, null);
                 var uiMethods = ((System.Collections.IEnumerable)uiHarmony.GetType().GetMethod("GetPatchedMethods").Invoke(uiHarmony,null)).Cast<MethodBase>();
                 Check(uiMethods.Any(m=>m.Name=="ToggleWindow"),"UMM cancel-first hook failed");
+                // The latched Trial asserts its fences only after reading the live Harmony state of its hooks.
+                var missingHooks = mod.GetType("ArtOfSimRally.Mod.InputHooks", true).GetMethod("Missing", Static);
+                Check(((string)missingHooks.Invoke(null, null) ?? "").Contains("GetButtonDown"), "fence hooks reported attached before patching");
                 foreach (string type in new[] { "StockUiDispatchGuard", "StockPanelInputGuard", "StockModsInputGuard", "StockScreenInputGuard", "GameButtonPatch", "GameButtonAxisPatch", "GameContinuePatch", "TransmissionInput" })
                 {
                     var p = uiHarmony.GetType().GetMethod("CreateClassProcessor").Invoke(uiHarmony,
@@ -51,6 +54,10 @@ internal static class Program
                 Check(uiMethods.Count(m => m.DeclaringType.FullName == "Rewired.Player" && new[] { "GetButton", "GetButtonDown", "GetNegativeButton", "GetNegativeButtonDown", "GetAxis" }.Contains(m.Name)) == 5, "game button action seams changed");
                 foreach (string type in new[] { "RewiredStandaloneInputModule", "PanelManager", "ModsPanel", "PauseScreen", "ReplayManager" })
                     Check(uiMethods.Any(m=>m.DeclaringType.Name==type),"stock input hook missing: "+type);
+                Check(((string)missingHooks.Invoke(null, null) ?? "") == "GetInput", "fence hooks other than car input missing: " + missingHooks.Invoke(null, null));
+                var carHook = uiHarmony.GetType().GetMethod("CreateClassProcessor").Invoke(uiHarmony, new object[] { mod.GetType("ArtOfSimRally.Mod.WheelInputPatch", true) });
+                carHook.GetType().GetMethod("Patch").Invoke(carHook, null);
+                Check(missingHooks.Invoke(null, null) == null, "fence hooks missing after patching: " + missingHooks.Invoke(null, null));
                 var gameAssembly = Assembly.LoadFrom(Path.Combine(paths[2], "Assembly-CSharp.dll"));
                 var pointerType = gameAssembly.GetType("Rewired.Integration.UnityUI.RewiredPointerInputModule", true);
                 var pointerField = pointerType.GetField("m_PlayerPointerData", BindingFlags.Instance|BindingFlags.NonPublic);

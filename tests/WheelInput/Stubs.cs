@@ -66,7 +66,37 @@ namespace HarmonyLib
     public sealed class HarmonyTargetMethods : Attribute { }
     public static class AccessTools { public static System.Reflection.MethodInfo Method(Type type, string name, Type[] types) => type.GetMethod(name, types); }
 }
-namespace Rewired { public class Player { } }
+namespace Rewired
+{
+    public class Player { }
+    public sealed class Joystick
+    {
+        public Guid deviceInstanceGuid;
+        public bool isConnected = true;
+        public string name = "fixture";
+        public int axisCount => 1;
+        public float GetAxisRaw(int index) => enabled ? -1f : 0f;
+        public T GetExtension<T>() where T : class => null;
+        private bool value = true;
+        public int Writes;
+        public bool enabled { get => value; set { Writes++; this.value = value; } }
+    }
+    public sealed class ControllerInventory { public readonly List<Joystick> Joysticks = new(); }
+    public sealed class ControllerStatusChangedEventArgs : EventArgs { }
+    public static class ReInput
+    {
+        public static bool isReady; public static readonly ControllerInventory controllers = new();
+        public static event Action<ControllerStatusChangedEventArgs> ControllerConnectedEvent, ControllerPreDisconnectEvent, ControllerDisconnectedEvent;
+        public static event Action PreShutDownEvent, ShutDownEvent, InitializedEvent;
+        internal static int Subscribers => (ControllerConnectedEvent?.GetInvocationList().Length ?? 0) + (ControllerPreDisconnectEvent?.GetInvocationList().Length ?? 0) +
+            (ControllerDisconnectedEvent?.GetInvocationList().Length ?? 0) + (PreShutDownEvent?.GetInvocationList().Length ?? 0) +
+            (ShutDownEvent?.GetInvocationList().Length ?? 0) + (InitializedEvent?.GetInvocationList().Length ?? 0);
+    }
+}
+namespace Rewired.Platforms.Windows.RawInput
+{
+    public sealed class RawInputControllerExtension { public string devicePath; public Guid productGuid; }
+}
 public static class PadManager { public static readonly Rewired.Player Player = new(); public static Rewired.Player GetPlayer() => Player; }
 public static class EventStatusEnums { public enum EventStatus { UNDERWAY, FINISHING_STAGE_ANIMATION } }
 public sealed class EventManager { public EventStatusEnums.EventStatus status = EventStatusEnums.EventStatus.UNDERWAY; }
@@ -90,7 +120,9 @@ public static class SettingsManager
 }
 namespace ArtOfSimRally.Mod
 {
+    internal static class ShimStartup { internal static bool Requested; }
     internal static class GameButtonCompatibility { internal static bool Allowed=true; }
+    internal static class FfbNative { internal static string RequestedPath = ""; }
     internal static class Time { public static float realtimeSinceStartup = 100; public static int frameCount; }
     internal static class WheelPovInput
     {

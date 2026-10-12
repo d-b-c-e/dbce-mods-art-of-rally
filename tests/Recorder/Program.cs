@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IO.Pipes;
 using System.Reflection;
 using System.Runtime.Loader;
@@ -186,13 +187,131 @@ static class Program
         tune = access.ReadTune();
         Check(tune.Reference == 11500 && tune.Gain == .6f, "probe substitutes the new default for an explicit legacy tune");
     }
+    // carInput=shared leaves the car to the mod's shared input and ends on the probe's receipt or a bound.
+    static void Policy()
+    {
+        CapturePolicy Parse(params string[] pairs)
+        {
+            var request = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            for (int i = 0; i < pairs.Length; i += 2) request[pairs[i]] = pairs[i + 1];
+            return CapturePolicy.Parse(request);
+        }
+        string Refusal(params string[] pairs) { try { Parse(pairs); return ""; } catch (InvalidDataException e) { return e.Message; } }
+        var synthetic = Parse();
+        Check(!synthetic.SharedCarInput && synthetic.Seconds == 12f && synthetic.StopFile == null && synthetic.Source == "synthetic-integration", "synthetic default changed");
+        string stop = Path.Combine(Path.GetTempPath(), "probe-receipt.json");
+        var shared = Parse("carInput", "shared", "captureSeconds", "40", "stopWhenFile", stop);
+        Check(shared.SharedCarInput && shared.Seconds == 40f && shared.StopFile == stop && shared.Source == "shared-shim-integration", "shared policy not parsed");
+        var native = Parse("carInput", "native");
+        Check(native.NativeCarInput && !native.SharedCarInput && native.Seconds == 12f && native.StopFile == null && native.Source == "native-script-integration", "native policy not parsed");
+        Check(Refusal("carInput", "native", "stopWhenFile", stop).Contains("needs carInput=shared"), "native capture accepted a stop file");
+        // Native: the route waits at the title for the shared session (it qualifies only in the menus), at most 120 s.
+        float held = -1;
+        Check(!shared.Holds(false, 1, ref held) && !synthetic.Holds(false, 1, ref held) && held < 0, "a shared or synthetic route waited");
+        Check(native.Holds(false, 2, ref held) && held == 2 && native.Holds(false, 122, ref held) && !native.Holds(true, 123, ref held), "native route did not wait for the shared session");
+        bool late = false;
+        try { native.Holds(false, 122.5f, ref held); } catch (InvalidOperationException e) { late = e.Message.Contains("did not start within 120 s"); }
+        Check(late, "a shared session later than 120 s was waited for");
+        Check(Refusal("carInput", "keyboard").Contains("synthetic, shared or native") && Refusal("carInput", "shared", "captureSeconds", "600").Contains("5..120") &&
+            Refusal("carInput", "shared", "captureSeconds", "NaN").Contains("5..120") && Refusal("carInput", "shared", "captureSeconds", "Infinity").Contains("5..120") &&
+            Refusal("stopWhenFile", stop).Contains("needs carInput=shared") && Refusal("carInput", "shared", "stopWhenFile", "receipt.json").Contains("absolute"), "bad capture policy accepted");
+        float underwayAt = -1; bool present = false;
+        Func<string, bool> exists = p => present && p == stop;
+        Check(!shared.Done(false, 1, ref underwayAt, exists) && underwayAt < 0, "menus ended the capture or started its clock");
+        Check(!shared.Done(true, 10, ref underwayAt, exists) && underwayAt == 10 && !shared.Done(true, 49.9f, ref underwayAt, exists), "bound ended early");
+        Check(shared.Done(true, 50, ref underwayAt, exists), "bound not applied");
+        float early = -1; present = true;
+        Check(shared.Done(false, 1, ref early, exists), "probe receipt before the stage did not end the capture");
+    }
+    // carInput=native: the stage script and the verdict over native.tape and car.tape (romi 31616).
+    static void Native()
+    {
+        string Axis(float t, string action) => NativeEvidence.At(t).TryGetValue("R0.GetAxisRaw.s" + action, out var v) ? v : "0";
+        // Each action alone and short, so the car stays near the start (06:52: a long throttle met Art's out-of-bounds resets).
+        Check(Axis(1, "Throttle") == "0.8" && NativeEvidence.At(1).Count == 1 && Axis(2, "Brake") == "0.8" && NativeEvidence.At(2).Count == 1 &&
+            Axis(3, "Handbrake") == "1" && NativeEvidence.At(3).Count == 1 && Axis(5, "Horizontal") == "0.8" && NativeEvidence.At(5).Count == 1 &&
+            Axis(6, "Horizontal") == "-0.8" && NativeEvidence.At(6).Count == 1 && NativeEvidence.At(7).Count == 0 && NativeEvidence.At(11).Count == 0, "stage script changed");
+        Check(Enumerable.Range(0, 120).Count(i => Axis(i / 10f, "Throttle") != "0") == 15, "throttle held longer than 1.5 s");
+        Check(Enumerable.Range(0, 180).SelectMany(i => NativeEvidence.At(i / 10f).Values).All(v => Math.Abs(float.Parse(v, CultureInfo.InvariantCulture)) > 0.75f), "a scripted value is inside Art's largest deadzone");
+        const int Stage = 7, Menu = 3;
+        string R(float v) => v.ToString("R", CultureInfo.InvariantCulture);
+        // A clean ordinary session: Art returns the script (plus alignment on steering); the wheel at rest keeps its
+        // shared steering when off centre (wheel != 0) and the mod otherwise leaves Art's result unchanged.
+        List<string[]> Rows(float alignment = 0f, float wheel = 0f)
+        {
+            var rows = new List<string[]> { new[] { "1", Menu.ToString(), "1", "0", "0", "0", "0", "9", "9", "9", "9", "9", "1", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0" } };
+            for (int i = 0; i < 18 * 60; i++)
+            {
+                float t = i / 60f; string s = Axis(t, "Horizontal"), th = Axis(t, "Throttle"), b = Axis(t, "Brake"), h = Axis(t, "Handbrake");
+                string steer = R(float.Parse(s, CultureInfo.InvariantCulture) + alignment), final = wheel != 0f ? R(wheel + alignment) : steer;
+                string start = th != "0" ? "1" : "0";
+                rows.Add(new[] { (100 + i).ToString(), Stage.ToString(), "1", s, th, b, h, steer, th, b, h, "0", start, final, th, b, h, "0", start, "1", "1", "1", R(wheel), "0", "0", "0", R(alignment) });
+            }
+            return rows;
+        }
+        List<string> Car(List<string[]> rows)
+        {
+            var car = new List<string> { "step\tmarker\tsteer\tthrottle\tbrake\thandbrake", "0\t" + Stage + "\t0\t0\t1\t1" };
+            foreach (var r in rows.Where(r => r[1] == Stage.ToString())) car.Add(r[0] + "\t" + Stage + "\t" + r[13] + "\t" + r[14] + "\t" + r[15] + "\t" + r[16]);
+            return car;
+        }
+        string Verdict(List<string[]> rows, List<string> car, out bool ok) =>
+            NativeEvidence.Evaluate(new[] { NativeEvidence.Header }.Concat(rows.Select(r => string.Join("\t", r))), car, m => m == Stage, out ok);
+        var clean = Rows();
+        string verdict = Verdict(clean, Car(clean), out bool passed);
+        Check(passed && verdict.StartsWith("passed: 1080 stage frames") && verdict.Contains("the wheel at centre passed Art's steering on 180 scripted-steer frames") &&
+            verdict.Contains("1 leading start-line ticks") && verdict.EndsWith("scripted Rewired native-path evidence only"), "clean native capture: " + verdict);
+        var aligned = Rows(0.03f);
+        Check(Verdict(aligned, Car(aligned), out passed) != null && passed, "steering alignment term refused");
+        // Without force the wheel rests where it was left (0.1407 in the 02:11 Apply receipt): it keeps steering.
+        var offCentre = Rows(0f, 0.1407f);
+        Check(Verdict(offCentre, Car(offCentre), out passed).Contains("the wheel at rest off centre (shared steer 0.1407) held steering on 180 scripted-steer frames") && passed, "off-centre wheel refused");
+        var offAligned = Rows(0.03f, 0.1407f);
+        Check(Verdict(offAligned, Car(offAligned), out passed) != null && passed, "off-centre wheel with alignment refused");
+        // Automatic reverse swaps throttle and brake in the car's fields (a 0.6 brake keeps the swapped throttle row unique).
+        var reverse = Rows(); foreach (var x in reverse.Where(x => x[5] == "0.8")) { x[5] = "0.6"; x[9] = "0.6"; x[15] = "0.6"; }
+        var swapped = Car(reverse); var f = swapped[2 + 30].Split('\t'); swapped[2 + 30] = string.Join("\t", f[0], f[1], f[2], f[4], f[3], f[5]);
+        Check(Verdict(reverse, swapped, out passed) != null && passed, "automatic reverse swap refused");
+        string Broken(Action<List<string[]>> change, float wheel = 0f)
+        {
+            var rows = Rows(0f, wheel); change(rows);
+            string v = Verdict(rows, Car(rows), out bool ok);
+            return ok ? "PASSED " + v : v;
+        }
+        int row = 1 + 60, steerRow = 1 + 300; // throttle; right steering
+        Check(Broken(r => r[row][2] = "0").StartsWith("game unfocused at frame"), "unfocused frame accepted");
+        Check(Broken(r => r[row][19] = "0").StartsWith("the shared composition did not run"), "frame without shared composition accepted");
+        Check(Broken(r => r[row][20] = "0").StartsWith("Rewired isolation unverified"), "unisolated frame accepted");
+        Check(Broken(r => r[row][21] = "0").StartsWith("shared steering not live"), "frame without live steering accepted");
+        Check(Broken(r => r[row][22] = "0.004").StartsWith("shared steering moved from 0 to 0.004 (wheel not at rest)"), "moving wheel accepted");
+        Check(Broken(r => r[row][22] = "0.2", 0.1407f).StartsWith("shared steering moved from 0.1407 to 0.2"), "moved off-centre wheel accepted");
+        Check(Broken(r => r[steerRow][13] = r[steerRow][7], 0.1407f).StartsWith("steer 0.8 is not the ordinary composition of Art's 0.8 and the wheel's 0.1407"), "script leaked into wheel-owned steering");
+        Check(Broken(r => r[row][23] = "0.01", 0.1407f).StartsWith("shared appliedThrottle 0.01 (wheel not at rest)"), "pressed throttle pedal accepted");
+        Check(Broken(r => r[row][25] = "0.2").Contains("appliedHandbrake"), "shared handbrake accepted");
+        Check(Broken(r => { r[row][14] = "0"; r[row][18] = "0"; }).StartsWith("the shared path changed Art's throttle: 0.8 -> 0"), "zeroed native throttle accepted");
+        Check(Broken(r => r[steerRow][13] = "0.5").StartsWith("steer 0.5 is not the ordinary composition of Art's 0.8 and the wheel's 0"), "replaced steering accepted");
+        Check(Broken(r => { r[steerRow][7] = "0"; r[steerRow][13] = "0"; }).StartsWith("Art's GetInput result differs from the script"), "deadzone-swallowed script accepted");
+        Check(Broken(r => r.RemoveRange(1 + 299, r.Count - 1 - 299)).StartsWith("only 299 stage frames"), "short capture accepted");
+        Check(Broken(r => { foreach (var x in r.Where(x => x[5] != "0" && x[1] == Stage.ToString())) { x[5] = "0"; x[9] = "0"; x[15] = "0"; } }).StartsWith("the script did not reach every action") , "script without brake accepted");
+        Check(Broken(r => { foreach (var x in r.Where(x => x[3] != "0" && x[3].StartsWith("-"))) { x[3] = "0"; x[7] = "0"; x[13] = "0"; } }).Contains("left 0"), "script without left steering accepted");
+        Check(Broken(r => r.RemoveAll(x => x[1] == Stage.ToString() && Enumerable.Range(3, 4).All(i => x[i] == "0"))).Contains("released 0"), "capture without the release accepted");
+        var stale = Car(clean); stale[900] = "999\t" + Stage + "\t0.8\t0.8\t0.8\t0";
+        Check(Verdict(clean, stale, out passed).StartsWith("car input at step") && !Verdict(clean, stale, out _).Contains("reset") && !passed, "car tick without a composed result accepted");
+        // Art's out-of-bounds reset forces the car's handbrake over a composed result; it fails, and is named.
+        var reset = Car(clean); reset[400] = "998\t" + Stage + "\t0\t0\t0\t1"; reset[401] = "999\t" + Stage + "\t0\t0.8\t0\t1";
+        Check(Verdict(clean, reset, out passed).EndsWith("is no composed result (handbrake forced over a composed result: Art's out-of-bounds reset?)") && !passed, "forced handbrake accepted or not named");
+        Check(Verdict(clean, new List<string> { "header", "0\t" + Stage + "\t0\t0\t1\t1" }, out passed) == "no car tick carried a composed result" && !passed, "car without composed ticks accepted");
+        // Menu rows are not judged.
+        Check(Broken(r => r[0][2] = "0") == "PASSED " + Verdict(clean, Car(clean), out _), "menu row judged");
+        Check(NativeEvidence.Evaluate(new[] { "frame\tmarker" }, Car(clean), m => true, out passed) == "native.tape header differs" && !passed, "foreign header accepted");
+    }
     static int Main(string[] args)
     {
         try
         {
             string root = Path.GetFullPath(args[0]);
             Check(!Directory.Exists(root), "use a fresh test evidence directory");
-            string capture = Capture(root); Pipe(); Quit(Path.Combine(root, "quit-cases"));
+            string capture = Capture(root); Pipe(); Quit(Path.Combine(root, "quit-cases")); Policy(); Native();
             if (args.Length == 3) Contract(args[1], args[2]);
             Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions, syntheticCapture = capture })); return 0;
         }

@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFrameworks>net8.0;net48</TargetFrameworks>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ShimFrame.cs" Link="ShimFrame.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ShimAxisConsumer.cs" Link="ShimAxisConsumer.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ShimTransmission.cs" Link="ShimTransmission.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/Shim/SharedInputStatus.cs" Link="SharedInputStatus.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ShimBridge.cs" Link="ShimBridge.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ShimBridgeNative.cs" Link="ShimBridgeNative.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/Shim/NativeInputIsolation.cs" Link="NativeInputIsolation.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ProbeObservation.cs" Link="ProbeObservation.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ProbeRequest.cs" Link="ProbeRequest.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/Shim/LatchedTrial.cs" Link="LatchedTrial.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/Shim/DriveTrial.cs" Link="DriveTrial.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ProfileObjects.cs" Link="ProfileObjects.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ProbeIdentityMapper.cs" Link="ProbeIdentityMapper.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ProbeIdentityLease.cs" Link="ProbeIdentityLease.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ProbeNoForce.cs" Link="ProbeNoForce.cs" />
+  </ItemGroup>
+</Project>
