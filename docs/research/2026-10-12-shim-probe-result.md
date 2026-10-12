@@ -51,6 +51,35 @@ game integrity levels in `launch.json`, and closes the child without observation
 if the game's level differs from Steam's. `Test-SteamLaunchContext.ps1` proves
 the broker child runs at Medium with only those variables (no game, Steam or rig).
 
+## Observe passed (October 12, 01:55 local)
+
+With the owner's Steam client started at Medium through the user shell (logon OK,
+no prompt or dialog), the runner chose the broker launch: the copy ran at Medium
+(0x2000) like Steam, Steam tracked app 550320 for the copy and saw exit code 0.
+The same candidate pins as the blocked attempt produced `probe-receipt.json`
+(Observe, `Applied=false`, `PublishedFrames=0`, `NoForceArmed=true`):
+
+- `IdentityQualified`: the three Core-owned devices (DS-8X, R12, Stalk) join
+  Rewired by exact HID interface path and product; the R12's DirectInput and
+  RawInput instance GUIDs differ, as on DRIVE. Only the R12 was isolated because
+  the shared profile binds only its axes; the Stalk and DS-8X stayed enabled.
+- While disabled, the R12's public path was empty and its product GUID zero,
+  confirming at runtime the static getter finding behind the retained witness.
+- `FlagsDisabled`, `FlagsRestored`, `IdentityRestored` (fresh exact join) all true;
+  identity epoch 0 → 0.
+- `NonzeroCacheClearObserved`: resting R12 raw axes (0.14, -1 pedals) all read 0
+  after disabling.
+- The native log shows the no-force latch, three read slots opened and released,
+  and no force call. The runner closed the exact child and restored shared files,
+  LocalLow and raw PlayerPrefs with zero errors; owner native and Settings hashes
+  are unchanged.
+
+The restored snapshot read all R12 raw axes as 0 immediately after re-enabling,
+probably before Rewired's next poll. Before Apply, confirm the raw cache returns
+to resting values a few frames after restoration. Evidence (local, retained):
+`E:/Source/games/.worktrees/art-shim-probe-evidence/observe-20261012-015542` and
+`steam-start-20261012-015503`.
+
 ## Exact candidate
 
 | Component | Source commit | Built SHA-256 |
