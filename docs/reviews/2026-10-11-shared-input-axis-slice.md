@@ -95,10 +95,10 @@ WheelInput assertions; 80 lifecycle assertions. The copy-only preparation fixtur
 left source Settings unchanged and did not create a game-copy directory.
 
 Rewired's public RawInput extension compiles against Art's shipped Windows
-assembly. GUID/HID path/product fields are diagnostic only. DRIVE has confirmed
-RawInput/DirectInput GUID namespace mismatch; Art requires the bound GUID be
-observed and refuses that case. Do not activate production until an exact owned
-HID path join is implemented and qualified. Native log redirection during the
+assembly. At diagnostic commit `a03fb51`, GUID/HID path/product fields were
+diagnostic only and different RawInput/DirectInput GUIDs refused. The owned-path
+follow-on below adds the exact source join; actual runtime qualification remains
+open. Native log redirection during the
 probe is the only FfbNative adapter change; the producer/tune/reference and old
 capture semantics are unchanged.
 
@@ -117,7 +117,35 @@ restart and bounded stop. Reject duplicate native handles, FFB producer changes
 or altered capture meanings. Replay accepted original force requests muted;
 physical coexistence needs an owner-attended check. Keep Art v2 tune fixed.
 
-## Standards audit
+## Owned-path identity follow-on
+
+Toolkit `64ccf67` adds expected-generation `GetReadDevicePathV1` on the existing
+handle. Shared shim `574bb88` includes the direct-provider path metadata change
+(`f49cfc5`, cherry-picked as `1e88feb`) and an atomic copied metadata/path export.
+Art retains both GUID namespaces and joins exact owned HID path plus product to
+the Rewired RawInput extension. Unknown/ambiguous paths, a different collection,
+wrong product, missing owned reader or changed RawInput identity refuse; matching
+names or GUID coincidence never substitute for path proof. Metadata/path is
+frozen across the observation-to-handoff gap. Every bounded Apply frame rechecks
+the Rewired join before the isolation stamp. This remains probe-only source.
+
+Final targeted checks: toolkit fake-COM x64/x86 and native/managed builds pass
+(62 old-plus-additive exports; no version/144/232 layout overwrite). Shim CTest
+3/3 and 46 copied-provider checks pass. Full default P21 at `574bb88` passes 129
+supervised host checks, 106 real-provider fake checks and teardown/mutation
+audits; receipt `E:/Source/research/.worktrees/art-shim-bridge-evidence/p21-path-20261011/receipt.json`.
+Art .NET8/Unity Mono actual-DLL old/new metadata export runs pass 434/433 checks
+(worker readiness can change the count); production WheelInput remains 428 plus
+12 shared-read checks. Mod/test builds pass with zero warnings/errors. Actual
+Art HID path matching, disable/cache/restore and keyboard operation remain open.
+
+Only headers are copied into Art. Candidate native SHA-256:
+`9631A9C98A70BED21EA427EAAE894EBD3C2280C99516EBF2BDA320FF3BBAD1E6`;
+copied shim SHA-256:
+`7DDC962132819EDAE76EF84CE6509F1936B8C38177A36D498B8ABBCFDCFFBCAF`.
+These are isolated build candidates, not installed/release artifacts.
+
+## Standards audit (unchanged qualification)
 
 STD-033/034/035/036 remain partial until activation and live qualification.
 STD-012 original recordings/signals stay untouched. Existing partial/unchecked

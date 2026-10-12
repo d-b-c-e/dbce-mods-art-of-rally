@@ -8,7 +8,7 @@ internal static class BridgeTests
 {
     private static int checks;
     private static void Check(bool value, string why) { checks++; if (!value) throw new Exception(why); }
-    internal sealed class Source : IPhysicalSnapshotSource
+    internal class Source : IPhysicalSnapshotSource
     {
         [DllImport("kernel32.dll")] private static extern bool QueryPerformanceCounter(out long value);
         [DllImport("kernel32.dll")] private static extern bool QueryPerformanceFrequency(out long value);
@@ -35,7 +35,7 @@ internal static class BridgeTests
             Last = (byte[])bytes.Clone(); return Result;
         }
     }
-    internal sealed class Native : IShimBridge
+    internal class Native : IShimBridge
     {
         internal int Ticks, Stops, Descriptors; internal byte[] Raw; internal bool Accept = true;
         public bool Devices(byte[] bytes, int count) { Descriptors++; return Accept; }
@@ -48,6 +48,18 @@ internal static class BridgeTests
             return true;
         }
         public void Stop() { Stops++; }
+    }
+    private sealed class PathSource : Source, IPhysicalSnapshotPathSource
+    {
+        internal bool PathValid = true;
+        public bool TryGetPath(int slot, ulong generation, out string path)
+        { path = @"\\?\hid#owned-source"; return generation == Generation && PathValid; }
+    }
+    private sealed class PathNative : Native, IShimPathBridge
+    {
+        internal string[] Paths;
+        public bool DevicesWithPaths(byte[] bytes, int count, string[] paths)
+        { Paths = (string[])paths.Clone(); return Devices(bytes, count); }
     }
     internal static int Fake()
     {
@@ -66,17 +78,31 @@ internal static class BridgeTests
         source = new Source(); native = new Native { Accept = false }; bool refused = false;
         try { new ShimBridge(source, native, new ShimAxisConsumer(), new[] { 0 }); } catch (InvalidOperationException) { refused = true; }
         Check(refused && source.Reads == 0 && native.Stops == 1, "metadata refusal acquired input");
+        var pathSource = new PathSource(); var pathNative = new PathNative();
+        bridge = new ShimBridge(pathSource, pathNative, new ShimAxisConsumer(), new[] { 0 });
+        Check(pathNative.Paths.Length == 1 && pathNative.Paths[0] == @"\\?\hid#owned-source" && pathSource.Reads == 0, "path and metadata did not publish together without polling"); bridge.Stop("fixture");
+        pathSource = new PathSource { PathValid = false }; pathNative = new PathNative(); refused = false;
+        try { new ShimBridge(pathSource, pathNative, new ShimAxisConsumer(), new[] { 0 }); } catch (InvalidOperationException) { refused = true; }
+        Check(refused && pathNative.Paths == null && pathSource.Reads == 0 && pathNative.Stops == 1, "unqualified path published metadata or polled");
+        native = new Native(); refused = false;
+        try { new ShimBridge(new PathSource(), native, new ShimAxisConsumer(), new[] { 0 }); } catch (InvalidOperationException) { refused = true; }
+        Check(refused && native.Descriptors == 0 && native.Stops == 1, "missing path API fell back to unqualified metadata");
         return checks;
     }
     internal static int Actual(string dll)
     {
         checks = 0;
+        ActualOne(dll, false); ActualOne(dll, true); return checks;
+    }
+    private static void ActualOne(string dll, bool withPath)
+    {
         string folder = Path.Combine(Path.GetTempPath(), "art-copied-bridge-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(folder);
         string profile = "[Controls]\nSchema = 1\nProfile = Bridge\nRevision = r1\nTransmission = Sequential\nsteer = axis 0 dev={d71b8350-61b7-11f1-8001-444553540000} prod={0006346e-0000-0000-0000-504944564944} range=0..65535 rest=32768 travel=+1\n";
-        var source = new Source(); var sink = new ShimAxisConsumer();
+        Source source = withPath ? new PathSource() : new Source(); var sink = new ShimAxisConsumer();
         var native = new ShimBridgeNative(dll, folder, System.Text.Encoding.UTF8.GetBytes(profile));
         var ids = native.BoundInstances();
         Check(ids.Length == 1 && ids[0] == new Guid("d71b8350-61b7-11f1-8001-444553540000"), "Core device-report identity differs from profile");
+        Check(native.BoundProducts()[ids[0]] == new Guid("0006346e-0000-0000-0000-504944564944"), "Core profile product lost");
         var bridge = new ShimBridge(source, native, sink, new[] { 0 }); int frame = 0, copies = 0;
         try
         {
@@ -94,6 +120,5 @@ internal static class BridgeTests
         }
         finally { bridge.Stop("fake-source qualification complete"); }
         Check(File.ReadAllText(Path.Combine(folder, "host-shutdown.json")).Contains("\"state\":\"resolved\""), "actual bridge stop did not resolve");
-        return checks;
     }
 }

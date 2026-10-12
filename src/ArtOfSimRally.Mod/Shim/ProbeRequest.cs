@@ -56,13 +56,15 @@ namespace ArtOfSimRally.Mod.Shim
             Pin(modPath, ModSha256); Pin(nativePath, NativeSha256); Pin(settingsPath, SettingsSha256);
             Pin(ShimPath, ShimSha256); Pin(ProfilePath, ProfileSha256);
         }
-        internal void ValidateApply(ProbeReceipt prior, Guid[] instances)
+        internal void ValidateApply(ProbeReceipt prior, Guid[] instances, OwnedDeviceIdentity[] owned, Guid[] rewired)
         {
             if (Mode != "Apply") return;
             if (prior == null || prior.Mode != "Observe" || !prior.IdentityQualified || !prior.FlagsDisabled || !prior.FlagsRestored ||
                 !prior.RawAxesNeutralAfterDisable || prior.ModSha256 != ModSha256 || prior.NativeSha256 != NativeSha256 ||
                 prior.ShimSha256 != ShimSha256 || prior.SettingsSha256 != SettingsSha256 || prior.ProfileSha256 != ProfileSha256 ||
-                prior.Instances == null || !new System.Collections.Generic.HashSet<Guid>(prior.Instances).SetEquals(instances))
+                prior.Instances == null || !new System.Collections.Generic.HashSet<Guid>(prior.Instances).SetEquals(instances) ||
+                prior.RewiredInstances == null || rewired == null || !new System.Collections.Generic.HashSet<Guid>(prior.RewiredInstances).SetEquals(rewired) ||
+                !ProbeIdentityMapper.SameBindings(prior.OwnedDevices, owned))
                 throw new InvalidDataException("Apply probe needs matching observed identities, disable/restore and neutral raw-axis receipt");
         }
     }
@@ -75,6 +77,9 @@ namespace ArtOfSimRally.Mod.Shim
         [DataMember] public string ModSha256, NativeSha256, ShimSha256, SettingsSha256, ProfileSha256;
         [DataMember] public bool NoForceArmed, IdentityQualified, FlagsDisabled, FlagsRestored, RawAxesNeutralAfterDisable, NonzeroCacheClearObserved, Applied;
         [DataMember] public Guid[] Instances;
+        [DataMember] public OwnedDeviceIdentity[] OwnedDevices;
+        [DataMember] public Guid[] RewiredInstances;
+        [DataMember] public string IdentityQualification;
         [DataMember] public int PublishedFrames;
         [DataMember] public string[] LastAxisStatuses;
         [DataMember] public float[] LastAxisValues;

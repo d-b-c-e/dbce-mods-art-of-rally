@@ -5,12 +5,14 @@ or a production profile Apply workflow. Normal launches do not read its request,
 construct the shim, change Rewired flags, or parse a profile. The saved owner
 backend and accepted v2 FFB settings/reference recordings stay unchanged.
 
-The first runtime question is whether the **same exact instance identity** from
-Core and an already-open WheelFfb read slot exists in Rewired. DRIVE has observed
-different RawInput and DirectInput instance GUIDs for the same HID path. Art
-refuses that case. The receipt includes Rewired's public RawInput extension HID
-path/product GUID as diagnostic evidence; it never uses a name, product alone,
-array index, or an unproven path mapping to authorize isolation.
+The first runtime question is whether each Core-bound DirectInput identity has
+the **same exact owned HID interface path and product GUID** in Rewired. DRIVE
+has observed different RawInput and DirectInput instance GUIDs for that device.
+The source now retains both GUID namespaces and joins them through the toolkit's
+generation-checked `DIPROP_GUIDANDPATH` query on the existing handle. It never
+uses a name, product alone, array index, shortened collection path or direct
+GUID coincidence to authorize isolation. This join has fake-boundary tests;
+actual Art driver/API behavior remains unqualified until the muted probe.
 
 ## Source behavior
 
@@ -34,19 +36,21 @@ without another physical read, snapshots Rewired, and temporarily disables only
 the exact matched joystick objects. After the next Unity frame it records raw
 axes and restores only flags it changed. Results are independent:
 
-- exact Core/reader/Rewired GUID correspondence;
+- Core/reader GUID and product correspondence, exact owned HID path/product
+  correspondence with Rewired, and both GUID namespaces separately;
 - disabled flags and exact restored flags, including untouched controllers;
 - whether all mapped raw axes read zero after disabling;
 - whether an **already nonzero** raw axis (a pedal can rest at -1) became zero.
   If every axis was already zero, cache clearing is explicitly inconclusive.
 
-Unknown GUIDs, throwing identity APIs, changed inventories, mismatched RawInput
-GUIDs and absent owned readers refuse. Raw-axis API failure does not erase the
+Unknown GUIDs/paths, throwing identity APIs, changed inventories, mismatched HID
+paths/products and absent owned readers refuse. Raw-axis API failure does not erase the
 separate identity/flag facts. It prevents Apply. No owner motion or OS input is
 requested. The probe does not change players, maps, keyboard or mouse.
 
 Apply is an optional second **diagnostic process** with a prior matching Observe
-receipt. It requires exact GUID/disabled/restored flags and neutral raw axes,
+receipt. It requires matching Core/RawInput identities and HID paths, exact
+disabled/restored flags and neutral raw axes,
 then repeats the current checks before attaching. A neutral-at-rest receipt is
 accepted while its nonzero cache transition remains explicitly inconclusive.
 It publishes 120 menu frames through the real copied provider and Art sink, then
@@ -131,7 +135,10 @@ exports must refuse.
    owner payload/Settings hashes; restore shared prefs/logs with the established
    harness and confirm the owner backend was never changed.
 
-An additive owned-slot `DIPROP_GUIDANDPATH` query with generation checking is the
-smallest possible next native seam if the GUID namespaces differ. That mapping
-is not implemented or qualified by this probe. Base ABI 2 and snapshot extension
-1 remain unchanged; no old export is removed.
+The required source candidates are toolkit `64ccf67` and copied shim `574bb88`
+(includes the shared owned-path report change as `1e88feb`, equivalent to
+`f49cfc5`). The new optional native query and atomic copied-provider paths export
+do not change base ABI 2 or the 144/232-byte extension 1 structs; no old export
+is removed. Art freezes metadata/generation/path through the isolation handoff
+and rechecks the exact Rewired path/product/GUID join during the bounded Apply
+probe. It still has no production backend activation or physical qualification.

@@ -29,6 +29,12 @@ DBCE_SHIM_API int32_t dbce_shim_bridge_device_size(void);
 DBCE_SHIM_API int32_t dbce_shim_bridge_sample_size(void);
 DBCE_SHIM_API int32_t dbce_shim_bridge_open(const dbce_shim_open_args*,void** out,char* why,int32_t why_len);
 DBCE_SHIM_API int32_t dbce_shim_bridge_devices(void*,const dbce_shim_bridge_device_v1*,int32_t count);
+/* Optional additive export: publish metadata and exact owned interface paths in
+ * one atomic batch. paths has count nonempty UTF-16 NUL-terminated strings,
+ * each at most 259 code units. All are copied before return. The source owner
+ * must query the same qualified generation; no name/product-only inference.
+ * Old devices() remains available and publishes unavailable (empty) paths. */
+DBCE_SHIM_API int32_t dbce_shim_bridge_devices_with_paths(void*,const dbce_shim_bridge_device_v1*,int32_t count,const wchar_t* const* paths);
 DBCE_SHIM_API int32_t dbce_shim_bridge_tick(void*,const dbce_shim_bridge_sample_v1*,int32_t count,dbce_shim_frame*);
 #ifdef __cplusplus
 }

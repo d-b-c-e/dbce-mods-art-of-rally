@@ -76,23 +76,33 @@ namespace ArtOfSimRally.Mod
                 {
                     if (!inventory.Ready || WheelInput.SharedProbeSlots.Length == 0) return;
                     native = new ShimBridgeNative(request.ShimPath, request.Result, File.ReadAllBytes(request.ProfilePath));
-                    var ids = native.BoundInstances(); receipt.Instances = ids;
+                    var expected = native.BoundProducts(); var ids = new Guid[expected.Count]; expected.Keys.CopyTo(ids, 0); receipt.Instances = ids;
+                    receipt.Before = ProbeObservation.Capture(inventory);
                     source = new ExistingWheelSnapshots(FfbNative.RequestedPath);
                     // Metadata only: no second physical poll or device acquisition.
-                    var found = new HashSet<Guid>();
+                    var owned = new List<OwnedDeviceIdentity>();
                     foreach (int slot in WheelInput.SharedProbeSlots)
                     {
                         var bytes = new byte[ShimBridge.DeviceSize];
                         if (source.Describe(slot, bytes) != 1 || BitConverter.ToUInt64(bytes, 8) == 0)
                             throw new InvalidOperationException("existing read slot metadata unavailable: " + slot);
-                        var id = new byte[16]; Buffer.BlockCopy(bytes, 16, id, 0, 16); found.Add(new Guid(id));
+                        string path;
+                        var generation = BitConverter.ToUInt64(bytes, 8);
+                        if (!source.TryGetPath(slot, generation, out path)) throw new InvalidOperationException("owned reader interface path unavailable for generation " + generation);
+                        var id = new byte[16]; Buffer.BlockCopy(bytes, 16, id, 0, 16);
+                        var product = new byte[16]; Buffer.BlockCopy(bytes, 32, product, 0, 16);
+                        Guid expectedProduct;
+                        if (expected.TryGetValue(new Guid(id), out expectedProduct) && expectedProduct != new Guid(product)) throw new InvalidOperationException("Core profile product differs from owned reader");
+                        source.Pin(slot, bytes, path);
+                        owned.Add(new OwnedDeviceIdentity { Instance = new Guid(id), Product = new Guid(product), Generation = generation, InterfacePath = path });
                     }
-                    foreach (var id in ids) if (!found.Contains(id)) throw new InvalidOperationException("Core-bound identity has no existing WheelFfb reader: " + id);
-                    request.ValidateApply(request.Mode == "Apply" ? ProbeRequest.Read<ProbeReceipt>(request.ObserveReceipt) : null, ids);
-                    receipt.Before = ProbeObservation.Capture(inventory);
-                    isolation = new NativeInputIsolation(ids, inventory); beganFrame = Time.frameCount;
+                    receipt.OwnedDevices = owned.ToArray();
+                    receipt.RewiredInstances = ProbeIdentityMapper.Match(ids, receipt.OwnedDevices, receipt.Before);
+                    receipt.IdentityQualification = "exact owned interface path plus product; GUID namespaces retained separately";
+                    request.ValidateApply(request.Mode == "Apply" ? ProbeRequest.Read<ProbeReceipt>(request.ObserveReceipt) : null, ids, receipt.OwnedDevices, receipt.RewiredInstances);
+                    isolation = new NativeInputIsolation(receipt.RewiredInstances, inventory); beganFrame = Time.frameCount;
                 }
-                bool clean = isolation.Check(Time.frameCount);
+                bool clean = VerifyIsolation();
                 if (!clean)
                 {
                     if (Time.frameCount > beganFrame + 5) Finish(isolation.Status);
@@ -100,16 +110,22 @@ namespace ArtOfSimRally.Mod
                 }
                 receipt.IdentityQualified = true;
                 receipt.Disabled = ProbeObservation.Capture(inventory);
-                ProbeObservation.CompareDisabled(receipt, receipt.Instances);
+                ProbeObservation.CompareDisabled(receipt, receipt.RewiredInstances);
                 if (request.Mode == "Observe") { Finish("Observe complete: " + receipt.RawAxisQualification); return; }
                 if (!receipt.FlagsDisabled || !receipt.RawAxesNeutralAfterDisable) { Finish("Apply refused: current disable/raw-axis check unqualified"); return; }
-                WheelInput.AttachSharedInput(source, native, () => isolation.Check(Time.frameCount), () => isolation.Restore());
+                WheelInput.AttachSharedInput(source, native, VerifyIsolation, () => isolation.Restore());
                 attached = true; receipt.Applied = true;
                 ModLog.Info("Shared input Apply PROBE attached to existing readers for 120 menu frames; saved backend unchanged.");
             }
             catch (Exception ex) { Finish("probe refused: " + ex.Message); }
         }
         internal static void Shutdown() { if (Requested && !finished && receipt != null) Finish("probe shutdown"); }
+        private static bool VerifyIsolation()
+        {
+            var current = ProbeIdentityMapper.Match(receipt.Instances, receipt.OwnedDevices, ProbeObservation.Capture(inventory));
+            if (!new HashSet<Guid>(current).SetEquals(receipt.RewiredInstances)) return false;
+            return isolation.Check(Time.frameCount);
+        }
         private static void Finish(string status)
         {
             if (finished) return;

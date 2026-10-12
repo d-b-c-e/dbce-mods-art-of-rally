@@ -15,6 +15,7 @@
     <Compile Include="../../src/ArtOfSimRally.Mod/Shim/NativeInputIsolation.cs" Link="NativeInputIsolation.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ProbeObservation.cs" Link="ProbeObservation.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ProbeRequest.cs" Link="ProbeRequest.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ProbeIdentityMapper.cs" Link="ProbeIdentityMapper.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ProbeNoForce.cs" Link="ProbeNoForce.cs" />
   </ItemGroup>
 </Project>

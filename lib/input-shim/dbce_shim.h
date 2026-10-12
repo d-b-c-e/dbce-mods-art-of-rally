@@ -102,7 +102,9 @@ DBCE_SHIM_API int32_t dbce_shim_open(const wchar_t* folder, const char* nonce, c
 DBCE_SHIM_API int32_t dbce_shim_open2(const dbce_shim_open_args* args, void** out, char* why, int32_t why_len);
 /* One Core tick: fills *frame (frame->struct_size must be set). With a capture, it first pushes the previous frame's row. */
 DBCE_SHIM_API int32_t dbce_shim_tick(void* handle, dbce_shim_frame* frame);
-/* The start report (line, then notes, one per line) and the device table (JSON array), as text. */
+/* The start report (line, then notes, one per line) and the device table (JSON array), as text.
+   Device rows include optional identity evidence: interfacePath is an exact UTF-8 owned-handle path, or "" when
+   unavailable/not in an adopted open epoch. Query after tick; never match a device by an absent or previous path. */
 DBCE_SHIM_API int32_t dbce_shim_start_report(void* handle, char* text, int32_t len, int32_t* needed);
 DBCE_SHIM_API int32_t dbce_shim_device_reports(void* handle, char* text, int32_t len, int32_t* needed);
 /* The profile as Core's own parser read it, "key=value" lines: ok (1/0), error, profile, revision, transmission and

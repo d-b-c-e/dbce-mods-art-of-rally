@@ -14,6 +14,14 @@ namespace ArtOfSimRally.Mod.Shim
         bool Tick(byte[] samples, int count, byte[] frame);
         void Stop();
     }
+    internal interface IPhysicalSnapshotPathSource
+    {
+        bool TryGetPath(int slot, ulong expectedGeneration, out string path);
+    }
+    internal interface IShimPathBridge
+    {
+        bool DevicesWithPaths(byte[] devices, int count, string[] paths);
+    }
 
     // A prepared session borrows Art's existing read slots. Metadata qualification
     // occurs once at the explicit idle handoff; each frame reads each slot once.
@@ -41,6 +49,8 @@ namespace ArtOfSimRally.Mod.Shim
             slots = (int[])openSlots.Clone(); generations = new ulong[slots.Length]; samples = new byte[slots.Length][];
             batch = new byte[slots.Length * SampleSize];
             var metadata = new byte[slots.Length * DeviceSize]; var unique = new HashSet<int>();
+            var pathSource = source as IPhysicalSnapshotPathSource;
+            var paths = pathSource == null ? null : new string[slots.Length];
             try
             {
                 for (int i = 0; i < slots.Length; i++)
@@ -50,8 +60,13 @@ namespace ArtOfSimRally.Mod.Shim
                     if (source.Describe(slots[i], device) != 1 || BitConverter.ToUInt32(device, 0) != DeviceSize || BitConverter.ToUInt32(device, 4) != 1 ||
                         (generations[i] = BitConverter.ToUInt64(device, 8)) == 0) throw new InvalidOperationException("unqualified read slot " + slots[i]);
                     Buffer.BlockCopy(device, 0, metadata, i * DeviceSize, DeviceSize);
+                    if (pathSource != null && !pathSource.TryGetPath(slots[i], generations[i], out paths[i]))
+                        throw new InvalidOperationException("qualified owned interface path unavailable for slot " + slots[i]);
                 }
-                if (!native.Devices(metadata, slots.Length)) throw new InvalidOperationException("shared provider refused metadata");
+                var pathBridge = native as IShimPathBridge;
+                bool accepted = paths == null ? native.Devices(metadata, slots.Length) :
+                    pathBridge != null && pathBridge.DevicesWithPaths(metadata, slots.Length, paths);
+                if (!accepted) throw new InvalidOperationException("shared provider refused metadata/owned paths");
             }
             catch { native.Stop(); throw; }
         }
