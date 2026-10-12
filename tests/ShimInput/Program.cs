@@ -494,9 +494,32 @@ internal static class Program
         Check(objects.Count == 7, "profile controls parsed: " + objects.Count);
         Check(ProfileObjects.BoundBy(objects, "axis", 2, 0, r12) == "throttle" && ProfileObjects.BoundBy(objects, "button", 9, 0, ds8x) == "shiftUp", "bound controls not found");
         Check(ProfileObjects.BoundBy(objects, "axis", 3, 0, r12) == null && ProfileObjects.BoundBy(objects, "button", 9, 0, r12) == null && ProfileObjects.BoundBy(objects, "axis", 2, 0, ds8x) == null, "free control, other device or kind reported bound");
-        Check(ProfileObjects.BoundBy(objects, "hat", 0, 22500, r12) == "navDown" && ProfileObjects.BoundBy(objects, "hat", 0, 27000, r12) == null &&
-            ProfileObjects.BoundBy(objects, "hat", 0, 9001, r12) == "navDown" && ProfileObjects.BoundBy(objects, "hat", 0, 0, r12) == null && ProfileObjects.BoundBy(objects, "hat", 1, 18000, r12) == null, "hat sectors");
+        // Inclusive 4500 presses: sectors exactly 9000 apart share their boundary angle (romi 31616).
+        Check(ProfileObjects.BoundBy(objects, "hat", 0, 22500, r12) == "navDown" && ProfileObjects.BoundBy(objects, "hat", 0, 27000, r12) == "navDown" &&
+            ProfileObjects.BoundBy(objects, "hat", 0, 9000, r12) == "navDown" && ProfileObjects.BoundBy(objects, "hat", 0, 27001, r12) == null &&
+            ProfileObjects.BoundBy(objects, "hat", 0, 8999, r12) == null && ProfileObjects.BoundBy(objects, "hat", 0, 0, r12) == null && ProfileObjects.BoundBy(objects, "hat", 1, 18000, r12) == null, "hat sectors");
         Check(ProfileObjects.Parse(null).Count == 0 && ProfileObjects.BoundBy(null, "axis", 0, 0, r12) == null, "empty profile");
+        // Core's grammar: tabs separate like spaces; a quoted name is one token (its text never binds); comments,
+        // unknown actions, misfitting kinds, unbraced device ids, a second binding of an action and other
+        // sections bind nothing; an invalid first line does not block a valid later one.
+        string R12 = "{d71b8350-61b7-11f1-8001-444553540000}", DS8X = "{d9b1d890-6f3f-11f1-8002-444553540000}";
+        var grammar = ProfileObjects.Parse("\uFEFF[Other]\nconfirm = button 1 dev=" + R12 + "\n[ Controls ]\n" +
+            "\tsteer\t=\taxis\t0\tdev=" + R12 + "\trange=0..65535 rest=32768 travel=+1\r\n" +
+            "brake = axis 5 name=\"Pedal dev=" + DS8X + " \\\"left\\\"\" dev=" + R12 + " range=0..65535 rest=0 travel=+1\n" +
+            "# throttle = axis 2 dev=" + R12 + "\n; clutch = axis 3 dev=" + R12 + "\n" +
+            "turbo = button 4 dev=" + R12 + "\nconfirm = axis 1 dev=" + R12 + "\nback = button 6 dev=d71b8350-61b7-11f1-8001-444553540000\n" +
+            "start = button 8 dev=" + R12 + "\nstart = button 9 dev=" + R12 + "\nnavUp = hat 0 0\tdev=" + DS8X + "\n[Wheelkit]\nreset = button 10 dev=" + R12 + "\n");
+        Check(grammar.Count == 4, "grammar entries: " + grammar.Count + " " + string.Join(",", grammar.ConvertAll(o => o.Action)));
+        Check(ProfileObjects.BoundBy(grammar, "axis", 0, 0, r12) == "steer" && ProfileObjects.BoundBy(grammar, "axis", 5, 0, r12) == "brake" &&
+            ProfileObjects.BoundBy(grammar, "axis", 5, 0, ds8x) == null, "tab-separated or quoted-name binding misread");
+        Check(ProfileObjects.BoundBy(grammar, "axis", 2, 0, r12) == null && ProfileObjects.BoundBy(grammar, "axis", 3, 0, r12) == null &&
+            ProfileObjects.BoundBy(grammar, "button", 4, 0, r12) == null && ProfileObjects.BoundBy(grammar, "axis", 1, 0, r12) == null &&
+            ProfileObjects.BoundBy(grammar, "button", 6, 0, r12) == null && ProfileObjects.BoundBy(grammar, "button", 1, 0, r12) == null &&
+            ProfileObjects.BoundBy(grammar, "button", 10, 0, r12) == null, "comment, unknown action, misfit, unbraced id or other section bound");
+        Check(ProfileObjects.BoundBy(grammar, "button", 8, 0, r12) == "start" && ProfileObjects.BoundBy(grammar, "button", 9, 0, r12) == null &&
+            ProfileObjects.BoundBy(grammar, "hat", 0, 0, ds8x) == "navUp", "duplicate action or tab before dev");
+        var recovered = ProfileObjects.Parse("[Controls]\nconfirm = axis 1 dev=" + R12 + "\nconfirm = button 2 dev=" + R12 + "\n");
+        Check(recovered.Count == 1 && ProfileObjects.BoundBy(recovered, "button", 2, 0, r12) == "confirm", "an invalid first line blocked a valid later binding");
     }
     private static void DriveSteps()
     {
