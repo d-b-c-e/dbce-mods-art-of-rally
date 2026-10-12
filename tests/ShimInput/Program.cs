@@ -322,6 +322,8 @@ internal static class Program
         var unarmed = All(); unarmed.MainMenu = false; unarmed.NoForceArmed = false;
         var drivingSplash = All(); drivingSplash.MainMenu = false; drivingSplash.Driving = true;
         Check(!LatchedTrial.AdvanceTitle(true, false, true, unarmed) && !LatchedTrial.AdvanceTitle(true, false, true, drivingSplash), "title advanced with another fence unmet");
+        var unfocusedSplash = All(); unfocusedSplash.MainMenu = false; unfocusedSplash.Focused = false;
+        Check(!LatchedTrial.AdvanceTitle(true, false, true, unfocusedSplash), "title advanced while the game was not focused");
         // Trial runs only on the reviewed latched build.
         string Refusal(string shim)
         {

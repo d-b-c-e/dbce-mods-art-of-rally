@@ -106,9 +106,11 @@ namespace ArtOfSimRally.Mod.Shim
         }
         // romi 29497: with the explicit diagnostic request flag only, a Trial may end the title splash
         // once (the game's own EndSplashScreen) when that is all that stands between it and its fences.
+        // Focus is required here too: Admission would wait for it, but the splash is never ended
+        // unfocused (romi 29682).
         internal static bool AdvanceTitle(bool requested, bool alreadyAdvanced, bool onSplash, Fences f)
         {
-            if (!requested || alreadyAdvanced || !onSplash || f == null || f.MainMenu) return false;
+            if (!requested || alreadyAdvanced || !onSplash || f == null || f.MainMenu || !f.Focused) return false;
             bool wait;
             return Admission(f, out wait) != null && wait;
         }
