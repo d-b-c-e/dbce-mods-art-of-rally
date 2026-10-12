@@ -129,6 +129,7 @@ namespace ArtOfSimRally.Mod.Shim
         [DataMember] public string[] TrialSelections;
         [DataMember] public int TrialRun;
         [DataMember] public bool TitleAdvanced;
+        [DataMember] public int TrialNavigationWaitFrames;
         internal ProbeReceipt() { }
         internal ProbeReceipt(ProbeRequest request)
         {

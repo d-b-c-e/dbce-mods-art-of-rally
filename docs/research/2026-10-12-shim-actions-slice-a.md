@@ -317,3 +317,17 @@ real Core through Art's actual Rewired postfixes the way
 RewiredStandaloneInputModule.GetRawMoveVector reads them (GetAxis plus
 GetNegativeButtonDown on the vertical action); without the fix it fails with the
 in-game message, with it the menu moves once down and once up.
+
+## Second Trial (04:37) and the navigation delay
+
+With the arming fix the Trial failed the same way. Decompiled build 17584229:
+`PanelManager.Start` turns `EventSystem.sendNavigationEvents` off while the splash
+plays; `SplashScreenControl.EndSplashScreen` pops the panels and re-runs
+`PanelManager.Start`, which re-enables navigation 0.5 s later
+(`EnableEventSystemNavigation`), and `RewiredStandaloneInputModule` sends no move
+events until then. The Trial reached the main menu, was admitted and injected its
+300 ms navDown inside that window. Fix: the Trial waits (bounded) until the
+EventSystem accepts navigation before reading the selection and injecting; the
+receipt records the frames it waited (`TrialNavigationWaitFrames`) as runtime
+evidence for this cause. Both fixtures model the delay; removing the wait makes
+them fail with the in-game message.

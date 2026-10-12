@@ -256,12 +256,14 @@ internal static class Program
     // Slice B trial against a scripted latched Core: admission, then navDown and navUp injections the
     // fake menu reacts to, each read back, then end. Every way it can fail is named, never passed.
     private static LatchedTrial SimulateTrial(System.Collections.Generic.List<string> batches, bool admits = true, bool injects = true,
-        bool moves = true, bool returns = true, bool readable = true, int stopAt = -1)
+        bool moves = true, bool returns = true, bool readable = true, int stopAt = -1, int navigationFrom = 0, bool waitForNavigation = true)
     {
         const ShimStatus L = ShimStatus.Live; string why;
         var sink = new ShimAxisConsumer { AcceptLatched = true }; sink.DeliverOnly(LatchedTrial.NavUp, LatchedTrial.NavDown);
         string selected = "Career#11", pending = null; int injectFrames = 0, action = 0; byte run = admits ? LatchedTrial.Waiting : (byte)1;
-        var trial = new LatchedTrial(sink, () => readable ? selected : null, text => { batches.Add(text); pending = text; }, "n0nce1234");
+        int now = 0;
+        var trial = new LatchedTrial(sink, () => readable ? selected : null, text => { batches.Add(text); pending = text; }, "n0nce1234",
+            waitForNavigation ? () => now >= navigationFrom : (Func<bool>)null);
         for (int frame = 1; frame <= 3000 && trial.Current != LatchedTrial.Step.Passed && trial.Current != LatchedTrial.Step.Failed; frame++)
         {
             if (pending != null)
@@ -276,8 +278,9 @@ internal static class Program
             if (down > 0) b[48 + 14 * 8 + 5] = 1;
             if (up > 0) b[48 + 13 * 8 + 5] = 1;
             if (frame == stopAt) sink.Stop(); else Check(sink.Publish(b, frame, out why), why);
-            if (down > 0 && moves) selected = "FreeRoam#12";
-            if (up > 0 && returns) selected = "Career#11";
+            now = frame; bool navigating = frame >= navigationFrom; // the game ignores moves before its navigation delay
+            if (down > 0 && moves && navigating) selected = "FreeRoam#12";
+            if (up > 0 && returns && navigating) selected = "Career#11";
             trial.Tick(frame);
         }
         return trial;
@@ -287,6 +290,8 @@ internal static class Program
         var batches = new System.Collections.Generic.List<string>();
         var passed = SimulateTrial(batches);
         Check(passed.Current == LatchedTrial.Step.Passed && passed.Before == "Career#11" && passed.AfterDown == "FreeRoam#12" && passed.AfterUp == "Career#11", "trial did not pass: " + passed.Current + " " + passed.Failure);
+        var delayed = SimulateTrial(new System.Collections.Generic.List<string>(), navigationFrom: 200);
+        Check(delayed.Current == LatchedTrial.Step.Passed && delayed.NavigationWaitFrames > 0, "trial did not wait for menu navigation: " + delayed.Current + " " + delayed.Failure);
         Check(batches.Count == 3 && batches[0] == "nonce=n0nce1234\nbatch=1\ninject action navDown 1 ms=300\n" &&
             batches[1] == "nonce=n0nce1234\nbatch=2\ninject action navUp 1 ms=300\n" && batches[2] == "nonce=n0nce1234\nbatch=3\nend\n", "trial batches: " + string.Join("|", batches));
         foreach (var (name, trial, expected) in new[] {
@@ -295,7 +300,8 @@ internal static class Program
             ("no selection", SimulateTrial(new System.Collections.Generic.List<string>(), readable: false), "no menu selection"),
             ("not admitted", SimulateTrial(new System.Collections.Generic.List<string>(), admits: false), "no progress in Admission"),
             ("never injected", SimulateTrial(new System.Collections.Generic.List<string>(), injects: false), "no progress in Down"),
-            ("stopped", SimulateTrial(new System.Collections.Generic.List<string>(), stopAt: 40), "shared session stopped") })
+            ("stopped", SimulateTrial(new System.Collections.Generic.List<string>(), stopAt: 40), "shared session stopped"),
+            ("navigation ignored", SimulateTrial(new System.Collections.Generic.List<string>(), navigationFrom: 200, waitForNavigation: false), "navDown did not move") })
             Check(trial.Current == LatchedTrial.Step.Failed && trial.Failure.Contains(expected), name + ": " + trial.Current + " " + trial.Failure);
         // The fence byte: every fact observed, the first failing one named.
         LatchedTrial.Fences All() => new LatchedTrial.Fences { NoForceArmed = true, SettingsWritesSuppressed = true, TelemetryIdle = true, Compatible = true, Primary = true, MainMenu = true, Focused = true };

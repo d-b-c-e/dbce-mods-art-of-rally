@@ -140,7 +140,7 @@ namespace ArtOfSimRally.Mod
                     ShimInput.Consumer.AcceptLatched = true;
                     ShimInput.Consumer.DeliverOnly(LatchedTrial.NavUp, LatchedTrial.NavDown);
                     string batchFile = Path.Combine(request.Result, "shim-batch.txt");
-                    trial = new LatchedTrial(ShimInput.Consumer, Selection, text => ProbeRequest.Replace(batchFile, text), request.Nonce);
+                    trial = new LatchedTrial(ShimInput.Consumer, Selection, text => ProbeRequest.Replace(batchFile, text), request.Nonce, NavigationEnabled);
                 }
                 WheelInput.AttachSharedInput(session.Source, session.Native, session.VerifyIsolation, () => session.Isolation.Restore(), session.Native.Transmission());
                 attached = true; receipt.Applied = true;
@@ -161,6 +161,13 @@ namespace ArtOfSimRally.Mod
         {
             var panels = UIManager.Instance == null ? null : UIManager.Instance.PanelManager;
             return panels != null && panels.MainPanel != null && panels.Peek() == panels.MainPanel;
+        }
+        // PanelManager.Start disables EventSystem navigation behind the splash and re-enables it 0.5 s after
+        // the main menu opens; the UI module sends no move events until then.
+        private static bool NavigationEnabled()
+        {
+            var system = UnityEngine.EventSystems.EventSystem.current;
+            return system != null && system.sendNavigationEvents;
         }
         // The menu's current selection (name and instance), read back after each injected step.
         private static string Selection()
@@ -203,6 +210,7 @@ namespace ArtOfSimRally.Mod
                 receipt.TrialStatus = trial.Current + (trial.Failure == null ? "" : ": " + trial.Failure);
                 receipt.TrialSelections = new[] { trial.Before, trial.AfterDown, trial.AfterUp };
                 receipt.TrialRun = ShimInput.Consumer.Started ? ShimInput.Consumer.OriginalFrame.Run : -1;
+                receipt.TrialNavigationWaitFrames = trial.NavigationWaitFrames;
             }
             receipt.IdentityEpochAfter = inventory.ConnectionEpoch;
             try { inventory.EndIdentityObservation(); } catch (Exception ex) { status += "; event cleanup failed: " + ex.Message; }

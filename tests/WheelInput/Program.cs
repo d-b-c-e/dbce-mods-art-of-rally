@@ -618,15 +618,18 @@ static class Program
         var consumer = ArtOfSimRally.Mod.Shim.ShimInput.Consumer;
         consumer.AcceptLatched = true; consumer.DeliverOnly(ArtOfSimRally.Mod.Shim.LatchedTrial.NavUp, ArtOfSimRally.Mod.Shim.LatchedTrial.NavDown);
         WheelInput.AttachSharedInput(new BridgeTests.DeviceSource(), native, () => true, () => true);
-        int selected = 0, moves = 0;
-        // GetRawMoveVector with moveOneElementPerAxisPress: an axis sign plus the matching button edge.
+        int selected = 0, moves = 0, navigationFrame = Clock.frameCount + 60;
+        bool Navigation() => Clock.frameCount >= navigationFrame; // Art's 0.5 s EventSystem navigation delay
+        // GetRawMoveVector with moveOneElementPerAxisPress: an axis sign plus the matching button edge,
+        // sent only once EventSystem navigation is enabled.
         void Menu()
         {
+            if (!Navigation()) return;
             float vertical = AxisQuery(13, 0f);
             if (Query(PadManager.Player, "GetNegativeButtonDown", 13, false) && vertical < 0) { selected++; moves++; }
             if (Query(PadManager.Player, "GetButtonDown", 13, false) && vertical > 0) { selected--; moves++; }
         }
-        var trial = new ArtOfSimRally.Mod.Shim.LatchedTrial(consumer, () => "item#" + selected, text => ArtOfSimRally.Mod.Shim.ProbeRequest.Replace(batch, text), nonce);
+        var trial = new ArtOfSimRally.Mod.Shim.LatchedTrial(consumer, () => "item#" + selected, text => ArtOfSimRally.Mod.Shim.ProbeRequest.Replace(batch, text), nonce, Navigation);
         try
         {
             for (int i = 0; i < 4000 && trial.Current != ArtOfSimRally.Mod.Shim.LatchedTrial.Step.Passed && trial.Current != ArtOfSimRally.Mod.Shim.LatchedTrial.Step.Failed; i++)

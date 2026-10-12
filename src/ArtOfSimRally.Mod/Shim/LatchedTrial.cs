@@ -15,6 +15,7 @@ namespace ArtOfSimRally.Mod.Shim
         private readonly ShimAxisConsumer consumer;
         private readonly Func<string> selection;
         private readonly Action<string> writeBatch;
+        private readonly Func<bool> ready;
         private readonly string nonce;
         private int batch, frames, settled;
         private bool seen;
@@ -23,9 +24,14 @@ namespace ArtOfSimRally.Mod.Shim
         internal string AfterDown { get; private set; }
         internal string AfterUp { get; private set; }
         internal string Failure { get; private set; }
+        // Frames admitted but waiting for the menu to accept navigation (evidence for the 0.5 s delay).
+        internal int NavigationWaitFrames { get; private set; }
 
-        internal LatchedTrial(ShimAxisConsumer consumer, Func<string> selection, Action<string> writeBatch, string nonce)
+        // ready: the menu accepts navigation now (Art re-enables EventSystem navigation 0.5 s after the
+        // main menu appears, so an earlier press is ignored by the game, not by us).
+        internal LatchedTrial(ShimAxisConsumer consumer, Func<string> selection, Action<string> writeBatch, string nonce, Func<bool> ready = null)
         {
+            this.ready = ready ?? (() => true);
             this.consumer = consumer ?? throw new ArgumentNullException(nameof(consumer));
             this.selection = selection ?? throw new ArgumentNullException(nameof(selection));
             this.writeBatch = writeBatch ?? throw new ArgumentNullException(nameof(writeBatch));
@@ -42,6 +48,7 @@ namespace ArtOfSimRally.Mod.Shim
             {
                 case Step.Admission:
                     if (!consumer.Started || consumer.OriginalFrame.Run != Waiting) return;
+                    if (!ready()) { NavigationWaitFrames++; return; }
                     Before = selection();
                     if (Before == null) { Fail("no menu selection to read back"); return; }
                     Send("inject action navDown 1 ms=300", Step.Down);
