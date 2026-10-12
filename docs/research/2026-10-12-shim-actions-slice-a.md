@@ -112,6 +112,17 @@ suppression in `Compose`, `end` → Completed) once a shim admits latched bridge
 sessions. The in-game Trial flow (fences computed from the probe's actual guards,
 scene/driving refusal, selection readback) is deliberately not wired until then.
 
+Update (romi 28531): art-shim-bridge f38b855 (`dbce_shim.dll` 0D10F913) admits a
+fenced latched bridge open. `--bridge-latched` against it passes (613): admission,
+action-level navDown injected through the applied profile, masked physical
+confirm, keyboard excluded in `Compose`, `end` → Completed, resolved stop. The
+`--bridge` gate is now hash-aware: the ordinary pin 7DDC9621 must still refuse
+latched opens, 0D10F913 must admit them, any other build fails as unreviewed
+(609 each). Core reads the batch file without write sharing, so batch writers
+must replace the file whole (temp file, then `File.Replace`/`Move`); the test
+writer does, and the in-game Trial writer must too. The ordinary candidate stays
+pinned to 7DDC9621.
+
 ## Ordinary opt-in candidate (source; owner testing not started)
 
 `Settings.SharedInput` (default off; panel: "Use shared Wheelkit profile

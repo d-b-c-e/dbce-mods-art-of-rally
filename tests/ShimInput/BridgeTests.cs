@@ -93,24 +93,39 @@ internal static class BridgeTests
     internal static int Actual(string dll)
     {
         checks = 0;
-        ActualOne(dll, false); ActualOne(dll, true); ActualActions(dll); LatchedBridgeRefused(dll); return checks;
+        ActualOne(dll, false); ActualOne(dll, true); ActualActions(dll); LatchedBridgeGate(dll); return checks;
     }
     // Run only against a shim whose copied-provider bridge admits latched control sessions.
     internal static int ActualLatchedSession(string dll) { checks = 0; ActualLatched(dll); return checks; }
-    // Extension 1 (574bb88) refuses every open flag on the copied-provider bridge until its control
-    // provenance is versioned. Pin that refusal so admitting it is a reviewed change, not a surprise.
-    private static void LatchedBridgeRefused(string dll)
+    // The ordinary pin, 574bb88 (7DDC9621), refuses every open flag on the copied-provider bridge;
+    // f38b855 (0D10F913, reviewed by romi 28531) admits a fenced latched open. Any other build is
+    // unreviewed here, so admitting latched control stays a reviewed change, not a surprise.
+    internal const string OrdinaryShim = "7DDC962132819EDAE76EF84CE6509F1936B8C38177A36D498B8ABBCFDCFFBCAF";
+    internal const string LatchedShim = "0D10F913C998C97D7DDF3A8F5F470D010092C3681152059DC88D7E0A7BB0386B";
+    private static void LatchedBridgeGate(string dll)
     {
+        string hash;
+        using (var sha = System.Security.Cryptography.SHA256.Create()) hash = BitConverter.ToString(sha.ComputeHash(File.ReadAllBytes(dll))).Replace("-", "");
+        Check(hash == OrdinaryShim || hash == LatchedShim, "unreviewed dbce_shim.dll " + hash);
         string folder = Path.Combine(Path.GetTempPath(), "art-copied-latch-gate-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(folder);
         string profile = "[Controls]\nSchema = 1\nProfile = Gate\nRevision = r1\nTransmission = Sequential\nsteer = axis 0 dev={d71b8350-61b7-11f1-8001-444553540000} prod={0006346e-0000-0000-0000-504944564944} range=0..65535 rest=32768 travel=+1\n";
-        string why = "";
+        string why = ""; ShimBridgeNative opened = null;
         try
         {
-            new ShimBridgeNative(dll, folder, System.Text.Encoding.UTF8.GetBytes(profile), new ShimBridgeNative.LatchedSession {
+            opened = new ShimBridgeNative(dll, folder, System.Text.Encoding.UTF8.GetBytes(profile), new ShimBridgeNative.LatchedSession {
                 Nonce = Guid.NewGuid().ToString("N"), SessionFile = Path.Combine(folder, "s.txt"), BatchFile = Path.Combine(folder, "b.txt"), FencesVerified = true, ForceAbsent = true });
         }
         catch (InvalidOperationException e) { why = e.Message; }
-        Check(why.Contains("bridge control/capture provenance is not qualified"), "latched bridge open was admitted or refused differently: " + why);
+        finally { opened?.Stop(); }
+        if (hash == OrdinaryShim) Check(opened == null && why.Contains("bridge control/capture provenance is not qualified"), "ordinary pin admitted a latched open or refused differently: " + why);
+        else Check(opened != null && opened.Latched && why == "", "reviewed latched build refused a fenced latched open: " + why);
+    }
+    // Core holds the batch file without write sharing: writers replace it whole, never write in place.
+    internal static void WriteBatch(string path, string text)
+    {
+        string temp = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        File.WriteAllText(temp, text);
+        if (File.Exists(path)) File.Replace(temp, path, null); else File.Move(temp, path);
     }
     // The real Core latched control session over the copied provider: admission, an action-level
     // injection resolved through the applied profile with Injected provenance, native suppression,
@@ -136,14 +151,14 @@ internal static class BridgeTests
             Check(Until(() => sink.Started && sink.OriginalFrame.Run == 2), "latched session never admitted (Waiting): run " + (sink.Started ? sink.OriginalFrame.Run.ToString() : "-"));
             Check(sink.LatchedDelivery(frame) && sink.OriginalFrame.Latched && sink.OriginalFrame.SuppressNative, "latched frame flags");
             Check(!sink.Live(9, frame) && sink.Value(9, frame) == 0, "masked physical confirm delivered");
-            File.WriteAllText(batch, "nonce=" + nonce + "\nbatch=1\ninject action navDown 1 ms=300\n");
+            WriteBatch(batch, "nonce=" + nonce + "\nbatch=1\ninject action navDown 1 ms=300\n");
             Check(Until(() => sink.Injected(14, frame)), "action-level navDown never injected: run " + sink.OriginalFrame.Run + " navDown " + sink.OriginalFrame[14].Status);
             Check(sink.OriginalFrame.Run == 3 && sink.Value(14, frame) == 1f && !sink.Live(13, frame) || sink.Value(13, frame) == 0f, "injected navDown not Running/Live");
             Check(!sink.Live(9, frame), "masked confirm delivered while injecting");
             var game = new DrivingValues { Steer = .9f, Throttle = .95f }; sink.Compose(frame, true, 0, ref game);
             Check(game.Throttle == 0 && Math.Abs(game.Steer) < .00001f, "latched session kept native/keyboard driving input");
             Check(Until(() => sink.Started && !sink.Injected(14, frame) && sink.Value(14, frame) == 0f), "injected navDown never released");
-            File.WriteAllText(batch, "nonce=" + nonce + "\nbatch=2\nend\n");
+            WriteBatch(batch, "nonce=" + nonce + "\nbatch=2\nend\n");
             Check(Until(() => sink.OriginalFrame.Run == 4), "end batch did not complete the session: run " + sink.OriginalFrame.Run);
         }
         finally { bridge.Stop("latched qualification complete"); }
