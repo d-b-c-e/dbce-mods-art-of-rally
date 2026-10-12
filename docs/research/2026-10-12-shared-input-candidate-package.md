@@ -246,6 +246,46 @@ all-gates-exist case left open, a clamped gate, an ignored gate, a start already
 a gear kept after release, a car clutch that differs, a non-H-pattern profile and an
 automatic gearbox. ShimInput 12229 on net8 and Mono; 9 of 9 verdict mutants killed.
 
+## Clutch and H-pattern runs (12:53 and 12:59, latched probe on DD301314)
+
+Both runs used the owner's standing activity policy (sana 34111 and 34176). Idle was
+recorded truthfully in `owner-activity.json`: 0 s at each launch check, with the
+override allowed. The lease, muting and restoration were unchanged.
+
+**Shared pins:**
+- source `99ffe5b` (= reviewed `e342262` plus only the runner's owner-activity gate);
+- mod `150FBB1F`, native `DD301314`, latched shim `0D10F913`;
+- Settings `455F8033` (owner `91090837` plus `TransmissionMode=H-pattern`, copy only);
+- profile `27543D6B` (the derived H-pattern INI).
+
+**Observe** (`gears-observe-20261012-125313`, receipt `318345D2`) completed.
+- Identity was qualified and restored.
+- Rewired flags were disabled and restored.
+- Raw axes were neutral after disable.
+- The no-force latch was armed.
+- sana reviewed it: PASS.
+
+**Drive** (`gears-drive-20261012-125509`, recorder `D94B4B42`): "Drive passed: every row
+passed". The fences were verified.
+- Rows (held frames / release frames):
+  - clutch 60%: 209/20;
+  - gear1 gate: 141/20;
+  - gear3 gate: 142/20;
+  - reverse gate: 141/20;
+  - "gear5 gate beyond this car": 144/20.
+- Clutch: applied 0.6, equal to the car's `clutchInput` of 0.6.
+- Gates: gear1 gives index 2, gear3 gives 4 and reverse gives 0, each back to neutral (1)
+  after release. Car_Kei has max gear index 5, so gear5 (index 6) left the gear at neutral
+  on all 144 held frames: never moved or clamped. The gearbox stayed manual.
+- The recorder's car tape agrees independently. UNDERWAY gears run 2 -> 1 -> 2 -> 1 -> 4
+  -> 1 -> 0 -> 1, and clutch is 0 or 0.6.
+- Restoration was exact: no errors, the lease released, no marker; the owner's Settings,
+  mod and native were unchanged.
+
+This is evidence for Art's clutch and gate consumers through latched raw Core stimuli. It
+is not physical shifter or pedal, force or `44E` qualification. Gates 2, 4, 6 and 7 were
+not exercised individually; gear8 is unbound.
+
 ## Remaining gaps
 
 1. **No Wheelkit writer for Art's profile.** Wheelkit writes `dbce-controls.ini` only for
