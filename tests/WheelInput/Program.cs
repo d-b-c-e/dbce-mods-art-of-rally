@@ -390,6 +390,19 @@ static class Program
         var last = ArtOfSimRally.Mod.Shim.ShimInput.Last;
         Check(s == 0f && Rewired.Player.Queries == queries && last.Keyboard == ArtOfSimRally.Mod.Shim.KeyboardSteer.NotQueried && !last.KeyboardSteered,
             "latched delivery asked for or kept keyboard steering: " + s + " " + last.Keyboard);
+        // A transport stop leaves this frame's isolation stamped but ends latched delivery: still a latched
+        // session, so it never asks, on the stopping frame or after it (sana 35766).
+        native.Refuse = true;
+        for (int i = 0; i < 2; i++)
+        {
+            Clock.frameCount++; s = .9f;
+            ArtOfSimRally.Mod.Shim.ShimInput.TryOverride(new AxisCarController(), ref t, ref b, ref s, ref h, ref c, ref e);
+            last = ArtOfSimRally.Mod.Shim.ShimInput.Last;
+            Check(ArtOfSimRally.Mod.Shim.ShimInput.Consumer.Terminal && ArtOfSimRally.Mod.Shim.ShimInput.IsolatedFrame == Clock.frameCount &&
+                !ArtOfSimRally.Mod.Shim.ShimInput.Consumer.LatchedDelivery(Clock.frameCount), "stopped latched fixture " + i);
+            Check(s == 0f && Rewired.Player.Queries == queries && last.Keyboard == ArtOfSimRally.Mod.Shim.KeyboardSteer.NotQueried && !last.KeyboardSteered,
+                "stopped latched session asked for or kept keyboard steering " + i + ": " + s + " " + last.Keyboard);
+        }
         WheelInput.Close();
     }
     // The opt-in ordinary startup: every preflight refusal keeps Art's bindings, qualification waits for
@@ -830,6 +843,10 @@ static class Program
         Rewired.Player.QueryFault = false; Rewired.ReInput.isReady = false;
         Frame(); Same(Car(1.02f), -.28f, "unready Rewired kept the game's steer"); State(Unknown, false, "Rewired not ready");
         Rewired.ReInput.isReady = true;
+        // An ordinary transport stop keeps the verified keyboard path: it still asks, and keyboard steer is kept.
+        native.Refuse = true;
+        Frame(); Same(Car(1.02f), 1.02f, "ordinary transport stop lost keyboard steering"); State(Present, true, "ordinary transport stop");
+        Check(ArtOfSimRally.Mod.Shim.ShimInput.Consumer.Terminal, "ordinary transport stop not reached");
         // Lost isolation: Rewired is never asked and the game's mixed value is never kept.
         int queries = Rewired.Player.Queries; isolation = false;
         Frame(); Same(Car(1.02f), 0f, "lost isolation kept the game's mixed steer"); State(NotQueried, false, "lost isolation");

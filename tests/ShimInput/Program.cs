@@ -112,6 +112,12 @@ internal static class Program
         var suppressed = new DrivingValues { Steer = 1.02f, Throttle = .9f }; latched.Compose(1, true, .02f, ref suppressed, KeyboardSteer.Present);
         Same(suppressed.Steer, .27f, "latched session kept keyboard steer"); Check(suppressed.Throttle < .9f, "latched session kept native throttle");
         Check(!latched.KeyboardSteered, "keyboard flag in a latched session");
+        // The query gate follows the session kind fixed at open, not delivery freshness (sana 35766).
+        Check(sink.AsksKeyboard(true) && !sink.AsksKeyboard(false), "ordinary query gate");
+        Check(latched.LatchedDelivery(1) && !latched.AsksKeyboard(true), "delivering latched session asks");
+        Check(!latched.LatchedDelivery(2) && !latched.AsksKeyboard(true), "stale latched session asks");
+        latched.Stop(); Check(latched.Terminal && !latched.AsksKeyboard(true), "stopped latched session asks");
+        sink.Stop(); Check(sink.Terminal && sink.AsksKeyboard(true), "stopped ordinary session lost its keyboard query");
     }
     private static void StatusesAndFailures()
     {

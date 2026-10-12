@@ -139,6 +139,9 @@ namespace ArtOfSimRally.Mod.Shim
 
         // The last Compose kept the game's own steering because Art's keyboard map contributed to it.
         internal bool KeyboardSteered { get; private set; }
+        // Keyboard steering is asked for only in an ordinary session with this frame's isolation proof. The kind is
+        // fixed at open, so a latched session never asks, whether delivering, stale or stopped (sana 35766).
+        internal bool AsksKeyboard(bool isolatedThisFrame) => isolatedThisFrame && !acceptLatched;
 
         internal bool Compose(int unityFrame, bool independentNativeInput, float steeringAlignment, ref DrivingValues game,
             KeyboardSteer keyboard = KeyboardSteer.NotQueried)
