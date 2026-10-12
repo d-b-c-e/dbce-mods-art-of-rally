@@ -130,6 +130,9 @@ $modDir    = Join-Path $GameDir 'Mods\ArtOfSimRally'
 $nativeDir = Join-Path $GameDir 'artofrally_Data\Plugins\x86_64'
 $modFiles = 'ArtOfSimRally.Mod.dll', 'Dbce.Wheel.Telemetry.dll', 'Dbce.Wheel.Ffb.dll', 'UnityForceFeedback.dll',
     'Dbce.TripleScreen.Core.dll', 'Dbce.TripleScreen.Protocol.dll', 'Info.json', 'build.json'
+# Only a shared-input candidate ships these. Uninstall removes them, and so does
+# installing a package without them, so the installed payload is exactly the package's.
+$optionalModFiles = @('dbce_shim.dll')
 
 # Do not follow a junction/symlink while replacing or removing installed files.
 foreach ($target in @($modDir, $nativeDir)) {
@@ -142,7 +145,7 @@ foreach ($target in @($modDir, $nativeDir)) {
         $path = Split-Path -Parent $path
     }
 }
-foreach ($targetFile in (@($modFiles | ForEach-Object { Join-Path $modDir $_ }) + (Join-Path $nativeDir 'UnityForceFeedback.dll'))) {
+foreach ($targetFile in (@(@($modFiles) + $optionalModFiles | ForEach-Object { Join-Path $modDir $_ }) + (Join-Path $nativeDir 'UnityForceFeedback.dll'))) {
     if ((Test-Path -LiteralPath $targetFile) -and ((Get-Item -LiteralPath $targetFile).Attributes -band [IO.FileAttributes]::ReparsePoint)) {
         throw "Refusing linked install file: $targetFile"
     }
@@ -156,7 +159,7 @@ if ($Uninstall) {
 
     # Remove only our payload. Settings and unknown user files stay in place;
     # no recursive deletion or shared temporary Settings.xml backup is needed.
-    foreach ($name in $modFiles) {
+    foreach ($name in @($modFiles) + $optionalModFiles) {
         $file = Join-Path $modDir $name
         if (Test-Path -LiteralPath $file) { Remove-Item -LiteralPath $file -Force }
     }
@@ -193,10 +196,15 @@ try {
     exit 1
 }
 Ok "Package verified: $($manifest.release)"
+$installFiles = @($modFiles) + @($optionalModFiles | Where-Object { $null -ne $manifest.files."ArtOfSimRally/$_" })
 
 try {
     New-Item -ItemType Directory -Force -Path $modDir | Out-Null
-    foreach ($name in $modFiles) { Copy-Item -LiteralPath (Join-Path $source $name) -Destination $modDir -Force }
+    foreach ($name in $installFiles) { Copy-Item -LiteralPath (Join-Path $source $name) -Destination $modDir -Force }
+    foreach ($name in $optionalModFiles | Where-Object { $installFiles -notcontains $_ }) {
+        $file = Join-Path $modDir $name
+        if (Test-Path -LiteralPath $file) { Remove-Item -LiteralPath $file -Force; Ok "Removed $name (not part of this release)" }
+    }
     Ok "Mod installed to $modDir"
 
     # Triple screens used to be a separate mod. Carry its settings and layout
@@ -248,13 +256,13 @@ catch [System.IO.IOException] {
 
 Say ""
 Say "Verifying..."
-$expected = $modFiles
+$expected = $installFiles
 $missing = $expected | Where-Object { -not (Test-Path -LiteralPath (Join-Path $modDir $_)) }
 if ($missing) {
     Fail "Missing after install: $($missing -join ', ')"
     exit 1
 }
-foreach ($name in $modFiles) {
+foreach ($name in $installFiles) {
     if ((Get-FileHash -LiteralPath (Join-Path $modDir $name) -Algorithm SHA256).Hash -ne $manifest.files."ArtOfSimRally/$name") {
         throw "Installed file does not match package: $name"
     }

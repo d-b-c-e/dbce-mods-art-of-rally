@@ -2,12 +2,17 @@
    Windows PowerShell/batch entry points players run. No game or hardware is used.
    Keeps logs and fixtures in results/installer-* for inspection. #>
 [CmdletBinding()]
-param([Parameter(Mandatory)][string]$PackageDirectory)
+param([Parameter(Mandatory)][string]$PackageDirectory,
+      # Optional: a second extracted package installed over the first at the end, e.g. the
+      # baseline over a shared-input candidate. Its payload must replace the first exactly.
+      [string]$ThenPackageDirectory)
 $ErrorActionPreference = 'Stop'
 $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 $package = [IO.Path]::GetFullPath($PackageDirectory)
 . (Join-Path $root 'tools/installer/verify.ps1')
 $manifest = Assert-Payload $package
+# The mod-folder payload this package lists (a shared-input candidate adds dbce_shim.dll).
+$modPayload = @($manifest.files.PSObject.Properties.Name | Where-Object { $_.StartsWith('ArtOfSimRally/') })
 $run = Join-Path $root ('results/installer-' + [Guid]::NewGuid().ToString('N'))
 $game = Join-Path $run 'game [USB] with spaces'
 $mod = Join-Path $game 'Mods/ArtOfSimRally'
@@ -62,7 +67,7 @@ try {
 
     $log = Invoke-Installer 'fresh-install'
     Assert ($log.Contains("All installed files match release $($manifest.release)")) 'Installed release was not reported'
-    foreach ($relative in $PayloadFiles | Where-Object { $_.StartsWith('ArtOfSimRally/') }) {
+    foreach ($relative in $modPayload) {
         $file = Join-Path $game ('Mods/' + $relative)
         Assert ((Get-FileHash -LiteralPath $file).Hash -eq $manifest.files.$relative) "Payload mismatch: $relative"
     }
@@ -92,7 +97,7 @@ try {
     Assert ((Get-FileHash -LiteralPath $settings).Hash -eq $settingsHash) 'Uninstall changed settings'
     Assert (Test-Path -LiteralPath (Join-Path $mod 'user-notes.txt')) 'Uninstall removed user notes'
     Assert (Test-Path -LiteralPath (Join-Path $other 'Info.json')) 'Uninstall removed another mod'
-    foreach ($relative in $PayloadFiles | Where-Object { $_.StartsWith('ArtOfSimRally/') }) {
+    foreach ($relative in @($modPayload) + $OptionalPayloadFiles) {
         Assert (-not (Test-Path -LiteralPath (Join-Path $game ('Mods/' + $relative)))) "Uninstall retained $relative"
     }
     Assert (-not (Test-Path -LiteralPath $native)) 'Uninstall retained native copy'
@@ -111,6 +116,24 @@ try {
     Remove-Item -LiteralPath (Join-Path $bad 'verify.ps1')
     $log = Invoke-Installer 'missing-verifier' -From $bad -Fails $true
     Assert ($log -match 'incomplete or has changed') 'Missing verifier guidance absent'
+
+    if ($ThenPackageDirectory) {
+        # Install the first package again, then the second over it: exactly the second's payload remains.
+        $then = [IO.Path]::GetFullPath($ThenPackageDirectory)
+        $thenManifest = Assert-Payload $then
+        $null = Invoke-Installer 'first-again'
+        $log = Invoke-Installer 'then-install' -From $then
+        Assert ($log.Contains("All installed files match release $($thenManifest.release)")) 'Second release was not reported'
+        $thenPayload = @($thenManifest.files.PSObject.Properties.Name | Where-Object { $_.StartsWith('ArtOfSimRally/') })
+        foreach ($relative in $thenPayload) {
+            Assert ((Get-FileHash -LiteralPath (Join-Path $game ('Mods/' + $relative))).Hash -eq $thenManifest.files.$relative) "Second payload mismatch: $relative"
+        }
+        foreach ($relative in $OptionalPayloadFiles | Where-Object { $thenPayload -notcontains $_ }) {
+            Assert (-not (Test-Path -LiteralPath (Join-Path $game ('Mods/' + $relative)))) "Second install retained $relative"
+        }
+        Assert ((Get-FileHash -LiteralPath $native).Hash -eq $thenManifest.files.'ArtOfSimRally/UnityForceFeedback.dll') 'Second native plugin copy mismatch'
+        Assert ((Get-FileHash -LiteralPath $settings).Hash -eq $settingsHash) 'Second install changed settings'
+    }
 
     $output = & $ps -NoProfile -ExecutionPolicy Bypass -File (Join-Path $package 'install.ps1') -GameDir (Join-Path $run 'absent game') 2>&1
     $code = $LASTEXITCODE

@@ -57,7 +57,8 @@ namespace ArtOfSimRally.Mod
             {
                 string profilePath = Path.Combine(modDirectory, ProfileFileName);
                 shimPath = Path.Combine(modDirectory, ShimFileName);
-                if (!File.Exists(profilePath)) { Refuse("no shared profile beside the mod (" + ProfileFileName + "); apply one with Wheelkit."); return; }
+                // Wheelkit has no Art writer for this file yet (romi 32354): say how to provide it by hand.
+                if (!File.Exists(profilePath)) { Refuse("no shared profile beside the mod. Wheelkit cannot write it for Art yet: copy a Wheelkit-applied " + ProfileFileName + " (for example DRIVE Rally's BepInEx\\config\\" + ProfileFileName + ") into this mod folder and restart."); return; }
                 if (!File.Exists(shimPath)) { Refuse(ShimFileName + " is missing beside the mod."); return; }
                 if (!String.Equals(ProbeRequest.Hash(shimPath), ExpectedShimSha256, StringComparison.OrdinalIgnoreCase)) { Refuse(ShimFileName + " is not the qualified build."); return; }
                 var info = new FileInfo(profilePath);
