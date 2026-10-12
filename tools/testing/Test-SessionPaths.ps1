@@ -58,19 +58,30 @@ function Save-SessionEnvironment([string]$Path) {
     $global:ArtPathTest.saves++; $global:ArtPathTest.calls += 'save:' + $Path
     New-Item -ItemType Directory -Path $Path -Force | Out-Null
     Set-Content -LiteralPath (Join-Path $Path 'state.json') -Value '{}'
+    # snapshot: the mod settings and the preferences really are saved and restored (the failure controls).
+    if ($global:ArtPathTest.snapshot) { foreach ($k in 'settings', 'prefs') { Copy-Item -LiteralPath $global:ArtPathTest.$k (Join-Path $Path $k) } }
 }
 function Restore-SessionEnvironment([string]$Path, [switch]$NoReceipt) {
     if (-not $Path.StartsWith($global:ArtPathTest.fixture, [StringComparison]::OrdinalIgnoreCase)) { throw 'Restore double escaped fixture' }
+    if ($global:ArtPathTest.running) { throw 'Restore double: the game is running' }
     $global:ArtPathTest.restores++; $global:ArtPathTest.calls += 'restore:' + $Path
+    if ($global:ArtPathTest.snapshot) { foreach ($k in 'settings', 'prefs') { Copy-Item -LiteralPath (Join-Path $Path $k) $global:ArtPathTest.$k -Force } }
     if (-not $NoReceipt) { Set-Content -LiteralPath (Join-Path $Path 'restored.txt') -Value 'fixture restored' }
 }
-function Restore-SessionPresentation([string]$Path) {}
+# A game that someone else starts while a replay is being set up, before this run launches anything.
+function Restore-SessionPresentation([string]$Path) { if ($global:ArtPathTest.foreignGame) { $global:ArtPathTest.running = $true; throw 'fixture: a game started during setup' } }
 '@ | Set-Content -LiteralPath (Join-Path (Split-Path $runner) 'SessionEnvironment.ps1')
     @'
 function Assert-RouteSource([string]$Route) {
     if (-not (Test-Path -LiteralPath (Join-Path $Route 'environment-at-start/state.json') -PathType Leaf)) { throw "Route source lacks environment-at-start/state.json" }
 }
-function Set-RouteEnvironment([string]$Route, [string]$Saved) { $global:ArtPathTest.calls += 'route:' + $Route + '|' + $Saved }
+function Set-RouteEnvironment([string]$Route, [string]$Saved) {
+    $global:ArtPathTest.calls += 'route:' + $Route + '|' + $Saved
+    # routeFailure: the route's preferences are written, then 'throw' fails, or 'foreign-game' sees a game start.
+    if ($global:ArtPathTest.routeFailure) { Set-Content -LiteralPath $global:ArtPathTest.prefs -Value 'route preferences' -NoNewline }
+    if ($global:ArtPathTest.routeFailure -eq 'foreign-game') { $global:ArtPathTest.running = $true }
+    if ($global:ArtPathTest.routeFailure -in 'throw', 'foreign-game') { throw 'fixture: route failure after a partial write' }
+}
 '@ | Set-Content -LiteralPath (Join-Path (Split-Path $runner) 'RouteEnvironment.ps1')
     $env:LOCALAPPDATA = Join-Path $fixture 'local data'
     Set-Location -LiteralPath $fixture
@@ -186,6 +197,34 @@ function Set-RouteEnvironment([string]$Route, [string]$Saved) { $global:ArtPathT
     Check ($LASTEXITCODE -eq 4 -and (Test-Path -LiteralPath (Join-Path $library 'auto-stubborn/automation/restore-pending.txt')) -and
         -not (Test-Path -LiteralPath (Join-Path $library 'auto-stubborn/automation/owner-environment/restored.txt'))) "Automated recording with the game still open returned $LASTEXITCODE"
     $global:ArtPathTest.stubborn = $false; $global:ArtPathTest.running = $false
+    # sana 38425: every change after the owner snapshot is inside the restore. A route that fails after writing the
+    # preferences, and an isolation refused after the route's write, both leave the owner's preferences and settings
+    # as they were, with the restore receipt, and launch nothing.
+    $prefs = Join-Path $fixture 'preferences.txt'; Set-Content -LiteralPath $prefs -Value 'owner preferences' -NoNewline
+    $global:ArtPathTest.prefs = $prefs; $global:ArtPathTest.snapshot = $true
+    $ambiguous = '<Settings><SharedInput>true</SharedInput><SharedInput>false</SharedInput></Settings>'
+    foreach ($case in @(@{ name = 'auto-route-throw'; failure = 'throw'; settings = $ownerSettings; message = '*route failure after a partial write*' },
+                        @{ name = 'auto-isolation-throw'; failure = 'write'; settings = $ambiguous; message = '*Ambiguous Art setting SharedInput*' })) {
+        Set-Content -LiteralPath $settingsPath -Value $case.settings -NoNewline
+        $global:ArtPathTest.routeFailure = $case.failure; $launches = $global:ArtPathTest.launches.Count; $failed = ''
+        try { & $runner -Record -MuteOutputs -IsolateDevices -ScriptedFrom route-a -Name $case.name -SessionsRoot './my tape library' -GameDir $game } catch { $failed = $_.Exception.Message }
+        Check ($failed -like $case.message) "$($case.name) did not report its failure: $failed"
+        Check ((Get-Content -LiteralPath $prefs -Raw) -ceq 'owner preferences' -and (Get-Content -LiteralPath $settingsPath -Raw) -ceq $case.settings) "$($case.name) left the owner preferences or settings changed"
+        Check (Test-Path -LiteralPath (Join-Path $library "$($case.name)/automation/owner-environment/restored.txt")) "$($case.name) has no restore receipt"
+        Check ($global:ArtPathTest.launches.Count -eq $launches -and -not (Test-Path -LiteralPath (Join-Path $env:LOCALAPPDATA 'ArtOfSimRally/session-request.txt'))) "$($case.name) launched or left a request"
+    }
+    # A game this run never launched is not closed: restoration stays pending (exit 4), for a recording and a replay.
+    Set-Content -LiteralPath $settingsPath -Value $ownerSettings -NoNewline
+    $global:ArtPathTest.routeFailure = 'foreign-game'
+    & $runner -Record -MuteOutputs -IsolateDevices -ScriptedFrom route-a -Name auto-foreign -SessionsRoot './my tape library' -GameDir $game 3>$null
+    Check ($LASTEXITCODE -eq 4 -and $global:ArtPathTest.running -and (Test-Path -LiteralPath (Join-Path $library 'auto-foreign/automation/restore-pending.txt')) -and
+        -not (Test-Path -LiteralPath (Join-Path $library 'auto-foreign/automation/owner-environment/restored.txt'))) "A recording closed a game it did not launch, or returned $LASTEXITCODE"
+    $global:ArtPathTest.routeFailure = $null; $global:ArtPathTest.running = $false; $global:ArtPathTest.snapshot = $false
+    $global:ArtPathTest.foreignGame = $true; $replayFailed = ''
+    try { & $runner -Replay -Name owner-drive -SessionsRoot './my tape library' -OutputDirectory './foreign game result' -GameDir $game 3>$null } catch { $replayFailed = $_.Exception.Message }
+    Check ($replayFailed -like '*a game started during setup*' -and $global:ArtPathTest.running -and (Test-Path -LiteralPath (Join-Path $fixture 'foreign game result/restore-pending.txt'))) 'A replay closed a game it did not launch'
+    $global:ArtPathTest.foreignGame = $false; $global:ArtPathTest.running = $false
+    Set-Content -LiteralPath $settingsPath -Value $ownerSettings -NoNewline
     $before = $global:ArtPathTest.saves; $launchesBefore = $global:ArtPathTest.launches.Count
     $refused = $false
     try { & $runner -Replay -Name owner-drive -SessionsRoot './my tape library' -OutputDirectory './separate playback result' -GameDir $game } catch { $refused=$_.Exception.Message -like '*existing evidence*' }
