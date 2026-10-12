@@ -85,25 +85,35 @@ namespace ArtOfSimRally.Testing
         }
 
         /// <summary>session.txt lines naming the input path in use at recording start. Files are hashed as found;
-        /// every value is one line.</summary>
+        /// every value is one line. Never throws (sana 36649): a value that cannot be read says so and the
+        /// recording continues.</summary>
         internal static string Identity(SharedEvidence shared, string bindFailure, string modDirectory, string nativePath)
+            => Identity(shared, bindFailure, () => modDirectory, () => nativePath);
+        internal static string Identity(SharedEvidence shared, string bindFailure, Func<string> modDirectory, Func<string> nativePath)
         {
             var lines = new StringBuilder();
-            void Add(string key, string text) => lines.Append(key).Append('=').Append(Clean(text)).Append('\n');
-            Add("inputModIdentity", BuildIdentity(Path.Combine(modDirectory, "build.json")));
-            Add("inputModSha256", HashOrAbsent(Path.Combine(modDirectory, "ArtOfSimRally.Mod.dll")));
-            var settings = Find("ArtOfSimRally.Mod.Main") is Type main ? Setting(main) : null;
+            void Add(string key, Func<string> value)
+            {
+                string text;
+                try { text = value(); } catch (Exception ex) { text = "unreadable: " + ex.GetType().Name; }
+                lines.Append(key).Append('=').Append(Clean(text)).Append('\n');
+            }
+            string mod = null, controls = null;
+            Dictionary<string, string> profile = null;
+            object settings = null;
+            Add("inputModIdentity", () => BuildIdentity(Path.Combine(mod = modDirectory(), "build.json")));
+            Add("inputModSha256", () => HashOrAbsent(Path.Combine(mod ?? modDirectory(), "ArtOfSimRally.Mod.dll")));
+            Add("settingsRead", () => { settings = Find("ArtOfSimRally.Mod.Main") is Type main ? Setting(main) : null; return settings == null ? "unknown" : "true"; });
             foreach (var name in new[] { "SharedInput", "WheelInputEnabled", "ShifterEnabled", "ForceFeedbackEnabled" })
-                Add("setting" + name, settings == null ? "unknown" : Flag(settings, name));
-            Add("sharedInputRequested", shared == null ? "unknown" : shared.Requested ? "true" : "false");
-            Add("sharedEvidence", shared != null ? "bound" : "unavailable: " + bindFailure);
-            string controls = Path.Combine(modDirectory, "dbce-controls.ini");
-            Add("controlsSha256", HashOrAbsent(controls));
-            var profile = ControlsHeader(controls);
+                Add("setting" + name, () => settings == null ? "unknown" : Flag(settings, name));
+            Add("sharedInputRequested", () => shared == null ? "unknown" : shared.Requested ? "true" : "false");
+            Add("sharedEvidence", () => shared != null ? "bound" : "unavailable: " + bindFailure);
+            Add("controlsSha256", () => HashOrAbsent(controls = Path.Combine(mod ?? modDirectory(), "dbce-controls.ini")));
             foreach (var key in new[] { "Profile", "Revision", "Transmission" })
-                Add("controls" + key, profile.TryGetValue(key, out var v) ? v : "absent");
-            Add("shimSha256", HashOrAbsent(Path.Combine(modDirectory, "dbce_shim.dll")));
-            Add("nativeSha256", HashOrAbsent(nativePath));
+                Add("controls" + key, () => (profile = profile ?? ControlsHeader(controls ?? Path.Combine(mod ?? modDirectory(), "dbce-controls.ini")))
+                    .TryGetValue(key, out var v) ? v : "absent");
+            Add("shimSha256", () => HashOrAbsent(Path.Combine(mod ?? modDirectory(), "dbce_shim.dll")));
+            Add("nativeSha256", () => HashOrAbsent(nativePath()));
             return lines.ToString();
         }
 

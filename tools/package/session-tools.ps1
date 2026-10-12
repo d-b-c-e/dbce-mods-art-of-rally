@@ -16,7 +16,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Recorder build failed' }
 & dotnet build (Join-Path $root 'tools/testing/Replay/Replay.csproj') -c Release --nologo -warnaserror
 if ($LASTEXITCODE -ne 0) { throw 'Analysis build failed' }
 $map = [ordered]@{}
-foreach ($path in @('tools/testing/Session.ps1','tools/testing/SessionEnvironment.ps1','tools/testing/Install-Recorder.ps1',
+foreach ($path in @('tools/testing/Session.ps1','tools/testing/SessionEnvironment.ps1','tools/testing/ReplayInputIsolation.ps1','tools/testing/Install-Recorder.ps1',
     'tools/testing/Recorder/Info.json','tools/testing/Recorder/bin/Release/net48/ArtOfSimRally.DevRecorder.dll',
     'lib/playback/Dbce.Wheel.Playback.dll','lib/playback/provenance.json','lib/playback/LICENSE','LICENSE','docs/SESSION-REPLAY.md')) { $map[$path] = $path }
 foreach ($name in @('Replay.dll','Replay.deps.json','Replay.runtimeconfig.json','Dbce.Wheel.Ffb.dll','Dbce.Wheel.Playback.dll')) {
@@ -26,6 +26,16 @@ foreach ($entry in $map.GetEnumerator()) {
     $target = Join-Path $stage $entry.Key
     New-Item -ItemType Directory -Force -Path (Split-Path $target) | Out-Null
     Copy-Item -LiteralPath (Join-Path $root $entry.Value) -Destination $target
+}
+# The packaged launcher must find every helper it dot-sources, and every packaged script must parse (sana 36649).
+foreach ($script in @($map.Keys | Where-Object { $_ -like '*.ps1' })) {
+    $tokens = $null; $errors = $null
+    $null = [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $stage $script), [ref]$tokens, [ref]$errors)
+    if ($errors.Count) { throw "Packaged script does not parse: $script ($($errors[0].Message))" }
+    foreach ($m in [regex]::Matches((Get-Content -LiteralPath (Join-Path $stage $script) -Raw), "(?m)^\s*\.\s+\(Join-Path\s+\`$PSScriptRoot\s+'([^']+)'\)")) {
+        $helper = [IO.Path]::GetRelativePath($stage, [IO.Path]::GetFullPath((Join-Path (Split-Path (Join-Path $stage $script)) $m.Groups[1].Value))).Replace('\', '/')
+        if (-not $map.Contains($helper)) { throw "Packaged $script dot-sources $helper, which is not packaged" }
+    }
 }
 $readme = @'
 # Art of Sim Rally optional SessionTools

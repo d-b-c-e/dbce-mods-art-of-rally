@@ -10,8 +10,9 @@ function Check([bool]$Value, [string]$Message) { $global:ArtPathTest.checks++; i
 function Get-Process { param([string[]]$Name, $ErrorAction)
     if ('artofrally' -in $Name -and $global:ArtPathTest.running) {
         $p = [pscustomobject]@{ Id=123; ProcessName='artofrally' }
-        $p | Add-Member ScriptMethod CloseMainWindow { $global:ArtPathTest.running=$false; return $true }
-        $p | Add-Member ScriptMethod WaitForExit { param($milliseconds) return $true }
+        # A stubborn game ignores the close request (sana 36649).
+        $p | Add-Member ScriptMethod CloseMainWindow { if (-not $global:ArtPathTest.stubborn) { $global:ArtPathTest.running=$false }; return $true }
+        $p | Add-Member ScriptMethod WaitForExit { param($milliseconds) return -not $global:ArtPathTest.running }
         $p
     }
 }
@@ -118,6 +119,18 @@ function Restore-SessionPresentation([string]$Path) {}
         Set-Content -LiteralPath $settingsPath -Value $ownerSettings -NoNewline
     }
     $global:ArtPathTest.replayResult = 'passed fixture'
+    # sana 36649: a game still running after replay (it would not close, or -KeepGameOpen) leaves restoration pending:
+    # exit 4 with restore-pending.txt and no restore receipt, even for a passed replay.
+    foreach ($case in @(@{ dir = 'stubborn result'; stubborn = $true; keep = $false }, @{ dir = 'kept open result'; stubborn = $false; keep = $true })) {
+        $global:ArtPathTest.running = $false; $global:ArtPathTest.stubborn = $case.stubborn
+        $keepArgs = if ($case.keep) { @{ KeepGameOpen = $true } } else { @{} }
+        & $runner -Replay -Name owner-drive -SessionsRoot './my tape library' -OutputDirectory "./$($case.dir)" -GameDir $game @keepArgs 3>$null
+        Check ($LASTEXITCODE -eq 4) "Replay '$($case.dir)' returned $LASTEXITCODE with restoration pending"
+        Check ((Test-Path -LiteralPath (Join-Path $fixture "$($case.dir)/restore-pending.txt")) -and
+            -not (Test-Path -LiteralPath (Join-Path $fixture "$($case.dir)/owner-environment/restored.txt"))) "Replay '$($case.dir)' did not state pending restoration"
+        $global:ArtPathTest.stubborn = $false; $global:ArtPathTest.running = $false
+        Set-Content -LiteralPath $settingsPath -Value $ownerSettings -NoNewline
+    }
     $before = $global:ArtPathTest.saves; $launchesBefore = $global:ArtPathTest.launches.Count
     $refused = $false
     try { & $runner -Replay -Name owner-drive -SessionsRoot './my tape library' -OutputDirectory './separate playback result' -GameDir $game } catch { $refused=$_.Exception.Message -like '*existing evidence*' }

@@ -15,4 +15,7 @@
     <Compile Include="../../src/ArtOfSimRally.Mod/NativeDiagnostics.cs" Link="NativeDiagnostics.cs" />
     <Compile Include="../reference/LegacyForceCurve.cs" Link="LegacyForceCurve.cs" />
   </ItemGroup>
+  <ItemGroup>
+    <Reference Include="Dbce.Wheel.Playback"><HintPath>../../lib/playback/Dbce.Wheel.Playback.dll</HintPath></Reference>
+  </ItemGroup>
 </Project>
