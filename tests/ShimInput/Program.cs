@@ -81,6 +81,38 @@ internal static class Program
         Check(!sink.Publish(Frame(3), 12, out why), "stopped sink resumed");
         Check(object.ReferenceEquals(original, sink.OriginalFrame), "stop rewrote original capture frame");
     }
+    // sana 35373: keyboard steering reported for this frame keeps the game's steer value (alignment already in
+    // it) over a resting off-centre wheel, only with this frame's isolation proof and never in a latched session.
+    private static void KeyboardSteerRule()
+    {
+        const ShimStatus L = ShimStatus.Live; string why;
+        var sink = new ShimAxisConsumer();
+        Check(sink.Publish(Frame(1, L, .25f), 1, out why), why);
+        foreach (float key in new[] { 1.02f, -.98f })
+        {
+            var game = new DrivingValues { Steer = key, Throttle = .4f };
+            Check(sink.Compose(1, true, .02f, ref game, KeyboardSteer.Present) && sink.KeyboardSteered, "keyboard steer not kept " + key);
+            Same(game.Steer, key, "keyboard steer changed " + key); Same(game.Throttle, .6f, "throttle no longer composed with max");
+        }
+        var zero = new DrivingValues(); sink.Compose(1, true, 0f, ref zero, KeyboardSteer.Present);
+        Same(zero.Steer, 0f, "zero keyboard steer replaced by the wheel");
+        foreach (var state in new[] { KeyboardSteer.NotQueried, KeyboardSteer.Unknown, KeyboardSteer.Absent })
+        {
+            var game = new DrivingValues { Steer = 1.02f }; sink.Compose(1, true, .02f, ref game, state);
+            Same(game.Steer, .27f, "wheel lost without a keyboard source " + state); Check(!sink.KeyboardSteered, "keyboard flag kept " + state);
+        }
+        var stale = new DrivingValues { Steer = 1.02f, Throttle = .9f }; sink.Compose(1, false, .02f, ref stale, KeyboardSteer.Present);
+        Same(stale.Steer, .27f, "unisolated keyboard steer kept"); Same(stale.Throttle, .6f, "unisolated native throttle kept");
+        Check(!sink.KeyboardSteered, "keyboard flag without isolation");
+        var old = new DrivingValues { Steer = 1.02f }; sink.Compose(2, false, .02f, ref old, KeyboardSteer.Present);
+        Same(old.Steer, 0f, "stale frame kept native or wheel steer"); Check(!sink.KeyboardSteered, "keyboard flag on a stale frame");
+        var latched = new ShimAxisConsumer { AcceptLatched = true };
+        var bytes = Actions(1, 0, (0, L, .25f)); bytes[40] = 3; bytes[41] = 1; bytes[42] = 1; bytes[48 + 5] = 1;
+        Check(latched.Publish(bytes, 1, out why), why);
+        var suppressed = new DrivingValues { Steer = 1.02f, Throttle = .9f }; latched.Compose(1, true, .02f, ref suppressed, KeyboardSteer.Present);
+        Same(suppressed.Steer, .27f, "latched session kept keyboard steer"); Check(suppressed.Throttle < .9f, "latched session kept native throttle");
+        Check(!latched.KeyboardSteered, "keyboard flag in a latched session");
+    }
     private static void StatusesAndFailures()
     {
         string why;
@@ -757,7 +789,7 @@ internal static class Program
         }
         try
         {
-            Decode(); Consumption(); StatusesAndFailures(); SharedActions(); SharedStatus(); TrialSteps(); DriveSteps(); GearSteps(); ProfileControls(); ControlsContractMatches();
+            Decode(); Consumption(); KeyboardSteerRule(); StatusesAndFailures(); SharedActions(); SharedStatus(); TrialSteps(); DriveSteps(); GearSteps(); ProfileControls(); ControlsContractMatches();
             assertions += BridgeTests.Fake();
             assertions += IsolationTests.Run();
             assertions += ProbeTests.Run();

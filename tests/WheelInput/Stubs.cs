@@ -68,7 +68,19 @@ namespace HarmonyLib
 }
 namespace Rewired
 {
-    public class Player { }
+    public enum ControllerType { Keyboard, Mouse, Joystick, Custom }
+    public class Player
+    {
+        // Keyboard steering fixture: the action Art's keyboard map contributed to this frame, or a query fault.
+        public static string KeyboardAction; public static bool QueryFault; public static int Queries;
+        public bool IsCurrentInputSource(string actionName, ControllerType controllerType)
+        {
+            Queries++;
+            if (QueryFault) throw new InvalidOperationException("fixture source query failure");
+            return controllerType == ControllerType.Keyboard && actionName == KeyboardAction;
+        }
+    }
+    public sealed class PlayerHelper { public Player GetPlayer(int playerId) => playerId == 0 ? global::PadManager.Player : null; }
     public sealed class Joystick
     {
         public Guid deviceInstanceGuid;
@@ -86,6 +98,7 @@ namespace Rewired
     public static class ReInput
     {
         public static bool isReady; public static readonly ControllerInventory controllers = new();
+        public static readonly PlayerHelper players = new();
         public static event Action<ControllerStatusChangedEventArgs> ControllerConnectedEvent, ControllerPreDisconnectEvent, ControllerDisconnectedEvent;
         public static event Action PreShutDownEvent, ShutDownEvent, InitializedEvent;
         internal static int Subscribers => (ControllerConnectedEvent?.GetInvocationList().Length ?? 0) + (ControllerPreDisconnectEvent?.GetInvocationList().Length ?? 0) +
@@ -103,6 +116,7 @@ public sealed class EventManager { public EventStatusEnums.EventStatus status = 
 public static class GameEntryPoint { public static EventManager EventManager = new(); }
 public class AxisCarController
 {
+    public string steerAxis = "Horizontal";
     public float SteeringOutOfAlignmentEffect = 0;
     public static float ProcessDeadzoneForInput(float value, float deadzone) => value;
 }

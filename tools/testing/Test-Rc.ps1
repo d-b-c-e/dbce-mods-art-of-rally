@@ -75,6 +75,9 @@ try {
     $result = Run 'ordinary-fallback' 'dotnet' @('run','--project','tests/WheelInput/WheelInput.csproj','-c','Release','--','--ordinary-fallback-only')
     $ordinaryFallback = $result | Select-Object -Last 1 | ConvertFrom-Json
     Assert ($ordinaryFallback.status -eq 'passed' -and $ordinaryFallback.assertions -gt 0) 'Ordinary fallback runner ran no assertions'
+    $result = Run 'keyboard-steering' 'dotnet' @('run','--project','tests/WheelInput/WheelInput.csproj','-c','Release','--','--keyboard-steering-only')
+    $keyboardSteering = $result | Select-Object -Last 1 | ConvertFrom-Json
+    Assert ($keyboardSteering.status -eq 'passed' -and $keyboardSteering.assertions -gt 0) 'Keyboard steering runner ran no assertions'
     $result = Run 'latched-menu' 'dotnet' @('run','--project','tests/WheelInput/WheelInput.csproj','-c','Release','--','--latched-menu-only')
     $latchedMenu = $result | Select-Object -Last 1 | ConvertFrom-Json
     Assert ($latchedMenu.status -eq 'passed' -and $latchedMenu.assertions -gt 0) 'Latched menu runner ran no assertions'
