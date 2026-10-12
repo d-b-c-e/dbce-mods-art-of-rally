@@ -79,12 +79,24 @@ namespace ArtOfSimRally.Mod
                 d.Ok = false; Array.Clear(d.Axes, 0, d.Axes.Length); Array.Clear(d.Buttons, 0, d.Buttons.Length);
                 for (int i = 0; i < d.Hats.Length; i++) d.Hats[i] = -1;
             }
-            // Stopped for good: neutral, with no further isolation checks or Core ticks.
+            // Released (a close) or lost once: the game's mixed values can no longer be trusted, so driving
+            // stays neutral for good, keyboard included.
+            if (isolationGone) return true;
+            bool isolated;
+            try { isolated = verifyNativeIsolation(); } catch { isolated = false; }
+            if (!isolated)
+            {
+                isolationGone = true;
+                try { sharedInput.Stop("native input isolation lost"); } catch { }
+                return true;
+            }
+            // Isolation verified this frame: the game's independent (keyboard) input may be used.
+            ShimInput.IsolatedFrame = Time.frameCount;
+            // A transport-only stop (Core, frame or provider refusal) keeps the wheel neutral and Core
+            // untouched, but leaves the verified keyboard path; nothing re-enables the wheel.
             if (sharedInput.Stopped) return true;
             try
             {
-                if (!verifyNativeIsolation()) { sharedInput.Stop("native input isolation lost"); return true; }
-                ShimInput.IsolatedFrame = Time.frameCount;
                 sharedInput.ReadFrame(Time.frameCount, (slot, bytes) =>
                 {
                     foreach (var d in _devices) if (d.Slot == slot)
@@ -134,10 +146,14 @@ namespace ArtOfSimRally.Mod
 
         // Why the shared session stopped (first cause only), for a truthful status after any later close.
         internal static string SharedStopReason => sharedInput?.Failure;
+        private static bool isolationGone;
+        // A stopped session whose own isolation still verifies: keyboard driving continues, wheel neutral.
+        internal static bool SharedKeyboardRetained => sharedInput != null && sharedInput.Stopped && !isolationGone;
         private static void StopSharedInput(string reason = "Art reader closed")
         {
             if (sharedInput == null) return;
             try { sharedInput.Stop(reason); } catch (Exception ex) { ModLog.Error("Shared input stop: " + ex.Message); }
+            isolationGone = true; // released below; from now on driving stays neutral
             try
             {
                 if (restoreNativeInput != null)

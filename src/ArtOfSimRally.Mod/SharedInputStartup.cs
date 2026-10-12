@@ -124,7 +124,7 @@ namespace ArtOfSimRally.Mod
             if (!stopLogged && Stopped)
             {
                 stopLogged = true;
-                ModLog.Warning("Shared input stopped: " + StopReason + SharedInputStatus.StoppedEffect);
+                ModLog.Warning("Shared input stopped: " + StopReason + (WheelInput.SharedKeyboardRetained ? SharedInputStatus.StoppedKeyboardEffect : SharedInputStatus.StoppedEffect));
             }
         }
 
@@ -141,7 +141,7 @@ namespace ArtOfSimRally.Mod
             {
                 Phase = phase, Reason = reason, WaitingFor = waitingFor, ProfileName = profileName, Transmission = transmission, Devices = devices,
                 ArtTransmissionMode = Main.Settings?.TransmissionMode, CarAutomatic = carAutomatic,
-                Stopped = Stopped, StopReason = StopReason,
+                Stopped = Stopped, StopReason = StopReason, KeyboardRetained = WheelInput.SharedKeyboardRetained,
                 RestoreStatus = session?.IsolationStatus, Retrying = restoreAttempts < RestoreRetries,
             });
         }

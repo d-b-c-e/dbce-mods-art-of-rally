@@ -238,6 +238,10 @@ static class Program
             {
                 SharedLifecycle(); Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
             }
+            if (args.Contains("--shared-transport-only"))
+            {
+                SharedTransportStop(); Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
+            }
             if (args.Contains("--shim-latched-only"))
             {
                 SharedLatchedSuppression(); Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
@@ -296,11 +300,12 @@ static class Program
     sealed class ActionNative : ArtOfSimRally.Mod.Shim.IShimBridge
     {
         internal Func<(int Action, ArtOfSimRally.Mod.Shim.ShimStatus Status, float Value)[]> Script = () => Array.Empty<(int, ArtOfSimRally.Mod.Shim.ShimStatus, float)>();
-        internal int Ticks, Stops; internal bool Latched;
+        internal int Ticks, Stops; internal bool Latched, Refuse;
         public bool Devices(byte[] bytes, int count) => true;
         public bool Tick(byte[] samples, int count, byte[] frame)
         {
             Ticks++;
+            if (Refuse) return false;
             BitConverter.GetBytes(296).CopyTo(frame, 0); frame[4] = 2; BitConverter.GetBytes((ulong)Ticks).CopyTo(frame, 8); BitConverter.GetBytes((long)Ticks).CopyTo(frame, 16);
             for (int i = 0; i < 31; i++) frame[52 + i * 8] = (byte)(i < 5 ? ArtOfSimRally.Mod.Shim.ShimStatus.Live : ArtOfSimRally.Mod.Shim.ShimStatus.Unbound);
             foreach (var a in Script()) { BitConverter.GetBytes(a.Value).CopyTo(frame, 48 + a.Action * 8); frame[52 + a.Action * 8] = (byte)a.Status; if (Latched) frame[53 + a.Action * 8] = 1; }
@@ -544,6 +549,50 @@ static class Program
         WheelInput.Close();
     }
     static string nextNeutral; static int nextFailures; static bool nextIsolated = true;
+    // romi 28966: a transport-only fault (Core refuses a tick) keeps the wheel neutral and Core untouched but
+    // leaves keyboard driving while the session's own isolation still verifies; once isolation is lost or
+    // released (a close), driving is neutral for good, and nothing re-enables the wheel.
+    static void SharedTransportStop()
+    {
+        const ArtOfSimRally.Mod.Shim.ShimStatus L = ArtOfSimRally.Mod.Shim.ShimStatus.Live;
+        string dll = Environment.GetEnvironmentVariable("ART_SHIM_DLL") ?? @"E:\Source\games\.worktrees\art-shim-probe-evidence\apply-20261012-021108\dbce_shim.dll";
+        var mod = Path.Combine(Path.GetTempPath(), "art-shared-transport-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(mod);
+        File.Copy(dll, Path.Combine(mod, SharedInputStartup.ShimFileName));
+        File.WriteAllText(Path.Combine(mod, SharedInputStartup.ProfileFileName), "[Controls]\nSchema = 1\nProfile = Transport\n");
+        SharedInputStartup.RunRoot = Path.Combine(mod, "runs");
+        string Text() => string.Join(" | ", SharedInputStartup.Lines());
+        var core = new ActionNative { Script = () => new[] { (0, L, .5f), (9, L, 1f) } };
+        FakeQualification fake = null;
+        SharedInputStartup.NewSession = inventory => fake = new FakeQualification(core);
+        SharedInputStartup.ForceSettled = () => true;
+        void Frame() { Clock.frameCount++; SharedInputStartup.Tick(); WheelInput.EnsureUpdatedThisFrame(); }
+        float Drive(out float throttle)
+        {
+            Clock.frameCount++; float t = .3f, b = 0, s = .3f, h = 0, c = 0; bool e = false; // .3: the game's own (keyboard) values
+            ArtOfSimRally.Mod.Shim.ShimInput.TryOverride(new AxisCarController(), ref t, ref b, ref s, ref h, ref c, ref e);
+            throttle = t; return s;
+        }
+        Setup(""); Host.Settings.SharedInput = true; Rewired.ReInput.isReady = true; Device.Devices[0].InstanceGuid = new Guid("d71b8350-61b7-11f1-8001-444553540000");
+        WheelInput.Close(); Clock.realtimeSinceStartup += 6; Clock.frameCount = 30000;
+        SharedInputStartup.Prepare(mod);
+        for (int i = 0; i < 3; i++) Frame();
+        Check(ArtOfSimRally.Mod.Shim.ShimInput.Consumer.Started && Math.Abs(Drive(out _) - .5f) < .001f, "shared steering not live before the fault: " + Text());
+        // Core refuses a tick: transport-only stop with isolation still verified.
+        core.Refuse = true; Frame(); core.Refuse = false; int ticks = core.Ticks;
+        Check(WheelInput.SharedStopReason == "shared provider refused physical batch" && WheelInput.SharedKeyboardRetained, "transport stop not recorded: " + WheelInput.SharedStopReason);
+        float steer = Drive(out float throttle);
+        Check(Math.Abs(steer - .3f) < .001f && Math.Abs(throttle - .3f) < .001f, "keyboard driving lost after a transport-only stop: " + steer);
+        Frame(); Frame();
+        Check(core.Ticks == ticks && !WheelInput.GameButton(WheelInput.Channel.Confirm, false), "stopped session ticked Core or delivered the wheel");
+        Check(Text().Contains("keyboard driving continues") && Text().Contains("refused physical batch"), "transport stop text: " + Text());
+        Check(WheelInput.DeviceReadHealth(Device.Devices[0].InstanceGuid.ToString()) == null, "stopped session reported read health");
+        // Isolation lost once: neutral for good, even if it later verifies again.
+        fake.Isolated = false; Frame();
+        Check(!WheelInput.SharedKeyboardRetained && Drive(out _) == 0f, "keyboard kept after isolation was lost");
+        fake.Isolated = true; Frame(); Frame();
+        Check(Drive(out throttle) == 0f && throttle == 0f && Text().Contains("wheel and keyboard alike"), "neutral not sticky after isolation loss: " + Text());
+        WheelInput.Close();
+    }
     static void SharedActionChannels()
     {
         const ArtOfSimRally.Mod.Shim.ShimStatus L = ArtOfSimRally.Mod.Shim.ShimStatus.Live;

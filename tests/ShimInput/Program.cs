@@ -241,6 +241,8 @@ internal static class Program
         Check(onAutomatic[onAutomatic.Length - 3].Contains("automatic now"), "attached text claimed gears on an automatic car");
         var stopped = Lines(new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.Attached, Stopped = true, StopReason = "native input isolation lost" });
         Check(stopped.Length == 2 && stopped[0].Contains("native input isolation lost") && stopped[0].Contains("wheel and keyboard alike") && stopped[1] == SharedInputStatus.Editors, "stopped text");
+        var transport = Lines(new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.Attached, Stopped = true, StopReason = "shared provider refused physical batch", KeyboardRetained = true });
+        Check(transport[0].Contains("refused physical batch") && transport[0].Contains("keyboard driving continues") && !transport[0].Contains("alike"), "transport stop text");
         Check(Lines(new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.Waiting, WaitingFor = "force feedback to finish connecting" })[0].Contains("for force feedback to finish connecting"), "waiting cause missing");
         var cleanup = Lines(new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.CleanupFailed, Reason = "x.", RestoreStatus = "one or more joystick flags could not be restored", Retrying = true });
         Check(cleanup.Length == 1 && cleanup[0].Contains("still off (one or more joystick flags") && cleanup[0].Contains("retrying") && !cleanup[0].Contains("Art bindings are used"), "cleanup failure text claimed a handback");

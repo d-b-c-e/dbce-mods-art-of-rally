@@ -270,3 +270,20 @@ replacement with a held reader and under a concurrent reader.
 `--bridge-latched` against f38b855: the trial against the real Core with a fake
 menu. `ProbeHooks` (Unity Mono, real game assemblies and Harmony): hooks reported
 missing before patching and none after.
+
+## Keyboard after a transport-only stop (romi 28966, source)
+
+8f9b945 made every stop fully neutral, keyboard included. Now:
+
+- Transport-only stop (Core refuses a tick or the provider/frame is refused) while
+  the session's own isolation still verifies each frame: the wheel stays neutral,
+  Core is not ticked again, nothing is re-enabled, and the game's independent
+  (keyboard) driving input is kept. Panel: "The wheel stays neutral until the game
+  restarts; while it stays isolated, keyboard driving continues."
+- Isolation lost once (a failed check) or released (any close: reader close,
+  force reconnect, shutdown): driving is neutral for good, keyboard included,
+  because the game's mixed values can no longer be trusted.
+
+Not yet qualified on the rig; `--shared-transport-only` covers it offline, and
+four mutants (loss not sticky, released still stamped, close not releasing,
+keyboard not retained) fail.

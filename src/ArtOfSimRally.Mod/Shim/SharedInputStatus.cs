@@ -12,7 +12,7 @@ namespace ArtOfSimRally.Mod.Shim
             internal Phase Phase;
             internal string Reason, WaitingFor, ProfileName, Transmission, ArtTransmissionMode, StopReason, RestoreStatus;
             internal string[] Devices;
-            internal bool Stopped, Retrying;
+            internal bool Stopped, Retrying, KeyboardRetained;
             internal bool? CarAutomatic { get; set; } // the current car while driving; null otherwise
         }
         internal const string Unsupported = "Not available in Art: select, look back, reset and horn.";
@@ -21,6 +21,8 @@ namespace ArtOfSimRally.Mod.Shim
         // After a stop the car gets no driving input at all: the game's combined values cannot separate
         // keyboard from a re-enabled wheel. Menus keep the keyboard.
         internal const string StoppedEffect = ". Driving input, wheel and keyboard alike, stays neutral until the game restarts; menus still take the keyboard.";
+        // A transport-only stop while the wheel is still verifiably isolated.
+        internal const string StoppedKeyboardEffect = ". The wheel stays neutral until the game restarts; while it stays isolated, keyboard driving continues.";
         internal const string Ffb = "Force feedback together with the shared profile is not qualified yet; treat the first drive as an attended test.";
 
         internal static string[] Lines(Facts f)
@@ -39,7 +41,7 @@ namespace ArtOfSimRally.Mod.Shim
                 case Phase.Attached:
                     if (f.Stopped)
                     {
-                        lines.Add("Shared input stopped: " + f.StopReason + StoppedEffect);
+                        lines.Add("Shared input stopped: " + f.StopReason + (f.KeyboardRetained ? StoppedKeyboardEffect : StoppedEffect));
                         lines.Add(Editors);
                         break;
                     }
