@@ -223,11 +223,34 @@ internal static class Program
         Check(ShimTransmission.Next(S, false, 2, 5, ref last, 1, false, 6) == 3, "sequential step");
         Check(ShimTransmission.Next(N, false, 2, 4, ref last, 1, false, 6) == null, "automatic or unknown profile shifted");
     }
+    // The panel's shared-profile text: every phase stated, and gears never claimed on an automatic box.
+    private static void SharedStatus()
+    {
+        string[] Lines(SharedInputStatus.Facts f) => SharedInputStatus.Lines(f);
+        Check(Lines(new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.Off })[0].Contains("is off") , "off text");
+        var refused = Lines(new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.Refused, Reason = "no shared profile beside the mod." });
+        Check(refused.Length == 1 && refused[0].Contains("no shared profile") && refused[0].Contains("Art bindings are used"), "refusal text");
+        Check(Lines(new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.Waiting })[0].Contains("waiting") && Lines(new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.Isolating })[0].Contains("isolating"), "pending text");
+        var attached = Lines(new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.Attached, ProfileName = "Moza KS Pro Triple", Transmission = "Sequential",
+            ArtTransmissionMode = "Sequential", Devices = new[] { "MOZA R12 Base", "DS-8X Shifter" } });
+        Check(attached[0].Contains("Moza KS Pro Triple") && attached[0].Contains("Keyboard stays native") && attached[1].Contains("MOZA R12 Base, DS-8X Shifter"), "attached identity text");
+        Check(Array.IndexOf(attached, SharedInputStatus.Unsupported) > 0 && Array.IndexOf(attached, SharedInputStatus.ArtOnly) > 0 && attached[attached.Length - 1] == SharedInputStatus.Ffb, "scope/FFB caveats missing");
+        Check(attached[attached.Length - 2].Contains("Gears follow the profile (Sequential)"), "manual gear text");
+        var onAutomatic = Lines(new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.Attached, ProfileName = "p", Transmission = "Sequential", ArtTransmissionMode = "Sequential", CarAutomatic = true });
+        Check(onAutomatic[onAutomatic.Length - 2].Contains("automatic now"), "attached text claimed gears on an automatic car");
+        var stopped = Lines(new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.Attached, Stopped = true, StopReason = "native input isolation lost" });
+        Check(stopped.Length == 1 && stopped[0].Contains("native input isolation lost") && stopped[0].Contains("until the game restarts"), "stopped text");
+        Check(SharedInputStatus.Gears("Sequential", "Automatic", null).Contains("ignored"), "Art Automatic not flagged");
+        Check(SharedInputStatus.Gears("Sequential", "Follow game", null).Contains("only while the game's own transmission option is manual"), "Follow game not explained");
+        Check(SharedInputStatus.Gears("H-pattern", "H-pattern", true).Contains("automatic now"), "automatic car not flagged");
+        Check(SharedInputStatus.Gears("Automatic", "Sequential", false).Contains("not used") && SharedInputStatus.Gears(null, "Sequential", false).Contains("names no transmission"), "non-manual profile claimed gears");
+        Check(SharedInputStatus.Gears("H-pattern", "Sequential", false).Contains("Gears follow the profile (H-pattern)"), "manual mismatch text");
+    }
     private static int Main(string[] args)
     {
         try
         {
-            Decode(); Consumption(); StatusesAndFailures(); SharedActions();
+            Decode(); Consumption(); StatusesAndFailures(); SharedActions(); SharedStatus();
             assertions += BridgeTests.Fake();
             assertions += IsolationTests.Run();
             assertions += ProbeTests.Run();

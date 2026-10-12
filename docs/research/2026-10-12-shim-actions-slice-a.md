@@ -111,3 +111,41 @@ navDown through the applied profile, masked physical confirm, keyboard
 suppression in `Compose`, `end` → Completed) once a shim admits latched bridge
 sessions. The in-game Trial flow (fences computed from the probe's actual guards,
 scene/driving refusal, selection readback) is deliberately not wired until then.
+
+## Ordinary opt-in candidate (source; owner testing not started)
+
+`Settings.SharedInput` (default off; panel: "Use shared Wheelkit profile
+(candidate)", read at startup, restart required) is the only switch. Off keeps
+Art's bindings exactly; nothing migrates bindings, tune or force settings.
+
+- Preflight at mod load (files only): `dbce-controls.ini` beside the mod (empty or
+  over 1 MiB refused), `dbce_shim.dll` beside the mod pinned to the qualified
+  copied-provider build `7DDC9621…` (art-shim-bridge 574bb88). Any refusal states a
+  reason and keeps Art's bindings and Art's own shifter.
+- Qualification idle in the menus only, after Rewired and Art's readers are ready,
+  using the probe's exact sequence (now shared as `SharedInputSession`, which the
+  probe also uses): Core profile identities, metadata/path pins of the owned
+  slots, exact path/product join, identity lease, exact-object isolation, then a
+  neutral-cache check before `AttachSharedInput` with Core's transmission.
+- A refusal during qualification stops the opened Core host, restores only the
+  flags it changed, ends the Rewired observation and hands Art's shifter back.
+  After the first accepted frame a fault keeps the wheel neutral until restart.
+- Art's own shifter reader never opens while the shared profile is pending or
+  attached (also on FFB recovery).
+- The candidate needs a WheelFfb exposing the shared read exports (toolkit
+  snapshot candidate). With the accepted native the shared path refuses
+  ("WheelFfb owner has not loaded a module" or a missing export) and Art's
+  bindings stay in charge.
+- Panel status (`SharedInputStatus`, pure): every phase, the refusal reason, the
+  profile name, isolated devices, unsupported actions, Art-binding channels, and an
+  explicit gear line: Automatic or unknown profile → no shared gears; Art
+  Transmission Automatic → ignored; Follow game → only while the game's option is
+  manual; the current car's automatic gearbox → ignored. Force feedback with the
+  shared profile is flagged as not qualified (first attended test).
+
+Tests: `tests/ShimInput` 567 (status truth table and gear lines);
+`tests/WheelInput --shared-startup-only` 13 with the qualified DLL (off, missing
+profile, missing/wrong/empty DLL and profile refusals, no qualification while
+driving or before Rewired is ready, real Core opened then refused without a WheelFfb
+owner: host stopped, no leaked Rewired subscription, shifter handed back, no retry).
+Mutants removing the cleanup, the shifter hand-back or the driving gate each fail.

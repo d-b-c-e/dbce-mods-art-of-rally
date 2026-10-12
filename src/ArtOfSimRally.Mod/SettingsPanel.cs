@@ -155,6 +155,9 @@ namespace ArtOfSimRally.Mod
             if (!c.WheelInputEnabled)
                 Help("Assigned USB controls are Off, including a separate handbrake. Game-bound wheel and pedals may still work. Turn On to use the handbrake.");
             if (!WheelInput.Assigning.HasValue) Help(WheelInput.Status);
+            c.SharedInput = Toggle(c.SharedInput, "Use shared Wheelkit profile (candidate)");
+            if (c.SharedInput != SharedInputStartup.RequestedAtStartup) Help("Restart the game to " + (c.SharedInput ? "use" : "stop using") + " the shared profile.");
+            foreach (var line in SharedInputStartup.Lines(SharedCarAutomatic())) Help(line);
             Axis(c, WheelInput.Channel.Steer, "Steering"); Axis(c, WheelInput.Channel.Throttle, "Throttle");
             Axis(c, WheelInput.Channel.Brake, "Brake"); Axis(c, WheelInput.Channel.Handbrake, "Handbrake (axis)");
             Axis(c, WheelInput.Channel.HandbrakeButton, "Handbrake (button)");
@@ -484,6 +487,18 @@ namespace ArtOfSimRally.Mod
                 stack ? GUILayout.ExpandWidth(true) : SettingsPresentation.Width(width));
             if (!stack) GUILayout.EndHorizontal();
             return result;
+        }
+        // The current player car's gearbox while driving, so the shared-profile hint never claims gears work on an automatic.
+        private static bool? SharedCarAutomatic()
+        {
+            if (!GameState.IsDriving) return null;
+            try
+            {
+                var car = GameState.ExistingManager?.playerManager?.carcontroller;
+                var drivetrain = car == null ? null : car.GetComponent<Drivetrain>();
+                return drivetrain == null ? (bool?)null : drivetrain.automatic;
+            }
+            catch { return null; }
         }
         private static bool Toggle(bool value, string label)
         {

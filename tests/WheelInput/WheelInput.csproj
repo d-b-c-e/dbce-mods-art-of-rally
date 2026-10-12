@@ -8,6 +8,7 @@
     <Compile Include="../ShimInput/BridgeTests.cs" Link="BridgeTests.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/Shim/*.cs" Link="Shim/%(Filename)%(Extension)" />
     <Compile Include="../../src/ArtOfSimRally.Mod/Shifter.cs" Link="Shifter.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/SharedInputStartup.cs" Link="SharedInputStartup.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/WheelInput.cs" Link="WheelInput.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/WheelInput.Shim.cs" Link="WheelInput.Shim.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/WheelInput.Binding.cs" Link="WheelInput.Binding.cs" />

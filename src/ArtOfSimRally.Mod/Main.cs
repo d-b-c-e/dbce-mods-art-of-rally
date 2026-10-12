@@ -65,6 +65,7 @@ namespace ArtOfSimRally.Mod
             // DirectInput switch left the keyboard dead turns that setting off.
             if (!ShimStartup.Prepare(modEntry.Path)) return false;
             if (!ShimStartup.Requested) InputBackend.OnLoad();
+            SharedInputStartup.Prepare(modEntry.Path); // opt-in shared profile: files only, before any shifter reader opens
             if (SettingsMigration.NeedsHandbrakeSplit(Settings))
             {
                 try
@@ -123,7 +124,8 @@ namespace ArtOfSimRally.Mod
 
             Enabled = true;
 
-            if (!ShimStartup.Requested && Settings.ShifterEnabled && Settings.ShifterDeviceIndex >= 0)
+            // A shared profile owns the shifter; Art's own reader never opens alongside it.
+            if (!ShimStartup.Requested && !SharedInputStartup.Active && Settings.ShifterEnabled && Settings.ShifterDeviceIndex >= 0)
                 Shifter.Open(Settings.ShifterDeviceIndex);
 
             // Releases the wheel and parks telemetry when the game stops driving
@@ -238,7 +240,7 @@ namespace ArtOfSimRally.Mod
             finally
             {
                 if (Enabled && Settings.WheelInputEnabled) WheelInput.Open();
-                if (Enabled && Settings.ShifterEnabled && Settings.ShifterDeviceIndex >= 0)
+                if (Enabled && !SharedInputStartup.Active && Settings.ShifterEnabled && Settings.ShifterDeviceIndex >= 0)
                     Shifter.Open(Settings.ShifterDeviceIndex);
             }
         }

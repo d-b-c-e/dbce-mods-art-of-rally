@@ -230,6 +230,10 @@ static class Program
             {
                 SharedActionChannels(); Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
             }
+            if (args.Contains("--shared-startup-only"))
+            {
+                SharedStartupPaths(); Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
+            }
             if (args.Contains("--shim-latched-only"))
             {
                 SharedLatchedSuppression(); Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
@@ -348,6 +352,47 @@ static class Program
         Check(Query(PadManager.Player, "GetNegativeButtonDown", 13, false) && Query(PadManager.Player, "GetNegativeButton", 13, false), "injected navDown missing from vertical");
         Check(AxisQuery(13, 0f) == -1f, "injected navDown missing from the vertical axis");
         Check(!Query(PadManager.Player, "GetButtonDown", 16, false), "confirm progressed during the trial");
+        WheelInput.Close();
+    }
+    // The opt-in ordinary startup: every preflight refusal keeps Art's bindings, qualification waits for
+    // the menus and ready readers, and a refusal during qualification (here: the real dbce_shim with no
+    // loaded WheelFfb owner) stops Core, leaves no Rewired subscription and hands Art's shifter back.
+    static void SharedStartupPaths()
+    {
+        // The qualified copied-provider build (7DDC9621), preserved with the October 12 Apply evidence.
+        string dll = Environment.GetEnvironmentVariable("ART_SHIM_DLL") ?? @"E:\Source\games\.worktrees\art-shim-probe-evidence\apply-20261012-021108\dbce_shim.dll";
+        Check(File.Exists(dll), "candidate dbce_shim.dll unavailable for the startup test: " + dll);
+        var mod = Path.Combine(Path.GetTempPath(), "art-shared-startup-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(mod);
+        SharedInputStartup.RunRoot = Path.Combine(mod, "runs");
+        string profilePath = Path.Combine(mod, SharedInputStartup.ProfileFileName), shimPath = Path.Combine(mod, SharedInputStartup.ShimFileName);
+        string profile = "[Controls]\nSchema = 1\nProfile = Startup\nRevision = r1\nTransmission = Sequential\nsteer = axis 0 dev={d71b8350-61b7-11f1-8001-444553540000} prod={0006346e-0000-0000-0000-504944564944} range=0..65535 rest=32768 travel=+1\n";
+        string Text() => string.Join(" | ", SharedInputStartup.Lines());
+        Setup(""); Clock.frameCount = 12000; WheelInput.Update();
+        Host.Settings.SharedInput = false; SharedInputStartup.Prepare(mod);
+        Check(!SharedInputStartup.Active && !SharedInputStartup.RequestedAtStartup && Text().Contains("is off"), "off: " + Text());
+        Host.Settings.SharedInput = true;
+        SharedInputStartup.Prepare(mod); Check(!SharedInputStartup.Active && SharedInputStartup.RequestedAtStartup && Text().Contains("no shared profile"), "no profile: " + Text());
+        File.WriteAllText(profilePath, profile);
+        SharedInputStartup.Prepare(mod); Check(!SharedInputStartup.Active && Text().Contains("dbce_shim.dll is missing"), "no dll: " + Text());
+        File.WriteAllText(shimPath, "not the qualified build");
+        SharedInputStartup.Prepare(mod); Check(!SharedInputStartup.Active && Text().Contains("not the qualified build"), "wrong dll: " + Text());
+        File.Copy(dll, shimPath, true); File.WriteAllText(profilePath, "");
+        SharedInputStartup.Prepare(mod); Check(!SharedInputStartup.Active && Text().Contains("empty"), "empty profile: " + Text());
+        File.WriteAllText(profilePath, profile);
+        SharedInputStartup.Prepare(mod); Check(SharedInputStartup.Active && Text().Contains("waiting"), "valid preflight: " + Text());
+        // No qualification while driving or before Rewired is ready; nothing acquired meanwhile.
+        GameState.IsDriving = true; Rewired.ReInput.isReady = true; SharedInputStartup.Tick();
+        GameState.IsDriving = false; Rewired.ReInput.isReady = false; SharedInputStartup.Tick();
+        Check(SharedInputStartup.Active && Text().Contains("waiting") && Rewired.ReInput.Subscribers == 0 && !Directory.Exists(SharedInputStartup.RunRoot), "qualified while driving or before Rewired was ready");
+        // Real Core opens, then the missing WheelFfb owner refuses: everything is released.
+        Rewired.ReInput.isReady = true; FfbNative.RequestedPath = "";
+        Host.Settings.ShifterEnabled = true; Host.Settings.ShifterDeviceIndex = 0; Host.Settings.ShifterDeviceName = Device.Devices[0].Name; Host.Settings.ShifterDeviceGuid = "";
+        SharedInputStartup.Tick();
+        Check(!SharedInputStartup.Active && Text().Contains("WheelFfb owner has not loaded a module") && Text().Contains("Art bindings are used"), "qualification refusal: " + Text());
+        Check(Rewired.ReInput.Subscribers == 0, "refusal leaked Rewired event subscriptions");
+        Check(Directory.GetFiles(SharedInputStartup.RunRoot, "host-shutdown.json", SearchOption.AllDirectories).Length == 1, "refusal did not stop the opened Core host");
+        Check(Shifter.IsOpen, "Art's shifter was not handed back after the refusal");
+        SharedInputStartup.Tick(); Check(!SharedInputStartup.Active && !ArtOfSimRally.Mod.Shim.ShimInput.Consumer.Started, "refused session retried or attached");
         WheelInput.Close();
     }
     static void SharedActionChannels()

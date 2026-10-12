@@ -122,6 +122,7 @@ namespace ArtOfSimRally.Mod
 {
     internal static class ShimStartup { internal static bool Requested; }
     internal static class GameButtonCompatibility { internal static bool Allowed=true; }
+    internal static class FfbNative { internal static string RequestedPath = ""; }
     internal static class Time { public static float realtimeSinceStartup = 100; public static int frameCount; }
     internal static class WheelPovInput
     {
