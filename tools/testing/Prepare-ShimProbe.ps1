@@ -13,6 +13,8 @@ param(
     [string]$ObserveReceipt,
     # Trial only, diagnostic: the mod may end the title splash once to reach the main menu (romi 29497).
     [switch]$AdvanceTitle,
+    # Also copy the payload into the existing disposable copy (copy-only; refuses while Art runs).
+    [switch]$StageCopy,
     [ValidateRange(1,30)][int]$ExpiresMinutes = 15
 )
 $ErrorActionPreference = 'Stop'
@@ -89,4 +91,17 @@ Trial: start on the main menu with the game focused; the mod itself injects one 
 Exit the copy normally; compare source hashes before and after. Do not publish.
 "@
 [IO.File]::WriteAllText((Join-Path $Result 'COPY-ONLY-RECIPE.txt'), $recipe, $utf8)
+if ($StageCopy) {
+    if (-not (Test-Path -LiteralPath (Join-Path $GameCopy 'artofrally.exe'))) { throw 'Disposable copy has no artofrally.exe; robocopy it first.' }
+    if (Get-Process artofrally -ErrorAction SilentlyContinue) { throw 'Art is running; no staging.' }
+    $mod = Join-Path $GameCopy 'Mods/ArtOfSimRally'
+    foreach ($file in Get-ChildItem -LiteralPath $payload -File) { Copy-Item -LiteralPath $file.FullName -Destination (Join-Path $mod $file.Name) -Force }
+    Copy-Item -LiteralPath (Join-Path $payload 'UnityForceFeedback.dll') -Destination (Join-Path $GameCopy 'artofrally_Data/Plugins/x86_64/UnityForceFeedback.dll') -Force
+    [IO.File]::WriteAllText((Join-Path $GameCopy 'steam_appid.txt'), '550320', [Text.Encoding]::ASCII)
+    # The probe takes its shim and profile from the result folder; shared-input staging leftovers go.
+    foreach ($stray in @('dbce_shim.dll', 'dbce-controls.ini')) { $path = Join-Path $mod $stray; if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path } }
+    foreach ($file in Get-ChildItem -LiteralPath $payload -File) { if ((Hash (Join-Path $mod $file.Name)) -ne (Hash $file.FullName)) { throw "Staged copy differs: $($file.Name)" } }
+    if ((Hash (Join-Path $GameCopy 'artofrally_Data/Plugins/x86_64/UnityForceFeedback.dll')) -ne $request.NativeSha256) { throw 'Staged plugin native differs.' }
+    Write-Output "Staged the payload into $GameCopy (copy only; no process started)."
+}
 Write-Output (Join-Path $Result 'COPY-ONLY-RECIPE.txt')
