@@ -118,3 +118,25 @@ once all injections end, not only the step's primary. Reproductions that passed 
 earlier code: 19 judged bad frames then one clean frame; a companion throttle left
 applied after a steer step; plus separating patterns (1 bad in 11; 15 bad then 1 clean).
 `captureSeconds` now refuses NaN and infinities.
+
+## Runs (2026-10-12)
+
+- 05:38: refused before open, "not a CUSTOM event" (admission bug: CUSTOM refused in the
+  menus; fixed in eb072d0). Nothing opened or injected; restored.
+- 05:45: the route diverged in the menus (owner custom rally in progress showed
+  RallyInProgress); fixed in 96cc440 by applying the route's taped start state. Nothing
+  injected; restored.
+- **06:05: passed** at 96cc440 (mod 8754D961, recorder 985C2CA4, shim 0D10F913, native
+  DD301314, profile 5206EDFB, staged Sequential; same-build Observe 05:44 qualified).
+  Fences verified in-process; Japan6, Kei, CUSTOM. Rows, each with 20 consecutive clean
+  release samples on all four axes: throttle 40% (hold 172), steer -30% (61), steer +30%
+  (72), shiftUp gear 2 -> 3, shiftDown gear 3 -> 2, brake 60% (95), handbrake 100% (90).
+  The recorder's independent car.tape (485 UNDERWAY ticks) shows steer exactly +-0.3,
+  throttle 0.4, brake 0.6, handbrake 1.0 and gear 2 -> 3 -> 2. Flags and identity
+  restored; owner preferences and custom rally restored; lease released.
+
+Scope: latched raw-stimulus driving through the shared shim in a muted CUSTOM stage.
+Not claimed: ordinary (non-latched) driving, keyboard during a latched session,
+force feedback coexistence, H-pattern, clutch, finishing a stage.
+
+Evidence (ignored): `E:/Source/games/.worktrees/art-shim-probe-evidence/drive-20261012-060415`, `E:/Source/games/.worktrees/art-shim-probe-evidence/observe-drive-20261012-054434`.

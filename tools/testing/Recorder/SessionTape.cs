@@ -740,7 +740,7 @@ namespace ArtOfSimRally.Testing
                 {
                     if (_captureDriver != null)
                     {
-                        if (_captureDriver.Tick(MarkerText(marker))) { Stop("synthetic integration capture completed"); return; }
+                        if (_captureDriver.Tick(MarkerText(marker))) { Stop(_capturePolicy.Source + " capture completed"); return; }
                         _playing = _captureDriver.Values;
                         var driverUmm = UnityModManagerNet.UnityModManager.UI.Instance;
                         if (driverUmm != null && driverUmm.Opened != _playing.ContainsKey("U.Open")) driverUmm.ToggleWindow(_playing.ContainsKey("U.Open"));
