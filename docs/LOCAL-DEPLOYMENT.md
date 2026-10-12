@@ -6,7 +6,55 @@ feature or bug fix. After its candidate or final artifact passes the complete
 local automated gate, deploy it for testing without asking again. Public release
 publication and attended sign-off remain separate.
 
-## Current installation — 0.4.2-rc.6 (profile controls)
+## Current installation — 0.4.2-rc.17 (private shared-input candidate)
+
+Installed October 12, 19:29:51 UTC (14:29 CT), clean source `096bf5e`, at the
+coordinator's request (sana 35954), under the standing authorization above.
+Installed for testing only: it is not physical acceptance or a public release.
+- **Package:** ZIP SHA-256
+  `3A5888144A6DD9977881A82BED0D174D389B3AF49DA118846702CE9CA5A546A8`. Test-Rc with the
+  corpus passed 20 of 20 on that source (throwaway rc.915). Test-Installer and the
+  exact-ZIP Wheelkit Apply/Verify/Restore both passed.
+- **Receipt:** `results/shared-input-rc17-install/install-receipt.json` in the main
+  worktree, beside `Install.ps1`, which refuses unless the target is exactly the
+  recorded rc.13 install.
+- **Rehearsal:** the same script first ran against a scratch copy of the game files and
+  gave the same result.
+- **Changed, exactly 7 files:**
+  - mod `AB4C7856` and `build.json`;
+  - a new `dbce_shim.dll` (`7DDC9621`), owned by the installed `build.json` pins;
+  - both TripleScreen DLLs;
+  - the native `44E46799` in `Mods` and in `Plugins\x86_64`.
+- **Unchanged (55 files):** every other file in `Mods`, `Plugins\x86_64` and the game
+  root, plus `Assembly-CSharp.dll` and the UMM `Params.xml`. That includes:
+  - `Settings.xml` `91090837`: no SharedInput key, so the shared profile stays off;
+  - `TripleScreen.xml` and `desired-layout.json`;
+  - the DevRecorder, CustomVehicles and TurtleVan mods;
+  - the owner's Wheelkit `mapping-profiles.json` (`31283715`).
+
+  No `dbce-controls.ini` exists.
+- **Conditions:** shared lease, game closed. The owner-activity policy was honoured,
+  with idle recorded truthfully. No launch, Wheelkit Apply, force or device operation.
+- **Backup:** `results/shared-input-rc17-install/before-install` holds the exact rc.13
+  `Mods/ArtOfSimRally` and the Plugins native copy.
+- **Rollback:** with the game closed, run this package's `install.ps1 -Uninstall`, which
+  removes the owned `dbce_shim.dll`. Then run the rc.13 package
+  (`results/ffb-reference-v2-rc13-install/package/install.ps1`), or copy the backup
+  back. Settings are untouched either way.
+- **Unqualified:**
+  - Rewired's real keyboard-source detection, and what two opposing held keys report;
+  - physical force feedback, clutch pedal and H-pattern shifter with the shared profile.
+
+  Details: `docs/research/2026-10-12-shared-input-candidate-package.md`.
+
+## Previous installation — 0.4.2-rc.13 (force feedback reference v2)
+
+Installed October 11, 19:46:05 UTC from source `8bc94b1`. The `.dirty` identity came
+from an index-only line-ending state. Package `B8D45C60…`, mod `F199D405`, native
+`F8361A08`. Receipt and backup: `results/ffb-reference-v2-rc13-install/`. See
+`docs/reviews/2026-10-11-ffb-reference-v2.md`.
+
+## Earlier installation — 0.4.2-rc.6 (profile controls)
 
 Installed October 10, 07:10:38 UTC (02:10 CT), clean source `905d04b`.
 All 20 gates and both original force-corpus cases passed before installation.
