@@ -35,6 +35,18 @@ Audited 2026-10-04 (read-only standards audit); statuses below are from that aud
 | STD-027 | Independent steering and effect strengths | partial | Existing steering gain and crash/landing/shift amplitudes are separate. October 8 source labels Steering strength, explains independence and always exposes the Advanced tuning/effects link in Simple. No force arithmetic, saved tune or native change. Build checked; packaging and rendered label/link acceptance remain pending. |
 | STD-033 | Rig profile controls reach the game | partial | rc12 / f6165bc plus candidate Wheelkit writer: production Apply, actual raw reader, named/any-button game queries and real car inputs qualified in October 10 runs06/07. Title, menu Up/Down/Confirm/Back/Start, camera, steering/throttle/brake/handbrake observed. Left/right navigation, clutch and auxiliary shifter still open. No user release of the Wheelkit writer yet. |
 | STD-034 | Closed-loop Apply qualification | partial | Frozen writer/profile, independent raw workload, process no-force latch, actual consumer observations and exact restoration in runs06/07. Config verification accepts only complete semantic XML equivalence after the native serializer reorders fields. All-binding staged-fault matrix and omitted shifter actions remain open. See docs/reviews/2026-10-10-raw-controls-title.md. |
+| STD-035 | Controls identity, provenance and failure rules | partial | Source-only copied provider validates identity/caps/generation/sequence and original QPC freshness; actual Core-to-Art sink tested on .NET8/Unity Mono. Frames remain immutable; no new parser or physical acquisition. Native candidates ecc49bd/d46096c await review/adoption and identity-based Rewired isolation/explicit activation. See docs/reviews/2026-10-11-shared-input-axis-slice.md. |
+| STD-036 | Every binding reaches its own device | partial | Existing legacy readers preserved when dormant. Internal source bridge borrows their slots and shares one physical read with Core and the legacy cache; fake production-path tests pass. No runtime attachment. Menus, shifter and shortcuts remain on existing paths; live parity is pending. |
+
+## Shared input source slice (2026-10-11)
+
+The shared frame consumer and copied bridge are dormant until an explicit
+future startup path attaches the reviewed provider with proven native isolation.
+All existing WheelInput tests pass before any publication. Source checks do not
+upgrade STD-033/034's live qualification. There is no settings/backend migration,
+installation or change to the accepted Art v2 force producer or original captures.
+The [slice review](docs/reviews/2026-10-11-shared-input-axis-slice.md) records the
+outstanding ledger rows and [native bridge implementation](docs/research/2026-10-11-shared-input-bridge.md).
 
 ## Steering reference update (2026-10-11)
 

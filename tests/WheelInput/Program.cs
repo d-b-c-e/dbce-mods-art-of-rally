@@ -221,6 +221,10 @@ static class Program
         {
             var directory = Path.GetFullPath(Path.Combine("results", "wheel-input-" + Guid.NewGuid().ToString("N")));
             Directory.CreateDirectory(directory); Host.Path = Path.Combine(directory, "Settings.xml");
+            if (args.Contains("--shim-read-only"))
+            {
+                SharedRead(); Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
+            }
             if (args.Contains("--resume-assignment-only")) AssignmentResume();
             else if (args.Contains("--shifter-only")) assertions+=ShifterIdentityTests.Run();
             else if (args.Contains("--identity-only")) DeviceIdentity();
@@ -229,6 +233,7 @@ static class Program
             else if (args.Contains("--assign-only")) AssignmentReadFailure();
             else { Travel(0, 65535); Travel(65535, 0); RangesAndAssignment(); Lifecycle(); FlipPersistence(); AssignmentReadFailure(); DeviceIdentity(); DeviceRecovery(); ReadHealth(); AssignmentResume(); BindingSaves(); assertions+=ShifterIdentityTests.Run(); assertions+=CalibrationTests.Run(); }
             assertions += GameButtonTests.Run();
+            assertions += ShimConsumerTests.Run();
             Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
         }
         catch (Exception ex) { Console.Error.WriteLine(ex); return 1; }
@@ -251,5 +256,30 @@ static class Program
         Check(WheelInput.DeviceReadHealth(id.ToString()) == false, "failed read kept healthy status");
         Device.ReadOk=true; WheelInput.Update();
         Check(WheelInput.DeviceReadHealth(id.ToString()) == true, "resumed read not observed");
+    }
+
+    static void SharedRead()
+    {
+        Setup("TSS fixture|0|axis:0|0|65535"); Clock.frameCount = 7000; WheelInput.Update();
+        int reads = Device.Reads, opens = Device.Opens, saves = Host.Saves;
+        string binding = Host.Settings.HandbrakeBinding;
+        var source = new BridgeTests.Source { Raw = 40000 }; var native = new BridgeTests.Native(); bool isolated = true;
+        WheelInput.AttachSharedInput(source, native, () => isolated);
+        Check(source.Reads == 0 && Device.Reads == reads && Device.Opens == opens, "handoff performed an extra read or open");
+        Clock.frameCount++; WheelInput.PrepareGameQuery();
+        Check(source.Reads == 1 && native.Ticks == 1 && Device.Reads == reads, "production path did not replace exactly one legacy read");
+        Same(WheelInput.Value(WheelInput.Channel.Handbrake), 40000f / 65535, "legacy cache was not fed the same physical sample");
+        WheelInput.Update();
+        Check(source.Reads == 1 && native.Ticks == 1, "same-frame update polled/ticked again");
+        Same(WheelInput.Value(WheelInput.Channel.Handbrake), 40000f / 65535, "same-frame update cleared copied cache");
+        Check(ArtOfSimRally.Mod.Shim.ShimInput.IsolatedFrame == Clock.frameCount, "current isolation stamp missing");
+        Clock.frameCount++; source.Result = -2; WheelInput.PrepareGameQuery();
+        Check(source.Reads == 2 && native.Ticks == 1 && native.Stops == 1 && Device.Reads == reads, "failed snapshot fell back or reached Core");
+        Same(WheelInput.Value(WheelInput.Channel.Handbrake), 0, "failed snapshot retained old cache");
+        Clock.frameCount++; source.Result = 1; WheelInput.PrepareGameQuery();
+        Clock.realtimeSinceStartup += 30; WheelInput.Update();
+        Check(source.Reads == 2 && Device.Reads == reads && Device.Opens == opens, "stopped bridge resumed/fell back/opened a device");
+        Check(Host.Saves == saves && Host.Settings.HandbrakeBinding == binding, "handoff rewrote legacy settings");
+        WheelInput.Close(); Check(native.Stops == 1, "close repeated spent native stop");
     }
 }

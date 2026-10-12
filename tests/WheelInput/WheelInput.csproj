@@ -5,8 +5,11 @@
     <GameDir Condition="'$(GameDir)' == ''">D:\Program Files (x86)\Steam\steamapps\common\artofrally</GameDir>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../ShimInput/BridgeTests.cs" Link="BridgeTests.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/Shim/*.cs" Link="Shim/%(Filename)%(Extension)" />
     <Compile Include="../../src/ArtOfSimRally.Mod/Shifter.cs" Link="Shifter.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/WheelInput.cs" Link="WheelInput.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/WheelInput.Shim.cs" Link="WheelInput.Shim.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/WheelInput.Binding.cs" Link="WheelInput.Binding.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/WheelInput.Calibration.cs" Link="WheelInput.Calibration.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/WheelInput.GameButtons.cs" Link="WheelInput.GameButtons.cs" />

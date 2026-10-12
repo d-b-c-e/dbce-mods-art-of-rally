@@ -239,6 +239,7 @@ namespace ArtOfSimRally.Mod
 
         public static void Close()
         {
+            StopSharedInput();
             try { if (_devices.Count > 0 || _open) WheelFfbNative.CloseRead(); } catch { }
             _devices.Clear();
             _catalog = new WheelFfbNative.DeviceInfo[0];
@@ -272,6 +273,7 @@ namespace ArtOfSimRally.Mod
         {
             // Stamp before native callbacks to prevent recursive polling.
             _sampledFrame = Time.frameCount;
+            if (ReadSharedSnapshot()) return;
             foreach (var d in _devices)
             {
                 try { d.Ok = WheelPovInput.Read(d.Slot, d.Axes, d.Buttons, d.Hats); }
@@ -290,7 +292,7 @@ namespace ArtOfSimRally.Mod
                 if (_open || _devices.Count > 0) Close();
                 return;
             }
-            bool mayDiscover = !GameState.IsDriving && !_assigning.HasValue;
+            bool mayDiscover = sharedInput == null && !GameState.IsDriving && !_assigning.HasValue;
             if (_open && mayDiscover && Time.realtimeSinceStartup >= _nextOpenRetry && NeedsRefresh())
                 Close();
             if (!_open)
@@ -324,7 +326,7 @@ namespace ArtOfSimRally.Mod
                 if (GameState.IsDriving) CancelAssign();
                 else StepAssign(cfg);
             }
-            UpdateValues(cfg, true);
+            UpdateValues(cfg, sharedInput == null);
             if (!reuseSnapshot || _buttonFrame != Time.frameCount) TickGameButtons();
         }
         private static void UpdateValues(Settings cfg, bool allowLearning)
@@ -598,6 +600,8 @@ namespace ArtOfSimRally.Mod
                 throttleInput = brakeInput = steerInput = handbrakeInput = clutchInput = 0;
                 startEngineInput = false; return;
             }
+            if (Shim.ShimInput.TryOverride(__instance, ref throttleInput, ref brakeInput, ref steerInput,
+                ref handbrakeInput, ref clutchInput, ref startEngineInput)) return;
             if (!WheelInput.Enabled) return;
             try
             {

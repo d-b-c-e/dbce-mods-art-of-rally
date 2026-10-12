@@ -54,6 +54,16 @@ try {
     $result = Run 'wheel-input' 'dotnet' @('run','--project','tests/WheelInput/WheelInput.csproj','-c','Release')
     $wheelInput = $result | Select-Object -Last 1 | ConvertFrom-Json
     Assert ($wheelInput.status -eq 'passed' -and $wheelInput.assertions -gt 0) 'Wheel input runner ran no assertions'
+    $result = Run 'shim-shared-read' 'dotnet' @('run','--project','tests/WheelInput/WheelInput.csproj','-c','Release','--','--shim-read-only')
+    $shimRead = $result | Select-Object -Last 1 | ConvertFrom-Json
+    Assert ($shimRead.status -eq 'passed' -and $shimRead.assertions -gt 0) 'Shared read runner ran no assertions'
+    $result = Run 'shim-axis-consumer' 'dotnet' @('run','--project','tests/ShimInput/ShimInput.csproj','-f','net8.0','-c','Release')
+    $shimInput = $result | Select-Object -Last 1 | ConvertFrom-Json
+    Assert ($shimInput.status -eq 'passed' -and $shimInput.assertions -gt 0) 'Shared input consumer runner ran no assertions'
+    $null = Run 'shim-axis-mono-build' 'dotnet' @('build','tests/ShimInput/ShimInput.csproj','-f','net48','-c','Release','--nologo','-warnaserror')
+    $result = Run 'shim-axis-mono' 'python' @('tools/testing/Run-UnityMono.py','tests/ShimInput/bin/Release/net48/ShimInput.exe')
+    $shimMono = $result | Select-Object -Last 1 | ConvertFrom-Json
+    Assert ($shimMono.status -eq 'passed' -and $shimMono.assertions -gt 0) 'Shared input Mono runner ran no assertions'
     $result = Run 'settings-ui' 'dotnet' @('run','--project','tests/SettingsUi/SettingsUi.csproj','-c','Release')
     $settingsUi = $result | Select-Object -Last 1 | ConvertFrom-Json
     Assert ($settingsUi.status -eq 'passed' -and $settingsUi.assertions -gt 0) 'Settings UI policy runner ran no assertions'
@@ -72,7 +82,7 @@ try {
     $result = Run 'game-bindings' 'dotnet' @('run','--project','tests/GameBindings/GameBindings.csproj','-c','Release')
     $gameBindings = $result | Select-Object -Last 1 | ConvertFrom-Json
     Assert ($gameBindings.status -eq 'passed' -and $gameBindings.assertions -gt 0) 'Game binding route runner ran no assertions'
-    Checkpoint 'regression' ($regression.assertions+$wheelInput.assertions+$support.assertions+$settingsUi.assertions+$gameBindings.assertions)
+    Checkpoint 'regression' ($regression.assertions+$wheelInput.assertions+$support.assertions+$settingsUi.assertions+$gameBindings.assertions+$shimInput.assertions+$shimMono.assertions+$shimRead.assertions)
     $result = Run 'lifecycle' 'dotnet' @('run','--project','tests/Lifecycle/Lifecycle.csproj','-c','Release')
     $lifecycle = $result | Select-Object -Last 1 | ConvertFrom-Json
     Assert ($lifecycle.status -eq 'passed' -and $lifecycle.assertions -gt 0) 'Lifecycle runner ran no assertions'

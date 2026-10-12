@@ -454,6 +454,8 @@ lib/*
 !lib/toolkit/**
 !lib/playback/
 !lib/playback/**
+!lib/input-shim/
+!lib/input-shim/**
 
 # Release notes are source documents, not Visual Studio build artifacts.
 !docs/releases/

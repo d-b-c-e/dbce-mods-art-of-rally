@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFrameworks>net8.0;net48</TargetFrameworks>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ShimFrame.cs" Link="ShimFrame.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ShimAxisConsumer.cs" Link="ShimAxisConsumer.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ShimBridge.cs" Link="ShimBridge.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ShimBridgeNative.cs" Link="ShimBridgeNative.cs" />
+  </ItemGroup>
+</Project>
