@@ -331,3 +331,22 @@ EventSystem accepts navigation before reading the selection and injecting; the
 receipt records the frames it waited (`TrialNavigationWaitFrames`) as runtime
 evidence for this cause. Both fixtures model the delay; removing the wait makes
 them fail with the in-game message.
+
+## Third Trial (04:43): passed
+
+At f9c7458 (mod 78A08FA7, shim 0D10F913, native DD301314, profile 5206EDFB,
+owner settings 91090837), disposable copy, muted, no OS input, under the rig
+lease with full restore. Fresh Observe qualified. The Trial:
+
+- fences verified in-process; title ended once by the request flag; main menu;
+- waited 65 frames for EventSystem navigation (runtime confirmation of the 0.5 s
+  delay), then the latched Core session was admitted;
+- selection 'Career (Button)', after navDown 'Time Attack (Button)', after navUp
+  'Career (Button)'; the session completed (Run 4) and Core's stop resolved;
+- flags and identity restored; owner pins unchanged.
+
+Claim scope (romi 29587): navDown/navUp actual main-menu selection readback only.
+Not claimed: other actions or buttons, confirm/back, driving or gear mapping,
+ordinary (non-latched) navigation, force feedback coexistence.
+
+Evidence (ignored): `E:/Source/games/.worktrees/art-shim-probe-evidence/observe-latched-20261012-044249`, `E:/Source/games/.worktrees/art-shim-probe-evidence/trial-20261012-044311`.
