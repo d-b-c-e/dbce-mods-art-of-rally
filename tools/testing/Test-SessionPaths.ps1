@@ -5,9 +5,11 @@ $fixture = Join-Path ([IO.Path]::GetTempPath()) ('art-session-paths-' + [Guid]::
 $runner = Join-Path $fixture 'source/tools/testing/Session.ps1'
 $priorLocalData = $env:LOCALAPPDATA
 $priorLocation = Get-Location
-$global:ArtPathTest = @{ fixture=$fixture; running=$false; launches=@(); saves=0; restores=0; checks=0; replayResult='passed fixture' }
+$global:ArtPathTest = @{ fixture=$fixture; running=$false; launches=@(); saves=0; restores=0; checks=0; replayResult='passed fixture'; calls=@() }
 function Check([bool]$Value, [string]$Message) { $global:ArtPathTest.checks++; if (-not $Value) { throw $Message } }
 function Get-Process { param([string[]]$Name, $ErrorAction)
+    # dieAfter: the game exits after this many more process checks (an automated capture that never sealed).
+    if ('artofrally' -in $Name -and $global:ArtPathTest.dieAfter -gt 0) { $global:ArtPathTest.dieAfter--; if ($global:ArtPathTest.dieAfter -eq 0) { $global:ArtPathTest.running = $false } }
     if ('artofrally' -in $Name -and $global:ArtPathTest.running) {
         $p = [pscustomobject]@{ Id=123; ProcessName='artofrally' }
         # A stubborn game ignores the close request (sana 36649).
@@ -35,6 +37,11 @@ function Start-Process { param([string]$FilePath)
     if ($request.mode -eq 'record') {
         foreach ($f in 'input.tape','car.tape','markers.tsv') { Set-Content -LiteralPath (Join-Path $request.tape $f) -Value 'fixture' }
         Set-Content -LiteralPath (Join-Path $request.tape 'session.txt') -Value 'format=2'
+        # An automated capture seals by itself, or the game exits without a seal.
+        if ($request.captureDriver) {
+            if ($global:ArtPathTest.exitWithoutSeal) { $global:ArtPathTest.dieAfter = 2 }
+            else { Set-Content -LiteralPath (Join-Path $request.tape 'complete.tsv') -Value 'dbce-playback-seal-v1' }
+        }
     } elseif ($request.mode -eq 'replay') {
         # A one-line result must be interpreted as a line, not the first character.
         Set-Content -LiteralPath (Join-Path $request.out 'result.txt') -Value $global:ArtPathTest.replayResult
@@ -48,17 +55,23 @@ try {
 $customRally = Join-Path $global:ArtPathTest.fixture 'customrally'
 function Save-SessionEnvironment([string]$Path) {
     if (-not $Path.StartsWith($global:ArtPathTest.fixture, [StringComparison]::OrdinalIgnoreCase)) { throw 'Environment double escaped fixture' }
-    $global:ArtPathTest.saves++
+    $global:ArtPathTest.saves++; $global:ArtPathTest.calls += 'save:' + $Path
     New-Item -ItemType Directory -Path $Path -Force | Out-Null
     Set-Content -LiteralPath (Join-Path $Path 'state.json') -Value '{}'
 }
 function Restore-SessionEnvironment([string]$Path, [switch]$NoReceipt) {
     if (-not $Path.StartsWith($global:ArtPathTest.fixture, [StringComparison]::OrdinalIgnoreCase)) { throw 'Restore double escaped fixture' }
-    $global:ArtPathTest.restores++
+    $global:ArtPathTest.restores++; $global:ArtPathTest.calls += 'restore:' + $Path
     if (-not $NoReceipt) { Set-Content -LiteralPath (Join-Path $Path 'restored.txt') -Value 'fixture restored' }
 }
 function Restore-SessionPresentation([string]$Path) {}
 '@ | Set-Content -LiteralPath (Join-Path (Split-Path $runner) 'SessionEnvironment.ps1')
+    @'
+function Assert-RouteSource([string]$Route) {
+    if (-not (Test-Path -LiteralPath (Join-Path $Route 'environment-at-start/state.json') -PathType Leaf)) { throw "Route source lacks environment-at-start/state.json" }
+}
+function Set-RouteEnvironment([string]$Route, [string]$Saved) { $global:ArtPathTest.calls += 'route:' + $Route + '|' + $Saved }
+'@ | Set-Content -LiteralPath (Join-Path (Split-Path $runner) 'RouteEnvironment.ps1')
     $env:LOCALAPPDATA = Join-Path $fixture 'local data'
     Set-Location -LiteralPath $fixture
     $game = Join-Path $fixture "game's & copy"
@@ -131,6 +144,34 @@ function Restore-SessionPresentation([string]$Path) {}
         $global:ArtPathTest.stubborn = $false; $global:ArtPathTest.running = $false
         Set-Content -LiteralPath $settingsPath -Value $ownerSettings -NoNewline
     }
+    # sana 37706: an automated recording is muted, starts from a verified route in this library under that route's
+    # start state, and closes the game and restores the owner environment itself. A player recording is unchanged.
+    $library = Join-Path $fixture 'my tape library'
+    New-Item -ItemType Directory -Path (Join-Path $library 'route-a/environment-at-start') -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $library 'route-a/environment-at-start/state.json') -Value '{}'
+    $global:ArtPathTest.running = $false; $launches = $global:ArtPathTest.launches.Count
+    $refusedMute = $false
+    try { & $runner -Record -ScriptedFrom route-a -Name auto-unmuted -SessionsRoot './my tape library' -GameDir $game } catch { $refusedMute = $_.Exception.Message -like '*must mute outputs*' }
+    Check ($refusedMute -and $global:ArtPathTest.launches.Count -eq $launches -and -not (Test-Path -LiteralPath (Join-Path $library 'auto-unmuted'))) 'Unmuted automated recording was not refused before launch'
+    $refusedRoute = $false
+    try { & $runner -Record -MuteOutputs -ScriptedFrom missing-route -Name auto-missing -SessionsRoot './my tape library' -GameDir $game } catch { $refusedRoute = $_.Exception.Message -like '*Route source lacks*' }
+    Check ($refusedRoute -and $global:ArtPathTest.launches.Count -eq $launches -and -not (Test-Path -LiteralPath (Join-Path $library 'auto-missing'))) 'Missing route was not refused before launch'
+    $global:ArtPathTest.calls = @()
+    & $runner -Record -MuteOutputs -ScriptedFrom route-a -Name auto-1 -SessionsRoot './my tape library' -GameDir $game
+    $auto = Join-Path $library 'auto-1'; $ownerEnv = Join-Path $auto 'automation/owner-environment'
+    Check ($LASTEXITCODE -eq 0 -and -not $global:ArtPathTest.running) "Automated recording returned $LASTEXITCODE or left the game running"
+    Check ($global:ArtPathTest.launches[-1].muteOutputs -eq '1' -and $global:ArtPathTest.launches[-1].captureDriver -eq (Join-Path $library 'route-a')) 'Automated request lost its mute or route'
+    $order = @("save:$ownerEnv", "route:$(Join-Path $library 'route-a')|$ownerEnv", "save:$(Join-Path $auto 'environment-at-start')", "restore:$ownerEnv")
+    Check (($global:ArtPathTest.calls -join ';') -eq ($order -join ';')) "Automated environment order: $($global:ArtPathTest.calls -join '; ')"
+    Check (Test-Path -LiteralPath (Join-Path $ownerEnv 'restored.txt')) 'Automated recording did not restore the owner environment'
+    $global:ArtPathTest.exitWithoutSeal = $true
+    & $runner -Record -MuteOutputs -ScriptedFrom route-a -Name auto-unsealed -SessionsRoot './my tape library' -GameDir $game
+    Check ($LASTEXITCODE -eq 1 -and (Test-Path -LiteralPath (Join-Path $library 'auto-unsealed/automation/owner-environment/restored.txt'))) "Unsealed automated recording returned $LASTEXITCODE or was not restored"
+    $global:ArtPathTest.exitWithoutSeal = $false; $global:ArtPathTest.running = $false; $global:ArtPathTest.stubborn = $true
+    & $runner -Record -MuteOutputs -ScriptedFrom route-a -Name auto-stubborn -SessionsRoot './my tape library' -GameDir $game 3>$null
+    Check ($LASTEXITCODE -eq 4 -and (Test-Path -LiteralPath (Join-Path $library 'auto-stubborn/automation/restore-pending.txt')) -and
+        -not (Test-Path -LiteralPath (Join-Path $library 'auto-stubborn/automation/owner-environment/restored.txt'))) "Automated recording with the game still open returned $LASTEXITCODE"
+    $global:ArtPathTest.stubborn = $false; $global:ArtPathTest.running = $false
     $before = $global:ArtPathTest.saves; $launchesBefore = $global:ArtPathTest.launches.Count
     $refused = $false
     try { & $runner -Replay -Name owner-drive -SessionsRoot './my tape library' -OutputDirectory './separate playback result' -GameDir $game } catch { $refused=$_.Exception.Message -like '*existing evidence*' }

@@ -16,7 +16,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Recorder build failed' }
 & dotnet build (Join-Path $root 'tools/testing/Replay/Replay.csproj') -c Release --nologo -warnaserror
 if ($LASTEXITCODE -ne 0) { throw 'Analysis build failed' }
 $map = [ordered]@{}
-foreach ($path in @('tools/testing/Session.ps1','tools/testing/SessionEnvironment.ps1','tools/testing/ReplayInputIsolation.ps1','tools/testing/Install-Recorder.ps1',
+foreach ($path in @('tools/testing/Session.ps1','tools/testing/SessionEnvironment.ps1','tools/testing/ReplayInputIsolation.ps1','tools/testing/RouteEnvironment.ps1','tools/testing/Install-Recorder.ps1',
     'tools/testing/Recorder/Info.json','tools/testing/Recorder/bin/Release/net48/ArtOfSimRally.DevRecorder.dll',
     'lib/playback/Dbce.Wheel.Playback.dll','lib/playback/provenance.json','lib/playback/LICENSE','LICENSE','docs/SESSION-REPLAY.md')) { $map[$path] = $path }
 foreach ($name in @('Replay.dll','Replay.deps.json','Replay.runtimeconfig.json','Dbce.Wheel.Ffb.dll','Dbce.Wheel.Playback.dll')) {
