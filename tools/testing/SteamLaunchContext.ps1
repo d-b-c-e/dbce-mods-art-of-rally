@@ -69,14 +69,14 @@ function Get-SteamLaunchContext {
 # Writes a cmd file whose SET values live only in that cmd process and the game it starts; no
 # persistent or parent environment changes. Values are restricted so cmd parsing cannot alter them.
 function New-ChildEnvironmentBroker([string]$Path, [string]$Executable, [string]$WorkingDirectory, [System.Collections.IDictionary]$Environment) {
-    $safe = '^[A-Za-z0-9 _.,:\\()+=@#$~{}\[\]-]+$'
+    $safe = '\A[A-Za-z0-9 _.,:\\()+=@#$~{}\[\]-]+\z' # \z: .NET $ would also accept a trailing newline
     foreach ($value in @($Path, $Executable, $WorkingDirectory) + @($Environment.Values)) {
         if ([string]$value -cnotmatch $safe) { throw "Broker value contains characters cmd could reinterpret: $value" }
     }
     $lines = [Collections.Generic.List[string]]::new()
     $lines.Add('@echo off'); $lines.Add('setlocal DisableDelayedExpansion')
     foreach ($name in $Environment.Keys) {
-        if ([string]$name -cnotmatch '^[A-Za-z_][A-Za-z0-9_]*$') { throw "Unsupported broker variable name: $name" }
+        if ([string]$name -cnotmatch '\A[A-Za-z_][A-Za-z0-9_]*\z') { throw "Unsupported broker variable name: $name" }
         $lines.Add('set "' + $name + '=' + $Environment[$name] + '"')
     }
     $lines.Add('cd /d "' + $WorkingDirectory + '"')
@@ -87,5 +87,5 @@ function New-ChildEnvironmentBroker([string]$Path, [string]$Executable, [string]
 # Explorer opens the file in the already-running user shell, so cmd and its child run at the
 # user's normal (Medium) integrity even when this runner is elevated.
 function Start-MediumBroker([string]$Path) {
-    Start-Process -FilePath (Join-Path $env:SystemRoot 'explorer.exe') -ArgumentList ('"' + $Path + '"')
+    Start-Process -FilePath (Join-Path $env:SystemRoot 'explorer.exe') -ArgumentList ('"' + $Path + '"') -WindowStyle Hidden
 }

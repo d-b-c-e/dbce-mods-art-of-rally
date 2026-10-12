@@ -15,11 +15,17 @@ try {
     $hash = New-ChildEnvironmentBroker -Path $broker -Executable (Join-Path $fixture 'target.cmd') -WorkingDirectory $fixture `
         -Environment ([ordered]@{ DBCE_FFB_MUTE = '1'; DBCE_BROKER_TEST = 'child-only' })
     Check ($hash -eq (Get-FileHash -LiteralPath $broker).Hash) 'Broker hash is not the written file.'
-    foreach ($bad in @('a%PATH%b', 'a&b', 'a"b', 'a^b', 'a!b', 'a|b', "a`r`nb")) {
+    foreach ($bad in @('a%PATH%b', 'a&b', 'a"b', 'a^b', 'a!b', 'a|b', "a`r`nb", "a`n", "a`r`n")) {
         $refused = $false
         try { $null = New-ChildEnvironmentBroker -Path (Join-Path $fixture 'bad.cmd') -Executable (Join-Path $fixture 'target.cmd') -WorkingDirectory $fixture -Environment @{ X = $bad } }
         catch { $refused = $true }
         Check $refused "Broker accepted a cmd-reinterpreted value: $bad"
+    }
+    foreach ($badName in @("X`n", '1X', 'X-Y')) {
+        $refused = $false
+        try { $null = New-ChildEnvironmentBroker -Path (Join-Path $fixture 'bad.cmd') -Executable (Join-Path $fixture 'target.cmd') -WorkingDirectory $fixture -Environment @{ $badName = '1' } }
+        catch { $refused = $true }
+        Check $refused "Broker accepted an unsafe variable name: $badName"
     }
     Start-MediumBroker $broker
     $deadline = (Get-Date).AddSeconds(30)
