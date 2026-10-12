@@ -242,6 +242,10 @@ static class Program
             {
                 SharedTransportStop(); Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
             }
+            if (args.Contains("--drive-trial-only"))
+            {
+                DriveRealCore(); Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
+            }
             if (args.Contains("--latched-menu-only"))
             {
                 LatchedMenu(); Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
@@ -641,6 +645,55 @@ static class Program
         }
         finally { WheelInput.Close(); }
         Check(File.ReadAllText(Path.Combine(folder, "host-shutdown.json")).Contains("\"state\":\"resolved\""), "latched menu stop did not resolve");
+    }
+    // Slice C against the real latched Core: raw stimuli built from an owner-shaped profile, published whole,
+    // composed by the production ShimInput.TryOverride; the car stores what GetInput returned and a manual
+    // sequential box takes the consumer's shift queue the way ShifterPatch does.
+    static void DriveRealCore()
+    {
+        string dll = Environment.GetEnvironmentVariable("ART_LATCHED_SHIM_DLL") ?? @"E:\Source\research\.worktrees\art-shim-bridge\build-art-bridge\windows\Release\dbce_shim.dll";
+        Check(File.Exists(dll), "latched dbce_shim.dll unavailable: " + dll);
+        Setup(""); Clock.frameCount = 50000;
+        Device.Devices = new[] { new Device.DeviceInfo { Name = "MOZA R12 Base", Index = 0 }, new Device.DeviceInfo { Name = "DS-8X Shifter", Index = 1 } };
+        WheelInput.Close(); WheelInput.Open(); WheelInput.Update();
+        Check(WheelInput.SharedProbeSlots.Length == 2, "two readers not open");
+        string folder = Path.Combine(Path.GetTempPath(), "art-drive-core-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(folder);
+        string session = Path.Combine(folder, "shim-session.txt"), batch = Path.Combine(folder, "shim-batch.txt"), nonce = Guid.NewGuid().ToString("N");
+        ArtOfSimRally.Mod.Shim.ProbeRequest.Replace(session, "nonce=" + nonce + "\nexpires=" + (DateTimeOffset.UtcNow.ToUnixTimeSeconds() + 600) + "\n");
+        var native = new ArtOfSimRally.Mod.Shim.ShimBridgeNative(dll, folder, System.Text.Encoding.UTF8.GetBytes(BridgeTests.DriveProfile),
+            new ArtOfSimRally.Mod.Shim.ShimBridgeNative.LatchedSession { Nonce = nonce, SessionFile = session, BatchFile = batch, FencesVerified = true, ForceAbsent = true });
+        var consumer = ArtOfSimRally.Mod.Shim.ShimInput.Consumer;
+        consumer.AcceptLatched = true; consumer.DeliverOnly(ArtOfSimRally.Mod.Shim.DriveTrial.Delivered);
+        WheelInput.AttachSharedInput(new BridgeTests.DeviceSource(), native, () => true, () => true);
+        var trial = new ArtOfSimRally.Mod.Shim.DriveTrial(consumer, BridgeTests.DriveProfile, text => ArtOfSimRally.Mod.Shim.ProbeRequest.Replace(batch, text), nonce);
+        int gear = 2, changing = 0;
+        try
+        {
+            for (int i = 0; i < 8000 && !trial.Finished; i++)
+            {
+                Clock.frameCount++; WheelInput.EnsureUpdatedThisFrame();
+                float t = 0, b = 0, s = 0, h = 0, c = 0; bool e = false;
+                var car = new AxisCarController { SteeringOutOfAlignmentEffect = .02f };
+                Check(ArtOfSimRally.Mod.Shim.ShimInput.TryOverride(car, ref t, ref b, ref s, ref h, ref c, ref e), "car input not composed by the shared session");
+                int shift = consumer.TakeShift(); if (shift != 0) { gear += shift; changing = 6; }
+                if (changing > 0) changing--;
+                var last = ArtOfSimRally.Mod.Shim.ShimInput.Last;
+                var sample = new ArtOfSimRally.Mod.Shim.DriveTrial.Sample
+                {
+                    Frame = Clock.frameCount, Underway = true, Composed = last.Frame == Clock.frameCount, SteerLive = last.SteerLive,
+                    AppliedSteer = last.AppliedSteer, AppliedThrottle = last.AppliedThrottle, AppliedBrake = last.AppliedBrake, AppliedHandbrake = last.AppliedHandbrake, Alignment = last.Alignment,
+                    OutSteer = last.Steer, OutThrottle = last.Throttle, OutBrake = last.Brake, OutHandbrake = last.Handbrake,
+                    EngineSteer = s, EngineThrottle = t, EngineBrake = b, EngineHandbrake = h,
+                    Gear = gear, Automatic = false, ChangingGear = changing > 0, Speed = 4f,
+                };
+                foreach (int a in ArtOfSimRally.Mod.Shim.DriveTrial.Delivered) sample.Injected[a] = consumer.Injected(a, Clock.frameCount);
+                trial.Tick(sample); System.Threading.Thread.Sleep(5);
+            }
+            Check(trial.Passed, "real-Core drive did not pass: " + trial.Failure + " | " + string.Join(" | ", trial.Steps.ConvertAll(x => x.Name + "=" + x.Result + " " + x.Detail + " h" + x.HoldSamples + " r" + x.ReleaseSamples + " g" + x.GearBefore + ">" + x.GearAfter)));
+            File.WriteAllText(Path.Combine(folder, "drive-samples.tsv"), trial.Samples.ToString());
+        }
+        finally { WheelInput.Close(); }
+        Check(File.ReadAllText(Path.Combine(folder, "host-shutdown.json")).Contains("\"state\":\"resolved\""), "drive stop did not resolve");
     }
     static void SharedActionChannels()
     {

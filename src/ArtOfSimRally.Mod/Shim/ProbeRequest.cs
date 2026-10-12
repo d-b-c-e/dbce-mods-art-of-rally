@@ -43,6 +43,7 @@ namespace ArtOfSimRally.Mod.Shim
         // and delete sharing and fails the run on a sharing violation. ReplaceFile opens the target and
         // can collide with that open; a POSIX-semantics rename of a sibling temp over the target does not
         // open it, so a concurrent reader sees the old or the new file and a held reader keeps the old one.
+        internal const int ReplaceAttempts = 20;
         internal static void Replace(string path, string text)
         {
             string full = Path.GetFullPath(path), temp = full + "." + Guid.NewGuid().ToString("N") + ".tmp";
@@ -59,8 +60,16 @@ namespace ArtOfSimRally.Mod.Shim
                     BitConverter.GetBytes(3).CopyTo(info, 0); // FILE_RENAME_FLAG_REPLACE_IF_EXISTS | FILE_RENAME_FLAG_POSIX_SEMANTICS
                     BitConverter.GetBytes(name.Length).CopyTo(info, 16);
                     name.CopyTo(info, 20);
-                    if (!SetFileInformationByHandle(handle, 22 /* FileRenameInfoEx */, info, info.Length))
-                        throw new IOException("atomic replacement failed: " + Marshal.GetLastWin32Error());
+                    // A scanner or indexer can hold the previous file briefly without delete sharing
+                    // (seen: access denied about once in 4,800 replacements under a concurrent reader).
+                    // The rename is atomic, so a bounded retry never exposes a partial file.
+                    for (int attempt = 1; ; attempt++)
+                    {
+                        if (SetFileInformationByHandle(handle, 22 /* FileRenameInfoEx */, info, info.Length)) break;
+                        int error = Marshal.GetLastWin32Error();
+                        if ((error != 5 && error != 32) || attempt >= ReplaceAttempts) throw new IOException("atomic replacement failed: " + error + " after " + attempt + " attempt(s)");
+                        System.Threading.Thread.Sleep(10);
+                    }
                 }
             }
             catch { try { File.Delete(temp); } catch { } throw; }
@@ -80,10 +89,10 @@ namespace ArtOfSimRally.Mod.Shim
         internal void Validate(DateTime now, string gameRoot, string modPath, string nativePath, string settingsPath)
         {
             Guid nonce;
-            if (Schema != 1 || (Mode != "Observe" && Mode != "Apply" && Mode != "Trial") || !Guid.TryParseExact(Nonce, "N", out nonce) || nonce == Guid.Empty)
+            if (Schema != 1 || (Mode != "Observe" && Mode != "Apply" && Mode != "Trial" && Mode != "Drive") || !Guid.TryParseExact(Nonce, "N", out nonce) || nonce == Guid.Empty)
                 throw new InvalidDataException("invalid probe request");
-            if (Mode == "Trial" && !String.Equals(ShimSha256, LatchedShimSha256, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidDataException("Trial needs the reviewed latched bridge build");
+            if ((Mode == "Trial" || Mode == "Drive") && !String.Equals(ShimSha256, LatchedShimSha256, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException(Mode + " needs the reviewed latched bridge build");
             if (AdvanceTitle && Mode != "Trial") throw new InvalidDataException("only a Trial may advance the title");
             if (Deadline <= now || Deadline > now.AddMinutes(30)) throw new InvalidDataException("probe request expired or beyond 30 minutes");
             if (SamePath(GameRoot, SourceGameRoot) || !SamePath(GameRoot, gameRoot) || !Path.GetFullPath(modPath).StartsWith(Path.GetFullPath(GameRoot).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
@@ -130,6 +139,9 @@ namespace ArtOfSimRally.Mod.Shim
         [DataMember] public int TrialRun;
         [DataMember] public bool TitleAdvanced;
         [DataMember] public int TrialNavigationWaitFrames;
+        // Drive: the fence check, the overall result and one row per step (result, samples, gears).
+        [DataMember] public string DriveFences, DriveStatus;
+        [DataMember] public string[] DriveRows;
         internal ProbeReceipt() { }
         internal ProbeReceipt(ProbeRequest request)
         {

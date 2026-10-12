@@ -11,6 +11,17 @@ namespace ArtOfSimRally.Mod.Shim
         // has removed cached wheel values. Default refuses all native mixing.
         internal static int IsolatedFrame = -1;
 
+        // The last shared composition, stamped with its Unity frame: the shared applied values, the game's
+        // steering-alignment term and what GetInput returned. A drive probe pairs it with the car's fields.
+        internal struct Composition
+        {
+            internal int Frame;
+            internal bool SteerLive;
+            internal float AppliedSteer, AppliedThrottle, AppliedBrake, AppliedHandbrake, Alignment;
+            internal float Steer, Throttle, Brake, Handbrake;
+        }
+        internal static Composition Last;
+
         internal static bool TryOverride(AxisCarController car,
             ref float throttle, ref float brake, ref float steer,
             ref float handbrake, ref float clutch, ref bool startEngine)
@@ -36,6 +47,10 @@ namespace ArtOfSimRally.Mod.Shim
                 values.Handbrake = Mathf.Max(values.Handbrake, WheelInput.ArtOnlyValue(WheelInput.Channel.HandbrakeButton));
             throttle = values.Throttle; brake = values.Brake; steer = values.Steer;
             handbrake = values.Handbrake; clutch = values.Clutch; startEngine = values.StartEngine;
+            int frame = Time.frameCount;
+            Last = new Composition { Frame = frame, SteerLive = Consumer.Live(0, frame), Alignment = car.SteeringOutOfAlignmentEffect,
+                AppliedSteer = Consumer.Applied(0, frame), AppliedThrottle = Consumer.Applied(1, frame), AppliedBrake = Consumer.Applied(2, frame), AppliedHandbrake = Consumer.Applied(4, frame),
+                Steer = steer, Throttle = throttle, Brake = brake, Handbrake = handbrake };
             return true;
         }
     }

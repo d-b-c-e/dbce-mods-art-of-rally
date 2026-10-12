@@ -198,6 +198,14 @@ internal static class BridgeTests
         Check(fixedAtOpen, "latched acceptance changed after open");
     }
     // Two owned devices with independently scripted buttons and hats (R12 slot 0, DS-8X slot 1).
+    // The owner profile's driving objects (controls.ini 5206EDFB shapes).
+    internal const string DriveProfile = "[Controls]\nSchema = 1\nProfile = Drive\nRevision = r1\nTransmission = Sequential\n" +
+        "steer = axis 0 dev={d71b8350-61b7-11f1-8001-444553540000} prod={0006346e-0000-0000-0000-504944564944} range=0..65535 rest=33265 travel=-1 name=\"MOZA R12 Base\"\n" +
+        "throttle = axis 2 dev={d71b8350-61b7-11f1-8001-444553540000} prod={0006346e-0000-0000-0000-504944564944} range=0..65535 rest=0 travel=+1\n" +
+        "brake = axis 5 dev={d71b8350-61b7-11f1-8001-444553540000} prod={0006346e-0000-0000-0000-504944564944} range=0..65535 rest=1743 travel=+1\n" +
+        "handbrake = axis 7 dev={d71b8350-61b7-11f1-8001-444553540000} prod={0006346e-0000-0000-0000-504944564944} range=0..65535 rest=0 travel=+1\n" +
+        "shiftUp = button 9 dev={d9b1d890-6f3f-11f1-8002-444553540000} prod={05310483-0000-0000-0000-504944564944}\n" +
+        "shiftDown = button 10 dev={d9b1d890-6f3f-11f1-8002-444553540000} prod={05310483-0000-0000-0000-504944564944}\n";
     internal sealed class DeviceSource : IPhysicalSnapshotSource, IPhysicalSnapshotPathSource
     {
         [DllImport("kernel32.dll")] private static extern bool QueryPerformanceCounter(out long value);
@@ -211,9 +219,10 @@ internal static class BridgeTests
         {
             BitConverter.GetBytes(144).CopyTo(bytes, 0); bytes[4] = 1; BitConverter.GetBytes((ulong)(7 + slot)).CopyTo(bytes, 8);
             Ids[slot].ToByteArray().CopyTo(bytes, 16); Products[slot].ToByteArray().CopyTo(bytes, 32);
-            // axis_mask/range_mask: axis 0 (0..65535); pov_mask: hat 0; button_mask: all 128 buttons present.
-            bytes[48] = bytes[52] = 1; bytes[56] = 1; for (int i = 64; i < 80; i++) bytes[i] = 0xff;
-            BitConverter.GetBytes(65535).CopyTo(bytes, 112); return 1;
+            // axis_mask/range_mask: all eight axes (0..65535); pov_mask: hat 0; button_mask: all 128 buttons present.
+            bytes[48] = bytes[52] = 0xff; bytes[56] = 1; for (int i = 64; i < 80; i++) bytes[i] = 0xff;
+            for (int axis = 0; axis < 8; axis++) BitConverter.GetBytes(65535).CopyTo(bytes, 112 + axis * 4);
+            return 1;
         }
         public bool TryGetPath(int slot, ulong generation, out string path) { path = @"\\?\hid#owned-" + slot; return generation == (ulong)(7 + slot); }
         public int Read(int slot, byte[] bytes)

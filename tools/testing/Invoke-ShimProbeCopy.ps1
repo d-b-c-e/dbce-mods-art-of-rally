@@ -39,7 +39,9 @@ $pins=@{
 }
 function Assert-Pins {
     foreach($p in $pins.Keys) { Plain $p; if((Hash $p) -ne $pins[$p]) { throw "Candidate pin differs: $p" } }
-    if((Hash (Join-Path $owner 'Mods/ArtOfSimRally/Settings.xml')) -ne $request.SettingsSha256) { throw 'Owner settings changed since preparation.' }
+    # The owner file as read at preparation (the staged copy may carry a disposable transmission override).
+    $prepared=Get-Content -LiteralPath (Join-Path $Result 'prepared.json') -Raw | ConvertFrom-Json
+    if((Hash (Join-Path $owner 'Mods/ArtOfSimRally/Settings.xml')) -ne $prepared.SettingsSourceSha256) { throw 'Owner settings changed since preparation.' }
     if((Get-Content -LiteralPath (Join-Path $GameDir 'steam_appid.txt') -Raw).Trim() -cne '550320') { throw 'Copy-only Steam app id missing; direct launch could redirect through Steam.' }
 }
 Assert-Pins

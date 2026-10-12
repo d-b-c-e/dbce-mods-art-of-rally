@@ -7,6 +7,7 @@
     <Compile Include="../../tools/testing/Recorder/CollisionFormat.cs" Link="CollisionFormat.cs" />
     <Compile Include="../../tools/testing/Recorder/ControlServer.cs" Link="ControlServer.cs" />
     <Compile Include="../../tools/testing/Recorder/SubjectAccess.cs" Link="SubjectAccess.cs" />
+    <Compile Include="../../tools/testing/Recorder/CapturePolicy.cs" Link="CapturePolicy.cs" />
     <Compile Include="../../tools/testing/Common/ArtifactHash.cs" Link="ArtifactHash.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/NativeDiagnostics.cs" Link="NativeDiagnostics.cs" />
     <Compile Include="../reference/LegacyForceCurve.cs" Link="LegacyForceCurve.cs" />

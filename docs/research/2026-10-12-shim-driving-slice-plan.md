@@ -73,3 +73,40 @@ redirect.
 Confirm/back and other buttons in stage, H-pattern gates, clutch, force feedback
 coexistence, finishing or uploading a stage, the ordinary (non-latched) session
 in a stage.
+
+## Implementation (source and offline tests; not run in game yet)
+
+- Recorder: `carInput=shared`, `captureSeconds`, `stopWhenFile` (`CapturePolicy`, pure and
+  tested); in shared mode the capture driver writes no car input and clears its menu
+  values at the stage. `captureSource=shared-shim-integration`.
+- Probe `Drive` mode (`ShimStartup`, `ShimDrive`): admission only at the stage start,
+  fences observed live (adds the recorder's upload/achievement/stat/save and telemetry
+  guards read from Harmony, CUSTOM event, car held or stationary); delivery mask steer,
+  throttle, brake, handbrake, shiftUp, shiftDown; a probe-only `CarController.Update`
+  postfix samples every frame after the game stored its inputs.
+- `DriveTrial` (pure): raw stimuli from the profile objects, encoded with Core's own
+  denormalize (steer centred over the range, pedals rest to travel end, inversion,
+  half away from zero). Each hold sample checks the applied sign, that the composition
+  equals Art's for those applied values (steer plus the same call's alignment term) and
+  that the car kept it; each release checks neutral; gears are read after the change
+  completes; an automatic box leaves the gear rows open. Per-frame samples are written
+  to `drive-samples.tsv`.
+- Gears: `Prepare-ShimProbe -TransmissionMode Sequential` writes only the staged copy's
+  Settings.xml (the game's `Drivetrain.SetTransmissionType` postfix then keeps the box
+  manual); Observe and Drive use the same staged settings (the hash is pinned).
+- Runner `Invoke-ShimDriveCopy.ps1`: recorder pinned and staged in the copy only, the
+  runner owns the recorder's request marker, full snapshot/restore of Art's local folder
+  and LocalLow, waits for both the probe receipt and the recorder's end.
+- Batch writes: the POSIX rename now retries (bounded, 20 x 10 ms) on access denied or
+  sharing violation; seen once in about 4,800 replacements under a concurrent reader.
+- Keyboard: a latched session suppresses it by Core's contract; ordinary keyboard
+  preservation is source/fixture evidence only (`a8d0487`, `--shared-transport-only`),
+  not runtime-qualified. Core's contract doc reserves `inject action` for navigation;
+  the pinned parser resolves any bound action, so raw stimuli are a choice, not a gate.
+
+Tests: `tests/ShimInput` 8,296 (net8 and Unity Mono) including the drive steps against a
+scripted latched Core (pass, slow shift, automatic box open, and failures for car
+divergence in steer or throttle, wrong sign, stuck gear, sticky throttle, composition
+off, short hold, never injected, stopped, countdown); `--drive-trial-only` 597 against
+the real 0D10F913 Core through the production composition; recorder 82; full suite
+20/20; 12 DriveTrial mutants all fail.

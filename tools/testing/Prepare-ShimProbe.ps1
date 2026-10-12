@@ -9,12 +9,17 @@ param(
     [Parameter(Mandatory)][string]$Profile,
     [Parameter(Mandatory)][string]$NativeCandidate,
     [Parameter(Mandatory)][string]$ShimCandidate,
-    [ValidateSet('Observe','Apply','Trial')][string]$Mode = 'Observe',
+    [ValidateSet('Observe','Apply','Trial','Drive')][string]$Mode = 'Observe',
     [string]$ObserveReceipt,
     # Trial only, diagnostic: the mod may end the title splash once to reach the main menu (romi 29497).
     [switch]$AdvanceTitle,
     # Also copy the payload into the existing disposable copy (copy-only; refuses while Art runs).
     [switch]$StageCopy,
+    # Disposable copy only: write this Art transmission mode into the staged Settings.xml (a manual box for gear rows).
+    # The owner file is only read; Observe and Drive must use the same value (the settings hash is pinned).
+    [ValidateSet('Automatic','Sequential','H-pattern')][string]$TransmissionMode,
+    # Drive: stage the dev recorder (its capture driver reaches the stage and tapes the car) into the copy.
+    [switch]$Recorder,
     [ValidateRange(1,30)][int]$ExpiresMinutes = 15
 )
 $ErrorActionPreference = 'Stop'
@@ -41,12 +46,30 @@ foreach ($path in @($Settings,$Profile,$NativeCandidate,$ShimCandidate)) { if (-
 if ($Mode -ne 'Observe' -and (-not $ObserveReceipt -or -not (Test-Path -LiteralPath $ObserveReceipt -PathType Leaf))) { throw "$Mode probe needs its earlier Observe receipt." }
 # Trial (Slice B, latched Core) runs only on the reviewed latched bridge build, art-shim-bridge f38b855.
 if ($AdvanceTitle -and $Mode -ne 'Trial') { throw 'Only a Trial may advance the title.' }
-if ($Mode -eq 'Trial' -and (Get-FileHash -LiteralPath $ShimCandidate -Algorithm SHA256).Hash -ne '0D10F913C998C97D7DDF3A8F5F470D010092C3681152059DC88D7E0A7BB0386B') { throw 'Trial needs the reviewed latched bridge dbce_shim.dll (0D10F913).' }
+if ($Recorder -and $Mode -ne 'Drive') { throw 'Only a Drive stages the recorder.' }
+if ($Mode -in @('Trial','Drive') -and (Get-FileHash -LiteralPath $ShimCandidate -Algorithm SHA256).Hash -ne '0D10F913C998C97D7DDF3A8F5F470D010092C3681152059DC88D7E0A7BB0386B') { throw "$Mode needs the reviewed latched bridge dbce_shim.dll (0D10F913)." }
 $payload = Join-Path $Result 'payload/ArtOfSimRally'
 New-Item -ItemType Directory -Path $payload | Out-Null
 foreach ($file in $files) { Copy-Item -LiteralPath (Join-Path $bin $file) -Destination $payload }
 Copy-Item -LiteralPath (Join-Path $repo 'src/ArtOfSimRally.Mod/Info.json') -Destination $payload
+$settingsSourceSha256 = (Get-FileHash -LiteralPath $Settings -Algorithm SHA256).Hash
 Copy-Item -LiteralPath $Settings -Destination (Join-Path $payload 'Settings.xml')
+if ($TransmissionMode) {
+    [xml]$staged = Get-Content -LiteralPath (Join-Path $payload 'Settings.xml') -Raw
+    $node = $staged.DocumentElement.SelectSingleNode('TransmissionMode')
+    if (-not $node) { $node = $staged.CreateElement('TransmissionMode'); $null = $staged.DocumentElement.AppendChild($node) }
+    $node.InnerText = $TransmissionMode
+    $staged.Save((Join-Path $payload 'Settings.xml'))
+}
+$recorderFiles = @()
+if ($Recorder) {
+    $recorderPayload = Join-Path $Result 'payload/ArtOfSimRally.DevRecorder'
+    New-Item -ItemType Directory -Path $recorderPayload | Out-Null
+    foreach ($source in @((Join-Path $repo 'tools/testing/Recorder/bin/Release/net48/ArtOfSimRally.DevRecorder.dll'), (Join-Path $repo 'tools/testing/Recorder/Info.json'), (Join-Path $repo 'lib/playback/Dbce.Wheel.Playback.dll'))) {
+        if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { throw "Build the recorder first: $source" }
+        Copy-Item -LiteralPath $source -Destination $recorderPayload
+    }
+}
 Copy-Item -LiteralPath $NativeCandidate -Destination (Join-Path $payload 'UnityForceFeedback.dll')
 Copy-Item -LiteralPath $ShimCandidate -Destination (Join-Path $Result 'dbce_shim.dll')
 Copy-Item -LiteralPath $Profile -Destination (Join-Path $Result 'controls.ini')
@@ -63,9 +86,11 @@ $request = [ordered]@{
 }
 $utf8 = New-Object Text.UTF8Encoding($false)
 [IO.File]::WriteAllText((Join-Path $Result 'request.json'), ($request | ConvertTo-Json -Depth 5), $utf8)
-$inventory = [ordered]@{ SourceGame=$SourceGame; GameCopy=$GameCopy; SettingsSource=[IO.Path]::GetFullPath($Settings); SettingsSourceSha256=(Hash $Settings); ProfileSource=[IO.Path]::GetFullPath($Profile); ProfileSourceSha256=(Hash $Profile); SourceCommit=(& git -C $repo rev-parse HEAD); SourceStatus=(@(& git -C $repo status --porcelain)); Files=@() }
-if ($inventory.SettingsSourceSha256 -ne $request.SettingsSha256 -or $inventory.ProfileSourceSha256 -ne $request.ProfileSha256) { throw 'Source settings/profile changed during snapshot; prepare a fresh result.' }
+$inventory = [ordered]@{ SourceGame=$SourceGame; GameCopy=$GameCopy; SettingsSource=[IO.Path]::GetFullPath($Settings); SettingsSourceSha256=(Hash $Settings); TransmissionMode=$TransmissionMode; ProfileSource=[IO.Path]::GetFullPath($Profile); ProfileSourceSha256=(Hash $Profile); SourceCommit=(& git -C $repo rev-parse HEAD); SourceStatus=(@(& git -C $repo status --porcelain)); Files=@() }
+if ($inventory.SettingsSourceSha256 -ne $settingsSourceSha256 -or (-not $TransmissionMode -and $inventory.SettingsSourceSha256 -ne $request.SettingsSha256) -or $inventory.ProfileSourceSha256 -ne $request.ProfileSha256) { throw 'Source settings/profile changed during snapshot; prepare a fresh result.' }
 foreach ($file in Get-ChildItem -LiteralPath $payload -File) { $inventory.Files += [ordered]@{ Name=$file.Name; Sha256=(Hash $file.FullName) } }
+$inventory.RecorderFiles = @()
+if ($Recorder) { foreach ($file in Get-ChildItem -LiteralPath $recorderPayload -File) { $inventory.RecorderFiles += [ordered]@{ Name=$file.Name; Sha256=(Hash $file.FullName) } } }
 [IO.File]::WriteAllText((Join-Path $Result 'prepared.json'), ($inventory | ConvertTo-Json -Depth 5), $utf8)
 $recipe = @"
 Prepared only. No game or profile was modified and no process was launched.
@@ -98,6 +123,14 @@ if ($StageCopy) {
     foreach ($file in Get-ChildItem -LiteralPath $payload -File) { Copy-Item -LiteralPath $file.FullName -Destination (Join-Path $mod $file.Name) -Force }
     Copy-Item -LiteralPath (Join-Path $payload 'UnityForceFeedback.dll') -Destination (Join-Path $GameCopy 'artofrally_Data/Plugins/x86_64/UnityForceFeedback.dll') -Force
     [IO.File]::WriteAllText((Join-Path $GameCopy 'steam_appid.txt'), '550320', [Text.Encoding]::ASCII)
+    # The recorder is present only for a Drive; any earlier one is removed (copy only).
+    $recorderDir = Join-Path $GameCopy 'Mods/ArtOfSimRally.DevRecorder'
+    if (Test-Path -LiteralPath $recorderDir) { Get-ChildItem -LiteralPath $recorderDir -File | Remove-Item; Remove-Item -LiteralPath $recorderDir }
+    if ($Recorder) {
+        New-Item -ItemType Directory -Path $recorderDir | Out-Null
+        foreach ($file in Get-ChildItem -LiteralPath $recorderPayload -File) { Copy-Item -LiteralPath $file.FullName -Destination (Join-Path $recorderDir $file.Name) }
+        foreach ($file in Get-ChildItem -LiteralPath $recorderPayload -File) { if ((Hash (Join-Path $recorderDir $file.Name)) -ne (Hash $file.FullName)) { throw "Staged recorder differs: $($file.Name)" } }
+    }
     # The probe takes its shim and profile from the result folder; shared-input staging leftovers go.
     foreach ($stray in @('dbce_shim.dll', 'dbce-controls.ini')) { $path = Join-Path $mod $stray; if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path } }
     foreach ($file in Get-ChildItem -LiteralPath $payload -File) { if ((Hash (Join-Path $mod $file.Name)) -ne (Hash $file.FullName)) { throw "Staged copy differs: $($file.Name)" } }

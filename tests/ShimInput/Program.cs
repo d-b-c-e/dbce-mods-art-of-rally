@@ -362,9 +362,14 @@ internal static class Program
                 catch (IOException) { refused++; }
             }
         });
+        // Background reader, always stopped: a failed replacement is reported, never a hung process.
+        reader.IsBackground = true;
+        string replaceError = null;
         ProbeRequest.Replace(batch, "batch 0 end\n"); reader.Start();
-        for (int i = 1; i <= 400; i++) ProbeRequest.Replace(batch, "batch " + i + " " + new string('x', i % 97) + " end\n");
-        Volatile.Write(ref stop, true); reader.Join();
+        try { for (int i = 1; i <= 400; i++) ProbeRequest.Replace(batch, "batch " + i + " " + new string('x', i % 97) + " end\n"); }
+        catch (Exception e) { replaceError = e.GetType().Name + ": " + e.Message; }
+        finally { Volatile.Write(ref stop, true); reader.Join(); }
+        Check(replaceError == null, "replacement failed under a concurrent reader: " + replaceError);
         Check(refused == 0 && torn == 0 && reads > 0 && Directory.GetFiles(folder).Length == 1, "concurrent reader refused " + refused + " / torn " + torn + " of " + reads);
     }
     // Preserved repro (romi 29497): a Core-style reader (GENERIC_READ, FILE_SHARE_READ|DELETE, as
@@ -385,14 +390,144 @@ internal static class Program
                 catch (IOException) { refused++; }
             }
         });
-        reader.Start();
-        for (int i = 1; i <= 400; i++) replace(batch, "batch " + i + " " + new string('x', i % 97) + " end\n");
-        Volatile.Write(ref stop, true); reader.Join();
+        reader.IsBackground = true; reader.Start();
+        string failed = null;
+        try { for (int i = 1; i <= 400; i++) replace(batch, "batch " + i + " " + new string('x', i % 97) + " end\n"); }
+        catch (Exception e) { failed = e.GetType().Name + ": " + e.Message; }
+        finally { Volatile.Write(ref stop, true); reader.Join(); }
+        if (failed != null) return "\"" + writer + "\":{\"writerFailed\":\"" + failed.Replace("\"", "'") + "\",\"refused\":" + refused + ",\"reads\":" + reads + "}";
         return "\"" + writer + "\":{\"refused\":" + refused + ",\"torn\":" + torn + ",\"reads\":" + reads + "}";
     }
     private static void FileReplace(string path, string text)
     {
         string temp = path + "." + Guid.NewGuid().ToString("N") + ".tmp"; File.WriteAllText(temp, text); File.Replace(temp, path, null);
+    }
+    // A scripted latched Core and car: batches inject the normalized values their raw objects encode, the real
+    // consumer composes, and the car stores what GetInput returned (unless told to differ).
+    private static DriveTrial SimulateDrive(bool automatic = false, bool carDiffers = false, bool invertSteer = false, bool injects = true, int stopAt = -1, int underwayFrom = 1,
+        bool gearStuck = false, bool sticky = false, bool composeOff = false, bool shortHold = false, bool slowShift = false, bool steerDiffers = false)
+    {
+        const ShimStatus L = ShimStatus.Live, N = ShimStatus.TestNeutral; string why;
+        var b = DriveTrial.Bindings(BridgeTests.DriveProfile);
+        var sink = new ShimAxisConsumer { AcceptLatched = true }; sink.DeliverOnly(DriveTrial.Delivered);
+        var held = new float[7]; var until = new int[7]; byte run = LatchedTrial.Waiting; string pending = null;
+        int gear = 2, changing = 0, slowTarget = 0; bool upWas = false, downWas = false;
+        var trial = new DriveTrial(sink, BridgeTests.DriveProfile, text => pending = text, "n0nce1234");
+        for (int frame = 1; frame <= 6000 && !trial.Finished; frame++)
+        {
+            if (pending != null)
+            {
+                foreach (var line in pending.Split('\n'))
+                {
+                    if (line == "end") { run = LatchedTrial.Completed; continue; }
+                    if (!line.StartsWith("inject raw") || !injects) continue;
+                    var t = line.Split(' '); int index = int.Parse(t[3]); string dev = t[4].Substring(4);
+                    long raw = long.Parse(t[5].Substring(6)); int ms = int.Parse(t[6].Substring(3));
+                    foreach (var pair in b)
+                    {
+                        if (pair.Value.Index != index || pair.Value.Device != dev || pair.Value.Kind != t[2]) continue;
+                        int action = pair.Key == "steer" ? 0 : pair.Key == "throttle" ? 1 : pair.Key == "brake" ? 2 : pair.Key == "handbrake" ? 4 : pair.Key == "shiftUp" ? 5 : 6;
+                        var bind = pair.Value; float value;
+                        if (bind.Kind == "button") value = 1f;
+                        // Core's normalize: steer centred over the range, pedals from rest to the travel end.
+                        else if (pair.Key == "steer") value = (float)((raw - (bind.Min + bind.Max) / 2.0) / ((bind.Max - bind.Min) / 2.0));
+                        else value = (float)Math.Max(0, Math.Min(1, (raw - bind.Rest) / (double)((bind.Travel > 0 ? bind.Max : bind.Min) - bind.Rest)));
+                        if (action == 0 && invertSteer) value = -value;
+                        held[action] = value; until[action] = frame + (shortHold ? 2 : ms / 10); run = 3;
+                    }
+                }
+                pending = null;
+            }
+            var frameValues = new System.Collections.Generic.List<(int, ShimStatus, float)>();
+            var injected = new bool[7];
+            foreach (int a in DriveTrial.Delivered)
+            {
+                bool on = frame < until[a];
+                injected[a] = on;
+                // sticky: the throttle stays applied (Live, not injected) after its injection ends.
+                bool stuck = sticky && a == 1 && !on && until[a] > 0;
+                frameValues.Add((a, on || stuck ? L : N, on ? held[a] : stuck ? .4f : 0f));
+            }
+            ulong down = (injected[5] ? 1UL << 5 : 0) | (injected[6] ? 1UL << 6 : 0);
+            var bytes = Actions((ulong)frame, down, frameValues.ToArray()); bytes[40] = run; bytes[41] = 1; bytes[42] = 1;
+            foreach (int a in DriveTrial.Delivered) if (injected[a]) bytes[48 + a * 8 + 5] = 1;
+            if (frame == stopAt) sink.Stop(); else Check(sink.Publish(bytes, frame, out why), why);
+            // The car: GetInput composes, Update stores it; a manual box shifts on Core's press edges.
+            var values = new DrivingValues(); const float alignment = .02f;
+            sink.Compose(frame, true, alignment, ref values);
+            int pendingGear = 0;
+            if (!automatic && !gearStuck)
+            {
+                if (injected[5] && !upWas) { if (slowShift) pendingGear = 1; else gear++; changing = slowShift ? 80 : 6; }
+                if (injected[6] && !downWas) { if (slowShift) pendingGear = -1; else gear--; changing = slowShift ? 80 : 6; }
+            }
+            if (pendingGear != 0) slowTarget = pendingGear;
+            upWas = injected[5]; downWas = injected[6];
+            if (changing > 0 && --changing == 0 && slowTarget != 0) { gear += slowTarget; slowTarget = 0; }
+            var s = new DriveTrial.Sample
+            {
+                Frame = frame, Underway = frame >= underwayFrom, Composed = true, SteerLive = sink.Live(0, frame),
+                AppliedSteer = sink.Applied(0, frame), AppliedThrottle = sink.Applied(1, frame), AppliedBrake = sink.Applied(2, frame), AppliedHandbrake = sink.Applied(4, frame), Alignment = alignment,
+                OutSteer = values.Steer, OutThrottle = values.Throttle + (composeOff && frame > 200 ? .05f : 0f), OutBrake = values.Brake, OutHandbrake = values.Handbrake,
+                EngineSteer = values.Steer + (steerDiffers && frame > 200 ? .05f : 0f), EngineThrottle = values.Throttle + (carDiffers && frame > 200 ? .1f : 0f) + (composeOff && frame > 200 ? .05f : 0f),
+                EngineBrake = values.Brake, EngineHandbrake = values.Handbrake,
+                Gear = gear, Automatic = automatic, ChangingGear = changing > 0, Speed = 3f,
+            };
+            foreach (int a in DriveTrial.Delivered) s.Injected[a] = sink.Injected(a, frame);
+            trial.Tick(s);
+        }
+        return trial;
+    }
+    private static void DriveSteps()
+    {
+        var b = DriveTrial.Bindings(BridgeTests.DriveProfile);
+        // Core's denormalize: steer centred over 0..65535 (rest/travel do not apply), pedals rest..travel end.
+        Check(DriveTrial.Raw(b["steer"], -.3f) == 22937 && DriveTrial.Raw(b["steer"], .3f) == 42598 && DriveTrial.Raw(b["throttle"], .4f) == 26214 &&
+            DriveTrial.Raw(b["brake"], .6f) == 40018 && DriveTrial.Raw(b["handbrake"], 1f) == 65535 && DriveTrial.Raw(b["throttle"], 0f) == 0, "raw values from the profile objects");
+        var inverted = DriveTrial.Bindings(BridgeTests.DriveProfile.Replace("rest=0 travel=+1\n", "rest=0 travel=+1 inverted\n"));
+        Check(DriveTrial.Raw(inverted["throttle"], .4f) == 39321 && inverted["throttle"].Inverted, "explicit inversion not applied");
+        Check(DriveTrial.Axis(b["throttle"], .4f, 1500) == "inject raw axis 2 dev={d71b8350-61b7-11f1-8001-444553540000} value=26214 ms=1500 range=0..65535" &&
+            DriveTrial.Button(b["shiftUp"], 200) == "inject raw button 9 dev={d9b1d890-6f3f-11f1-8002-444553540000} value=1 ms=200", "raw command text");
+        string Refused(string profile) { try { DriveTrial.Bindings(profile); return ""; } catch (FormatException e) { return e.Message; } }
+        Check(Refused(BridgeTests.DriveProfile.Replace("handbrake = axis 7", "handbrakeX = axis 7")).Contains("does not bind handbrake") &&
+            Refused(BridgeTests.DriveProfile.Replace("shiftUp = button 9", "shiftUp = axis 3")).Contains("shiftUp: unexpected axis"), "incomplete or mismatched profile accepted");
+        var passed = SimulateDrive();
+        Check(passed.Passed && passed.Steps.Count == 7 && passed.Steps.TrueForAll(s => s.Result == "passed" && (s.GearDelta != 0 || s.HoldSamples >= DriveTrial.MinHold) && s.ReleaseSamples >= DriveTrial.SettleFrames),
+            "drive did not pass: " + passed.Failure + " | " + string.Join(" | ", passed.Steps.ConvertAll(s => s.Name + "=" + s.Result + " " + s.Detail + " h" + s.HoldSamples)));
+        Check(passed.Steps[3].GearAfter - passed.Steps[3].GearBefore == 1 && passed.Steps[4].GearAfter - passed.Steps[4].GearBefore == -1, "gear rows not measured");
+        var slow = SimulateDrive(slowShift: true);
+        Check(slow.Passed && slow.Steps[3].GearAfter - slow.Steps[3].GearBefore == 1, "a slow gear change was read before it completed: " + slow.Failure);
+        Check(passed.Samples.ToString().Split('\n').Length > 300, "per-frame samples not recorded");
+        var automatic = SimulateDrive(automatic: true);
+        Check(automatic.Finished && !automatic.Passed && automatic.Failure == null && automatic.Steps[3].Result == "open" && automatic.Steps[4].Result == "open" &&
+            automatic.Steps[0].Result == "passed", "automatic gearbox gear rows not left open: " + automatic.Failure);
+        foreach (var (name, trial, expected) in new[] {
+            ("car differs", SimulateDrive(carDiffers: true), "car inputs differ from the composition"),
+            ("wrong sign", SimulateDrive(invertSteer: true), "wrong sign"),
+            ("never injected", SimulateDrive(injects: false), "no progress in Holding of throttle 40%"),
+            ("stopped", SimulateDrive(stopAt: 120), "shared session stopped"),
+            ("steer differs", SimulateDrive(steerDiffers: true), "car inputs differ from the composition"),
+            ("gear stuck", SimulateDrive(gearStuck: true), "shiftUp with throttle: gear 2 -> 2"),
+            ("sticky throttle", SimulateDrive(sticky: true), "throttle still applied"),
+            ("composition off", SimulateDrive(composeOff: true), "composed throttle"),
+            ("short hold", SimulateDrive(shortHold: true), "held samples") })
+            Check(trial.Finished && !trial.Passed && trial.Failure != null && trial.Failure.Contains(expected), name + ": " + trial.Failure);
+        var countdown = SimulateDrive(underwayFrom: 300);
+        Check(countdown.Passed && countdown.Samples.ToString().Contains("\n-\t299\t0\t"), "drive began before the countdown ended: " + countdown.Failure);
+        // Fences: only the stage start and focus may be waited for.
+        DriveTrial.Fences All() => new DriveTrial.Fences { NoForceArmed = true, SettingsWritesSuppressed = true, TelemetryIdle = true, Compatible = true, Custom = true, StageReady = true, Focused = true };
+        bool wait;
+        Check(DriveTrial.Admission(All(), out wait) == null && !wait && DriveTrial.Unfenced(null) != null, "verified drive refused or missing fences accepted");
+        var stage = All(); stage.StageReady = false; Check(DriveTrial.Admission(stage, out wait) != null && wait, "stage start not waited for");
+        foreach (var (mutate, expected) in new (Action<DriveTrial.Fences>, string)[] {
+            (f => f.NoForceArmed = false, "no-force"), (f => f.SettingsWritesSuppressed = false, "settings writes"), (f => f.TelemetryIdle = false, "telemetry"),
+            (f => f.MissingHooks = "GetInput", "input hooks missing"), (f => f.MissingGuards = "UploadScore", "capture guards missing: UploadScore"),
+            (f => f.Compatible = false, "game build"), (f => f.Custom = false, "CUSTOM") })
+        {
+            var f = All(); mutate(f); f.StageReady = false;
+            string why = DriveTrial.Admission(f, out wait);
+            Check(why != null && why.Contains(expected) && !wait, "drive fence waited for or not refused: " + expected + " -> " + why);
+        }
     }
     private static int Main(string[] args)
     {
@@ -403,7 +538,7 @@ internal static class Program
         }
         try
         {
-            Decode(); Consumption(); StatusesAndFailures(); SharedActions(); SharedStatus(); TrialSteps();
+            Decode(); Consumption(); StatusesAndFailures(); SharedActions(); SharedStatus(); TrialSteps(); DriveSteps();
             assertions += BridgeTests.Fake();
             assertions += IsolationTests.Run();
             assertions += ProbeTests.Run();

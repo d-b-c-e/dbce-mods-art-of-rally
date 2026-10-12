@@ -80,6 +80,8 @@ namespace ArtOfSimRally.Mod.Shim
         // released state, so press edges can arm on it (the first injection is not swallowed).
         internal bool KnownNeutral(int action, int unityFrame) => Fresh(unityFrame) && Owns(action) && Delivers(action) && current[action].Status == ShimStatus.TestNeutral;
         internal float Value(int action, int unityFrame) => Live(action, unityFrame) ? current[action].Value : 0f;
+        // Exactly what Compose applies for an action in this frame (current, delivered, Live value or 0).
+        internal float Applied(int action, int unityFrame) => Fresh(unityFrame) && action >= 0 && action < ShimFrame.Count && Delivered(action) ? current[action].Applied : 0f;
         // One queued sequential step per call; latched presses survive frames with no physics step.
         internal int TakeShift()
         {

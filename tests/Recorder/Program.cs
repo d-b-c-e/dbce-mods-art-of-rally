@@ -186,13 +186,38 @@ static class Program
         tune = access.ReadTune();
         Check(tune.Reference == 11500 && tune.Gain == .6f, "probe substitutes the new default for an explicit legacy tune");
     }
+    // carInput=shared leaves the car to the mod's shared input and ends on the probe's receipt or a bound.
+    static void Policy()
+    {
+        CapturePolicy Parse(params string[] pairs)
+        {
+            var request = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            for (int i = 0; i < pairs.Length; i += 2) request[pairs[i]] = pairs[i + 1];
+            return CapturePolicy.Parse(request);
+        }
+        string Refusal(params string[] pairs) { try { Parse(pairs); return ""; } catch (InvalidDataException e) { return e.Message; } }
+        var synthetic = Parse();
+        Check(!synthetic.SharedCarInput && synthetic.Seconds == 12f && synthetic.StopFile == null && synthetic.Source == "synthetic-integration", "synthetic default changed");
+        string stop = Path.Combine(Path.GetTempPath(), "probe-receipt.json");
+        var shared = Parse("carInput", "shared", "captureSeconds", "40", "stopWhenFile", stop);
+        Check(shared.SharedCarInput && shared.Seconds == 40f && shared.StopFile == stop && shared.Source == "shared-shim-integration", "shared policy not parsed");
+        Check(Refusal("carInput", "keyboard").Contains("synthetic or shared") && Refusal("carInput", "shared", "captureSeconds", "600").Contains("5..120") &&
+            Refusal("stopWhenFile", stop).Contains("needs carInput=shared") && Refusal("carInput", "shared", "stopWhenFile", "receipt.json").Contains("absolute"), "bad capture policy accepted");
+        float underwayAt = -1; bool present = false;
+        Func<string, bool> exists = p => present && p == stop;
+        Check(!shared.Done(false, 1, ref underwayAt, exists) && underwayAt < 0, "menus ended the capture or started its clock");
+        Check(!shared.Done(true, 10, ref underwayAt, exists) && underwayAt == 10 && !shared.Done(true, 49.9f, ref underwayAt, exists), "bound ended early");
+        Check(shared.Done(true, 50, ref underwayAt, exists), "bound not applied");
+        float early = -1; present = true;
+        Check(shared.Done(false, 1, ref early, exists), "probe receipt before the stage did not end the capture");
+    }
     static int Main(string[] args)
     {
         try
         {
             string root = Path.GetFullPath(args[0]);
             Check(!Directory.Exists(root), "use a fresh test evidence directory");
-            string capture = Capture(root); Pipe(); Quit(Path.Combine(root, "quit-cases"));
+            string capture = Capture(root); Pipe(); Quit(Path.Combine(root, "quit-cases")); Policy();
             if (args.Length == 3) Contract(args[1], args[2]);
             Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions, syntheticCapture = capture })); return 0;
         }

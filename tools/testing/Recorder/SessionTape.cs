@@ -46,6 +46,7 @@ namespace ArtOfSimRally.Testing
         private static bool _sceneSelections;
         private static int _clicksInFrame;
         private static CaptureDriver _captureDriver;
+        private static CapturePolicy _capturePolicy;
 
         internal static string RequestPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "ArtOfSimRally", "session-request.txt");
@@ -155,7 +156,7 @@ namespace ArtOfSimRally.Testing
                 {
                     if (replay) throw new InvalidDataException("capture driver is only valid for recording");
                     PatchOutputs();
-                    _captureDriver = new CaptureDriver(driverSource, 12f);
+                    _captureDriver = new CaptureDriver(driverSource, _capturePolicy = CapturePolicy.Parse(request));
                 }
                 if (replay) { PatchOutputs(); LoadReplay(request.TryGetValue("out", out var o) && o.Length > 0 ? o : Path.Combine(_dir, "replay-" + DateTime.Now.ToString("yyyyMMdd-HHmmss"))); }
                 else if (string.Equals(mode, "record", StringComparison.OrdinalIgnoreCase)) OpenRecording();
@@ -199,8 +200,8 @@ namespace ArtOfSimRally.Testing
                 "format=" + Format + "\ngame=" + Application.version + "\nunity=" + Application.unityVersion +
                 "\ngameAssemblySha256=" + ArtifactHash.FileHash(typeof(CarDynamics).Assembly.Location) +
                 "\nfixedDeltaTime=" + N(Time.fixedDeltaTime) + "\nstartedUtc=" + DateTime.UtcNow.ToString("o") +
-                "\nsceneSelections=1\ncaptureSource=" + (_captureDriver == null ? "player" : "synthetic-integration") + "\nphysicalOutput=" + (!_muteOutputs).ToString().ToLowerInvariant() + "\n");
-            RecorderMain.StartSessionSignals(_dir, !_muteOutputs, _captureDriver != null);
+                "\nsceneSelections=1\ncaptureSource=" + (_captureDriver == null ? "player" : _capturePolicy.Source) + "\nphysicalOutput=" + (!_muteOutputs).ToString().ToLowerInvariant() + "\n");
+            RecorderMain.StartSessionSignals(_dir, !_muteOutputs, _captureDriver == null ? "player" : _capturePolicy.Source);
         }
 
         private static void LoadReplay(string output)

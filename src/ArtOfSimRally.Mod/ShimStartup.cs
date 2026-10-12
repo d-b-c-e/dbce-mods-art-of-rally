@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using ArtOfSimRally.Mod.Shim;
 using Rewired;
 using UnityEngine;
@@ -22,6 +23,8 @@ namespace ArtOfSimRally.Mod
         private static LatchedTrial trial;
         private static bool titleAdvanced;
         private static bool Trial => request != null && request.Mode == "Trial";
+        private static DriveTrial drive;
+        private static bool Drive => request != null && request.Mode == "Drive";
         internal static string NativeLogPath => request == null ? null : Path.Combine(request.Result, "native.log");
         internal static bool Prepare(string modDirectory)
         {
@@ -57,7 +60,15 @@ namespace ArtOfSimRally.Mod
             try
             {
                 if (DateTime.UtcNow >= request.Deadline) { Finish("probe deadline reached"); return; }
-                if (!Main.Enabled || GameState.IsDriving) { Finish("probe stopped: mod disabled or driving started; menu-only qualification"); return; }
+                // A Drive qualifies and runs at the stage start; every other mode stays in the menus.
+                if (!Main.Enabled || (GameState.IsDriving && !Drive)) { Finish("probe stopped: mod disabled or driving started; menu-only qualification"); return; }
+                if (attached && Drive)
+                {
+                    // The drive ticks from the car's own Update; here only its end or a stage exit.
+                    if (!ShimDrive.InStage) { Finish("Drive refused: left the stage"); return; }
+                    if (drive.Finished) Finish(drive.Passed ? "Drive passed: every row passed" : drive.Failure != null ? "Drive failed: " + drive.Failure : "Drive completed with open rows");
+                    return;
+                }
                 if (attached && Trial)
                 {
                     // Scene departure ends the trial; the menu is the only place it may run.
@@ -88,6 +99,19 @@ namespace ArtOfSimRally.Mod
                 {
                     if (!SharedInputSession.Ready(inventory)) return;
                     ShimBridgeNative.LatchedSession latched = null;
+                    if (Drive)
+                    {
+                        // At the stage start only: the recorder's menu script must never meet latched suppression.
+                        string unmet = DriveTrial.Admission(ShimDrive.ObserveFences(receipt.NoForceArmed), out bool waitForStage);
+                        if (unmet != null)
+                        {
+                            receipt.DriveFences = (waitForStage ? "waiting: " : "") + unmet;
+                            if (!waitForStage) Finish("Drive refused before open: " + unmet);
+                            return;
+                        }
+                        receipt.DriveFences = "verified: no-force armed, settings writes suppressed, telemetry idle, input hooks attached, capture guards attached, inspected build, CUSTOM event, car held at the start, focused";
+                        latched = LatchedFiles();
+                    }
                     if (Trial)
                     {
                         // The fence byte is asserted only from guards observed now, in this process. Being on
@@ -110,10 +134,7 @@ namespace ArtOfSimRally.Mod
                             return;
                         }
                         receipt.TrialFences = "verified: no-force armed, settings writes suppressed, telemetry idle, input hooks attached, inspected build, primary player, main menu, focused";
-                        string sessionFile = Path.Combine(request.Result, "shim-session.txt");
-                        long expires = (long)(request.Deadline - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
-                        ProbeRequest.Replace(sessionFile, "nonce=" + request.Nonce + "\nexpires=" + expires + "\n");
-                        latched = new ShimBridgeNative.LatchedSession { Nonce = request.Nonce, SessionFile = sessionFile, BatchFile = Path.Combine(request.Result, "shim-batch.txt"), FencesVerified = true, ForceAbsent = receipt.NoForceArmed };
+                        latched = LatchedFiles();
                     }
                     session = new SharedInputSession(inventory);
                     session.Begin(request.ShimPath, request.Result, File.ReadAllBytes(request.ProfilePath), latched);
@@ -134,6 +155,14 @@ namespace ArtOfSimRally.Mod
                 ProbeObservation.CompareDisabled(receipt, receipt.RewiredInstances);
                 if (request.Mode == "Observe") { Finish("Observe complete: " + receipt.RawAxisQualification); return; }
                 if (!receipt.FlagsDisabled || !receipt.RawAxesNeutralAfterDisable) { Finish(request.Mode + " refused: current disable/raw-axis check unqualified"); return; }
+                if (Drive)
+                {
+                    // Fixed before the first frame: only latched frames, and only the driving actions delivered.
+                    ShimInput.Consumer.AcceptLatched = true;
+                    ShimInput.Consumer.DeliverOnly(DriveTrial.Delivered);
+                    string batchFile = Path.Combine(request.Result, "shim-batch.txt");
+                    drive = new DriveTrial(ShimInput.Consumer, File.ReadAllText(request.ProfilePath), text => ProbeRequest.Replace(batchFile, text), request.Nonce);
+                }
                 if (Trial)
                 {
                     // Fixed before the first frame: only latched frames, and only vertical menu navigation delivered.
@@ -144,13 +173,22 @@ namespace ArtOfSimRally.Mod
                 }
                 WheelInput.AttachSharedInput(session.Source, session.Native, session.VerifyIsolation, () => session.Isolation.Restore(), session.Native.Transmission());
                 attached = true; receipt.Applied = true;
-                ModLog.Info(Trial ? "Shared input Trial PROBE attached (latched; navUp/navDown only) on the main menu; saved backend unchanged."
+                if (Drive) ShimDrive.Begin(drive);
+                ModLog.Info(Drive ? "Shared input Drive PROBE attached (latched; steer, throttle, brake, handbrake, shifts only) at the stage start; saved backend unchanged." : Trial ? "Shared input Trial PROBE attached (latched; navUp/navDown only) on the main menu; saved backend unchanged."
                     : "Shared input Apply PROBE attached to existing readers for 120 menu frames; saved backend unchanged.");
             }
             catch (Exception ex) { Finish("probe refused: " + ex.Message); }
         }
         internal static void Shutdown() { if (Requested && !finished && receipt != null) Finish("probe shutdown"); }
 
+        // The latched session file, written whole before Core opens; batches follow in the same folder.
+        private static ShimBridgeNative.LatchedSession LatchedFiles()
+        {
+            string sessionFile = Path.Combine(request.Result, "shim-session.txt");
+            long expires = (long)(request.Deadline - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
+            ProbeRequest.Replace(sessionFile, "nonce=" + request.Nonce + "\nexpires=" + expires + "\n");
+            return new ShimBridgeNative.LatchedSession { Nonce = request.Nonce, SessionFile = sessionFile, BatchFile = Path.Combine(request.Result, "shim-batch.txt"), FencesVerified = true, ForceAbsent = receipt.NoForceArmed };
+        }
         private static bool OnSplash()
         {
             var splash = SplashScreenControl.Instance;
@@ -191,6 +229,16 @@ namespace ArtOfSimRally.Mod
         {
             if (finished) return;
             finished = true;
+            if (drive != null)
+            {
+                // No further samples once the outcome is fixed.
+                ShimDrive.End();
+                receipt.DriveStatus = drive.Passed ? "passed" : drive.Failure != null ? "failed: " + drive.Failure : drive.Finished ? "completed with open rows" : "unfinished: " + drive.Current;
+                receipt.DriveRows = drive.Steps.Select(s => s.Name + ": " + (s.Result ?? "not run") + (s.Detail == null ? "" : " (" + s.Detail + ")") +
+                    "; hold " + s.HoldSamples + ", release " + s.ReleaseSamples + (s.GearDelta != 0 ? "; gear " + s.GearBefore + " -> " + s.GearAfter : "")).ToArray();
+                try { File.WriteAllText(Path.Combine(request.Result, "drive-samples.tsv"), drive.Samples.ToString()); }
+                catch (Exception ex) { status += "; samples not written: " + ex.Message; }
+            }
             try
             {
                 if (attached) WheelInput.StopSharedProbe();
