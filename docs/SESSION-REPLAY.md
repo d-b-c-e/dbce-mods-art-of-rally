@@ -123,7 +123,11 @@ and the recording continues.
     whether keyboard steering was kept);
   - the owned shared buttons held.
 
-  It is sealed with the other members. Replay never reads it.
+  It is sealed with the other members. Replay never reads it. The phase, freshness,
+  isolation and held columns describe the row's own frame. The composition columns are
+  the mod's last composition, made in the frame named by `lastFrame`: normally the
+  previous rendered frame, because the recorder ticks before the car reads input.
+  `session.txt` states this as `sharedTapeComposition=lastFrame`. The header is unchanged.
 - `end.txt` adds the final shared phase, attach frame, stop or refusal reason, and row
   count.
 - Mod-internal shortcuts (settings, stop force, camera) appear only as held shared

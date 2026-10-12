@@ -81,6 +81,14 @@ static class SharedEvidenceTests
             absent.Contains("controlsSha256=absent\n") && absent.Contains("controlsProfile=absent\n") && absent.Contains("shimSha256=absent\n"), "unbound identity");
         Check(SharedEvidence.Identity(null, "line\nbreak", mod, native).Split('\n').Count(l => l.StartsWith("sharedEvidence=")) == 1, "a value spans lines");
         Check(identity["settingsRead"] == "true", "settings read");
+        // sana 37320: the loaded assembly's own version beside build.json, and the composition frame named.
+        string assemblyVersion = typeof(ArtOfSimRally.Mod.Main).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
+            .OfType<System.Reflection.AssemblyInformationalVersionAttribute>().Single().InformationalVersion;
+        Check(identity["inputModVersion"] == assemblyVersion && assemblyVersion.Length > 0, "assembly version: " + identity["inputModVersion"]);
+        Check(identity["sharedTapeComposition"] == "lastFrame", "composition frame not named");
+        Check(SharedEvidence.Header == "frame\tmarker\tphase\tstarted\tterminal\tfresh\tisolated\tlastFrame\tsteerLive\t" +
+            "appliedSteer\tappliedThrottle\tappliedBrake\tappliedClutch\tappliedHandbrake\talignment\t" +
+            "steer\tthrottle\tbrake\tclutch\thandbrake\tkeyboard\tkeyboardSteered\theld", "shared.tape header changed from slice A");
         // sana 36649: identity never throws; an unreadable path or file is named and the recording continues.
         var thrown = SharedEvidence.Identity(shared, null, () => throw new IOException("boom"), () => throw new UnauthorizedAccessException("no"));
         Check(thrown.Contains("inputModIdentity=unreadable: IOException\n") && thrown.Contains("nativeSha256=unreadable: UnauthorizedAccessException\n") &&
