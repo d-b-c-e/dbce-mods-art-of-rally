@@ -49,19 +49,32 @@ vendored or installed. The old metadata export remains tested, while Art's
 explicit diagnostic uses the new path export and refuses if it is unavailable.
 The shared Core is still the sole profile parser.
 
-## Shared-input candidate binaries (2026-10-12, romi 32354)
+## Shared-input candidate binaries (2026-10-12, romi 32354 and 32775)
 
-`dbce_shim.dll` and `native/WheelFfb.dll` are vendored only for the private owner-test
-package (`tools/package/package.ps1 -SharedInputCandidate`). `CANDIDATE.json` pins both;
-the default package still ships `lib/toolkit`'s native and no shim.
+Only the private owner-test package (`tools/package/package.ps1 -SharedInputCandidate`)
+uses these. `CANDIDATE.json` pins both. The default package still ships `lib/toolkit`'s
+native and no shim.
 
-- `dbce_shim.dll` `7DDC962132819EDAE76EF84CE6509F1936B8C38177A36D498B8ABBCFDCFFBCAF`:
-  the copied-provider build of `574bb88` that the mod pins (`SharedInputStartup`), byte for
-  byte the copy used by every ordinary shared run.
-- `native/WheelFfb.dll` `44E46799945438BC07DF738472602DB1E3ECC04C3F77CAD5B12FCACF49C69272`:
-  toolkit `mufa/native-091-read-snapshots` `bbbf6e3`. That is Art's accepted native line
-  (`native-0.9.1-fleet-candidate` `c8ec2ee`, shipped as `F8361A08`) plus only the
-  read-snapshot and interface-path exports.
-  - Version 901, 51 exports.
-  - The x64 fake-COM suite passes and matches the baseline's results test for test. The
-    only differences are the ABI export count and the new snapshot test.
+- `native/WheelFfb.dll` `44E46799945438BC07DF738472602DB1E3ECC04C3F77CAD5B12FCACF49C69272`
+  is vendored here.
+  - Source: toolkit `mufa/native-091-read-snapshots` `bbbf6e3`. That is Art's accepted
+    native line (`native-0.9.1-fleet-candidate` `c8ec2ee`, shipped as `F8361A08`) plus
+    only the read-snapshot and interface-path exports. Version 901, 51 exports.
+  - Independent review passed (romi 32797).
+  - Public-repository basis: the same component, from the same MIT toolkit, as the native
+    this repository already vendors in `lib/toolkit/native` and ships in its public
+    releases.
+- `dbce_shim.dll` `7DDC962132819EDAE76EF84CE6509F1936B8C38177A36D498B8ABBCFDCFFBCAF` is
+  NOT kept in this public repository.
+  - It is the copied-provider build of outrun2-decomp `574bb88` that the mod pins
+    (`SharedInputStartup`), built with ClangCL (Clang 19.1.5, P21 configure log).
+  - Public-repository check, romi 32775. No existing public record covers this binary:
+    - DRIVE's vendored shim (`vendor/dbce-shim`, "vendored, provisional") is in a
+      private repository;
+    - `574bb88` is not on outrun2-decomp's public remote.
+  - Commit `4b757be` added the binary to this branch's history, which is not rewritten.
+    The tip removes it.
+  - The private candidate build passes a private copy with `-SharedInputShim`, checked
+    against the pin. Its bytes are the copy every ordinary shared run used:
+    `games/.worktrees/art-shim-probe-evidence/apply-20261012-021108/dbce_shim.dll`.
+  - Publishing the shim binary (and its source commit) is a separate owner decision.

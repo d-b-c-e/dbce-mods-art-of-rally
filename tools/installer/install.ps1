@@ -130,9 +130,19 @@ $modDir    = Join-Path $GameDir 'Mods\ArtOfSimRally'
 $nativeDir = Join-Path $GameDir 'artofrally_Data\Plugins\x86_64'
 $modFiles = 'ArtOfSimRally.Mod.dll', 'Dbce.Wheel.Telemetry.dll', 'Dbce.Wheel.Ffb.dll', 'UnityForceFeedback.dll',
     'Dbce.TripleScreen.Core.dll', 'Dbce.TripleScreen.Protocol.dll', 'Info.json', 'build.json'
-# Only a shared-input candidate ships these. Uninstall removes them, and so does
-# installing a package without them, so the installed payload is exactly the package's.
+# Only a shared-input candidate ships dbce_shim.dll. It is ours to replace or remove only while the
+# installed build.json pins exactly its bytes (romi 32767); any other copy - placed by hand, changed,
+# or left without a record - is preserved, and a candidate install refuses to overwrite it.
 $optionalModFiles = @('dbce_shim.dll')
+function Get-ShimOwnership {
+    $file = Join-Path $modDir 'dbce_shim.dll'
+    if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return [pscustomobject]@{ State = 'absent'; Hash = $null } }
+    $hash = (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash
+    $pinned = $null
+    try { $pinned = (Get-Content -LiteralPath (Join-Path $modDir 'build.json') -Raw | ConvertFrom-Json).sharedInputCandidate.shimSha256 } catch { }
+    $state = if ($pinned -and $hash -eq $pinned) { 'owned' } else { 'foreign' }
+    return [pscustomobject]@{ State = $state; Hash = $hash }
+}
 
 # Do not follow a junction/symlink while replacing or removing installed files.
 foreach ($target in @($modDir, $nativeDir)) {
@@ -159,10 +169,14 @@ if ($Uninstall) {
 
     # Remove only our payload. Settings and unknown user files stay in place;
     # no recursive deletion or shared temporary Settings.xml backup is needed.
-    foreach ($name in @($modFiles) + $optionalModFiles) {
+    # The shim's ownership is read before build.json, its record, is removed.
+    $shim = Get-ShimOwnership
+    foreach ($name in $modFiles) {
         $file = Join-Path $modDir $name
         if (Test-Path -LiteralPath $file) { Remove-Item -LiteralPath $file -Force }
     }
+    if ($shim.State -eq 'owned') { Remove-Item -LiteralPath (Join-Path $modDir 'dbce_shim.dll') -Force }
+    elseif ($shim.State -eq 'foreign') { Warn 'Kept dbce_shim.dll: this mod did not install those bytes' }
 
     $native = Join-Path $nativeDir 'UnityForceFeedback.dll'
     if (Test-Path -LiteralPath $native) { Remove-Item -LiteralPath $native -Force; Ok "Removed $native" }
@@ -197,13 +211,22 @@ try {
 }
 Ok "Package verified: $($manifest.release)"
 $installFiles = @($modFiles) + @($optionalModFiles | Where-Object { $null -ne $manifest.files."ArtOfSimRally/$_" })
+# Preflight, before anything is written: never overwrite or delete a shim this mod does not own.
+$shim = Get-ShimOwnership
+$packageShim = $manifest.files.'ArtOfSimRally/dbce_shim.dll'
+if ($packageShim -and $shim.State -eq 'foreign' -and $shim.Hash -ne $packageShim) {
+    Fail "Mods\ArtOfSimRally\dbce_shim.dll was not installed by this mod, or has changed."
+    Say "  It was left exactly as it is, and no game files were changed. Move it out of the"
+    Say "  mod folder (keep it if you placed it on purpose), then run Install.bat again."
+    exit 1
+}
 
 try {
     New-Item -ItemType Directory -Force -Path $modDir | Out-Null
     foreach ($name in $installFiles) { Copy-Item -LiteralPath (Join-Path $source $name) -Destination $modDir -Force }
-    foreach ($name in $optionalModFiles | Where-Object { $installFiles -notcontains $_ }) {
-        $file = Join-Path $modDir $name
-        if (Test-Path -LiteralPath $file) { Remove-Item -LiteralPath $file -Force; Ok "Removed $name (not part of this release)" }
+    if (-not $packageShim) {
+        if ($shim.State -eq 'owned') { Remove-Item -LiteralPath (Join-Path $modDir 'dbce_shim.dll') -Force; Ok 'Removed dbce_shim.dll (not part of this release)' }
+        elseif ($shim.State -eq 'foreign') { Warn 'Kept dbce_shim.dll: this mod did not install those bytes, and this release does not use it' }
     }
     Ok "Mod installed to $modDir"
 

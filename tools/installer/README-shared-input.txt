@@ -16,9 +16,17 @@ To try it, with the game closed:
    DRIVE Rally is at BepInEx\config\dbce-controls.ini in that game's folder.
 2. Launch, press F6, open Controls and turn on "Use shared Wheelkit profile
    (candidate)". Restart the game; the choice applies at startup.
-3. Stay in the menus for a moment. The Controls page reports what happened: the
-   profile attached, or the reason it was not used. When it was not used, Art's
-   own bindings stay in charge.
+3. Stay in the menus for a moment. The Controls page says which of these happened:
+   * Attached: the shared profile drives the wheel and its controls.
+   * Not used: it refused before attaching (for example no profile, a different
+     dbce_shim.dll, or a wheel that did not read neutral), and gives the reason.
+     Art's own bindings stay in charge; restart to try again. If it also says the
+     game's own input for the wheel is still off, restart the game to restore it.
+   * Stopped: it attached, then hit a fault (for example the wheel was unplugged).
+     Art's bindings do NOT take over: driving with the wheel stays neutral until
+     you restart the game. Keyboard driving continues only while the page says the
+     wheel is still isolated; otherwise all driving input stays neutral, while the
+     menus still take the keyboard.
 
 While it is on, Art's editors for controls the profile sets are locked, and device
 changes need a restart. A control the profile does not map keeps Art's binding,
@@ -26,7 +34,9 @@ unless the profile already uses that physical control for something else.
 
 To stop using it: turn the option off and restart, or remove dbce-controls.ini.
 To go back to your previous release, install that release's package: it replaces
-the plugin and removes dbce_shim.dll. Your settings are kept either way.
+the plugin and removes the dbce_shim.dll this package installed. Your settings are
+kept either way. The installer never replaces or removes a dbce_shim.dll it did not
+install, including one you changed or placed by hand; move such a file aside first.
 
 Not yet tested by a person: driving with the physical wheel and keyboard through
 the shared profile, and force feedback together with it.

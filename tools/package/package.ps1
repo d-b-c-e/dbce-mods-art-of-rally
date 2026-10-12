@@ -16,15 +16,18 @@
 .EXAMPLE
     .\tools\package\package.ps1 -Version 0.1.0
 .EXAMPLE
-    .\tools\package\package.ps1 -Version 0.1.0-rc.2 -SharedInputCandidate
+    .\tools\package\package.ps1 -Version 0.1.0-rc.2 -SharedInputCandidate -SharedInputShim D:\private\dbce_shim.dll
     A private owner-test candidate for the opt-in shared Wheelkit profile (romi 32354). It
     also ships the copied-provider dbce_shim.dll and swaps in the native with the read-snapshot
-    exports, both pinned in lib/input-shim/CANDIDATE.json. Without the switch nothing changes.
+    exports, both pinned in lib/input-shim/CANDIDATE.json. The shim binary is not kept in this
+    public repository (romi 32775): pass a private copy, checked against the pin. Without the
+    switch nothing changes.
 #>
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)][string]$Version,
-    [switch]$SharedInputCandidate
+    [switch]$SharedInputCandidate,
+    [string]$SharedInputShim
 )
 
 $ErrorActionPreference = 'Stop'
@@ -36,6 +39,8 @@ if (($Version -split '-')[0] -ne $modVersion) { throw "Version must match Versio
 $info = Get-Content -LiteralPath (Join-Path $root 'src/ArtOfSimRally.Mod/Info.json') -Raw | ConvertFrom-Json
 if ($info.Version -ne $modVersion) { throw 'Info.json and Version.props disagree' }
 if ($SharedInputCandidate -and $Version -notmatch '-rc\.') { throw 'The shared-input candidate is a private RC only' }
+if ($SharedInputCandidate -and -not $SharedInputShim) { throw 'The shared-input candidate needs -SharedInputShim, a private copy of the pinned dbce_shim.dll' }
+if ($SharedInputShim -and -not $SharedInputCandidate) { throw '-SharedInputShim is only for -SharedInputCandidate' }
 $flavour = if ($SharedInputCandidate) { '-shared-input' } else { '' }
 $dist  = Join-Path $root 'dist'
 $stage = Join-Path $dist "stage-$Version$flavour"
@@ -79,8 +84,9 @@ if ($SharedInputCandidate) {
     $inputShim = Join-Path $root 'lib/input-shim'
     $candidate = Get-Content -LiteralPath (Join-Path $inputShim 'CANDIDATE.json') -Raw | ConvertFrom-Json
     if ($candidate.schema -ne 1) { throw 'Unsupported shared-input candidate record' }
-    foreach ($part in @(@('dbce_shim.dll', $candidate.shimSha256), @('native/WheelFfb.dll', $candidate.nativeSha256))) {
-        if ((Get-FileHash -LiteralPath (Join-Path $inputShim $part[0]) -Algorithm SHA256).Hash -cne $part[1]) { throw "Shared-input candidate hash mismatch: $($part[0])" }
+    $SharedInputShim = [IO.Path]::GetFullPath($SharedInputShim)
+    foreach ($part in @(@($SharedInputShim, $candidate.shimSha256), @((Join-Path $inputShim 'native/WheelFfb.dll'), $candidate.nativeSha256))) {
+        if ((Get-FileHash -LiteralPath $part[0] -Algorithm SHA256).Hash -cne $part[1]) { throw "Shared-input candidate hash mismatch: $($part[0])" }
     }
     # The mod refuses any other shim build, so the package must carry exactly the one it pins.
     $startup = Get-Content -LiteralPath (Join-Path $root 'src/ArtOfSimRally.Mod/SharedInputStartup.cs') -Raw
@@ -116,7 +122,7 @@ Copy-Item (Join-Path $bin 'Dbce.TripleScreen.Protocol.dll') $modDir
 Copy-Item (Join-Path $root 'src\ArtOfSimRally.Mod\Info.json') $modDir
 $nativeSource = if ($candidate) { Join-Path $root 'lib\input-shim\native\WheelFfb.dll' } else { Join-Path $toolkit 'native\WheelFfb.dll' }
 Copy-Item $nativeSource (Join-Path $modDir 'UnityForceFeedback.dll')   # the file name the mod P/Invokes
-if ($candidate) { Copy-Item (Join-Path $root 'lib\input-shim\dbce_shim.dll') $modDir }
+if ($candidate) { Copy-Item -LiteralPath $SharedInputShim -Destination (Join-Path $modDir 'dbce_shim.dll') }
 Copy-Item (Join-Path $root 'LICENSE') $stage
 Copy-Item (Join-Path $root 'tools\installer\Install.bat')   $stage
 Copy-Item (Join-Path $root 'tools\installer\Uninstall.bat') $stage
