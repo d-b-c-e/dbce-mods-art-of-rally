@@ -1,6 +1,8 @@
 namespace ArtOfSimRally.Mod
 {
     internal static class FfbController { public static void Reset() { } }
+    // FfbNative asks the diagnostic probe for a log path (a03fb51); no probe runs in these fixtures.
+    internal static class ShimStartup { internal static string NativeLogPath => null; }
     internal static class ModLog
     {
         public static void Info(string message) { }
