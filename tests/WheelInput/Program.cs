@@ -250,6 +250,10 @@ static class Program
             {
                 OrdinaryFallback(); Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
             }
+            if (args.Contains("--keyboard-steering-only"))
+            {
+                KeyboardSteering(); Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
+            }
             if (args.Contains("--latched-menu-only"))
             {
                 LatchedMenu(); Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
@@ -379,6 +383,13 @@ static class Program
         Clock.frameCount++; float t = 0, b = 0, s = 0, h = 0, c = 0; bool e = false;
         ArtOfSimRally.Mod.Shim.ShimInput.TryOverride(new AxisCarController(), ref t, ref b, ref s, ref h, ref c, ref e);
         Check(h == 0f, "Art's handbrake button reached the car during latched delivery");
+        // Keyboard steering (sana 35373) is ordinary input only: a latched session never asks and never keeps it.
+        Rewired.ReInput.isReady = true; Rewired.Player.KeyboardAction = "Horizontal"; int queries = Rewired.Player.Queries;
+        Clock.frameCount++; s = .9f;
+        ArtOfSimRally.Mod.Shim.ShimInput.TryOverride(new AxisCarController(), ref t, ref b, ref s, ref h, ref c, ref e);
+        var last = ArtOfSimRally.Mod.Shim.ShimInput.Last;
+        Check(s == 0f && Rewired.Player.Queries == queries && last.Keyboard == ArtOfSimRally.Mod.Shim.KeyboardSteer.NotQueried && !last.KeyboardSteered,
+            "latched delivery asked for or kept keyboard steering: " + s + " " + last.Keyboard);
         WheelInput.Close();
     }
     // The opt-in ordinary startup: every preflight refusal keeps Art's bindings, qualification waits for
@@ -766,6 +777,63 @@ static class Program
         Check(consumer.Terminal && WheelInput.SharedKeyboardRetained, "transport stop not reached");
         Same(v.Clutch, .1f, "Art fallback applied after the shared session stopped");
         Same(v.Throttle, .3f, "keyboard lost after a transport-only stop");
+        WheelInput.Close();
+    }
+    // sana 35373: Art's keyboard map contributing to the car's own steering action keeps the game's steer value
+    // over a resting off-centre shared wheel, through the production GetInput postfix; release returns to the
+    // wheel at once. A failed query keeps the wheel and is recorded Unknown, not Absent. Lost isolation never asks.
+    static void KeyboardSteering()
+    {
+        const ArtOfSimRally.Mod.Shim.ShimStatus L = ArtOfSimRally.Mod.Shim.ShimStatus.Live;
+        var id = new Guid("d71b8350-61b7-11f1-8001-444553540000");
+        Setup(""); Device.Devices[0].InstanceGuid = id; WheelInput.Close(); WheelInput.Open();
+        Clock.frameCount = 71000; WheelInput.Update();
+        string profile = "[Controls]\nSchema = 1\nProfile = Keyboard\nsteer = axis 0 dev={" + id.ToString("D") + "} range=0..65535 rest=32768 travel=+1\n";
+        float wheel = .25f; bool isolation = true; // the wheel resting off centre without force
+        var native = new ActionNative { AxesOwned = new[] { 0 }, Script = () => new[] { (0, L, wheel) } };
+        WheelInput.AttachSharedInput(new BridgeTests.Source(), native, () => isolation, () => true, "Sequential", profile);
+        Rewired.ReInput.isReady = true; Rewired.Player.KeyboardAction = null; Rewired.Player.QueryFault = false;
+        var patch = typeof(WheelInputPatch).GetMethod("Override", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+        // The game's own steer value (Art: its deadzoned Rewired axis plus alignment), then the production postfix.
+        float Car(float game, float alignment = .02f, string axis = "Horizontal")
+        {
+            var car = new AxisCarController { SteeringOutOfAlignmentEffect = alignment, steerAxis = axis };
+            object[] a = { car, 0f, 0f, game, 0f, 0f, false };
+            patch.Invoke(null, a); return (float)a[3];
+        }
+        void Frame() { Clock.frameCount++; WheelInput.EnsureUpdatedThisFrame(); }
+        void State(ArtOfSimRally.Mod.Shim.KeyboardSteer expected, bool kept, string why)
+        {
+            var last = ArtOfSimRally.Mod.Shim.ShimInput.Last;
+            Check(last.Frame == Clock.frameCount && last.Keyboard == expected && last.KeyboardSteered == kept, why + ": " + last.Keyboard + " kept=" + last.KeyboardSteered);
+        }
+        const ArtOfSimRally.Mod.Shim.KeyboardSteer Present = ArtOfSimRally.Mod.Shim.KeyboardSteer.Present, Absent = ArtOfSimRally.Mod.Shim.KeyboardSteer.Absent,
+            Unknown = ArtOfSimRally.Mod.Shim.KeyboardSteer.Unknown, NotQueried = ArtOfSimRally.Mod.Shim.KeyboardSteer.NotQueried;
+        Frame(); Frame();
+        Check(ArtOfSimRally.Mod.Shim.ShimInput.Consumer.Owns(0), "fixture steer ownership");
+        Frame(); Same(Car(.02f), .27f, "resting wheel lost without keyboard"); State(Absent, false, "no keyboard source");
+        Rewired.Player.KeyboardAction = "Horizontal";
+        Frame(); Same(Car(1.02f), 1.02f, "keyboard right lost to the resting wheel"); State(Present, true, "keyboard right");
+        Frame(); Same(Car(-.98f), -.98f, "keyboard left lost to the resting wheel"); State(Present, true, "keyboard left");
+        wheel = -.3f; Frame(); Same(Car(1.02f), 1.02f, "keyboard lost to a wheel resting the other way");
+        Rewired.Player.KeyboardAction = null;
+        Frame(); Same(Car(.02f), -.28f, "release did not return to the wheel at once"); State(Absent, false, "released");
+        // A reported source with zero composed steer stays zero: not the wheel, and alignment is not added again.
+        Rewired.Player.KeyboardAction = "Horizontal";
+        Frame(); Same(Car(0f, 0f), 0f, "zero keyboard steer replaced by the wheel"); State(Present, true, "zero keyboard steer");
+        Frame(); Same(Car(.02f), .02f, "alignment applied twice under keyboard steering");
+        // Only the car's own steering action counts.
+        Frame(); Same(Car(1.02f, .02f, "SteerOther"), -.28f, "keyboard on another action kept"); State(Absent, false, "other action");
+        // A failed query keeps the wheel, recorded as Unknown rather than Absent.
+        Rewired.Player.QueryFault = true;
+        Frame(); Same(Car(1.02f), -.28f, "failed query kept the game's steer"); State(Unknown, false, "query fault");
+        Rewired.Player.QueryFault = false; Rewired.ReInput.isReady = false;
+        Frame(); Same(Car(1.02f), -.28f, "unready Rewired kept the game's steer"); State(Unknown, false, "Rewired not ready");
+        Rewired.ReInput.isReady = true;
+        // Lost isolation: Rewired is never asked and the game's mixed value is never kept.
+        int queries = Rewired.Player.Queries; isolation = false;
+        Frame(); Same(Car(1.02f), 0f, "lost isolation kept the game's mixed steer"); State(NotQueried, false, "lost isolation");
+        Check(Rewired.Player.Queries == queries, "keyboard queried without isolation");
         WheelInput.Close();
     }
     static void SharedActionChannels()

@@ -9,6 +9,11 @@ namespace ArtOfSimRally.Mod.Shim
         internal bool StartEngine;
     }
 
+    // Whether Art's own keyboard map contributed to the car's steering action this frame (Rewired
+    // IsCurrentInputSource, sana 35373). Unknown is a failed query, distinct from an observed Absent;
+    // NotQueried is a frame that never asks (latched, or isolation not proven).
+    internal enum KeyboardSteer { NotQueried, Unknown, Absent, Present }
+
     // The game's normalized shared-action sink. It never reads devices or files,
     // resolves bindings, changes settings, emits forces or rewrites a capture.
     internal sealed class ShimAxisConsumer
@@ -132,8 +137,13 @@ namespace ArtOfSimRally.Mod.Shim
             Refuse("shared input stopped; restart required");
         }
 
-        internal bool Compose(int unityFrame, bool independentNativeInput, float steeringAlignment, ref DrivingValues game)
+        // The last Compose kept the game's own steering because Art's keyboard map contributed to it.
+        internal bool KeyboardSteered { get; private set; }
+
+        internal bool Compose(int unityFrame, bool independentNativeInput, float steeringAlignment, ref DrivingValues game,
+            KeyboardSteer keyboard = KeyboardSteer.NotQueried)
         {
+            KeyboardSteered = false;
             if (!Started) return false;
             if (Thread.CurrentThread.ManagedThreadId != ownerThread) throw new InvalidOperationException("shim compose called on another thread");
             // A prior frame cannot prove isolation this frame. Clear suspect game
@@ -142,7 +152,11 @@ namespace ArtOfSimRally.Mod.Shim
             // A latched Core session suppresses native input: its injected actions are the only input.
             if (!independentNativeInput || current.SuppressNative) game = default(DrivingValues);
             float steer = fresh && Delivered(0) ? current[0].Applied : 0f;
-            if (steer != 0f) game.Steer = steer + steeringAlignment;
+            // Keyboard steering this frame keeps the game's value unchanged: it already carries Art's alignment
+            // once. Only with this frame's isolation proof and never in a latched session; a failed or absent
+            // query keeps the wheel's priority.
+            if (keyboard == KeyboardSteer.Present && independentNativeInput && !current.SuppressNative) KeyboardSteered = true;
+            else if (steer != 0f) game.Steer = steer + steeringAlignment;
             // At exact centre preserve Art's physical steering-alignment effect
             // when the shim owns steering and no independent steering is active.
             else if (fresh && Delivered(0) && current[0].Status == ShimStatus.Live && game.Steer == 0f)

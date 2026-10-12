@@ -20,6 +20,8 @@ namespace ArtOfSimRally.Mod.Shim
             internal float AppliedSteer, AppliedThrottle, AppliedBrake, AppliedHandbrake, Alignment;
             internal float Steer, Throttle, Brake, Handbrake;
             internal float AppliedClutch, Clutch;
+            internal KeyboardSteer Keyboard;
+            internal bool KeyboardSteered;
         }
         internal static Composition Last;
 
@@ -40,16 +42,19 @@ namespace ArtOfSimRally.Mod.Shim
             WheelInput.EnsureSharedFrame();
             var values = new DrivingValues { Throttle = throttle, Brake = brake, Steer = steer,
                 Handbrake = handbrake, Clutch = clutch, StartEngine = startEngine };
-            Consumer.Compose(Time.frameCount, IsolatedFrame == Time.frameCount,
-                car.SteeringOutOfAlignmentEffect, ref values);
+            int frame = Time.frameCount;
+            bool isolated = IsolatedFrame == frame;
+            // Ordinary input only: a latched session or a frame without isolation proof never asks.
+            var keyboard = isolated && !Consumer.LatchedDelivery(frame) ? KeyboardSteering.Query(car.steerAxis) : KeyboardSteer.NotQueried;
+            Consumer.Compose(frame, isolated, car.SteeringOutOfAlignmentEffect, ref values, keyboard);
             // Art-only: the handbrake button keeps Art's binding on this frame's shared copy.
             // A latched session's injected actions stay the only input.
-            if (!Consumer.LatchedDelivery(Time.frameCount))
+            if (!Consumer.LatchedDelivery(frame))
                 values.Handbrake = Mathf.Max(values.Handbrake, WheelInput.ArtOnlyValue(WheelInput.Channel.HandbrakeButton));
             throttle = values.Throttle; brake = values.Brake; steer = values.Steer;
             handbrake = values.Handbrake; clutch = values.Clutch; startEngine = values.StartEngine;
-            int frame = Time.frameCount;
             Last = new Composition { Frame = frame, SteerLive = Consumer.Live(0, frame), Alignment = car.SteeringOutOfAlignmentEffect,
+                Keyboard = keyboard, KeyboardSteered = Consumer.KeyboardSteered,
                 AppliedSteer = Consumer.Applied(0, frame), AppliedThrottle = Consumer.Applied(1, frame), AppliedBrake = Consumer.Applied(2, frame), AppliedHandbrake = Consumer.Applied(4, frame),
                 Steer = steer, Throttle = throttle, Brake = brake, Handbrake = handbrake, AppliedClutch = Consumer.Applied(3, frame), Clutch = clutch };
             return true;

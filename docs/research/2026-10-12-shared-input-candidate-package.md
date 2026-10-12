@@ -380,8 +380,13 @@ later" (`6bfac99`). The dormant diagnostic path is unchanged. Local only; not in
 2. **Physical qualification needs the owner.** Wheel, pedals and keyboard through an
    ordinary session were shown only with scripted Rewired values. Force feedback together
    with the shared profile has never run.
-3. **Keyboard steering needs a centred wheel.** Without force the wheel rests off centre,
-   so steering stays the wheel's (07:01 run).
+3. **Keyboard steering needs a centred wheel in rc.16.** Without force the wheel rests off
+   centre, so steering stays the wheel's (07:01 run). A source rule after rc.16, under
+   review, keeps Art's own steer value while Rewired reports the keyboard as a current
+   source of the car's `steerAxis` (`Player.IsCurrentInputSource(..., Keyboard)`), with
+   this frame's isolation proven and outside latched sessions. It has fixture evidence only:
+   - Rewired's real detection, and what two opposing held keys report, are runtime-unknown;
+   - proving them needs an attended key press, or other genuine native input.
 4. **Clutch and H-pattern are shown only with latched stimuli.** No physical pedal or
    shifter, and no unlatched session, has carried them. Gates 2 and 4 to 8 in range, and
    reverse precedence on a shared gate, have fixture evidence only.
