@@ -66,6 +66,9 @@ try {
     $result = Run 'shared-input-startup' 'dotnet' @('run','--project','tests/WheelInput/WheelInput.csproj','-c','Release','--','--shared-startup-only')
     $sharedStartup = $result | Select-Object -Last 1 | ConvertFrom-Json
     Assert ($sharedStartup.status -eq 'passed' -and $sharedStartup.assertions -gt 0) 'Shared input startup runner ran no assertions'
+    $result = Run 'shared-input-lifecycle' 'dotnet' @('run','--project','tests/WheelInput/WheelInput.csproj','-c','Release','--','--shared-lifecycle-only')
+    $sharedLifecycle = $result | Select-Object -Last 1 | ConvertFrom-Json
+    Assert ($sharedLifecycle.status -eq 'passed' -and $sharedLifecycle.assertions -gt 0) 'Shared input lifecycle runner ran no assertions'
     $result = Run 'shim-axis-consumer' 'dotnet' @('run','--project','tests/ShimInput/ShimInput.csproj','-f','net8.0','-c','Release')
     $shimInput = $result | Select-Object -Last 1 | ConvertFrom-Json
     Assert ($shimInput.status -eq 'passed' -and $shimInput.assertions -gt 0) 'Shared input consumer runner ran no assertions'

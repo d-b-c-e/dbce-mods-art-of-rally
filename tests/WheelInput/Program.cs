@@ -234,6 +234,10 @@ static class Program
             {
                 SharedStartupPaths(); Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
             }
+            if (args.Contains("--shared-lifecycle-only"))
+            {
+                SharedLifecycle(); Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
+            }
             if (args.Contains("--shim-latched-only"))
             {
                 SharedLatchedSuppression(); Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
@@ -334,6 +338,8 @@ static class Program
     {
         const ArtOfSimRally.Mod.Shim.ShimStatus L = ArtOfSimRally.Mod.Shim.ShimStatus.Live;
         Setup(""); GameButtonCompatibility.Allowed = true;
+        // Art's handbrake button is pressed on the same copied read; a latched trial must not pass it.
+        Host.Settings.HandbrakeButtonBinding = "TSS fixture|0|button:0|0|1"; WheelInput.LoadBindings();
         Clock.frameCount = 9500; WheelInput.Update();
         var source = new BridgeTests.Source(); float down = 0;
         var native = new ActionNative { Latched = true, Script = () => new[] { (9, L, 1f), (13, L, 0f), (14, L, down) } };
@@ -352,6 +358,9 @@ static class Program
         Check(Query(PadManager.Player, "GetNegativeButtonDown", 13, false) && Query(PadManager.Player, "GetNegativeButton", 13, false), "injected navDown missing from vertical");
         Check(AxisQuery(13, 0f) == -1f, "injected navDown missing from the vertical axis");
         Check(!Query(PadManager.Player, "GetButtonDown", 16, false), "confirm progressed during the trial");
+        Clock.frameCount++; float t = 0, b = 0, s = 0, h = 0, c = 0; bool e = false;
+        ArtOfSimRally.Mod.Shim.ShimInput.TryOverride(new AxisCarController(), ref t, ref b, ref s, ref h, ref c, ref e);
+        Check(h == 0f, "Art's handbrake button reached the car during latched delivery");
         WheelInput.Close();
     }
     // The opt-in ordinary startup: every preflight refusal keeps Art's bindings, qualification waits for
@@ -368,6 +377,8 @@ static class Program
         string profile = "[Controls]\nSchema = 1\nProfile = Startup\nRevision = r1\nTransmission = Sequential\nsteer = axis 0 dev={d71b8350-61b7-11f1-8001-444553540000} prod={0006346e-0000-0000-0000-504944564944} range=0..65535 rest=32768 travel=+1\n";
         string Text() => string.Join(" | ", SharedInputStartup.Lines());
         Setup(""); Clock.frameCount = 12000; WheelInput.Update();
+        // Shared input alone: Art's assigned controls Off and no shortcut bindings.
+        Host.Settings.WheelInputEnabled = false;
         Host.Settings.SharedInput = false; SharedInputStartup.Prepare(mod);
         Check(!SharedInputStartup.Active && !SharedInputStartup.RequestedAtStartup && Text().Contains("is off"), "off: " + Text());
         Host.Settings.SharedInput = true;
@@ -385,6 +396,8 @@ static class Program
         GameState.IsDriving = false; Rewired.ReInput.isReady = false; SharedInputStartup.Tick();
         Check(SharedInputStartup.Active && Text().Contains("waiting") && Rewired.ReInput.Subscribers == 0 && !Directory.Exists(SharedInputStartup.RunRoot), "qualified while driving or before Rewired was ready");
         // Real Core opens, then the missing WheelFfb owner refuses: everything is released.
+        Clock.frameCount++; WheelInput.EnsureUpdatedThisFrame();
+        Check(WheelInput.SharedProbeSlots.Length > 0, "readers closed for shared input without Art bindings");
         Rewired.ReInput.isReady = true; FfbNative.RequestedPath = "";
         Host.Settings.ShifterEnabled = true; Host.Settings.ShifterDeviceIndex = 0; Host.Settings.ShifterDeviceName = Device.Devices[0].Name; Host.Settings.ShifterDeviceGuid = "";
         SharedInputStartup.Tick();
@@ -395,6 +408,142 @@ static class Program
         SharedInputStartup.Tick(); Check(!SharedInputStartup.Active && !ArtOfSimRally.Mod.Shim.ShimInput.Consumer.Started, "refused session retried or attached");
         WheelInput.Close();
     }
+    // The hardware-facing qualification steps, scripted; everything else is the production startup,
+    // reader, bridge and consumer code driven in the watchdog's order.
+    sealed class FakeQualification : ArtOfSimRally.Mod.Shim.ISharedQualification
+    {
+        internal readonly BridgeTests.Source Src = new BridgeTests.Source();
+        internal readonly ActionNative Core;
+        internal bool Isolated = true; internal string Neutral; internal int RestoreFailures, Restores, Closes;
+        internal FakeQualification(ActionNative core) { Core = core; }
+        public void Begin(string shimPath, string runFolder, byte[] exactProfile) { }
+        public string ProfileName => "Lifecycle";
+        public string Transmission => "Sequential";
+        public string[] DeviceNames => new[] { "TSS fixture" };
+        public void Isolate() { }
+        public bool VerifyIsolation() => Isolated;
+        public bool IsolationOverdue(int frame) => false;
+        public string IsolationStatus => RestorePending ? "one or more joystick flags could not be restored" : "native joystick flags restored";
+        public string NeutralFailure() => Neutral;
+        public ArtOfSimRally.Mod.Shim.IPhysicalSnapshotSource Source => Src;
+        public ArtOfSimRally.Mod.Shim.IShimBridge Bridge => Core;
+        public bool RestoreIsolation() { Restores++; return true; }
+        public string Close() { Closes++; Core.Stop(); return RetryRestore() ? null : IsolationStatus; }
+        public bool RestorePending { get; private set; }
+        public bool RetryRestore() { Restores++; RestorePending = RestoreFailures-- > 0; return !RestorePending; }
+        public void EndObservation() { }
+    }
+    // romi 28533: shared input alone (no Art bindings or shortcuts), force ownership settling before the
+    // attach, Art editors refused except Art-only buttons, a later force reconnect stopping the session
+    // truthfully without reattach, and a failed joystick restore kept and retried instead of handed back.
+    static void SharedLifecycle()
+    {
+        const ArtOfSimRally.Mod.Shim.ShimStatus L = ArtOfSimRally.Mod.Shim.ShimStatus.Live;
+        string dll = Environment.GetEnvironmentVariable("ART_SHIM_DLL") ?? @"E:\Source\games\.worktrees\art-shim-probe-evidence\apply-20261012-021108\dbce_shim.dll";
+        Check(File.Exists(dll), "candidate dbce_shim.dll unavailable for the lifecycle test: " + dll);
+        var mod = Path.Combine(Path.GetTempPath(), "art-shared-lifecycle-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(mod);
+        File.Copy(dll, Path.Combine(mod, SharedInputStartup.ShimFileName));
+        File.WriteAllText(Path.Combine(mod, SharedInputStartup.ProfileFileName), "[Controls]\nSchema = 1\nProfile = Lifecycle\n");
+        SharedInputStartup.RunRoot = Path.Combine(mod, "runs");
+        string Text() => string.Join(" | ", SharedInputStartup.Lines());
+        float confirm = 0, steer = 0;
+        var core = new ActionNative { Script = () => new[] { (0, L, steer), (9, L, confirm) } };
+        FakeQualification fake = null; int sessions = 0; bool settled = true;
+        SharedInputStartup.NewSession = inventory => { sessions++; return fake = new FakeQualification(core) { RestoreFailures = nextFailures, Neutral = nextNeutral, Isolated = nextIsolated }; };
+        SharedInputStartup.ForceSettled = () => settled;
+        // ModWatchdog.Update order: startup tick, then the frame's reader maintenance.
+        void Frame() { Clock.frameCount++; SharedInputStartup.Tick(); WheelInput.EnsureUpdatedThisFrame(); }
+        void Start() { Setup(""); Host.Settings.WheelInputEnabled = false; Host.Settings.SharedInput = true; Host.Settings.ShifterEnabled = true; Host.Settings.ShifterDeviceIndex = 0; Host.Settings.ShifterDeviceName = Device.Devices[0].Name; Host.Settings.ShifterDeviceGuid = ""; Shifter.Close(); Rewired.ReInput.isReady = true; SharedInputStartup.Prepare(mod); }
+        Clock.frameCount = 20000;
+
+        // (4) A failed joystick restore keeps the session and never claims Art's bindings are back.
+        nextNeutral = "unqualified: raw axes unavailable or nonzero after disable"; nextFailures = 3;
+        Start(); Frame();
+        Check(sessions == 1 && fake.Closes == 1 && fake.RestorePending, "cleanup failure not retained");
+        Check(Text().Contains("still off") && Text().Contains("retrying") && !Text().Contains("Art bindings are used"), "cleanup failure claimed a handback: " + Text());
+        Check(SharedInputStartup.HoldsShifter && !Shifter.IsOpen && !SharedInputStartup.Active, "Art shifter reopened before the joystick restore");
+        GameState.IsDriving = true; int restores = fake.Restores;
+        for (int i = 0; i < 200; i++) Frame();
+        Check(fake.Restores == restores, "restore retried while driving");
+        GameState.IsDriving = false; Frame();
+        Check(fake.Restores == restores + 1 && Text().Contains("still off"), "restore not retried in the menus: " + Text());
+        for (int i = 0; i < 59; i++) Frame();
+        Check(fake.Restores == restores + 1, "restore retried every frame");
+        for (int i = 0; i < 121; i++) Frame();
+        Check(!fake.RestorePending && Text().Contains("Art bindings are used") && Text().Contains("restored on retry 3"), "restored session not released: " + Text());
+        Check(!SharedInputStartup.HoldsShifter && Shifter.IsOpen, "Art shifter not handed back after the restore");
+        // Exhausted: stays explicit and stops retrying.
+        nextFailures = 1000; Start(); Frame();
+        for (int i = 0; i < 61 * 12; i++) Frame();
+        Check(fake.Restores == 1 + SharedInputStartup.RestoreRetries && Text().Contains("restart the game") && !Shifter.IsOpen, "exhausted restore not explicit or still retrying: " + Text());
+
+        // (1) Shared alone: no Art bindings or shortcuts, yet the readers open and stay open for it.
+        nextNeutral = null; nextFailures = 0; nextIsolated = false; settled = false; sessions = 0;
+        int Runs() => Directory.Exists(SharedInputStartup.RunRoot) ? Directory.GetDirectories(SharedInputStartup.RunRoot).Length : 0;
+        Start(); Device.Devices[0].InstanceGuid = new Guid("d71b8350-61b7-11f1-8001-444553540000");
+        WheelInput.Close(); Clock.realtimeSinceStartup += 6; int runs = Runs();
+        for (int i = 0; i < 5; i++) Frame();
+        Check(WheelInput.SharedProbeSlots.Length > 0 && WheelInput.Enabled, "readers closed or never opened for shared input alone");
+        // (3) Force ownership settles first: nothing is acquired while a reconnect is pending.
+        Check(sessions == 0 && Text().Contains("force feedback") && Runs() == runs, "qualified before force feedback settled: " + Text());
+        settled = true; Frame();
+        Check(sessions == 1 && SharedInputStartup.Qualifying && WheelInput.SharedReadersPinned, "isolation phase not entered");
+        // Pinned readers: no discovery reopen, and no Art edit may reopen them.
+        int opens = Device.Opens; Device.ReadOk = false; Clock.realtimeSinceStartup += 6; Frame(); Device.ReadOk = true; Clock.realtimeSinceStartup += 6; Frame();
+        Check(Device.Opens == opens && SharedInputStartup.Qualifying, "pinned readers reopened during isolation");
+        WheelInput.BeginCalibration(WheelInput.Channel.HandbrakeButton);
+        Check(!WheelInput.Assigning.HasValue && WheelInput.Status == WheelInput.SharedDeviceChange && Device.Opens == opens, "Art-only edit reopened pinned readers");
+        fake.Isolated = true; Frame(); Frame();
+        var consumer = ArtOfSimRally.Mod.Shim.ShimInput.Consumer;
+        Check(consumer.Started && Text().Contains("drives the wheel") && Text().Contains(ArtOfSimRally.Mod.Shim.SharedInputStatus.Editors), "attach after settle failed: " + Text());
+        confirm = 1; steer = .5f; Frame();
+        Check(WheelInput.GameButton(WheelInput.Channel.Confirm, false), "shared confirm missing with Art bindings off");
+        float t = 0, b = 0, s = 0, h = 0, c = 0; bool e = false;
+        Check(ArtOfSimRally.Mod.Shim.ShimInput.TryOverride(new AxisCarController(), ref t, ref b, ref s, ref h, ref c, ref e) && Math.Abs(s - .5f) < .001f, "shared steering missing with Art bindings off");
+        confirm = 0; steer = 0; Frame();
+
+        // (2) Editors: shared-set controls refuse every edit; Art-only buttons bind on the shared copy.
+        Host.Settings.ConfirmBinding = "TSS fixture|0|button:1|0|1"; WheelInput.LoadBindings();
+        WheelInput.BeginCalibration(WheelInput.Channel.Confirm);
+        Check(!WheelInput.Assigning.HasValue && WheelInput.Status == WheelInput.SharedEditsRefused, "shared-owned control editable");
+        Check(!WheelInput.Clear(WheelInput.Channel.Confirm) && Host.Settings.ConfirmBinding != "" && !WheelInput.Clear(WheelInput.Channel.Steer), "shared-owned control cleared");
+        Check(WheelInput.SharedEditorText(WheelInput.Channel.Confirm) == "Set by the shared profile." && WheelInput.SharedEditorText(WheelInput.Channel.Back).Contains("game's own controls"), "editor replacement text wrong");
+        opens = Device.Opens; int reads = Device.Reads, coreReads = fake.Src.Reads;
+        fake.Src.Pressed = -1; Frame();
+        WheelInput.BeginCalibration(WheelInput.Channel.HandbrakeButton);
+        Check(WheelInput.Assigning == WheelInput.Channel.HandbrakeButton && Device.Opens == opens && Device.Reads == reads && fake.Src.Reads == coreReads + 1, "Art-only bind reopened or read outside the shared copy");
+        fake.Src.Pressed = 3; Frame(); fake.Src.Pressed = -1; Frame();
+        Check(WheelInput.SaveCalibration() && Host.Settings.HandbrakeButtonBinding.Contains("button:3"), "Art-only button not bound from the shared copy: " + Host.Settings.HandbrakeButtonBinding);
+        Check(Device.Opens == opens && Device.Reads == reads, "Art-only bind touched the readers");
+        // The handbrake button applies beside the shared profile (with assigned controls On).
+        Host.Settings.WheelInputEnabled = true; fake.Src.Pressed = 3; Clock.frameCount++; h = 0;
+        ArtOfSimRally.Mod.Shim.ShimInput.TryOverride(new AxisCarController(), ref t, ref b, ref s, ref h, ref c, ref e);
+        Check(h == 1f, "Art-only handbrake button ignored beside the shared profile");
+        fake.Src.Pressed = -1; Clock.frameCount++; h = 0;
+        ArtOfSimRally.Mod.Shim.ShimInput.TryOverride(new AxisCarController(), ref t, ref b, ref s, ref h, ref c, ref e);
+        Check(h == 0f, "released handbrake button held");
+        Frame();
+        // A device change is refused rather than reopening the shared readers.
+        Host.Settings.CameraButtonBindings = new string[11]; Host.Settings.CameraButtonBindings[0] = "Other wheel|5|button:1|0|1"; WheelInput.LoadBindings();
+        WheelInput.BeginCalibration(WheelInput.Channel.HandbrakeButton);
+        Check(!WheelInput.Assigning.HasValue && WheelInput.Status == WheelInput.SharedDeviceChange && Device.Opens == opens, "device change reopened the shared readers");
+        Check(WheelInput.Clear(WheelInput.Channel.CameraUp) && Host.Settings.CameraButtonBindings[0] == "", "Art-only camera button could not be cleared");
+
+        // (3) A later force reconnect (Main.RecoverForceFeedback's reader handoff) stops the session for good.
+        int restoresBefore = fake.Restores, ticks = core.Ticks;
+        WheelInput.ReleaseForForceReconnect(); WheelInput.ReopenAfterForceReconnect();
+        for (int i = 0; i < 5; i++) Frame();
+        Check(Text().Contains("Shared input stopped: " + WheelInput.ForceReconnectStop) && Text().Contains("until the game restarts"), "reconnect stop not stated: " + Text());
+        Check(sessions == 1 && core.Ticks == ticks && fake.Restores == restoresBefore + 1, "session reattached, kept ticking or skipped its restore");
+        Check(WheelInput.SharedProbeSlots.Length > 0 && !WheelInput.GameButton(WheelInput.Channel.Confirm, false), "readers not reopened or stopped session not neutral");
+        // Neutral driving, even for the game's own (keyboard) values; nothing falls back.
+        confirm = 1; steer = 1; fake.Src.Pressed = 3; Clock.frameCount++; s = h = t = .3f;
+        ArtOfSimRally.Mod.Shim.ShimInput.TryOverride(new AxisCarController(), ref t, ref b, ref s, ref h, ref c, ref e);
+        Check(s == 0 && h == 0 && t == 0, "stopped session drove the car or passed native input");
+        Check(WheelInput.DeviceReadHealth(Guid.NewGuid().ToString()) == null && SharedInputStartup.HoldsShifter, "stopped session reported a read failure or released the shifter");
+        WheelInput.Close();
+    }
+    static string nextNeutral; static int nextFailures; static bool nextIsolated = true;
     static void SharedActionChannels()
     {
         const ArtOfSimRally.Mod.Shim.ShimStatus L = ArtOfSimRally.Mod.Shim.ShimStatus.Live;

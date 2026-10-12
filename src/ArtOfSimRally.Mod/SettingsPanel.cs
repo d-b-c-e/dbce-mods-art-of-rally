@@ -184,7 +184,13 @@ namespace ArtOfSimRally.Mod
             Axis(c, WheelInput.Channel.NavLeft, "Navigate left"); Axis(c, WheelInput.Channel.NavRight, "Navigate right");
             Help("Buttons and hat directions use the same saved bindings as Wheelkit. Release after focus or device changes. Game keyboard and controller bindings remain available.");
             _shifter = Disclosure(_shifter, "shifter bindings");
-            if (_shifter)
+            if (_shifter && SharedInputStartup.HoldsShifter)
+            {
+                Help(SharedInputStartup.Active ? "Gears come from the shared profile; Art's separate shifter stays closed. Turn the shared profile off and restart to use it."
+                    : "Art's separate shifter stays closed until the game's own wheel input is restored.");
+                if (!c.ShifterIsHPattern) c.SkipNeutral = Toggle(c.SkipNeutral, "Skip neutral");
+            }
+            else if (_shifter)
             {
                 c.ShifterEnabled = Toggle(c.ShifterEnabled, "Separate shifter");
                 if (c.ShifterEnabled) Panel.DrawShifterBinding(c);
@@ -226,6 +232,9 @@ namespace ArtOfSimRally.Mod
         }
         private static void Axis(Settings c, WheelInput.Channel channel, string label)
         {
+            // A shared profile may set this control: no Art editor, which could reopen its readers.
+            if (WheelInput.SharedReadersRequired && !WheelInput.SharedArtOnly(channel))
+            { BeginCard(label); Help(WheelInput.SharedEditorText(channel)); EndCard(); return; }
             BeginCard(label + (WheelInput.IsBound(channel) ? " · Device input: " + InputText(channel) : ""));
             Binding(c, channel, label, false);
             EndCard();

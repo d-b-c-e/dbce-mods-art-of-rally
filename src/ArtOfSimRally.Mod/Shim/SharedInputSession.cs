@@ -4,11 +4,33 @@ using UnityEngine;
 
 namespace ArtOfSimRally.Mod.Shim
 {
+    // What the opt-in startup needs from a qualification session. Production uses SharedInputSession;
+    // lifecycle fixtures replace only these hardware-facing steps.
+    internal interface ISharedQualification
+    {
+        void Begin(string shimPath, string runFolder, byte[] exactProfile);
+        string ProfileName { get; }
+        string Transmission { get; }
+        string[] DeviceNames { get; }
+        void Isolate();
+        bool VerifyIsolation();
+        bool IsolationOverdue(int frame);
+        string IsolationStatus { get; }
+        string NeutralFailure();
+        IPhysicalSnapshotSource Source { get; }
+        IShimBridge Bridge { get; }
+        bool RestoreIsolation();
+        string Close();
+        bool RestorePending { get; }
+        bool RetryRestore();
+        void EndObservation();
+    }
+
     // The qualified copied-provider attach sequence, shared by the diagnostic probe and the opt-in
     // ordinary backend: Core's profile identities, metadata-only pins of Art's owned read slots (no
     // second physical read), the exact path/product join with Rewired, the identity lease and
     // exact-object isolation. Callers decide what each refusal means; nothing here publishes a frame.
-    internal sealed class SharedInputSession
+    internal sealed class SharedInputSession : ISharedQualification
     {
         internal readonly RewiredInputIsolation Inventory;
         internal ShimBridgeNative Native { get; private set; }
@@ -57,11 +79,37 @@ namespace ArtOfSimRally.Mod.Shim
             lease = new ProbeIdentityLease(Before, RewiredInstances, EpochBefore);
         }
 
-        internal void Isolate() { Isolation = new NativeInputIsolation(RewiredInstances, Inventory); beganFrame = Time.frameCount; }
-        internal bool IsolationOverdue(int frame) => frame > beganFrame + 5;
+        void ISharedQualification.Begin(string shimPath, string runFolder, byte[] exactProfile) => Begin(shimPath, runFolder, exactProfile);
+        public string ProfileName => Native.ProfileValue("profile");
+        public string Transmission => Native.Transmission();
+        IPhysicalSnapshotSource ISharedQualification.Source => Source;
+        public IShimBridge Bridge => Native;
+        public string IsolationStatus => Isolation?.Status;
+        public bool RestoreIsolation() => Isolation.Restore();
+        // Names of the Rewired devices this session isolates, for the status text.
+        public string[] DeviceNames
+        {
+            get
+            {
+                var names = new List<string>();
+                foreach (var row in Before)
+                    if (Array.IndexOf(RewiredInstances, Guid.Parse(row.Instance)) >= 0) names.Add(String.IsNullOrEmpty(row.Name) ? row.Instance : row.Name);
+                return names.ToArray();
+            }
+        }
+        // The disabled objects' cached values must already read neutral before any frame is published.
+        public string NeutralFailure()
+        {
+            var check = new ProbeReceipt { Before = Before, Disabled = ProbeObservation.Capture(Inventory) };
+            ProbeObservation.CompareDisabled(check, RewiredInstances);
+            return check.FlagsDisabled && check.RawAxesNeutralAfterDisable ? null : check.RawAxisQualification;
+        }
+
+        public void Isolate() { Isolation = new NativeInputIsolation(RewiredInstances, Inventory); beganFrame = Time.frameCount; }
+        public bool IsolationOverdue(int frame) => frame > beganFrame + 5;
 
         // Every use re-proves the pinned readers, the identity lease and the exact isolated objects.
-        internal bool VerifyIsolation()
+        public bool VerifyIsolation()
         {
             Source.VerifyPinned(WheelInput.SharedProbeSlots);
             var observed = ProbeObservation.Capture(Inventory);
@@ -84,15 +132,24 @@ namespace ArtOfSimRally.Mod.Shim
         }
 
         // Releases a session that never attached: Core stop, flags this session changed, observation.
-        internal string Close()
+        // A failed restore leaves RestorePending set: the caller keeps the session and retries it.
+        public string Close()
         {
             string failure = null;
             try { Native?.Stop(); } catch (Exception ex) { failure = "stop failed: " + ex.Message; }
-            try { if (Isolation != null && !Isolation.Restore()) failure = (failure == null ? "" : failure + "; ") + Isolation.Status; }
-            catch (Exception ex) { failure = (failure == null ? "" : failure + "; ") + "restore failed: " + ex.Message; }
+            try { if (Isolation != null && !Isolation.Restore()) { RestorePending = true; failure = (failure == null ? "" : failure + "; ") + Isolation.Status; } }
+            catch (Exception ex) { RestorePending = true; failure = (failure == null ? "" : failure + "; ") + "restore failed: " + ex.Message; }
             EndObservation();
             return failure;
         }
-        internal void EndObservation() { if (observing) { observing = false; Inventory.EndIdentityObservation(); } }
+        public bool RestorePending { get; private set; }
+        // Only the flags this session wrote and could not yet re-enable are retried.
+        public bool RetryRestore()
+        {
+            if (!RestorePending) return true;
+            try { RestorePending = !Isolation.Restore(); } catch { RestorePending = true; }
+            return !RestorePending;
+        }
+        public void EndObservation() { if (observing) { observing = false; Inventory.EndIdentityObservation(); } }
     }
 }

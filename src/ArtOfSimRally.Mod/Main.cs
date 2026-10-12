@@ -66,6 +66,7 @@ namespace ArtOfSimRally.Mod
             if (!ShimStartup.Prepare(modEntry.Path)) return false;
             if (!ShimStartup.Requested) InputBackend.OnLoad();
             SharedInputStartup.Prepare(modEntry.Path); // opt-in shared profile: files only, before any shifter reader opens
+            SharedInputStartup.ForceSettled = () => !ForceReconnect.Pending;
             if (SettingsMigration.NeedsHandbrakeSplit(Settings))
             {
                 try
@@ -125,7 +126,7 @@ namespace ArtOfSimRally.Mod
             Enabled = true;
 
             // A shared profile owns the shifter; Art's own reader never opens alongside it.
-            if (!ShimStartup.Requested && !SharedInputStartup.Active && Settings.ShifterEnabled && Settings.ShifterDeviceIndex >= 0)
+            if (!ShimStartup.Requested && !SharedInputStartup.HoldsShifter && Settings.ShifterEnabled && Settings.ShifterDeviceIndex >= 0)
                 Shifter.Open(Settings.ShifterDeviceIndex);
 
             // Releases the wheel and parks telemetry when the game stops driving
@@ -201,7 +202,8 @@ namespace ArtOfSimRally.Mod
 
         internal static void RecoverForceFeedback()
         {
-            if (ShimStartup.Requested) return;
+            // Shared qualification has pinned the readers for a few frames; recover after it settles.
+            if (ShimStartup.Requested || SharedInputStartup.Qualifying) return;
             // USB topology changes can invalidate the shared exclusive handle
             // while native Ready stays true. Reopening reader slots alone keeps
             // referring to that handle. Use the existing focused/idle, strict-
@@ -227,7 +229,7 @@ namespace ArtOfSimRally.Mod
             }
             // Reader slots may share the old FFB handle. Reopen them after the
             // device switch, and release nonexclusive readers before acquiring FFB.
-            WheelInput.Close();
+            WheelInput.ReleaseForForceReconnect();
             Shifter.Close();
             try
             {
@@ -239,8 +241,8 @@ namespace ArtOfSimRally.Mod
             catch (Exception ex) { ModLog.Warning("FFB recovery failed: " + ex.Message); }
             finally
             {
-                if (Enabled && Settings.WheelInputEnabled) WheelInput.Open();
-                if (Enabled && !SharedInputStartup.Active && Settings.ShifterEnabled && Settings.ShifterDeviceIndex >= 0)
+                if (Enabled) WheelInput.ReopenAfterForceReconnect();
+                if (Enabled && !SharedInputStartup.HoldsShifter && Settings.ShifterEnabled && Settings.ShifterDeviceIndex >= 0)
                     Shifter.Open(Settings.ShifterDeviceIndex);
             }
         }

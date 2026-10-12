@@ -97,6 +97,11 @@ namespace ArtOfSimRally.Mod
         public static void Tick() { }
         public static void Shutdown() { }
     }
+    internal static class SharedInputStartup
+    {
+        public static void Tick() { }
+        public static void Shutdown() { }
+    }
     internal static class Main
     {
         public static Settings Settings = new Settings(); public static bool Enabled=true, OtherCameraModLoaded=false;

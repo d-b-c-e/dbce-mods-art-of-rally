@@ -149,3 +149,43 @@ profile, missing/wrong/empty DLL and profile refusals, no qualification while
 driving or before Rewired is ready, real Core opened then refused without a WheelFfb
 owner: host stopped, no leaked Rewired subscription, shifter handed back, no retry).
 Mutants removing the cleanup, the shifter hand-back or the driving gate each fail.
+
+## Startup lifecycle fixes (romi 28533, source)
+
+- Shared input alone works: while the shared profile is pending or attached,
+  Art's readers stay open as its only physical source even with Use assigned
+  controls Off and no shortcut bindings (`WheelInput.SharedReadersRequired`).
+  Previously Ready waited forever because `UpdateCore` closed the readers.
+- Editors (F6): controls the shared profile may set show a read-only line ("Set
+  by the shared profile", or what applies when the profile does not map them)
+  instead of Bind/Calibrate/Clear; `BeginAssign`/`Clear` refuse them too. Art-only
+  channels (handbrake button, camera tuning buttons) stay editable, binding from
+  the shared copy with no reader reopen and no second read; a device change is
+  refused with "Device changes need a restart". The separate-shifter editor and
+  the FFB device picker/Refresh are replaced with the same restart statement.
+- The handbrake button really keeps Art's binding beside a started shared
+  session (it was skipped before), except during latched delivery.
+- Ordering: qualification waits for force feedback's startup acquisition or any
+  pending reconnect (`!ForceReconnect.Pending`), so the attach is never closed
+  straight away. While the session has pinned the readers (isolation, a few
+  frames) neither discovery nor force recovery may reopen them. A later force
+  reconnect stops the attached session for good with the stated cause "a force
+  feedback reconnect closed the wheel readers"; nothing reattaches, readers reopen
+  neutral, and read health reports unknown rather than a failure.
+- After any stop, driving input (wheel and keyboard alike) stays neutral until
+  restart; menus still take the keyboard. The previous text claimed the keyboard
+  was unaffected, which was false for driving.
+- Cleanup failure: if the joystick restore fails, the session is kept
+  (`CleanupFailed`), Art's shifter stays closed, the panel says the game's own
+  input is still off, and the restore is retried in the menus about once a second
+  up to 10 times (then "restart the game"). Only a complete cleanup hands Art's
+  bindings and shifter back.
+
+Tests: `tests/WheelInput --shared-lifecycle-only` 33 drive the production
+startup, reader, bridge and consumer code in the watchdog's order with only the
+hardware-facing session scripted (`ISharedQualification`); `--shared-startup-only`
+14 now runs with Art's assigned controls Off against the real qualified DLL;
+`--shim-latched-only` 10; `tests/ShimInput` 570 (net8 and Unity Mono). 23 mutants
+(each fix removed or weakened) all fail. Also fixed: `tests/Lifecycle` stubs
+(broken by 54f687a), and the reasoned close is not an overload of `Close`, which
+the dev recorder looks up by name.

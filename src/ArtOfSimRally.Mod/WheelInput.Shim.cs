@@ -79,6 +79,8 @@ namespace ArtOfSimRally.Mod
                 d.Ok = false; Array.Clear(d.Axes, 0, d.Axes.Length); Array.Clear(d.Buttons, 0, d.Buttons.Length);
                 for (int i = 0; i < d.Hats.Length; i++) d.Hats[i] = -1;
             }
+            // Stopped for good: neutral, with no further isolation checks or Core ticks.
+            if (sharedInput.Stopped) return true;
             try
             {
                 if (!verifyNativeIsolation()) { sharedInput.Stop("native input isolation lost"); return true; }
@@ -100,10 +102,42 @@ namespace ArtOfSimRally.Mod
             return true;
         }
 
-        private static void StopSharedInput()
+        // Force feedback reconnect: reader slots may share the old FFB handle, so every reader closes
+        // first. An attached shared session stops for good with this stated cause; it never reattaches.
+        internal const string ForceReconnectStop = "a force feedback reconnect closed the wheel readers";
+        internal static void ReleaseForForceReconnect() => CloseReaders(ForceReconnectStop);
+        internal static void ReopenAfterForceReconnect() { if (Enabled) Open(); }
+
+        // Art-only buttons beside a started shared session, from this frame's shared copy (no second read).
+        internal static float ArtOnlyValue(Channel c)
+        {
+            var cfg = Main.Settings;
+            if (cfg == null || !SharedArtOnly(c) || (!cfg.WheelInputEnabled && !IsShortcut(c)) || !_bindings.TryGetValue(c, out var b)) return 0f;
+            EnsureSharedFrame();
+            var d = Resolve(b);
+            if (d == null || !d.Ok) return 0f;
+            if (b.IsHat) return b.HatPressed(d.Hats[b.Element]) ? 1f : 0f;
+            return b.IsButton && b.Element < ButtonCount && d.Buttons[b.Element] != 0 ? 1f : 0f;
+        }
+
+        // What Art's settings show in place of an editor for a control the shared profile may set.
+        internal static string SharedEditorText(Channel c)
+        {
+            if (!ShimInput.Consumer.Started) return "Set by the shared profile once it is in use.";
+            int action = c <= Channel.Handbrake ? (int)c : SharedActions.TryGetValue(c, out int mapped) ? mapped : -1;
+            if (action >= 0 && ShimInput.Consumer.Owns(action)) return "Set by the shared profile.";
+            // An unmapped axis is left to the game; an unmapped button keeps Art's binding on the shared copy.
+            if (c > Channel.Handbrake && IsBound(c) && (IsShortcut(c) || (Main.Settings != null && Main.Settings.WheelInputEnabled)))
+                return "Not in the shared profile; Art's saved binding applies: " + Describe(c) + ".";
+            return "Not in the shared profile; the game's own controls apply.";
+        }
+
+        // Why the shared session stopped (first cause only), for a truthful status after any later close.
+        internal static string SharedStopReason => sharedInput?.Failure;
+        private static void StopSharedInput(string reason = "Art reader closed")
         {
             if (sharedInput == null) return;
-            try { sharedInput.Stop("Art reader closed"); } catch (Exception ex) { ModLog.Error("Shared input stop: " + ex.Message); }
+            try { sharedInput.Stop(reason); } catch (Exception ex) { ModLog.Error("Shared input stop: " + ex.Message); }
             try
             {
                 if (restoreNativeInput != null)

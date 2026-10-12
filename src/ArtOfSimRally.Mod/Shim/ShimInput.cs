@@ -30,6 +30,10 @@ namespace ArtOfSimRally.Mod.Shim
                 Handbrake = handbrake, Clutch = clutch, StartEngine = startEngine };
             Consumer.Compose(Time.frameCount, IsolatedFrame == Time.frameCount,
                 car.SteeringOutOfAlignmentEffect, ref values);
+            // Art-only: the handbrake button keeps Art's binding on this frame's shared copy.
+            // A latched session's injected actions stay the only input.
+            if (!Consumer.LatchedDelivery(Time.frameCount))
+                values.Handbrake = Mathf.Max(values.Handbrake, WheelInput.ArtOnlyValue(WheelInput.Channel.HandbrakeButton));
             throttle = values.Throttle; brake = values.Brake; steer = values.Steer;
             handbrake = values.Handbrake; clutch = values.Clutch; startEngine = values.StartEngine;
             return true;

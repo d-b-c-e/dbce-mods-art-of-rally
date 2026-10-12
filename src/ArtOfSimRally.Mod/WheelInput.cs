@@ -111,6 +111,8 @@ namespace ArtOfSimRally.Mod
         internal static bool? DeviceReadHealth(string guid)
         {
             if (!_open || !Guid.TryParse(guid, out var identity) || identity == Guid.Empty) return null;
+            // A stopped shared session keeps every reader neutral on purpose: health is unknown, not failed.
+            if (sharedInput != null && sharedInput.Stopped) return null;
             foreach (var device in _devices)
                 if (device.InstanceGuid == identity) return device.Ok;
             return false;
@@ -126,7 +128,15 @@ namespace ArtOfSimRally.Mod
             }
         }
 
-        public static bool Enabled => Main.Enabled && Main.Settings != null && Main.Settings.WheelInputEnabled;
+        // Set by the opt-in shared profile while it is pending or attached: Art's readers stay open as its
+        // only physical source even when Art's own assigned controls are off, and Art binding edits
+        // (which can close and reopen every reader) are refused.
+        internal static bool SharedReadersRequired { get; set; }
+        // While the shared session has pinned the readers' identities, nothing may reopen them.
+        internal static bool SharedReadersPinned { get; set; }
+        // Channels with no shared action: their Art bindings and editors stay in use beside a shared profile.
+        internal static bool SharedArtOnly(Channel c) => c == Channel.HandbrakeButton || IsCameraButton(c);
+        public static bool Enabled => Main.Enabled && Main.Settings != null && (Main.Settings.WheelInputEnabled || SharedReadersRequired);
         public static bool IsBound(Channel c) => _bindings.ContainsKey(c);
         public static float Value(Channel c) => _values.TryGetValue(c, out float v) ? v : 0f;
         public static string Describe(Channel c)
@@ -246,9 +256,12 @@ namespace ArtOfSimRally.Mod
             }
         }
 
-        public static void Close()
+        public static void Close() => CloseReaders("Art's wheel readers were closed");
+        // The reason is kept as the shared session's truthful stop cause; it never reattaches. Not an
+        // overload of Close: test tooling looks that method up by name.
+        private static void CloseReaders(string reason)
         {
-            StopSharedInput();
+            StopSharedInput(reason);
             try { if (_devices.Count > 0 || _open) WheelFfbNative.CloseRead(); } catch { }
             _devices.Clear();
             _catalog = new WheelFfbNative.DeviceInfo[0];
@@ -298,12 +311,12 @@ namespace ArtOfSimRally.Mod
         {
             var cfg = Main.Settings;
             if (cfg == null) return;
-            if ((!cfg.WheelInputEnabled && !HasShortcutBindings && !_assigning.HasValue) || !Main.Enabled)
+            if ((!cfg.WheelInputEnabled && !HasShortcutBindings && !_assigning.HasValue && !SharedReadersRequired) || !Main.Enabled)
             {
-                if (_open || _devices.Count > 0) Close();
+                if (_open || _devices.Count > 0) CloseReaders(Main.Enabled ? "Art's wheel readers were closed" : "the mod was disabled");
                 return;
             }
-            bool mayDiscover = sharedInput == null && !GameState.IsDriving && !_assigning.HasValue;
+            bool mayDiscover = sharedInput == null && !SharedReadersPinned && !GameState.IsDriving && !_assigning.HasValue;
             if (_open && mayDiscover && Time.realtimeSinceStartup >= _nextOpenRetry && NeedsRefresh())
                 Close();
             if (!_open)
@@ -457,22 +470,33 @@ namespace ArtOfSimRally.Mod
         public static void BeginAssign(Channel c)
         {
             if (ShimStartup.Requested) { Status = "Assignments are disabled during the shared-input probe."; return; }
+            if (SharedReadersRequired && !SharedArtOnly(c)) { Status = SharedEditsRefused; return; }
             if (GameState.IsDriving) { Status = "Pause before assigning a wheel input."; return; }
-            // Keep healthy readers alive during a routine rebind. Closing and
-            // reopening every device can lose a reader that was already showing
-            // valid input, especially on separate USB wheels/pedals/levers.
-            // Still refresh when the attached-device list changed so a newly
-            // plugged-in unbound device can be assigned without restarting.
-            var attached = WheelFfbNative.ListAllDevices();
-            // The wrapper reports an enumeration error as an empty list. Keep
-            // still-responsive readers rather than dropping them on that error.
-            if (!_open || NeedsRefresh() || (attached.Length > 0 && CatalogChanged(attached)))
-            { Close(); Open(); }
+            if (SharedReadersRequired)
+            {
+                // The shared profile's readers stay exactly as they are: no reopen and no second read.
+                if (!_open || SharedReadersPinned || NeedsRefresh()) { Status = SharedDeviceChange; return; }
+            }
+            else
+            {
+                // Keep healthy readers alive during a routine rebind. Closing and
+                // reopening every device can lose a reader that was already showing
+                // valid input, especially on separate USB wheels/pedals/levers.
+                // Still refresh when the attached-device list changed so a newly
+                // plugged-in unbound device can be assigned without restarting.
+                var attached = WheelFfbNative.ListAllDevices();
+                // The wrapper reports an enumeration error as an empty list. Keep
+                // still-responsive readers rather than dropping them on that error.
+                if (!_open || NeedsRefresh() || (attached.Length > 0 && CatalogChanged(attached)))
+                { Close(); Open(); }
+            }
             if (!_open) return;
             foreach (var d in _devices)
             {
                 d.HasAssignBaseline = false;
-                try { d.HasAssignBaseline = WheelPovInput.Read(d.Slot, d.Axes, d.Buttons, d.Hats); } catch { }
+                // Attached: the baseline is this frame's shared copy.
+                if (sharedInput != null) d.HasAssignBaseline = d.Ok;
+                else try { d.HasAssignBaseline = WheelPovInput.Read(d.Slot, d.Axes, d.Buttons, d.Hats); } catch { }
                 if (d.HasAssignBaseline)
                 {
                     Array.Copy(d.Axes, d.BaseAxes, AxisCount);
@@ -514,8 +538,11 @@ namespace ArtOfSimRally.Mod
             ModLog.Info("Wheel input: " + c + " flipped to " + b);
         }
 
+        internal const string SharedEditsRefused = "The shared Wheelkit profile sets this control. Turn the shared profile off and restart to edit Art's binding.";
+        internal const string SharedDeviceChange = "Device changes need a restart while the shared Wheelkit profile is in use.";
         public static bool Clear(Channel c)
         {
+            if (SharedReadersRequired && !SharedArtOnly(c)) { Status = SharedEditsRefused; return false; }
             var cfg = Main.Settings;
             if (cfg == null) return false;
             string previous = Setting(cfg, c);

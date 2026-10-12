@@ -13,7 +13,7 @@ internal static class BridgeTests
     {
         [DllImport("kernel32.dll")] private static extern bool QueryPerformanceCounter(out long value);
         [DllImport("kernel32.dll")] private static extern bool QueryPerformanceFrequency(out long value);
-        internal int Descriptions, Reads, Raw = 32768, Result = 1;
+        internal int Descriptions, Reads, Raw = 32768, Result = 1, Pressed = 0;
         internal ulong Generation = 7, Sequence;
         internal byte[] Last;
         public int Describe(int slot, byte[] bytes)
@@ -31,7 +31,7 @@ internal static class BridgeTests
             if (!QueryPerformanceCounter(out tick) || !QueryPerformanceFrequency(out frequency)) throw new Exception("QPC unavailable");
             long us = tick / frequency * 1000000 + tick % frequency * 1000000 / frequency;
             BitConverter.GetBytes(us).CopyTo(bytes, 24); BitConverter.GetBytes(us).CopyTo(bytes, 32);
-            bytes[50] = 1; BitConverter.GetBytes(Raw).CopyTo(bytes, 52); bytes[84] = 0x80;
+            bytes[50] = 1; BitConverter.GetBytes(Raw).CopyTo(bytes, 52); if (Pressed >= 0) bytes[84 + Pressed] = 0x80;
             for (int i = 212; i < 228; i++) bytes[i] = 0xff;
             Last = (byte[])bytes.Clone(); return Result;
         }
