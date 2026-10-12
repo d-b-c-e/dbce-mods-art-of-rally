@@ -17,7 +17,10 @@ param([Parameter(Mandatory)][string]$GameCopy,
       # Copy-only Settings.xml with ForceFeedbackEnabled=false, so the mod never initialises a force device. Required
       # for a native without the DBCE_FFB_MUTE load-time latch (the native-0.9.1 read-snapshot port 44E46799). The
       # owner file is only read; every force tuning value is left as it is.
-      [switch]$ForceFeedbackOff)
+      [switch]$ForceFeedbackOff,
+      # Copy-only: start from this Settings.xml (for example Wheelkit's Apply output, romi 33299) instead of the owner's.
+      # It must already select SharedInput. The owner file is still pinned and checked unchanged.
+      [string]$SettingsSource)
 $ErrorActionPreference = 'Stop'
 function Full([string]$p) { [IO.Path]::GetFullPath($p).TrimEnd('\') }
 function Hash([string]$p) { (Get-FileHash -LiteralPath $p -Algorithm SHA256).Hash }
@@ -62,7 +65,9 @@ if ($Recorder) {
     foreach ($p in $recorderSources) { Copy-Item -LiteralPath $p -Destination (Join-Path $recorderDir ([IO.Path]::GetFileName($p))) }
 }
 # The owner's exact settings with only SharedInput turned on (the owner file is read, never written).
-[xml]$settings = Get-Content -LiteralPath $ownerSettings -Raw
+$settingsFrom = if ($SettingsSource) { Full $SettingsSource } else { $ownerSettings }
+[xml]$settings = Get-Content -LiteralPath $settingsFrom -Raw
+if ($SettingsSource -and $settings.DocumentElement.SharedInput -ne 'true') { throw 'The settings source does not select SharedInput.' }
 $node = $settings.DocumentElement.SelectSingleNode('SharedInput')
 if (-not $node) { $node = $settings.CreateElement('SharedInput'); $null = $settings.DocumentElement.AppendChild($node) }
 $node.InnerText = 'true'
@@ -77,6 +82,7 @@ $staged = [ordered]@{
     schema = 1; kind = 'shared-input-ordinary'; utc = [DateTime]::UtcNow.ToString('o'); sourceCommit = $commit; recorder = [bool]$Recorder
     forceFeedbackOff = [bool]$ForceFeedbackOff; nativeSha256 = $ExpectedNativeSha256
     gameCopy = $GameCopy; sourceGame = $SourceGame; ownerSettingsSha256 = Hash $ownerSettings
+    settingsSource = $settingsFrom; settingsSourceSha256 = Hash $settingsFrom
     files = [ordered]@{}
 }
 foreach ($n in $payload + @('Info.json', 'UnityForceFeedback.dll', 'dbce_shim.dll', 'dbce-controls.ini', 'Settings.xml')) { $staged.files["Mods/ArtOfSimRally/$n"] = Hash (Join-Path $mod $n) }
