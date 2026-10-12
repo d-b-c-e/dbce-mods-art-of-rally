@@ -93,7 +93,69 @@ internal static class BridgeTests
     internal static int Actual(string dll)
     {
         checks = 0;
-        ActualOne(dll, false); ActualOne(dll, true); ActualActions(dll); return checks;
+        ActualOne(dll, false); ActualOne(dll, true); ActualActions(dll); LatchedBridgeRefused(dll); return checks;
+    }
+    // Run only against a shim whose copied-provider bridge admits latched control sessions.
+    internal static int ActualLatchedSession(string dll) { checks = 0; ActualLatched(dll); return checks; }
+    // Extension 1 (574bb88) refuses every open flag on the copied-provider bridge until its control
+    // provenance is versioned. Pin that refusal so admitting it is a reviewed change, not a surprise.
+    private static void LatchedBridgeRefused(string dll)
+    {
+        string folder = Path.Combine(Path.GetTempPath(), "art-copied-latch-gate-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(folder);
+        string profile = "[Controls]\nSchema = 1\nProfile = Gate\nRevision = r1\nTransmission = Sequential\nsteer = axis 0 dev={d71b8350-61b7-11f1-8001-444553540000} prod={0006346e-0000-0000-0000-504944564944} range=0..65535 rest=32768 travel=+1\n";
+        string why = "";
+        try
+        {
+            new ShimBridgeNative(dll, folder, System.Text.Encoding.UTF8.GetBytes(profile), new ShimBridgeNative.LatchedSession {
+                Nonce = Guid.NewGuid().ToString("N"), SessionFile = Path.Combine(folder, "s.txt"), BatchFile = Path.Combine(folder, "b.txt"), FencesVerified = true, ForceAbsent = true });
+        }
+        catch (InvalidOperationException e) { why = e.Message; }
+        Check(why.Contains("bridge control/capture provenance is not qualified"), "latched bridge open was admitted or refused differently: " + why);
+    }
+    // The real Core latched control session over the copied provider: admission, an action-level
+    // injection resolved through the applied profile with Injected provenance, native suppression,
+    // the probe's delivery mask, and end → Completed.
+    private static void ActualLatched(string dll)
+    {
+        string folder = Path.Combine(Path.GetTempPath(), "art-copied-latched-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(folder);
+        string session = Path.Combine(folder, "shim-session.txt"), batch = Path.Combine(folder, "shim-batch.txt"), nonce = Guid.NewGuid().ToString("N");
+        File.WriteAllText(session, "nonce=" + nonce + "\nexpires=" + (DateTimeOffset.UtcNow.ToUnixTimeSeconds() + 600) + "\n");
+        string r12 = " dev={d71b8350-61b7-11f1-8001-444553540000} prod={0006346e-0000-0000-0000-504944564944}";
+        string profile = "[Controls]\nSchema = 1\nProfile = Trial\nRevision = r1\nTransmission = Sequential\n" +
+            "steer = axis 0" + r12 + " range=0..65535 rest=32768 travel=+1\nconfirm = button 31" + r12 + "\nnavUp = hat 0 0" + r12 + "\nnavDown = hat 0 18000" + r12 + "\n";
+        var native = new ShimBridgeNative(dll, folder, System.Text.Encoding.UTF8.GetBytes(profile),
+            new ShimBridgeNative.LatchedSession { Nonce = nonce, SessionFile = session, BatchFile = batch, FencesVerified = true, ForceAbsent = true });
+        Check(native.Latched, "latched open not recorded");
+        var sink = new ShimAxisConsumer { AcceptLatched = true }; sink.DeliverOnly(13, 14);
+        var source = new DeviceSource(); source.Buttons[0][31] = true; // a physical confirm held throughout
+        var bridge = new ShimBridge(source, native, sink, new[] { 0 }); int frame = 0;
+        void Step() { Check(bridge.ReadFrame(++frame, (slot, bytes) => { }), "latched frame: " + bridge.Failure); Thread.Sleep(5); }
+        bool Until(Func<bool> condition) { for (int i = 0; i < 600 && !condition(); i++) Step(); return condition(); }
+        try
+        {
+            Check(Until(() => sink.Started && sink.OriginalFrame.Run == 2), "latched session never admitted (Waiting): run " + (sink.Started ? sink.OriginalFrame.Run.ToString() : "-"));
+            Check(sink.LatchedDelivery(frame) && sink.OriginalFrame.Latched && sink.OriginalFrame.SuppressNative, "latched frame flags");
+            Check(!sink.Live(9, frame) && sink.Value(9, frame) == 0, "masked physical confirm delivered");
+            File.WriteAllText(batch, "nonce=" + nonce + "\nbatch=1\ninject action navDown 1 ms=300\n");
+            Check(Until(() => sink.Injected(14, frame)), "action-level navDown never injected: run " + sink.OriginalFrame.Run + " navDown " + sink.OriginalFrame[14].Status);
+            Check(sink.OriginalFrame.Run == 3 && sink.Value(14, frame) == 1f && !sink.Live(13, frame) || sink.Value(13, frame) == 0f, "injected navDown not Running/Live");
+            Check(!sink.Live(9, frame), "masked confirm delivered while injecting");
+            var game = new DrivingValues { Steer = .9f, Throttle = .95f }; sink.Compose(frame, true, 0, ref game);
+            Check(game.Throttle == 0 && Math.Abs(game.Steer) < .00001f, "latched session kept native/keyboard driving input");
+            Check(Until(() => sink.Started && !sink.Injected(14, frame) && sink.Value(14, frame) == 0f), "injected navDown never released");
+            File.WriteAllText(batch, "nonce=" + nonce + "\nbatch=2\nend\n");
+            Check(Until(() => sink.OriginalFrame.Run == 4), "end batch did not complete the session: run " + sink.OriginalFrame.Run);
+        }
+        finally { bridge.Stop("latched qualification complete"); }
+        Check(File.ReadAllText(Path.Combine(folder, "host-shutdown.json")).Contains("\"state\":\"resolved\""), "latched bridge stop did not resolve");
+        // An ordinary consumer refuses latched frames, and a latched consumer refuses ordinary ones.
+        var ordinary = new ShimAxisConsumer(); string why;
+        var latchedBytes = new byte[ShimFrame.Size]; BitConverter.GetBytes(ShimFrame.Size).CopyTo(latchedBytes, 0); latchedBytes[4] = 2; latchedBytes[8] = 1; latchedBytes[40] = 2; latchedBytes[41] = 1; latchedBytes[42] = 1;
+        Check(!ordinary.Publish(latchedBytes, 1, out why) && ordinary.Terminal, "ordinary consumer accepted a latched frame");
+        var strict = new ShimAxisConsumer { AcceptLatched = true }; var plainBytes = (byte[])latchedBytes.Clone(); plainBytes[40] = plainBytes[41] = plainBytes[42] = 0;
+        Check(!strict.Publish(plainBytes, 1, out why) && strict.Terminal, "latched consumer accepted an ordinary frame");
+        bool fixedAtOpen = false; try { strict.AcceptLatched = false; } catch (InvalidOperationException) { fixedAtOpen = true; }
+        Check(fixedAtOpen, "latched acceptance changed after open");
     }
     // Two owned devices with independently scripted buttons and hats (R12 slot 0, DS-8X slot 1).
     private sealed class DeviceSource : IPhysicalSnapshotSource, IPhysicalSnapshotPathSource

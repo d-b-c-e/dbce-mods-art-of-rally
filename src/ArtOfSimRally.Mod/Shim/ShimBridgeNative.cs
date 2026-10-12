@@ -38,8 +38,20 @@ namespace ArtOfSimRally.Mod.Shim
         private readonly StopCall stop;
         private readonly ReportsCall reports, profileInfo;
         private readonly int owner = System.Threading.Thread.CurrentThread.ManagedThreadId;
-        internal ShimBridgeNative(string dllPath, string runFolder, byte[] exactProfile)
+        // A latched Core control session (DBCE_SHIM_LATCHED). Core refuses it unless the opener
+        // verified its fences and the process force latch; its own control worker reads the files.
+        internal sealed class LatchedSession
         {
+            internal string Nonce { get; set; }
+            internal string SessionFile { get; set; }
+            internal string BatchFile { get; set; }
+            internal bool FencesVerified { get; set; }
+            internal bool ForceAbsent { get; set; }
+        }
+        internal bool Latched { get; }
+        internal ShimBridgeNative(string dllPath, string runFolder, byte[] exactProfile, LatchedSession latched = null)
+        {
+            Latched = latched != null;
             if (IntPtr.Size != 8 || exactProfile == null) throw new InvalidOperationException("bridge requires x64 and exact profile bytes");
             IntPtr module = LoadLibraryExW(Path.GetFullPath(dllPath), IntPtr.Zero, 0x100 | 0x1000);
             if (module == IntPtr.Zero) throw new InvalidOperationException("bridge DLL load failed: " + Marshal.GetLastWin32Error());
@@ -59,7 +71,17 @@ namespace ArtOfSimRally.Mod.Shim
                 profileInfo = Export<ReportsCall>(module, "dbce_shim_profile_info");
                 var args = new byte[128]; BitConverter.GetBytes(128).CopyTo(args, 0); BitConverter.GetBytes(exactProfile.Length).CopyTo(args, 8);
                 var folder = Marshal.StringToHGlobalUni(Path.GetFullPath(runFolder)); memory.Add(folder); BitConverter.GetBytes(folder.ToInt64()).CopyTo(args, 16);
-                Put(args, 24, Encoding.UTF8.GetBytes("artbridge1\0"), memory);
+                if (latched != null)
+                {
+                    if (latched.Nonce == null || latched.Nonce.Length < 8 || latched.Nonce.Length > 64 || !System.Text.RegularExpressions.Regex.IsMatch(latched.Nonce, "\\A[A-Za-z0-9]+\\z") ||
+                        String.IsNullOrEmpty(latched.SessionFile) || String.IsNullOrEmpty(latched.BatchFile))
+                        throw new InvalidOperationException("latched session needs a nonce and both control files");
+                    BitConverter.GetBytes(1).CopyTo(args, 4); // DBCE_SHIM_LATCHED
+                    args[12] = (byte)(latched.FencesVerified ? 1 : 0); args[13] = (byte)(latched.ForceAbsent ? 1 : 0);
+                    var session = Marshal.StringToHGlobalUni(Path.GetFullPath(latched.SessionFile)); memory.Add(session); BitConverter.GetBytes(session.ToInt64()).CopyTo(args, 56);
+                    var batch = Marshal.StringToHGlobalUni(Path.GetFullPath(latched.BatchFile)); memory.Add(batch); BitConverter.GetBytes(batch.ToInt64()).CopyTo(args, 64);
+                }
+                Put(args, 24, Encoding.UTF8.GetBytes((latched != null ? latched.Nonce : "artbridge1") + "\0"), memory);
                 Put(args, 32, exactProfile, memory);
                 Put(args, 40, Encoding.UTF8.GetBytes(ShimAxisConsumer.UnsupportedActions + "\0"), memory);
                 Put(args, 104, Encoding.UTF8.GetBytes("art-axis-bridge-source1\0"), memory);

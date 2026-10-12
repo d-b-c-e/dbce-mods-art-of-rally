@@ -78,3 +78,36 @@ pinned profile's exact bindings, and read back the actual game consumers:
 `PanelManager` stack top, and shared action status/value/injected per step.
 Keyboard observations are recorded independently. Gears follow in slice C with a
 parked car.
+
+## Slice B status: latched Core trial prepared, blocked by the bridge gate
+
+The WheelFfb `inject raw` path cannot drive the copied provider: its snapshot read
+is physical-only and refuses while legacy injection is active
+(`read_snapshot_impl.h`, `WHEEL_READ_INJECTION_ACTIVE`), which the bridge treats
+as terminal. The reviewed test path for shim consumers is Core's latched control
+session (session file `nonce=`/`expires=`, batches `nonce=`/`batch=<n>`/commands
+or `end`, `inject action <id> <n> ms=…` resolved through the applied profile,
+`Injected` provenance, `suppress_native` for the whole session, `Waiting →
+Running → Completed`).
+
+Prepared in source and tested offline:
+
+- `ShimBridgeNative` latched open (flags, fences/force bytes, session nonce,
+  UTF-16 session/batch paths).
+- `ShimAxisConsumer.AcceptLatched` (fixed at open; latched sessions require every
+  frame latched, ordinary sessions refuse latched frames), `DeliverOnly` (owned
+  actions outside the mask are never delivered, including sequential edges and
+  axes, and never fall back to Art's bindings), `LatchedDelivery` and `Injected`.
+  `Compose` excludes native/keyboard values while a latched frame suppresses native.
+- Rewired postfixes: during latched delivery the primary player's button, axis and
+  continue queries return only shared values (native keyboard replaced); ordinary
+  sessions still OR shared buttons into native results; other players untouched.
+
+Blocked: `dbce_shim_bridge_open` (art-shim-bridge 574bb88) refuses every open flag
+("bridge control/capture provenance is not qualified"), although `open_impl`
+already supports a latched bridge host. `--bridge` now pins that refusal;
+`--bridge-latched` runs the full actual-Core latched trial (admission, injected
+navDown through the applied profile, masked physical confirm, keyboard
+suppression in `Compose`, `end` → Completed) once a shim admits latched bridge
+sessions. The in-game Trial flow (fences computed from the probe's actual guards,
+scene/driving refusal, selection readback) is deliberately not wired until then.

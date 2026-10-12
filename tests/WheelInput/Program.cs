@@ -230,6 +230,10 @@ static class Program
             {
                 SharedActionChannels(); Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
             }
+            if (args.Contains("--shim-latched-only"))
+            {
+                SharedLatchedSuppression(); Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
+            }
             if (args.Contains("--resume-assignment-only")) AssignmentResume();
             else if (args.Contains("--shifter-only")) assertions+=ShifterIdentityTests.Run();
             else if (args.Contains("--identity-only")) DeviceIdentity();
@@ -284,17 +288,67 @@ static class Program
     sealed class ActionNative : ArtOfSimRally.Mod.Shim.IShimBridge
     {
         internal Func<(int Action, ArtOfSimRally.Mod.Shim.ShimStatus Status, float Value)[]> Script = () => Array.Empty<(int, ArtOfSimRally.Mod.Shim.ShimStatus, float)>();
-        internal int Ticks, Stops;
+        internal int Ticks, Stops; internal bool Latched;
         public bool Devices(byte[] bytes, int count) => true;
         public bool Tick(byte[] samples, int count, byte[] frame)
         {
             Ticks++;
             BitConverter.GetBytes(296).CopyTo(frame, 0); frame[4] = 2; BitConverter.GetBytes((ulong)Ticks).CopyTo(frame, 8); BitConverter.GetBytes((long)Ticks).CopyTo(frame, 16);
             for (int i = 0; i < 31; i++) frame[52 + i * 8] = (byte)(i < 5 ? ArtOfSimRally.Mod.Shim.ShimStatus.Live : ArtOfSimRally.Mod.Shim.ShimStatus.Unbound);
-            foreach (var a in Script()) { BitConverter.GetBytes(a.Value).CopyTo(frame, 48 + a.Action * 8); frame[52 + a.Action * 8] = (byte)a.Status; }
+            foreach (var a in Script()) { BitConverter.GetBytes(a.Value).CopyTo(frame, 48 + a.Action * 8); frame[52 + a.Action * 8] = (byte)a.Status; if (Latched) frame[53 + a.Action * 8] = 1; }
+            if (Latched) { frame[40] = 3; frame[41] = 1; frame[42] = 1; } // Running, latched, native suppressed
             return true;
         }
         public void Stop() => Stops++;
+    }
+    static class RewiredNames
+    {
+        public static bool GetButton(int a) => false; public static bool GetButtonDown(int a) => false;
+        public static bool GetNegativeButton(int a) => false; public static bool GetNegativeButtonDown(int a) => false;
+    }
+    static bool Query(Rewired.Player player, string method, int action, bool native)
+    {
+        object[] args = { player, action, typeof(RewiredNames).GetMethod(method), native };
+        typeof(GameButtonPatch).GetMethod("After", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic).Invoke(null, args);
+        return (bool)args[3];
+    }
+    static float AxisQuery(int action, float native)
+    {
+        object[] args = { PadManager.Player, action, native };
+        typeof(GameButtonAxisPatch).GetMethod("After", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic).Invoke(null, args);
+        return (float)args[2];
+    }
+    static bool ContinueQuery(Rewired.Player player, bool native)
+    {
+        object[] args = { player, native };
+        typeof(GameContinuePatch).GetMethod("After", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic).Invoke(null, args);
+        return (bool)args[1];
+    }
+    // A latched Core trial: injected nav is the only input for the primary player; native keyboard
+    // results are replaced, masked confirm never progresses, other players are untouched.
+    static void SharedLatchedSuppression()
+    {
+        const ArtOfSimRally.Mod.Shim.ShimStatus L = ArtOfSimRally.Mod.Shim.ShimStatus.Live;
+        Setup(""); GameButtonCompatibility.Allowed = true;
+        Clock.frameCount = 9500; WheelInput.Update();
+        var source = new BridgeTests.Source(); float down = 0;
+        var native = new ActionNative { Latched = true, Script = () => new[] { (9, L, 1f), (13, L, 0f), (14, L, down) } };
+        ArtOfSimRally.Mod.Shim.ShimInput.Consumer.AcceptLatched = true; ArtOfSimRally.Mod.Shim.ShimInput.Consumer.DeliverOnly(13, 14);
+        WheelInput.AttachSharedInput(source, native, () => true, () => true);
+        GameButtonInput.Observe(12, 13, 16, 17);
+        void Frame() { Clock.frameCount++; WheelInput.EnsureUpdatedThisFrame(); }
+        Frame(); Frame();
+        Check(ArtOfSimRally.Mod.Shim.ShimInput.Consumer.LatchedDelivery(Clock.frameCount), "latched trial not delivering");
+        Check(!Query(PadManager.Player, "GetButtonDown", 16, true) && !Query(PadManager.Player, "GetButton", 16, true), "native submit or masked confirm reached the game");
+        Check(!Query(PadManager.Player, "GetButton", 13, true), "native vertical (keyboard) kept during latched delivery");
+        Check(!Query(PadManager.Player, "GetButtonDown", 99, true) && !ContinueQuery(PadManager.Player, true), "unmapped/continue native input kept");
+        Check(AxisQuery(13, .7f) == 0f, "native vertical axis kept during latched delivery");
+        Check(Query(new Rewired.Player(), "GetButtonDown", 16, true), "another player's native input suppressed");
+        down = 1; Frame();
+        Check(Query(PadManager.Player, "GetNegativeButtonDown", 13, false) && Query(PadManager.Player, "GetNegativeButton", 13, false), "injected navDown missing from vertical");
+        Check(AxisQuery(13, 0f) == -1f, "injected navDown missing from the vertical axis");
+        Check(!Query(PadManager.Player, "GetButtonDown", 16, false), "confirm progressed during the trial");
+        WheelInput.Close();
     }
     static void SharedActionChannels()
     {

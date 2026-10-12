@@ -185,6 +185,27 @@ internal static class Program
         Check(ShimTransmission.Step(6, 1, false, 6) == null && ShimTransmission.Step(0, -1, false, 6) == null, "out-of-range step clamped");
         Check(ShimTransmission.Step(3, 0, false, 6) == null && ShimTransmission.Step(3, 1, false, -1) == null, "no step or no ratios shifted");
 
+        // Latched Core sessions: accepted only when the opener asked for them; every frame latched;
+        // a delivery mask keeps owned actions undelivered; native input suppressed while latched.
+        byte[] Latched(ulong n, ulong down, params (int Action, ShimStatus Status, float Value)[] a)
+        { var b = Actions(n, down, a); b[40] = 3; b[41] = 1; b[42] = 1; foreach (var x in a) b[48 + x.Action * 8 + 5] = 1; return b; }
+        var ordinary = new ShimAxisConsumer();
+        Check(!ordinary.Publish(Latched(1, 0), 1, out why) && ordinary.Terminal, "ordinary consumer accepted a latched frame");
+        var trial = new ShimAxisConsumer { AcceptLatched = true }; trial.DeliverOnly(13, 14);
+        Check(trial.Publish(Latched(1, 0, (9, L, 1f), (13, L, 0f), (14, L, 1f), (5, L, 0f)), 1, out why), why);
+        Check(trial.LatchedDelivery(1) && trial.Live(14, 1) && trial.Value(14, 1) == 1f && trial.Injected(14, 1), "injected navDown not delivered");
+        Check(trial.Owns(9) && !trial.Live(9, 1) && trial.Value(9, 1) == 0f, "masked confirm delivered (progression)");
+        var suppressed = Keyboard(); trial.Compose(1, true, .05f, ref suppressed);
+        Same(suppressed, default(DrivingValues), "latched session kept keyboard or masked axes");
+        Check(trial.Publish(Latched(2, 1UL << 5, (9, L, 1f), (13, L, 0f), (14, L, 0f), (5, L, 1f)), 2, out why) && trial.TakeShift() == 0, "masked shift edge queued");
+        bool fixedLatch = false, fixedMask = false;
+        try { trial.AcceptLatched = false; } catch (InvalidOperationException) { fixedLatch = true; }
+        try { trial.DeliverOnly(9); } catch (InvalidOperationException) { fixedMask = true; }
+        Check(fixedLatch && fixedMask, "latched acceptance or mask changed after open");
+        Check(!trial.Publish(Actions(3, 0, (9, L, 1f), (13, L, 0f), (14, L, 0f), (5, L, 0f)), 3, out why) && trial.Terminal, "latched consumer accepted an ordinary frame");
+        var plainSession = new ShimAxisConsumer(); Check(plainSession.Publish(Actions(1, 0, (9, L, 1f)), 1, out why), why);
+        Check(!plainSession.LatchedDelivery(1) && plainSession.Live(9, 1), "ordinary session suppressed or masked");
+
         // Transmission policy: the profile's own mode only, never an automatic gearbox, one change per step.
         var S = ShimTransmission.Mode.Sequential; var H = ShimTransmission.Mode.HPattern; var N = ShimTransmission.Mode.None;
         Check(ShimTransmission.ParseMode("Sequential") == S && ShimTransmission.ParseMode("H-pattern") == H && ShimTransmission.ParseMode("Automatic") == N &&
@@ -215,6 +236,7 @@ internal static class Program
             if (args.Length == 2 && args[0] == "--no-force") assertions += AbiProbe.NoForce(args[1]);
             if (args.Length == 2 && args[0] == "--load-muted") assertions += AbiProbe.NoForce(args[1], true);
             if (args.Length == 2 && args[0] == "--bridge") assertions += BridgeTests.Actual(args[1]);
+            if (args.Length == 2 && args[0] == "--bridge-latched") assertions += BridgeTests.ActualLatchedSession(args[1]);
             Console.WriteLine("{\"status\":\"passed\",\"assertions\":" + assertions + "}"); return 0;
         }
         catch (Exception e) { Console.Error.WriteLine(e); return 1; }
