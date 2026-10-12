@@ -355,10 +355,11 @@ pedal, shifter or force was involved.
 
 ## Remaining gaps
 
-1. **Wheelkit's Art writer is not released.** Wheelkit main `a2edcfc` writes Art's
-   profile for the private candidate (v1: no clutch or gates); v2 support is under review.
-   The README and the mod's refusal text still tell the owner to copy a Wheelkit-applied
-   file by hand. Change them once a Wheelkit release with the writer ships.
+1. **The mod's refusal text predates the writer.** Wheelkit 0.6.23 (`b382907`, published
+   2026-10-12) writes Art's profile, with contract v2 support. The candidate README now
+   says to Apply in Wheelkit 0.6.23. The mod's refusal text for a missing profile still
+   says to copy a Wheelkit-applied file by hand; changing it is a runtime change, left for
+   a later build.
 2. **Physical qualification needs the owner.** Wheel, pedals and keyboard through an
    ordinary session were shown only with scripted Rewired values. Force feedback together
    with the shared profile has never run.

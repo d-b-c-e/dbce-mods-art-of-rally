@@ -11,11 +11,13 @@ What is extra in this package:
   are those of your current release.
 
 To try it, with the game closed:
-1. Copy a dbce-controls.ini that Wheelkit applied into Mods\ArtOfSimRally.
-   Wheelkit cannot write this file for art of rally yet. The profile it applied for
-   DRIVE Rally is at BepInEx\config\dbce-controls.ini in that game's folder.
-2. Launch, press F6, open Controls and turn on "Use shared Wheelkit profile
-   (candidate)". Restart the game; the choice applies at startup.
+1. In Wheelkit 0.6.23 or later, select art of rally, review the preview and
+   Apply your profile. Wheelkit writes Mods\ArtOfSimRally\dbce-controls.ini, turns
+   on "Use shared Wheelkit profile (candidate)" and sets the mod's gearbox to match
+   the profile. Your Art bindings are kept, and the preview lists any control it
+   leaves out, with the reason.
+2. Launch the game; the choice applies at startup. To turn the option on or off
+   by hand, press F6, open Controls, change it and restart the game.
 3. Stay in the menus for a moment. The Controls page says which of these happened:
    * Attached: the shared profile drives the wheel and its controls.
    * Not used: it refused before attaching (for example no profile, a different
