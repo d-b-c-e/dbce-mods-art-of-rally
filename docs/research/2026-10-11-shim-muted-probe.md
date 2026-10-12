@@ -53,10 +53,29 @@ paths/products and absent owned readers refuse. Raw-axis API failure does not er
 separate identity/flag facts. It prevents Apply. No owner motion or OS input is
 requested. The probe does not change players, maps, keyboard or mouse.
 
+Art's shipped `Rewired_Windows.dll` (SHA-256
+`4389BCA4D00D68B600972FCD2A0D5A21208517DF7893A6A4602E740D6691417C`)
+returns an empty path and product GUID when `joystick.enabled` is false. Static
+getter inspection confirms that the controller/extension object, persistent
+GUID and `isConnected` remain readable. Consequently the probe admits the full
+exact live path/product join **before** disabling, then retains that explicit
+identity witness only for its own changed, still-disabled object. Every use
+requires the same complete object inventory, extension reference, persistent
+GUID, connected state and connection-event epoch; any connect, pre-disconnect,
+disconnect, initialization or shutdown event permanently invalidates the lease.
+Even a disconnect/reconnect between frames refuses. The owned reader's complete
+144-byte metadata, generation, path and slot set are also rechecked without a
+physical read. Enabled objects always require fresh public path/product values.
+After restoration, another fresh exact join is required (`IdentityRestored`).
+The receipt's disabled path/product fields remain the actual empty getter values;
+the captured witness is explicitly described in `IdentityQualification` and is
+never represented as a live public path read.
+
 Apply is an optional second **diagnostic process** with a prior matching Observe
 receipt. It requires matching Core/RawInput identities and HID paths, exact
 disabled/restored flags and neutral raw axes,
-then repeats the current checks before attaching. A neutral-at-rest receipt is
+then repeats the current checks before attaching. It also requires the Observe
+receipt's fresh restored identity join. A neutral-at-rest receipt is
 accepted while its nonzero cache transition remains explicitly inconclusive.
 It publishes 120 menu frames through the real copied provider and Art sink, then
 stops/restores. After the first accepted frame, failure or completion makes the

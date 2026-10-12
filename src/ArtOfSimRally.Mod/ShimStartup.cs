@@ -17,6 +17,7 @@ namespace ArtOfSimRally.Mod
         private static ShimBridgeNative native;
         private static ExistingWheelSnapshots source;
         private static NativeInputIsolation isolation;
+        private static ProbeIdentityLease identityLease;
         private static readonly RewiredInputIsolation inventory = new RewiredInputIsolation();
         private static bool finished, attached;
         private static int beganFrame, applyFrames;
@@ -75,6 +76,7 @@ namespace ArtOfSimRally.Mod
                 if (isolation == null)
                 {
                     if (!inventory.Ready || WheelInput.SharedProbeSlots.Length == 0) return;
+                    inventory.BeginIdentityObservation(); receipt.IdentityEpochBefore = inventory.ConnectionEpoch;
                     native = new ShimBridgeNative(request.ShimPath, request.Result, File.ReadAllBytes(request.ProfilePath));
                     var expected = native.BoundProducts(); var ids = new Guid[expected.Count]; expected.Keys.CopyTo(ids, 0); receipt.Instances = ids;
                     receipt.Before = ProbeObservation.Capture(inventory);
@@ -98,7 +100,8 @@ namespace ArtOfSimRally.Mod
                     }
                     receipt.OwnedDevices = owned.ToArray();
                     receipt.RewiredInstances = ProbeIdentityMapper.Match(ids, receipt.OwnedDevices, receipt.Before);
-                    receipt.IdentityQualification = "exact owned interface path plus product; GUID namespaces retained separately";
+                    identityLease = new ProbeIdentityLease(receipt.Before, receipt.RewiredInstances, receipt.IdentityEpochBefore);
+                    receipt.IdentityQualification = "exact live owned path/product admission; while disabled use captured identity only with unchanged object, extension, GUID, connected state and event epoch; raw observations remain unmodified";
                     request.ValidateApply(request.Mode == "Apply" ? ProbeRequest.Read<ProbeReceipt>(request.ObserveReceipt) : null, ids, receipt.OwnedDevices, receipt.RewiredInstances);
                     isolation = new NativeInputIsolation(receipt.RewiredInstances, inventory); beganFrame = Time.frameCount;
                 }
@@ -122,9 +125,16 @@ namespace ArtOfSimRally.Mod
         internal static void Shutdown() { if (Requested && !finished && receipt != null) Finish("probe shutdown"); }
         private static bool VerifyIsolation()
         {
-            var current = ProbeIdentityMapper.Match(receipt.Instances, receipt.OwnedDevices, ProbeObservation.Capture(inventory));
+            source.VerifyPinned(WheelInput.SharedProbeSlots);
+            var observed = ProbeObservation.Capture(inventory);
+            var witnessed = identityLease.Verify(observed, inventory.ConnectionEpoch, isolation.OwnsDisabled);
+            var current = ProbeIdentityMapper.Match(receipt.Instances, receipt.OwnedDevices, witnessed);
             if (!new HashSet<Guid>(current).SetEquals(receipt.RewiredInstances)) return false;
-            return isolation.Check(Time.frameCount);
+            bool clean = isolation.Check(Time.frameCount);
+            // A synchronous disable callback can itself signal a connection
+            // change. Reject before publishing even within this same frame.
+            if (inventory.ConnectionEpoch != receipt.IdentityEpochBefore) throw new InvalidOperationException("Rewired connection epoch changed during isolation");
+            return clean;
         }
         private static void Finish(string status)
         {
@@ -141,8 +151,16 @@ namespace ArtOfSimRally.Mod
                 bool restored = isolation != null && isolation.Restore();
                 if (receipt.Before != null) receipt.Restored = ProbeObservation.Capture(inventory);
                 receipt.FlagsRestored = restored && ProbeObservation.Restored(receipt.Before, receipt.Restored);
+                if (receipt.FlagsRestored && identityLease != null)
+                {
+                    source.VerifyPinned(WheelInput.SharedProbeSlots);
+                    var current = identityLease.Verify(receipt.Restored, inventory.ConnectionEpoch, token => false);
+                    receipt.IdentityRestored = new HashSet<Guid>(ProbeIdentityMapper.Match(receipt.Instances, receipt.OwnedDevices, current)).SetEquals(receipt.RewiredInstances);
+                }
             }
             catch (Exception ex) { status += "; restore unqualified: " + ex.Message; }
+            receipt.IdentityEpochAfter = inventory.ConnectionEpoch;
+            try { inventory.EndIdentityObservation(); } catch (Exception ex) { status += "; event cleanup failed: " + ex.Message; }
             receipt.Status = status; receipt.CompletedUtc = DateTime.UtcNow.ToString("o");
             try { ProbeRequest.Write(Path.Combine(request.Result, "probe-receipt.json"), receipt); }
             catch (Exception ex) { ModLog.Error("Probe receipt write failed: " + ex.Message); }

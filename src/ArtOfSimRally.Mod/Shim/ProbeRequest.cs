@@ -59,7 +59,7 @@ namespace ArtOfSimRally.Mod.Shim
         internal void ValidateApply(ProbeReceipt prior, Guid[] instances, OwnedDeviceIdentity[] owned, Guid[] rewired)
         {
             if (Mode != "Apply") return;
-            if (prior == null || prior.Mode != "Observe" || !prior.IdentityQualified || !prior.FlagsDisabled || !prior.FlagsRestored ||
+            if (prior == null || prior.Mode != "Observe" || !prior.IdentityQualified || !prior.IdentityRestored || !prior.FlagsDisabled || !prior.FlagsRestored ||
                 !prior.RawAxesNeutralAfterDisable || prior.ModSha256 != ModSha256 || prior.NativeSha256 != NativeSha256 ||
                 prior.ShimSha256 != ShimSha256 || prior.SettingsSha256 != SettingsSha256 || prior.ProfileSha256 != ProfileSha256 ||
                 prior.Instances == null || !new System.Collections.Generic.HashSet<Guid>(prior.Instances).SetEquals(instances) ||
@@ -75,7 +75,8 @@ namespace ArtOfSimRally.Mod.Shim
         [DataMember] public int Schema = 1;
         [DataMember] public string Mode, Nonce, Status, CompletedUtc;
         [DataMember] public string ModSha256, NativeSha256, ShimSha256, SettingsSha256, ProfileSha256;
-        [DataMember] public bool NoForceArmed, IdentityQualified, FlagsDisabled, FlagsRestored, RawAxesNeutralAfterDisable, NonzeroCacheClearObserved, Applied;
+        [DataMember] public bool NoForceArmed, IdentityQualified, IdentityRestored, FlagsDisabled, FlagsRestored, RawAxesNeutralAfterDisable, NonzeroCacheClearObserved, Applied;
+        [DataMember] public long IdentityEpochBefore, IdentityEpochAfter;
         [DataMember] public Guid[] Instances;
         [DataMember] public OwnedDeviceIdentity[] OwnedDevices;
         [DataMember] public Guid[] RewiredInstances;

@@ -45,6 +45,11 @@ namespace ArtOfSimRally.Mod.Shim
             if (owned.Count == 0 || owned.Contains(Guid.Empty)) throw new ArgumentException("Core-bound instance identities required");
         }
         private void CheckThread() { if (System.Threading.Thread.CurrentThread.ManagedThreadId != owner) throw new InvalidOperationException("isolation owner thread required"); }
+        internal bool OwnsDisabled(object token)
+        {
+            CheckThread(); Prior state;
+            return !restored && token != null && prior.TryGetValue(token, out state) && state.Changed && state.Enabled && !state.Joystick.Enabled;
+        }
         internal bool Check(int frame)
         {
             CheckThread();

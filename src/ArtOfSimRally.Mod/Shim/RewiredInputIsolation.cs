@@ -9,7 +9,26 @@ namespace ArtOfSimRally.Mod.Shim
     // change input; Check/Restore must be called by an explicit session owner.
     internal sealed class RewiredInputIsolation : IJoystickInventory
     {
-        private sealed class JoystickView : IRawIsolationJoystick, IRawIdentityDiagnostic
+        private long epoch;
+        private bool observing;
+        internal long ConnectionEpoch => System.Threading.Interlocked.Read(ref epoch);
+        private void Changed(ControllerStatusChangedEventArgs ignored) => Changed();
+        private void Changed() => System.Threading.Interlocked.Increment(ref epoch);
+        internal void BeginIdentityObservation()
+        {
+            if (observing) throw new InvalidOperationException("identity observation already begun");
+            observing = true;
+            ReInput.ControllerConnectedEvent += Changed; ReInput.ControllerPreDisconnectEvent += Changed; ReInput.ControllerDisconnectedEvent += Changed;
+            ReInput.PreShutDownEvent += Changed; ReInput.ShutDownEvent += Changed; ReInput.InitializedEvent += Changed;
+        }
+        internal void EndIdentityObservation()
+        {
+            if (!observing) return;
+            ReInput.ControllerConnectedEvent -= Changed; ReInput.ControllerPreDisconnectEvent -= Changed; ReInput.ControllerDisconnectedEvent -= Changed;
+            ReInput.PreShutDownEvent -= Changed; ReInput.ShutDownEvent -= Changed; ReInput.InitializedEvent -= Changed;
+            observing = false;
+        }
+        private sealed class JoystickView : IRawIsolationJoystick, IRawIdentityDiagnostic, IIdentityLifetimeDiagnostic
         {
             private readonly Joystick joystick;
             internal JoystickView(Joystick value) { joystick = value; }
@@ -19,6 +38,8 @@ namespace ArtOfSimRally.Mod.Shim
             public string Name => joystick.name;
             public string InterfacePath => joystick.GetExtension<RawInputControllerExtension>()?.devicePath;
             public string ProductGuid => joystick.GetExtension<RawInputControllerExtension>()?.productGuid.ToString("D");
+            public object ExtensionToken => joystick.GetExtension<RawInputControllerExtension>();
+            public bool Connected => joystick.isConnected;
             public float[] ReadRawAxes()
             {
                 int count = joystick.axisCount;

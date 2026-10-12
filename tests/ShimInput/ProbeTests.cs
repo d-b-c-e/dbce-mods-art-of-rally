@@ -79,11 +79,12 @@ internal static class ProbeTests
             request.SourceGameRoot = game; refuses(() => request.Validate(DateTime.UtcNow, game, mod, native, settings), "owner install accepted as disposable clone"); request.SourceGameRoot = root;
             File.AppendAllText(settings, "changed"); refuses(() => request.Validate(DateTime.UtcNow, game, mod, native, settings), "changed settings accepted"); File.WriteAllText(settings, "accepted bytes");
             var owned = new[] { owner }; var rewired = new[] { rawId };
-            var prior = new ProbeReceipt(request) { IdentityQualified = true, FlagsDisabled = true, FlagsRestored = true, RawAxesNeutralAfterDisable = true, Instances = ids, OwnedDevices = owned, RewiredInstances = rewired };
+            var prior = new ProbeReceipt(request) { IdentityQualified = true, IdentityRestored = true, FlagsDisabled = true, FlagsRestored = true, RawAxesNeutralAfterDisable = true, Instances = ids, OwnedDevices = owned, RewiredInstances = rewired };
             request.Mode = "Apply"; request.ValidateApply(prior, ids, owned, rewired); check(true, "neutral-at-rest receipt must preserve cache inconclusive separately");
             prior.RawAxesNeutralAfterDisable = false; refuses(() => request.ValidateApply(prior, ids, owned, rewired), "Apply used nonneutral raw cache"); prior.RawAxesNeutralAfterDisable = true;
             refuses(() => request.ValidateApply(prior, new[] { Guid.NewGuid() }, owned, rewired), "Apply used another identity");
             prior.FlagsRestored = false; refuses(() => request.ValidateApply(prior, ids, owned, rewired), "Apply used failed restore"); prior.FlagsRestored = true;
+            prior.IdentityRestored = false; refuses(() => request.ValidateApply(prior, ids, owned, rewired), "Apply used stale cached identity after restore"); prior.IdentityRestored = true;
             refuses(() => request.ValidateApply(prior, ids, owned, new[] { Guid.NewGuid() }), "Apply used a different RawInput identity");
             var moved = new OwnedDeviceIdentity { Instance = owner.Instance, Product = owner.Product, Generation = 999, InterfacePath = owner.InterfacePath + "different" };
             refuses(() => request.ValidateApply(prior, ids, new[] { moved }, rewired), "Apply used another HID path");

@@ -14,13 +14,20 @@ namespace ArtOfSimRally.Mod.Shim
         string InterfacePath { get; }
         string ProductGuid { get; }
     }
+    internal interface IIdentityLifetimeDiagnostic
+    {
+        object ExtensionToken { get; }
+        bool Connected { get; }
+    }
     [DataContract]
     internal sealed class JoystickObservation
     {
         [DataMember] public string Name, Instance, RawError, InterfacePath, ProductGuid, IdentityPathError;
         [DataMember] public bool Enabled;
+        [DataMember] public bool Connected;
         [DataMember] public float[] RawAxes;
         internal object Token;
+        internal object ExtensionToken;
     }
     internal static class ProbeObservation
     {
@@ -36,6 +43,8 @@ namespace ArtOfSimRally.Mod.Shim
                 {
                     var identity = item as IRawIdentityDiagnostic;
                     if (identity != null) { row.InterfacePath = identity.InterfacePath; row.ProductGuid = identity.ProductGuid; }
+                    var lifetime = item as IIdentityLifetimeDiagnostic;
+                    if (lifetime != null) { row.ExtensionToken = lifetime.ExtensionToken; row.Connected = lifetime.Connected; }
                 }
                 catch (Exception ex) { row.IdentityPathError = ex.Message; }
                 try

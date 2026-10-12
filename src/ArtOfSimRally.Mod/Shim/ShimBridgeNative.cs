@@ -142,6 +142,17 @@ namespace ArtOfSimRally.Mod.Shim
             if (expectedInfo.Count == 64 || metadata == null || metadata.Length != ShimBridge.DeviceSize || String.IsNullOrEmpty(interfacePath)) throw new ArgumentException("invalid probe identity pin");
             expectedInfo.Add(slot, (byte[])metadata.Clone()); expectedPaths.Add(slot, interfacePath);
         }
+        internal void VerifyPinned(int[] slots)
+        {
+            if (slots == null || slots.Length != expectedInfo.Count || !new HashSet<int>(slots).SetEquals(expectedInfo.Keys))
+                throw new InvalidOperationException("owned read-slot inventory changed");
+            foreach (int slot in slots)
+            {
+                var bytes = new byte[ShimBridge.DeviceSize]; string currentPath;
+                if (Describe(slot, bytes) != 1 || !TryGetPath(slot, BitConverter.ToUInt64(bytes, 8), out currentPath))
+                    throw new InvalidOperationException("owned reader metadata/generation/path changed");
+            }
+        }
         // Caller must pass WheelFfbNative.LoadedFrom after the existing owner has
         // opened its devices. Loading another path is not a supported handoff.
         internal ExistingWheelSnapshots(string alreadyLoadedPath)
