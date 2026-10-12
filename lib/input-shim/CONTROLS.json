@@ -155,7 +155,7 @@
       "muteFfb"
     ],
     "writerOmits": {
-      "clutch": "unqualified: no runtime evidence, and the reviewed profile does not bind it",
+      "clutch": "unqualified: no runtime evidence",
       "neutral": "unqualified: H-pattern gates have source and fixture evidence only",
       "reverse": "unqualified: H-pattern gates have source and fixture evidence only",
       "gear1": "unqualified: H-pattern gates have source and fixture evidence only",
