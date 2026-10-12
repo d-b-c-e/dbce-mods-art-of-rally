@@ -16,6 +16,7 @@ settings `91090837181C1D617F3C0EE52F1DE797A2592C6FEA4C7B2D8E93138318EE36ED`.
 | Ordinary SharedInput startup smoke | 03:23 | `0adda89` (src `8f9b945`) | `CF608D9ADFF098A771BB0DCF6A2B9EAB5A00B79EC29C413596A260BEC7A653F8` | `7DDC9621` | attached after FFB settled; first frame accepted, 14 owned actions | `shared-smoke-20261012-032314` |
 | Menu Trial (latched navDown/navUp) | 04:43 | `f9c7458` | `78A08FA7BE1E8CD38E988089B32A69D80F8E7A85078FC349AF2515671BD1EA3C` | `0D10F913C998C97D7DDF3A8F5F470D010092C3681152059DC88D7E0A7BB0386B` (art-shim-bridge f38b855) | Career, Time Attack, Career; navigation wait 65 frames; Run Completed | `trial-20261012-044311` (Observe `observe-latched-20261012-044249`) |
 | Car Drive (latched raw stimuli in a stage) | 06:05 | `96cc440` | `8754D961E1280047F26D3C1BD74A9A78361F6EAD5148813C81B5CB3580839D6E` | `0D10F913` | all 7 rows passed (below) | `drive-20261012-060415` (Observe `observe-drive-20261012-054434`) |
+| Ordinary native-script coexistence (scripted Rewired values in a stage) | 07:01 | `88b17f7` | `09BDCD9AA0B0AC0A209FCE9987660913E33196D85970ADAD1B01CA5E3034C05B` | `7DDC9621` | sealed verdict passed (below); the 06:52 run at `40acdf9` failed as sealed | `native-script-20261012-070017` (failed: `native-script-20261012-065119`) |
 
 ## Car Drive details
 
@@ -32,6 +33,19 @@ settings `91090837181C1D617F3C0EE52F1DE797A2592C6FEA4C7B2D8E93138318EE36ED`.
   throttle 0.4, brake 0.6, handbrake 1.0, gear 2 -> 3 -> 2.
 
 ## Ordinary native-script coexistence
+
+Passed at 07:01 (`88b17f7`, recorder
+`C5029B796257F906419892DD432CA4F0D16CDDB9B54C2F7C0EC7BD0C09B83D99`,
+`native-script-20261012-070017`). Sealed verdict:
+
+> passed: 1259 stage frames composed with isolation and live steering; the wheel at rest
+> off centre (shared steer 0.140733957) held steering on 338 scripted-steer frames; pedals
+> and handbrake at rest passed Art's result (right 162, left 176, throttle 143, brake 82,
+> handbrake 108, released 588); car ticks 721 matched, 1 leading start-line ticks;
+> scripted Rewired native-path evidence only
+
+The title hold waited 26 s for the first accepted frame (14 owned actions). There was no
+out-of-bounds reset.
 
 First run, 06:52 (`40acdf9`, `native-script-20261012-065119`): **FAILED** as sealed
 ("car input at step 736 is no composed result"). Kept as the original failure.
@@ -107,12 +121,23 @@ not physical keyboard or wheel/FFB qualification.
 
 ## Claims and limits
 
-Claimed: ordinary startup attaches and accepts frames (no physical input); latched
-menu navigation reaches Art's UI; latched raw driving stimuli reach Art's car through
-the shared shim's composition. Not claimed: ordinary (non-latched) driving or
-navigation with physical input, keyboard during a latched session (suppressed by
-contract), keyboard fallback after a terminal fault (source/fixture only), force
-feedback together with the shared profile, H-pattern, clutch, finishing a stage.
+Claimed:
+- Ordinary startup attaches and accepts frames (no physical input).
+- Latched menu navigation reaches Art's UI.
+- Latched raw driving stimuli reach Art's car through the shared shim's composition.
+- In an ordinary session, scripted Rewired values reach Art's car through the ordinary
+  composition:
+  - the resting wheel keeps steering exclusively;
+  - scripted throttle, brake and handbrake pass through with the pedals neutral.
+  This is scripted Rewired native-path evidence.
+
+Not claimed:
+- Ordinary driving or navigation with physical input (wheel or keyboard).
+- Keyboard steering, which needs a centred wheel.
+- Keyboard during a latched session (suppressed by contract).
+- Keyboard fallback after a terminal fault (source and fixture only).
+- Force feedback together with the shared profile.
+- H-pattern, clutch, finishing a stage.
 
 Failed or refused runs on the way are recorded in
 `2026-10-12-shim-actions-slice-a.md` and `2026-10-12-shim-driving-slice-plan.md`.
