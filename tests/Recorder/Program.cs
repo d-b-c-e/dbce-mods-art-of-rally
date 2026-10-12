@@ -311,7 +311,7 @@ static class Program
         {
             string root = Path.GetFullPath(args[0]);
             Check(!Directory.Exists(root), "use a fresh test evidence directory");
-            string capture = Capture(root); Pipe(); Quit(Path.Combine(root, "quit-cases")); Policy(); Native();
+            string capture = Capture(root); Pipe(); Quit(Path.Combine(root, "quit-cases")); Policy(); Native(); assertions += SharedEvidenceTests.Run(Path.Combine(root, "shared-evidence"), (ok, why) => { if (!ok) throw new Exception(why); });
             if (args.Length == 3) Contract(args[1], args[2]);
             Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions, syntheticCapture = capture })); return 0;
         }

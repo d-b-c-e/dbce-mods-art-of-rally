@@ -61,6 +61,10 @@ namespace ArtOfSimRally.Testing
         // Recording.
         private static readonly Dictionary<string, string> _frameValues = new Dictionary<string, string>();
         private static TextWriter _inputWriter, _carWriter, _shiftWriter, _nativeWriter;
+        // The mod's shared-input path (sana 36236): identity, per-frame shared.tape, final outcome. Optional analysis.
+        private static SharedEvidence _shared;
+        private static TextWriter _sharedWriter;
+        private static string _sharedTapeFailure;
         // carInput=native: Art's own GetInput result this frame (before any mod postfix) and the mod's shared state.
         private static readonly float[] _art = new float[5];
         private static bool _artStart;
@@ -81,6 +85,7 @@ namespace ArtOfSimRally.Testing
         // Replay.
         private static SessionAligner<Dictionary<string, string>> _frames;
         private static SessionAligner<CarRow> _car;
+        private static int _drivingRows, _drivingSegments;
         private static readonly Dictionary<string, string> Empty = new Dictionary<string, string>();
         private static Dictionary<string, string> _playing = Empty;
         private static CarRow _carPlaying;
@@ -211,11 +216,22 @@ namespace ArtOfSimRally.Testing
                 _nativeWriter = new BufferedTapeWriter(Path.Combine(_dir, "native.tape"));
                 _nativeWriter.WriteLine(NativeEvidence.Header);
             }
+            // The input path in use (sana 36236). Shared evidence is optional: an unbound mod is named, never refused.
+            _shared = SharedEvidence.Bind(out string sharedFailure);
+            var modType = SharedEvidence.Find("ArtOfSimRally.Mod.Main");
+            string modDirectory = modType != null ? Path.GetDirectoryName(modType.Assembly.Location) : Path.Combine(Path.GetDirectoryName(Application.dataPath), "Mods", "ArtOfSimRally");
+            string identity = SharedEvidence.Identity(_shared, sharedFailure, modDirectory, Path.Combine(Application.dataPath, "Plugins", "x86_64", "UnityForceFeedback.dll"));
+            if (_shared?.Requested == true)
+            {
+                _sharedWriter = new BufferedTapeWriter(Path.Combine(_dir, "shared.tape"));
+                _sharedWriter.WriteLine(SharedEvidence.Header);
+            }
             File.WriteAllText(Path.Combine(_dir, "session.txt"),
                 "format=" + Format + "\ngame=" + Application.version + "\nunity=" + Application.unityVersion +
                 "\ngameAssemblySha256=" + ArtifactHash.FileHash(typeof(CarDynamics).Assembly.Location) +
                 "\nfixedDeltaTime=" + N(Time.fixedDeltaTime) + "\nstartedUtc=" + DateTime.UtcNow.ToString("o") +
-                "\nsceneSelections=1\ncaptureSource=" + (_captureDriver == null ? "player" : _capturePolicy.Source) + "\nphysicalOutput=" + (!_muteOutputs).ToString().ToLowerInvariant() + "\n");
+                "\nsceneSelections=1\ncaptureSource=" + (_captureDriver == null ? "player" : _capturePolicy.Source) + "\nphysicalOutput=" + (!_muteOutputs).ToString().ToLowerInvariant() + "\n" +
+                identity);
             RecorderMain.StartSessionSignals(_dir, !_muteOutputs, _captureDriver == null ? "player" : _capturePolicy.Source);
         }
 
@@ -308,6 +324,8 @@ namespace ArtOfSimRally.Testing
             _frames = new SessionAligner<Dictionary<string, string>>(frames, markers, "frames", () => Time.realtimeSinceStartup);
             _car = new SessionAligner<CarRow>(car, markers, "car", () => Time.realtimeSinceStartup, earlyLimit: 0,
                 required: m => m.EndsWith("|UNDERWAY"));
+            _drivingRows = car.Count(r => markers[r.Key].EndsWith("|UNDERWAY"));
+            _drivingSegments = car.Where((r, i) => markers[r.Key].EndsWith("|UNDERWAY") && (i == 0 || car[i - 1].Key != r.Key)).Count();
             _out = output;
             Directory.CreateDirectory(Path.Combine(_out, "shots"));
             _eventWriter = Create(Path.Combine(_out, "replay.log"));
@@ -821,10 +839,20 @@ namespace ArtOfSimRally.Testing
                     line.Append(_frame.ToString(CultureInfo.InvariantCulture)).Append('\t').Append(marker.ToString(CultureInfo.InvariantCulture));
                     foreach (var pair in _frameValues) line.Append('\t').Append(pair.Key).Append('=').Append(pair.Value);
                     _inputWriter.WriteLine(line.ToString());
+                    // Analysis only: a failed shared row stops shared.tape (named in end.txt), not the recording.
+                    if (_sharedWriter != null)
+                    {
+                        try { _sharedWriter.WriteLine(_shared.Row(Time.frameCount, marker)); }
+                        catch (Exception ex)
+                        {
+                            _sharedTapeFailure = ex.GetType().Name + ": " + (ex.InnerException ?? ex).Message; Event("shared.tape stopped: " + _sharedTapeFailure);
+                            try { _sharedWriter.Dispose(); } catch { } _sharedWriter = null;
+                        }
+                    }
                     _frameValues.Clear();
                     _clicksInFrame = 0;
                     if (marker != _lastMarker) { _lastMarker = marker; Reseed(marker); Event("segment " + MarkerText(marker)); Shot(_dir, marker); }
-                    if (_frame % 60 == 0) { _inputWriter.Flush(); _carWriter.Flush(); _shiftWriter.Flush(); _nativeWriter?.Flush(); _eventWriter.Flush(); }
+                    if (_frame % 60 == 0) { _inputWriter.Flush(); _carWriter.Flush(); _shiftWriter.Flush(); _nativeWriter?.Flush(); _sharedWriter?.Flush(); _eventWriter.Flush(); }
                 }
                 else
                 {
@@ -843,7 +871,15 @@ namespace ArtOfSimRally.Testing
                     ReplayCinematicSkip(MarkerText(marker));
                     if (marker != _lastMarker) { _lastMarker = marker; Reseed(marker); }
                     if (_frames.Segment != before) { Event("segment " + _frames.Segment + " " + MarkerText(marker)); Shot(_out, marker); }
-                    if (_frames.Failed != null) Fail(_frames.Failed);
+                    if (_frames.Failed != null)
+                    {
+                        // Every recorded driving row played and passed, then a later menu marker never came: its own
+                        // outcome, never a full pass (sana 36418). Before or during the stage it stays a failure.
+                        int unplayed = _car.SkippedWhere(m => m.EndsWith("|UNDERWAY")) + _frames.SkippedWhere(m => m.EndsWith("|UNDERWAY"));
+                        string stage = _car.Failed == null ? ReplayOutcome.PostStage(_frames.Failed, _frames.Failed.Contains(" waited "),
+                            _drivingRows, unplayed, Verdict("driving rows played")) : null;
+                        if (stage != null) Finish(stage); else Fail(_frames.Failed);
+                    }
                     else if (_car.Failed != null) Fail(_car.Failed);
                     else if (_frames.Finished && _car.SkippedWhere(m => m.EndsWith("|UNDERWAY")) == 0)
                         Finish(Verdict("final menu state reached and all driving rows played; unused non-driving rows=" + _car.SkippedWhere(m => !m.EndsWith("|UNDERWAY"))));
@@ -870,9 +906,14 @@ namespace ArtOfSimRally.Testing
                 try { RecorderMain.StopSessionSignals(_dir); }
                 catch (Exception ex) { MarkIncomplete("signal capture: " + ex.Message); }
                 bool native = _nativeWriter != null;
+                try { _sharedWriter?.Dispose(); } catch (Exception ex) { _sharedTapeFailure = _sharedTapeFailure ?? "closing: " + ex.Message; }
+                string sharedOutcome = "";
+                try { sharedOutcome = _shared == null ? "sharedPhase=unavailable\n" : _shared.Outcome(); }
+                catch (Exception ex) { sharedOutcome = "sharedPhase=unreadable: " + ex.GetType().Name + "\n"; }
+                if (_sharedTapeFailure != null) sharedOutcome += "sharedTape=stopped: " + _sharedTapeFailure.Replace('\n', ' ').Replace('\r', ' ') + "\n";
                 try { _inputWriter?.Dispose(); _carWriter?.Dispose(); _shiftWriter?.Dispose(); _nativeWriter?.Dispose(); _eventWriter?.Dispose(); }
                 catch (Exception ex) { MarkIncomplete("closing files: " + ex.Message); }
-                _inputWriter = _carWriter = _shiftWriter = _nativeWriter = null; _eventWriter = null;
+                _inputWriter = _carWriter = _shiftWriter = _nativeWriter = null; _eventWriter = null; _sharedWriter = null;
                 if (native && _incomplete == null)
                 {
                     // The verdict is sealed with the tapes it was computed from.
@@ -888,7 +929,7 @@ namespace ArtOfSimRally.Testing
                 {
                     try
                     {
-                        File.WriteAllText(Path.Combine(_dir, "end.txt"), "reason=" + why + "\nframes=" + _frame + "\nsteps=" + _fixedStep + "\n");
+                        File.WriteAllText(Path.Combine(_dir, "end.txt"), "reason=" + why + "\nframes=" + _frame + "\nsteps=" + _fixedStep + "\n" + sharedOutcome);
                         var sealedFiles = Directory.GetFiles(_dir).Select(Path.GetFileName).Where(n => n != "complete.tsv" && !n.EndsWith(".tmp")).ToList();
                         var environment = Path.Combine(_dir, "environment-at-start");
                         if (Directory.Exists(environment)) sealedFiles.AddRange(Directory.GetFiles(environment).Select(p => "environment-at-start/" + Path.GetFileName(p)));
@@ -932,7 +973,9 @@ namespace ArtOfSimRally.Testing
             {
                 _divergenceWriter?.Dispose(); _divergenceWriter = null;
                 var tmp = Path.Combine(_out, "result.txt.tmp");
-                File.WriteAllText(tmp, result + "\n" + Describe + "\n");
+                string expected = _frames == null ? "none" : _frames.NextMarker >= 0 ? MarkerText(_frames.NextMarker) : "end";
+                File.WriteAllText(tmp, result + "\n" + Describe + "\n" + ReplayOutcome.Fields(result, _drivingSegments, expected,
+                    Dbce.Wheel.Playback.SegmentCursor<int>.WaitSeconds));
                 File.Move(tmp, Path.Combine(_out, "result.txt"));
             }
             catch (Exception ex) { _log?.Invoke("Session tape result not written: " + ex.Message); }

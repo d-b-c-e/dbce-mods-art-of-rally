@@ -42,6 +42,7 @@ $request = Join-Path $env:LOCALAPPDATA 'ArtOfSimRally/session-request.txt'
 # menus appear, so a replay needs the recorded copy.
 $customRally = Join-Path ([Environment]::GetFolderPath('UserProfile')) 'AppData/LocalLow/Funselektor Labs/Art of Rally/customrally'
 . (Join-Path $PSScriptRoot 'SessionEnvironment.ps1')
+. (Join-Path $PSScriptRoot 'ReplayInputIsolation.ps1')
 
 function Send-Probe([string]$Command) {
     $game = Get-Process artofrally -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -147,6 +148,8 @@ switch ($PSCmdlet.ParameterSetName) {
         elseif (Test-Path -LiteralPath (Join-Path $tape 'customrally-absent-at-start')) { Remove-Item -LiteralPath $customRally -ErrorAction SilentlyContinue }
         else { Write-Warning 'Tape predates custom rally snapshots; replaying with the current custom rally state.' }
         Restore-SessionPresentation $ownerState
+        # The tape supplies every input: the replay process reads no input or force device (replay-input.json).
+        Set-ReplayInputIsolation (Join-Path $GameDir 'Mods/ArtOfSimRally/Settings.xml') $out
         Write-Request @{ mode = 'replay'; playback = $Playback; tape = $tape; out = $out; poseThreshold = $threshold.ToString([Globalization.CultureInfo]::InvariantCulture) }
         Start-Game
         Write-Output "Replaying '$Name' into $out"
@@ -173,7 +176,8 @@ switch ($PSCmdlet.ParameterSetName) {
             else { Restore-SessionEnvironment $ownerState }
         }
         Write-Output "Evidence: $out"
-        # 0 passed, 1 failed, 2 aborted.
-        if ($result[0] -like 'passed*') { exit 0 } elseif ($result[0] -like 'aborted*') { exit 2 } else { exit 1 }
+        # 0 passed, or partial:post-stage-divergence (the stage replayed; result.txt says fullSessionPassed=false),
+        # in both cases only after the cleanup and restore above; 1 failed, 2 aborted.
+        if ($result[0] -like 'passed*' -or $result[0] -like 'partial:post-stage-divergence*') { exit 0 } elseif ($result[0] -like 'aborted*') { exit 2 } else { exit 1 }
     }
 }

@@ -9,6 +9,8 @@
     <Compile Include="../../tools/testing/Recorder/SubjectAccess.cs" Link="SubjectAccess.cs" />
     <Compile Include="../../tools/testing/Recorder/CapturePolicy.cs" Link="CapturePolicy.cs" />
     <Compile Include="../../tools/testing/Recorder/NativeEvidence.cs" Link="NativeEvidence.cs" />
+    <Compile Include="../../tools/testing/Recorder/SharedEvidence.cs" Link="SharedEvidence.cs" />
+    <Compile Include="../../tools/testing/Recorder/ReplayOutcome.cs" Link="ReplayOutcome.cs" />
     <Compile Include="../../tools/testing/Common/ArtifactHash.cs" Link="ArtifactHash.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/NativeDiagnostics.cs" Link="NativeDiagnostics.cs" />
     <Compile Include="../reference/LegacyForceCurve.cs" Link="LegacyForceCurve.cs" />
