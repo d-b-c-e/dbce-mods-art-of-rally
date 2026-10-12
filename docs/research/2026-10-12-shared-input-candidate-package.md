@@ -353,13 +353,30 @@ Sequential), switched to H-pattern in memory only.
 This is offline writer evidence on the exact package. No game ran, and no physical
 pedal, shifter or force was involved.
 
+## rc.16: handoff candidate (sana 35206)
+
+rc.15 plus text only: the README points at Wheelkit 0.6.23 Apply, and the mod's
+missing-profile refusal says "Apply your profile to art of rally in Wheelkit 0.6.23 or
+later" (`6bfac99`). The dormant diagnostic path is unchanged. Local only; not installed.
+- `ArtOfSimRally-0.4.2-rc.16-shared-input.zip`, SHA-256
+  `D0CAD89206956FB08064BA004A8EDDFFE2E988DF9D38E18949730D98CA1055FF`, identity
+  `0.4.2-rc.16+3d65f2f….clean`.
+- Mod `009BE21A` (= `controls.assemblySha256`; it holds the new string and not the old),
+  shim `7DDC9621`, native `44E46799`, contract v2 with no writer omissions.
+- **Gates:** Test-Rc with the corpus passed 20 of 20 on `3d65f2f` (throwaway rc.913,
+  `9A015442`). Test-Installer passed 50 assertions on the extracted rc.16. ShimInput passed
+  12232 on net8 and Mono.
+- **Exact-package H-pattern Apply** (`wheelkit-hpattern-apply-rc16-20261012-135238`): the
+  same harness and profile as rc.15 passed with byte-identical output (INI `73E78230`,
+  Settings `0A380211`). Restore was exact, and the owner inputs were unchanged.
+- Released Wheelkit 0.6.23 (`b382907`) has the same Configure, Profiles, Settings, Services
+  and qualification code as the `5b85809` the harness used, and the same Art catalog entry.
+
 ## Remaining gaps
 
-1. **The mod's refusal text predates the writer.** Wheelkit 0.6.23 (`b382907`, published
-   2026-10-12) writes Art's profile, with contract v2 support. The candidate README now
-   says to Apply in Wheelkit 0.6.23. The mod's refusal text for a missing profile still
-   says to copy a Wheelkit-applied file by hand; changing it is a runtime change, left for
-   a later build.
+1. **Owner handoff pending.** Wheelkit 0.6.23 (`b382907`, published 2026-10-12) writes
+   Art's profile with contract v2 support; rc.16's README and refusal text both point
+   there. Installing rc.16 for the owner is the coordinator's call.
 2. **Physical qualification needs the owner.** Wheel, pedals and keyboard through an
    ordinary session were shown only with scripted Rewired values. Force feedback together
    with the shared profile has never run.
