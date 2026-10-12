@@ -19,6 +19,9 @@ param(
     [Parameter(ParameterSetName = 'Record', Mandatory)][switch]$Record,
     [Parameter(ParameterSetName = 'Record')][switch]$MuteOutputs,
     [Parameter(ParameterSetName = 'Record')][ValidatePattern('^[a-zA-Z0-9][a-zA-Z0-9._-]*$')][string]$ScriptedFrom,
+    # Automated plumbing checks only (sana 37927): no input or force device for the recording; force signals are then
+    # not captured. Normal automated captures keep the muted force calculation path.
+    [Parameter(ParameterSetName = 'Record')][switch]$IsolateDevices,
     [Parameter(ParameterSetName = 'Replay', Mandatory)][switch]$Replay,
     [Parameter(ParameterSetName = 'Stop', Mandatory)][switch]$Stop,
     [Parameter(ParameterSetName = 'Restore', Mandatory)][string]$RestoreEnvironment,
@@ -96,6 +99,7 @@ switch ($PSCmdlet.ParameterSetName) {
         # start state. Unlike a player recording it runs to completion: it closes the game and restores the owner's
         # environment itself.
         $route = $null
+        if ($IsolateDevices -and -not $ScriptedFrom) { throw '-IsolateDevices is for an automated recording (-ScriptedFrom) only.' }
         if ($ScriptedFrom) {
             if (-not $MuteOutputs) { throw 'An automated recording must mute outputs: add -MuteOutputs.' }
             $route = Join-Path $sessions $ScriptedFrom
@@ -112,9 +116,10 @@ switch ($PSCmdlet.ParameterSetName) {
             $ownerState = Join-Path $tape 'automation/owner-environment'
             Save-SessionEnvironment $ownerState
             Set-RouteEnvironment $route $ownerState
-            # The route's synthetic input is the only input, and no force device is initialised (sana 37706): the
-            # same isolation as replay, recorded in automation/replay-input.json. The owner restore returns the settings.
-            Set-ReplayInputIsolation (Join-Path $GameDir 'Mods/ArtOfSimRally/Settings.xml') (Join-Path $tape 'automation')
+            # A plumbing check (-IsolateDevices): the route's synthetic input is the only input and no force device is
+            # initialised, so force signals are not captured. The same isolation as replay, recorded in
+            # automation/replay-input.json; the owner restore returns the settings (sana 37706/37927).
+            if ($IsolateDevices) { Set-ReplayInputIsolation (Join-Path $GameDir 'Mods/ArtOfSimRally/Settings.xml') (Join-Path $tape 'automation') }
         }
         Save-SessionEnvironment (Join-Path $tape 'environment-at-start')
         # Reference copy of the game's local preferences (stage/car choices may live here).

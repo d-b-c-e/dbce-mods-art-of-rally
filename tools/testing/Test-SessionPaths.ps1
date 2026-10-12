@@ -157,7 +157,7 @@ function Set-RouteEnvironment([string]$Route, [string]$Saved) { $global:ArtPathT
     try { & $runner -Record -MuteOutputs -ScriptedFrom missing-route -Name auto-missing -SessionsRoot './my tape library' -GameDir $game } catch { $refusedRoute = $_.Exception.Message -like '*Route source lacks*' }
     Check ($refusedRoute -and $global:ArtPathTest.launches.Count -eq $launches -and -not (Test-Path -LiteralPath (Join-Path $library 'auto-missing'))) 'Missing route was not refused before launch'
     $global:ArtPathTest.calls = @()
-    & $runner -Record -MuteOutputs -ScriptedFrom route-a -Name auto-1 -SessionsRoot './my tape library' -GameDir $game
+    & $runner -Record -MuteOutputs -IsolateDevices -ScriptedFrom route-a -Name auto-1 -SessionsRoot './my tape library' -GameDir $game
     $auto = Join-Path $library 'auto-1'; $ownerEnv = Join-Path $auto 'automation/owner-environment'
     Check ($LASTEXITCODE -eq 0 -and -not $global:ArtPathTest.running) "Automated recording returned $LASTEXITCODE or left the game running"
     Check ($global:ArtPathTest.launches[-1].muteOutputs -eq '1' -and $global:ArtPathTest.launches[-1].captureDriver -eq (Join-Path $library 'route-a')) 'Automated request lost its mute or route'
@@ -170,6 +170,14 @@ function Set-RouteEnvironment([string]$Route, [string]$Saved) { $global:ArtPathT
     Check ($autoIsolation.recorded.SharedInput -eq 'true' -and $autoIsolation.applied.ForceFeedbackEnabled -eq 'false') 'Automated isolation evidence differs'
     Set-Content -LiteralPath $settingsPath -Value $ownerSettings -NoNewline
     Check (Test-Path -LiteralPath (Join-Path $ownerEnv 'restored.txt')) 'Automated recording did not restore the owner environment'
+    # Isolation is opt-in for plumbing checks (sana 37927): a plain automated recording keeps the owner's settings and
+    # the muted force path; -IsolateDevices needs a route.
+    & $runner -Record -MuteOutputs -ScriptedFrom route-a -Name auto-plain -SessionsRoot './my tape library' -GameDir $game
+    Check ($LASTEXITCODE -eq 0 -and $global:ArtPathTest.settingsAtLaunch[-1] -ceq $ownerSettings -and
+        -not (Test-Path -LiteralPath (Join-Path $library 'auto-plain/automation/replay-input.json'))) 'A plain automated recording changed the input settings'
+    $refusedIsolate = $false
+    try { & $runner -Record -IsolateDevices -Name isolate-only -SessionsRoot './my tape library' -GameDir $game } catch { $refusedIsolate = $_.Exception.Message -like '*-IsolateDevices is for an automated recording*' }
+    Check ($refusedIsolate -and -not (Test-Path -LiteralPath (Join-Path $library 'isolate-only'))) '-IsolateDevices without a route was not refused'
     $global:ArtPathTest.exitWithoutSeal = $true
     & $runner -Record -MuteOutputs -ScriptedFrom route-a -Name auto-unsealed -SessionsRoot './my tape library' -GameDir $game
     Check ($LASTEXITCODE -eq 1 -and (Test-Path -LiteralPath (Join-Path $library 'auto-unsealed/automation/owner-environment/restored.txt'))) "Unsealed automated recording returned $LASTEXITCODE or was not restored"
