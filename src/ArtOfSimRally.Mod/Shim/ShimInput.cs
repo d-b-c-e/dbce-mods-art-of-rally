@@ -44,8 +44,8 @@ namespace ArtOfSimRally.Mod.Shim
                 Handbrake = handbrake, Clutch = clutch, StartEngine = startEngine };
             int frame = Time.frameCount;
             bool isolated = IsolatedFrame == frame;
-            // Ordinary input only: a latched session or a frame without isolation proof never asks.
-            var keyboard = isolated && !Consumer.LatchedDelivery(frame) ? KeyboardSteering.Query(car.steerAxis) : KeyboardSteer.NotQueried;
+            // Ordinary sessions only: a latched session (even stopped or stale) or a frame without isolation proof never asks.
+            var keyboard = Consumer.AsksKeyboard(isolated) ? KeyboardSteering.Query(car.steerAxis) : KeyboardSteer.NotQueried;
             Consumer.Compose(frame, isolated, car.SteeringOutOfAlignmentEffect, ref values, keyboard);
             // Art-only: the handbrake button keeps Art's binding on this frame's shared copy.
             // A latched session's injected actions stay the only input.
