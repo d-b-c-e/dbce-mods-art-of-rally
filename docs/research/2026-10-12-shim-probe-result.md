@@ -80,6 +80,20 @@ to resting values a few frames after restoration. Evidence (local, retained):
 `E:/Source/games/.worktrees/art-shim-probe-evidence/observe-20261012-015542` and
 `steam-start-20261012-015503`.
 
+## Apply passed (October 12, 02:11 local)
+
+A separate cold, muted process with the same pins and the Observe receipt above
+(`-ObserveReceipt`) was admitted by `ValidateApply`, published 120 menu frames
+through the real copied provider and Art sink, then stopped and restored:
+`Applied=true`, `PublishedFrames=120`, last axis statuses steer/throttle/brake/
+clutch/handbrake `Live/Live/Live/Unbound/Live` (clutch is unbound in the pinned
+profile; steer read the resting 0.14), identity and flags qualified and restored
+with epoch 0 → 0, only the R12 isolated, host shutdown `released=1 held=0
+inputReleased=true`, the native log showed no force call, and restoration had zero
+errors with owner native and Settings unchanged. This qualifies only the existing
+axes slice in menus; buttons, gears, car input, keyboard coexistence and physical
+FFB remain unqualified. Evidence: `E:/Source/games/.worktrees/art-shim-probe-evidence/apply-20261012-021108`.
+
 ## Exact candidate
 
 | Component | Source commit | Built SHA-256 |
