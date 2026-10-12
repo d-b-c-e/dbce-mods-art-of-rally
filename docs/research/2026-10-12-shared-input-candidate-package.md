@@ -322,6 +322,37 @@ profile schema stays 1.
   on `mufa/wheelkit-art-controls-v2`. That change keeps v1 exactly, so rc.14 is still
   admitted as v1.
 
+## rc.15: contract v2 package (sana 34912)
+
+Private candidate `ArtOfSimRally-0.4.2-rc.15-shared-input.zip`, built from integration
+`6f38e2e` with the same private shim bytes as rc.14. Local only; not installed.
+- SHA-256 `4B916D5120D6393B8849D740F0FA6EE0695A0C070B3BFF570D8F1E9B2D90ED66`, identity
+  `0.4.2-rc.15+6f38e2e….clean`.
+- Mod `B5162503` (= `controls.assemblySha256`), shim `7DDC9621`, native `44E46799`;
+  contract schema 2, `art-shim-ini-controls-2`, no writer omissions.
+- **Gates:** Test-Rc with the corpus passed 20 of 20 on `6f38e2e` (throwaway label
+  rc.912, package `7EAE41BD`). Test-Installer passed 50 assertions on the extracted rc.15.
+
+**Exact-package H-pattern Apply** (`wheelkit-hpattern-apply-rc15-20261012-134203`, harness
+beside it). Wheelkit `5b85809`'s production `LiveApplyRun` (Prepare, Apply, Verify, Restore)
+ran onto an inert folder: the rc.15 payload plus a read-only copy of the owner's Settings
+`91090837`. The profile was the owner's saved "Moza KS Pro Triple" (`31283715`, saved as
+Sequential), switched to H-pattern in memory only.
+- Written (21): steer, throttle, brake, clutch, handbrake, reverse, confirm, back, start,
+  the four navigation directions, camera, gear1 to gear7.
+- Omitted: shift up and down ("This profile selects H-pattern"), and select, lookBack,
+  reset and horn as unsupported.
+- Settings changed: only `SharedInput=true` and `TransmissionMode=H-pattern`.
+- Every written line is identical to the latched gears profile `27543D6B`; only the line
+  order differs. Core's grammar and Art's own ownership parser agree on all 21.
+- Restore was byte exact, the payload was unchanged, and the owner's Settings and profile
+  store were unchanged.
+- Wheelkit's combined `7aa70bc` changes only session code against `5b85809` (no
+  Configure, Profiles, Settings or qualification changes; the same Art catalog entry).
+
+This is offline writer evidence on the exact package. No game ran, and no physical
+pedal, shifter or force was involved.
+
 ## Remaining gaps
 
 1. **Wheelkit's Art writer is not released.** Wheelkit main `a2edcfc` writes Art's
