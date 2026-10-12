@@ -1,0 +1,178 @@
+{
+  "schema": 1,
+  "adapter": "art-shim-ini-controls-1",
+  "profile": "Mods/ArtOfSimRally/dbce-controls.ini",
+  "settings": "Mods/ArtOfSimRally/Settings.xml",
+  "optIn": {
+    "settingsKey": "SharedInput",
+    "value": "true",
+    "default": "false",
+    "appliesAfterRestart": true
+  },
+  "profileTransmissionKey": "[Controls] Transmission",
+  "delivered": [
+    "steer",
+    "throttle",
+    "brake",
+    "clutch",
+    "handbrake",
+    "shiftUp",
+    "shiftDown",
+    "neutral",
+    "reverse",
+    "confirm",
+    "back",
+    "start",
+    "navUp",
+    "navDown",
+    "navLeft",
+    "navRight",
+    "camera",
+    "modMenu",
+    "muteFfb",
+    "gear1",
+    "gear2",
+    "gear3",
+    "gear4",
+    "gear5",
+    "gear6",
+    "gear7",
+    "gear8"
+  ],
+  "unsupported": {
+    "select": "Art has no select action",
+    "lookBack": "Art has no look-back action in the inspected build",
+    "reset": "Art reset is not a qualified shared action",
+    "horn": "Art has no horn"
+  },
+  "conditions": [
+    {
+      "actions": [
+        "shiftUp",
+        "shiftDown"
+      ],
+      "profileTransmission": "Sequential",
+      "settingsKey": "TransmissionMode",
+      "settingsValues": [
+        "Sequential",
+        "H-pattern"
+      ],
+      "settingsDefault": "Follow game",
+      "note": "Delivered only while the car's gearbox is manual. TransmissionMode Sequential or H-pattern forces manual; Automatic never delivers; Follow game delivers only while the game's own transmission option is manual. A writer applying a Sequential profile sets TransmissionMode=Sequential."
+    },
+    {
+      "actions": [
+        "neutral",
+        "reverse",
+        "gear1",
+        "gear2",
+        "gear3",
+        "gear4",
+        "gear5",
+        "gear6",
+        "gear7",
+        "gear8"
+      ],
+      "profileTransmission": "H-pattern",
+      "settingsKey": "TransmissionMode",
+      "settingsValues": [
+        "Sequential",
+        "H-pattern"
+      ],
+      "settingsDefault": "Follow game",
+      "note": "Same gearbox rule. No gate held is neutral; reverse wins a shared gate; a gate outside the current car's gear ratios is ignored, never clamped. A writer applying an H-pattern profile sets TransmissionMode=H-pattern."
+    }
+  ],
+  "artBindings": "Preserved, never rewritten. An action the profile does not own keeps Art's own Settings.xml binding, unless that physical control (device instance, kind, index, overlapping hat sector) is one the profile maps: then Art's binding is not used (button channels stay neutral). Owned actions never use Art's binding.",
+  "qualification": {
+    "deliveredMeaning": "delivered = this build's source routes the action to an Art consumer. It is not attended, runtime or owner qualification.",
+    "status": "private candidate; not owner-accepted; not a release",
+    "runtimeShown": [
+      {
+        "actions": [
+          "steer",
+          "throttle",
+          "brake",
+          "handbrake",
+          "shiftUp",
+          "shiftDown"
+        ],
+        "how": "latched raw stimuli through Core in a stage (Sequential, manual gearbox)",
+        "native": "DD301314",
+        "force": "muted (DBCE_FFB_MUTE=1)",
+        "evidence": "drive-20261012-060415"
+      },
+      {
+        "actions": [
+          "navDown",
+          "navUp"
+        ],
+        "how": "latched menu injection with selection read back",
+        "native": "DD301314",
+        "force": "muted",
+        "evidence": "trial-20261012-044311"
+      },
+      {
+        "actions": [
+          "steer",
+          "throttle",
+          "brake",
+          "handbrake"
+        ],
+        "how": "ordinary session with scripted Rewired values: the resting wheel kept steering, throttle/brake/handbrake passed through",
+        "native": "DD301314",
+        "force": "muted",
+        "evidence": "native-script-20261012-070017"
+      },
+      {
+        "actions": [],
+        "how": "ordinary startup attached and accepted frames (14 owned actions of the reviewed profile)",
+        "native": "DD301314",
+        "force": "muted",
+        "evidence": "shared-smoke-20261012-032314"
+      }
+    ],
+    "packagedNative": "44E46799 (native-0.9.1 read-snapshot port) has offline fake-COM and review evidence only; every runtime run above used DD301314.",
+    "fixtureOnly": [
+      "clutch",
+      "neutral",
+      "reverse",
+      "gear1",
+      "gear2",
+      "gear3",
+      "gear4",
+      "gear5",
+      "gear6",
+      "gear7",
+      "gear8",
+      "confirm",
+      "back",
+      "start",
+      "navLeft",
+      "navRight",
+      "camera",
+      "modMenu",
+      "muteFfb"
+    ],
+    "writerOmits": {
+      "clutch": "unqualified: no runtime evidence, and the reviewed profile does not bind it",
+      "neutral": "unqualified: H-pattern gates have source and fixture evidence only",
+      "reverse": "unqualified: H-pattern gates have source and fixture evidence only",
+      "gear1": "unqualified: H-pattern gates have source and fixture evidence only",
+      "gear2": "unqualified: H-pattern gates have source and fixture evidence only",
+      "gear3": "unqualified: H-pattern gates have source and fixture evidence only",
+      "gear4": "unqualified: H-pattern gates have source and fixture evidence only",
+      "gear5": "unqualified: H-pattern gates have source and fixture evidence only",
+      "gear6": "unqualified: H-pattern gates have source and fixture evidence only",
+      "gear7": "unqualified: H-pattern gates have source and fixture evidence only",
+      "gear8": "unqualified: H-pattern gates have source and fixture evidence only"
+    },
+    "notQualified": [
+      "physical wheel, pedal and keyboard driving through the ordinary session (needs an attended owner run)",
+      "force feedback together with the shared profile (every run was muted)",
+      "keyboard steering, which passes only with the wheel at exact centre",
+      "the packaged native 44E46799 at runtime"
+    ]
+  },
+  "note": "Source of build.json sharedInputCandidate.controls (romi 33009). package.ps1 adds assemblySha256, the packaged ArtOfSimRally.Mod.dll; tests/ShimInput asserts delivered and unsupported equal ShimFrame.Names and ShimAxisConsumer's reasons."
+}

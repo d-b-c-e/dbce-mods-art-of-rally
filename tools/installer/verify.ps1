@@ -38,5 +38,8 @@ function Assert-Payload([string]$Directory) {
     if (($listed -contains 'ArtOfSimRally/dbce_shim.dll') -ne [bool]$candidate) { throw 'Shared-input payload and build record disagree' }
     if ($candidate -and ($manifest.files.'ArtOfSimRally/dbce_shim.dll' -ne $candidate.shimSha256 -or
         $manifest.files.'ArtOfSimRally/UnityForceFeedback.dll' -ne $candidate.nativeSha256)) { throw 'Shared-input candidate pins differ from the payload' }
+    if ($candidate -and (-not $candidate.controls -or $candidate.controls.assemblySha256 -ne $manifest.files.'ArtOfSimRally/ArtOfSimRally.Mod.dll')) {
+        throw 'Shared-input controls contract does not name this package''s mod assembly'
+    }
     return $manifest
 }

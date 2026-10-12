@@ -134,11 +134,15 @@ $build = [ordered]@{ schema=1; release=$Version; modVersion=$modVersion; identit
   # that their runtime ignores merely because the catalog knows newer keys.
   $build['controlsProfileSchema'] = 1
 # verify.ps1 accepts dbce_shim.dll only with this record, whose pins must match the payload.
+# controls is Wheelkit's contract for this exact assembly (lib/input-shim/CONTROLS.json, romi 33009).
 if ($candidate) {
+    $controls = Get-Content -LiteralPath (Join-Path $root 'lib/input-shim/CONTROLS.json') -Raw | ConvertFrom-Json
+    if ($controls.schema -ne 1 -or $controls.adapter -ne 'art-shim-ini-controls-1') { throw 'Unsupported shared-input controls contract' }
+    $controls | Add-Member -NotePropertyName assemblySha256 -NotePropertyValue (Get-FileHash -LiteralPath (Join-Path $modDir 'ArtOfSimRally.Mod.dll') -Algorithm SHA256).Hash
     $build['sharedInputCandidate'] = [ordered]@{ shimSha256=$candidate.shimSha256; shimSource=$candidate.shimSource
-        nativeSha256=$candidate.nativeSha256; nativeSource=$candidate.nativeSource; nativeBase=$candidate.nativeBase }
+        nativeSha256=$candidate.nativeSha256; nativeSource=$candidate.nativeSource; nativeBase=$candidate.nativeBase; controls=$controls }
 }
-$build | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $modDir 'build.json') -Encoding UTF8
+$build | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $modDir 'build.json') -Encoding UTF8
 $fileVersion = [Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $modDir 'ArtOfSimRally.Mod.dll'))
 if ($fileVersion.ProductVersion -ne $identity -or $fileVersion.FileVersion -ne "$modVersion.0") { throw 'Built assembly identity does not match candidate' }
 
