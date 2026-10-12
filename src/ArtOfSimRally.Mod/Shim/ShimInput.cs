@@ -19,6 +19,7 @@ namespace ArtOfSimRally.Mod.Shim
             internal bool SteerLive;
             internal float AppliedSteer, AppliedThrottle, AppliedBrake, AppliedHandbrake, Alignment;
             internal float Steer, Throttle, Brake, Handbrake;
+            internal float AppliedClutch, Clutch;
         }
         internal static Composition Last;
 
@@ -50,7 +51,7 @@ namespace ArtOfSimRally.Mod.Shim
             int frame = Time.frameCount;
             Last = new Composition { Frame = frame, SteerLive = Consumer.Live(0, frame), Alignment = car.SteeringOutOfAlignmentEffect,
                 AppliedSteer = Consumer.Applied(0, frame), AppliedThrottle = Consumer.Applied(1, frame), AppliedBrake = Consumer.Applied(2, frame), AppliedHandbrake = Consumer.Applied(4, frame),
-                Steer = steer, Throttle = throttle, Brake = brake, Handbrake = handbrake };
+                Steer = steer, Throttle = throttle, Brake = brake, Handbrake = handbrake, AppliedClutch = Consumer.Applied(3, frame), Clutch = clutch };
             return true;
         }
     }

@@ -182,6 +182,70 @@ Still unqualified:
 - keyboard steering;
 - clutch and H-pattern gates.
 
+## Wheelkit's actual Apply output in game (08:46, romi GO 33349)
+
+**Apply.** Wheelkit `3ccd9de` `LiveApplyRun` (Prepare, Apply, Verify) ran with the owner's
+saved profile onto an inert folder.
+- Inputs: the exact RC14 payload, a read-only copy of the owner's Settings `91090837`, and
+  a read-only snapshot of the owner's `mapping-profiles.json` `31283715` (active "Moza KS
+  Pro Triple"). The owner's files were re-hashed unchanged afterwards.
+- Written (14): steer, throttle, brake, handbrake, shiftUp, shiftDown, confirm, back,
+  start, the four navigation directions, camera.
+- Omitted with reasons (13): clutch, reverse and gear1-7 by policy; select, lookBack,
+  reset and horn as unsupported.
+- Settings changed: only `SharedInput=true` and `TransmissionMode=Sequential`.
+- Output: INI `C685B218` (equal to the reviewed `5206EDFB` minus the unsupported lookBack
+  and reset lines) and Settings `AB4C69E8`. Evidence:
+  `wheelkit-owner-apply-20261012-084134/result.json`.
+
+**Run.** Staged copy-only with `-SettingsSource` (copy Settings `B682797E` = `AB4C69E8`
+plus `ForceFeedbackEnabled=false`), native `44E46799`, run `native44e-wheelkit-20261012-084243`.
+- The copy's files were identical before and after the run.
+- The session attached and accepted its first frame, with the same 14 owned actions.
+- The sealed verdict passed: 1358 stage frames composed; the resting wheel held steering
+  on 345 scripted-steer frames; pedals and handbrake passed through; 722 car ticks
+  matched.
+- Force was off: `ffb=False`, no force attempts, and the native log has readers only.
+- Restoration was exact.
+- This is game evidence for the writer's actual output, not a general writer
+  qualification.
+
+**Wording defect for the next rebake.** `CONTROLS.json`'s clutch omission reason, "the
+reviewed profile does not bind it", is wrong for the owner's saved profile, which binds
+clutch on R12 Axis 6. It should read "unqualified: no runtime evidence".
+
+## Clutch and H-pattern drive steps (source, romi 33299)
+
+**Probe change.** `Prepare-ShimProbe -Mode Drive -DriveSteps gears`, which requires
+`-TransmissionMode H-pattern`, runs the latched Drive probe with clutch and gate steps
+instead of the driving steps. It uses the existing machinery: the Observe receipt, the
+recorder route, latched raw Core stimuli, and the settle and release verdict.
+
+**Bindings.** From the owner's saved profile (Wheelkit): clutch on R12 Axis 6, gear1-7 on
+DS-8X Buttons 0-6, reverse on Button 7. The test INI is derived copy-only with
+Transmission H-pattern; the writer still omits these bindings.
+
+**Steps:**
+1. Clutch 60%: the car's `clutchInput` equals the composition (`max(game, applied)`).
+2. The gear1 gate gives first gear (index 2).
+3. The gear3 gate gives third (index 4).
+4. The reverse gate gives index 0.
+5. The lowest bound gate beyond the car's live gear ratios leaves the gear unchanged, never
+   clamped. If every bound gate exists, the row stays open.
+
+**Checks.** Each gate must reach its gear once the change settles and hold it, and the gear
+must return to neutral (index 1) after release. A gate step fails if the car is already in
+that gear. The run refuses a non-H-pattern profile or an automatic gearbox.
+
+**Native.** The probe's no-force latch needs `EnableTestInjection`, which only `DD301314`
+exports. So this qualifies Art's clutch and gate consumers, not the `44E` native.
+
+**Fixtures** (`tests/ShimInput` `GearSteps`): the production `ShimTransmission` drives a
+simulated gearbox. Covered: a five-speed pass with the out-of-range row on gear6, an
+all-gates-exist case left open, a clamped gate, an ignored gate, a start already in gear,
+a gear kept after release, a car clutch that differs, a non-H-pattern profile and an
+automatic gearbox. ShimInput 12229 on net8 and Mono; 9 of 9 verdict mutants killed.
+
 ## Remaining gaps
 
 1. **No Wheelkit writer for Art's profile.** Wheelkit writes `dbce-controls.ini` only for

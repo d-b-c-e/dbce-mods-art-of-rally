@@ -159,9 +159,9 @@ namespace ArtOfSimRally.Mod
                 {
                     // Fixed before the first frame: only latched frames, and only the driving actions delivered.
                     ShimInput.Consumer.AcceptLatched = true;
-                    ShimInput.Consumer.DeliverOnly(DriveTrial.Delivered);
+                    ShimInput.Consumer.DeliverOnly(request.GearSteps ? DriveTrial.GearsDelivered : DriveTrial.Delivered);
                     string batchFile = Path.Combine(request.Result, "shim-batch.txt");
-                    drive = new DriveTrial(ShimInput.Consumer, File.ReadAllText(request.ProfilePath), text => ProbeRequest.Replace(batchFile, text), request.Nonce);
+                    drive = new DriveTrial(ShimInput.Consumer, File.ReadAllText(request.ProfilePath), text => ProbeRequest.Replace(batchFile, text), request.Nonce, request.GearSteps);
                 }
                 if (Trial)
                 {
