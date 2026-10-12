@@ -486,6 +486,18 @@ internal static class Program
         }
         return trial;
     }
+    // The profile's physical controls, for refusing Art fallbacks that would make one control drive two actions.
+    private static void ProfileControls()
+    {
+        var objects = ProfileObjects.Parse(BridgeTests.DriveProfile + "navDown = hat 0 18000 dev={d71b8350-61b7-11f1-8001-444553540000}\n" + "; comment = axis 9 dev={x}\nProfile = Drive\n");
+        var r12 = new Guid("d71b8350-61b7-11f1-8001-444553540000"); var ds8x = new Guid("d9b1d890-6f3f-11f1-8002-444553540000");
+        Check(objects.Count == 7, "profile controls parsed: " + objects.Count);
+        Check(ProfileObjects.BoundBy(objects, "axis", 2, 0, r12) == "throttle" && ProfileObjects.BoundBy(objects, "button", 9, 0, ds8x) == "shiftUp", "bound controls not found");
+        Check(ProfileObjects.BoundBy(objects, "axis", 3, 0, r12) == null && ProfileObjects.BoundBy(objects, "button", 9, 0, r12) == null && ProfileObjects.BoundBy(objects, "axis", 2, 0, ds8x) == null, "free control, other device or kind reported bound");
+        Check(ProfileObjects.BoundBy(objects, "hat", 0, 22500, r12) == "navDown" && ProfileObjects.BoundBy(objects, "hat", 0, 27000, r12) == null &&
+            ProfileObjects.BoundBy(objects, "hat", 0, 9001, r12) == "navDown" && ProfileObjects.BoundBy(objects, "hat", 0, 0, r12) == null && ProfileObjects.BoundBy(objects, "hat", 1, 18000, r12) == null, "hat sectors");
+        Check(ProfileObjects.Parse(null).Count == 0 && ProfileObjects.BoundBy(null, "axis", 0, 0, r12) == null, "empty profile");
+    }
     private static void DriveSteps()
     {
         var b = DriveTrial.Bindings(BridgeTests.DriveProfile);
@@ -558,7 +570,7 @@ internal static class Program
         }
         try
         {
-            Decode(); Consumption(); StatusesAndFailures(); SharedActions(); SharedStatus(); TrialSteps(); DriveSteps();
+            Decode(); Consumption(); StatusesAndFailures(); SharedActions(); SharedStatus(); TrialSteps(); DriveSteps(); ProfileControls();
             assertions += BridgeTests.Fake();
             assertions += IsolationTests.Run();
             assertions += ProbeTests.Run();

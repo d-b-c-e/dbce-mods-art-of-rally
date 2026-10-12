@@ -171,7 +171,8 @@ namespace ArtOfSimRally.Mod
                     string batchFile = Path.Combine(request.Result, "shim-batch.txt");
                     trial = new LatchedTrial(ShimInput.Consumer, Selection, text => ProbeRequest.Replace(batchFile, text), request.Nonce, NavigationEnabled);
                 }
-                WheelInput.AttachSharedInput(session.Source, session.Native, session.VerifyIsolation, () => session.Isolation.Restore(), session.Native.Transmission());
+                WheelInput.AttachSharedInput(session.Source, session.Native, session.VerifyIsolation, () => session.Isolation.Restore(), session.Native.Transmission(),
+                    File.ReadAllText(request.ProfilePath));
                 attached = true; receipt.Applied = true;
                 if (Drive) ShimDrive.Begin(drive);
                 ModLog.Info(Drive ? "Shared input Drive PROBE attached (latched; steer, throttle, brake, handbrake, shifts only) at the stage start; saved backend unchanged." : Trial ? "Shared input Trial PROBE attached (latched; navUp/navDown only) on the main menu; saved backend unchanged."

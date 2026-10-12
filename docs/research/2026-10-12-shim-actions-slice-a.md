@@ -350,3 +350,23 @@ Not claimed: other actions or buttons, confirm/back, driving or gear mapping,
 ordinary (non-latched) navigation, force feedback coexistence.
 
 Evidence (ignored): `E:/Source/games/.worktrees/art-shim-probe-evidence/observe-latched-20261012-044249`, `E:/Source/games/.worktrees/art-shim-probe-evidence/trial-20261012-044311`.
+
+## Ordinary session: ownership, keyboard and Art fallback (romi 31428, source)
+
+- Owned actions come only from the shared profile; Art's own binding for an owned
+  action is never applied (also when it sits on a different physical control).
+- Unowned driving axes keep Art's saved binding on the same shared copy (the legacy
+  fallback that a started session used to drop entirely, e.g. clutch, which the owner
+  profile does not map); unowned buttons and shortcuts keep it as before.
+- No mapping duplication: an Art fallback (axis, button, shortcut, Art-only button or
+  hat direction) whose physical control (device instance, kind, index, overlapping hat
+  sector) the profile already binds to any action is refused, and the panel names the
+  profile action. A binding whose device cannot be identified is treated as possibly
+  shared.
+- Native keyboard passes through for unowned, unbound channels while isolation verifies;
+  nothing falls back to the wheel after a stop or during latched delivery.
+
+Fixture `--ordinary-fallback-only` drives the production GetInput postfix with a fake
+Core and the device stub; 8 mutants (no fallback, duplicates undetected, ownership
+ignored, duplicates ignored, fallback after a stop, button and shortcut duplicates, hat
+sectors) all fail. `ProfileObjects` parser tests in `tests/ShimInput`.

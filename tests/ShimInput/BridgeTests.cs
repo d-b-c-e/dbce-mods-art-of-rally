@@ -14,6 +14,10 @@ internal static class BridgeTests
         [DllImport("kernel32.dll")] private static extern bool QueryPerformanceCounter(out long value);
         [DllImport("kernel32.dll")] private static extern bool QueryPerformanceFrequency(out long value);
         internal int Descriptions, Reads, Raw = 32768, Result = 1, Pressed = 0;
+        // Optional extra physical state: other axes, more held buttons, hat 0 (centred when null).
+        internal Func<int, int> Axis { get; set; }
+        internal readonly System.Collections.Generic.HashSet<int> Buttons = new System.Collections.Generic.HashSet<int>();
+        internal uint? Hat0 { get; set; }
         internal ulong Generation = 7, Sequence;
         internal byte[] Last;
         public int Describe(int slot, byte[] bytes)
@@ -32,7 +36,10 @@ internal static class BridgeTests
             long us = tick / frequency * 1000000 + tick % frequency * 1000000 / frequency;
             BitConverter.GetBytes(us).CopyTo(bytes, 24); BitConverter.GetBytes(us).CopyTo(bytes, 32);
             bytes[50] = 1; BitConverter.GetBytes(Raw).CopyTo(bytes, 52); if (Pressed >= 0) bytes[84 + Pressed] = 0x80;
+            if (Axis != null) for (int i = 1; i < 8; i++) BitConverter.GetBytes(Axis(i)).CopyTo(bytes, 52 + i * 4);
+            foreach (int b in Buttons) bytes[84 + b] = 0x80;
             for (int i = 212; i < 228; i++) bytes[i] = 0xff;
+            if (Hat0.HasValue) BitConverter.GetBytes(Hat0.Value).CopyTo(bytes, 212);
             Last = (byte[])bytes.Clone(); return Result;
         }
     }

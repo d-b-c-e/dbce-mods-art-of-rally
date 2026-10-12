@@ -100,7 +100,8 @@ namespace ArtOfSimRally.Mod
                 string neutral = session.NeutralFailure();
                 if (neutral != null) { Refuse("the isolated wheel did not read neutral (" + neutral + ")."); return; }
                 var attached = session;
-                WheelInput.AttachSharedInput(session.Source, session.Bridge, session.VerifyIsolation, () => attached.RestoreIsolation(), transmission);
+                WheelInput.AttachSharedInput(session.Source, session.Bridge, session.VerifyIsolation, () => attached.RestoreIsolation(), transmission,
+                    System.Text.Encoding.UTF8.GetString(profile));
                 Enter(SharedInputStatus.Phase.Attached);
                 ModLog.Info("Shared input: attached profile '" + profileName + "' (" + transmission + "); isolated " + String.Join(", ", devices) + ".");
             }

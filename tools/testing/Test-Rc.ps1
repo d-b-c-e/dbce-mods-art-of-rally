@@ -72,6 +72,9 @@ try {
     $result = Run 'drive-trial' 'dotnet' @('run','--project','tests/WheelInput/WheelInput.csproj','-c','Release','--','--drive-trial-only')
     $driveTrial = $result | Select-Object -Last 1 | ConvertFrom-Json
     Assert ($driveTrial.status -eq 'passed' -and $driveTrial.assertions -gt 0) 'Drive trial runner ran no assertions'
+    $result = Run 'ordinary-fallback' 'dotnet' @('run','--project','tests/WheelInput/WheelInput.csproj','-c','Release','--','--ordinary-fallback-only')
+    $ordinaryFallback = $result | Select-Object -Last 1 | ConvertFrom-Json
+    Assert ($ordinaryFallback.status -eq 'passed' -and $ordinaryFallback.assertions -gt 0) 'Ordinary fallback runner ran no assertions'
     $result = Run 'latched-menu' 'dotnet' @('run','--project','tests/WheelInput/WheelInput.csproj','-c','Release','--','--latched-menu-only')
     $latchedMenu = $result | Select-Object -Last 1 | ConvertFrom-Json
     Assert ($latchedMenu.status -eq 'passed' -and $latchedMenu.assertions -gt 0) 'Latched menu runner ran no assertions'

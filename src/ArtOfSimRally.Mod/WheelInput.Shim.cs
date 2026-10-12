@@ -38,7 +38,13 @@ namespace ArtOfSimRally.Mod
         internal static bool SharedChannel(Channel channel, out bool available, out float value)
         {
             available = false; value = 0f;
-            if (!SharedActions.TryGetValue(channel, out int action) || !ShimInput.Consumer.Owns(action)) return false;
+            if (!SharedActions.TryGetValue(channel, out int action)) return false;
+            if (!ShimInput.Consumer.Owns(action))
+            {
+                // Unowned: Art's own binding is the fallback, unless that physical control is already one of
+                // the shared profile's (it would drive two actions); then the channel stays neutral.
+                return ShimInput.Consumer.Started && SharedDuplicate(channel) != null;
+            }
             EnsureSharedFrame();
             available = ShimInput.Consumer.Live(action, Time.frameCount) || ShimInput.Consumer.KnownNeutral(action, Time.frameCount);
             value = ShimInput.Consumer.Value(action, Time.frameCount);
@@ -56,7 +62,9 @@ namespace ArtOfSimRally.Mod
         // copied-provider mode is used: extension 1 has no capture/test fences.
         // The shared profile's transmission (Core's parse), fixed for the session.
         internal static ShimTransmission.Mode SharedTransmission { get; private set; }
-        internal static void AttachSharedInput(IPhysicalSnapshotSource source, IShimBridge native, Func<bool> isolation, Func<bool> restore = null, string transmission = null)
+        // The physical controls the attached profile binds (for the no-duplication rule of Art fallbacks).
+        private static List<ProfileObjects.PhysicalObject> sharedObjects = new List<ProfileObjects.PhysicalObject>();
+        internal static void AttachSharedInput(IPhysicalSnapshotSource source, IShimBridge native, Func<bool> isolation, Func<bool> restore = null, string transmission = null, string profile = null)
         {
             if (sharedInput != null || !_open || _devices.Count == 0 || isolation == null || !isolation())
                 throw new InvalidOperationException("shared input needs an idle, qualified reader and native isolation");
@@ -65,6 +73,7 @@ namespace ArtOfSimRally.Mod
             catch { if (restore != null) restore(); throw; }
             verifyNativeIsolation = isolation; restoreNativeInput = restore;
             SharedTransmission = ShimTransmission.ParseMode(transmission);
+            sharedObjects = ProfileObjects.Parse(profile);
         }
 
         private static bool ReadSharedSnapshot()
@@ -120,11 +129,53 @@ namespace ArtOfSimRally.Mod
         internal static void ReleaseForForceReconnect() => CloseReaders(ForceReconnectStop);
         internal static void ReopenAfterForceReconnect() { if (Enabled) Open(); }
 
+        // The shared profile action already bound to this channel's Art physical control, or null. A binding whose
+        // device cannot be identified is treated as possibly shared (never two actions from one control).
+        internal static string SharedDuplicate(Channel c)
+        {
+            if (sharedObjects.Count == 0 || !_bindings.TryGetValue(c, out var b)) return null;
+            Guid? device = b.InstanceGuid ?? Resolve(b)?.InstanceGuid;
+            if (!device.HasValue) return "a control on an unidentified device";
+            return ProfileObjects.BoundBy(sharedObjects, b.IsHat ? "hat" : b.IsButton ? "button" : "axis", b.Element, b.IsHat ? b.Rest : 0, device.Value);
+        }
+
+        // Unowned driving axes keep Art's own binding on this frame's shared copy (the legacy fallback). Never
+        // one whose control the shared profile already maps, never after a stop, during latched delivery, while
+        // isolation is unproven this frame or in the finishing animation.
+        internal static void ApplyAxisFallback(AxisCarController car, ref float throttle, ref float brake, ref float steer, ref float handbrake, ref float clutch, ref bool startEngine)
+        {
+            var consumer = ShimInput.Consumer; int frame = Time.frameCount;
+            var cfg = Main.Settings;
+            if (cfg == null || !cfg.WheelInputEnabled || !consumer.Fresh(frame) || consumer.LatchedDelivery(frame) || ShimInput.IsolatedFrame != frame) return;
+            try
+            {
+                var manager = GameState.ExistingManager;
+                if (manager == null || manager.status == EventStatusEnums.EventStatus.FINISHING_STAGE_ANIMATION) return;
+            }
+            catch { return; }
+            PrepareGameQuery(); // this frame's values from the shared copy
+            if (_buttonFrame != frame) return;
+            foreach (var c in FallbackAxes)
+            {
+                if (consumer.Owns((int)c) || !IsBound(c) || SharedDuplicate(c) != null) continue;
+                float value = Value(c);
+                switch (c)
+                {
+                    case Channel.Steer: steer = AxisCarController.ProcessDeadzoneForInput(value, SettingsManager.GetSteeringDeadzone()) + car.SteeringOutOfAlignmentEffect; break;
+                    case Channel.Throttle: throttle = AxisCarController.ProcessDeadzoneForInput(value, SettingsManager.GetThrottleDeadzone()); startEngine = throttle > 0f; break;
+                    case Channel.Brake: brake = AxisCarController.ProcessDeadzoneForInput(value, SettingsManager.GetBrakingDeadzone()); break;
+                    case Channel.Clutch: clutch = value; break;
+                    case Channel.Handbrake: handbrake = Mathf.Max(handbrake, value); break;
+                }
+            }
+        }
+        private static readonly Channel[] FallbackAxes = { Channel.Steer, Channel.Throttle, Channel.Brake, Channel.Clutch, Channel.Handbrake };
+
         // Art-only buttons beside a started shared session, from this frame's shared copy (no second read).
         internal static float ArtOnlyValue(Channel c)
         {
             var cfg = Main.Settings;
-            if (cfg == null || !SharedArtOnly(c) || (!cfg.WheelInputEnabled && !IsShortcut(c)) || !_bindings.TryGetValue(c, out var b)) return 0f;
+            if (cfg == null || !SharedArtOnly(c) || (!cfg.WheelInputEnabled && !IsShortcut(c)) || !_bindings.TryGetValue(c, out var b) || SharedDuplicate(c) != null) return 0f;
             EnsureSharedFrame();
             var d = Resolve(b);
             if (d == null || !d.Ok) return 0f;
@@ -138,8 +189,11 @@ namespace ArtOfSimRally.Mod
             if (!ShimInput.Consumer.Started) return "Set by the shared profile once it is in use.";
             int action = c <= Channel.Handbrake ? (int)c : SharedActions.TryGetValue(c, out int mapped) ? mapped : -1;
             if (action >= 0 && ShimInput.Consumer.Owns(action)) return "Set by the shared profile.";
-            // An unmapped axis is left to the game; an unmapped button keeps Art's binding on the shared copy.
-            if (c > Channel.Handbrake && IsBound(c) && (IsShortcut(c) || (Main.Settings != null && Main.Settings.WheelInputEnabled)))
+            // Unowned: Art's saved binding on the shared copy, unless its control is already the profile's.
+            string duplicate = SharedDuplicate(c);
+            if (IsBound(c) && duplicate != null)
+                return "Not in the shared profile; Art's binding (" + Describe(c) + ") uses a control the profile maps to " + duplicate + ", so it is not used.";
+            if (IsBound(c) && (IsShortcut(c) || (Main.Settings != null && Main.Settings.WheelInputEnabled)))
                 return "Not in the shared profile; Art's saved binding applies: " + Describe(c) + ".";
             return "Not in the shared profile; the game's own controls apply.";
         }

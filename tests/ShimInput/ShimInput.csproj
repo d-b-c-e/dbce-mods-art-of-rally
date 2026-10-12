@@ -19,6 +19,7 @@
     <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ProbeRequest.cs" Link="ProbeRequest.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/Shim/LatchedTrial.cs" Link="LatchedTrial.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/Shim/DriveTrial.cs" Link="DriveTrial.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ProfileObjects.cs" Link="ProfileObjects.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ProbeIdentityMapper.cs" Link="ProbeIdentityMapper.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ProbeIdentityLease.cs" Link="ProbeIdentityLease.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ProbeNoForce.cs" Link="ProbeNoForce.cs" />

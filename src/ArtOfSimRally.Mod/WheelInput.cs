@@ -65,6 +65,8 @@ namespace ArtOfSimRally.Mod
             else
             {
                 if (!_bindings.TryGetValue(c, out var b)) { ShortcutHeld[c] = true; return false; }
+                // Beside a started shared profile, an Art shortcut on a control the profile maps stays off.
+                if (Shim.ShimInput.Consumer.Started && SharedDuplicate(c) != null) { ShortcutHeld[c] = true; return false; }
                 var device = Resolve(b);
                 if (device == null || !device.Ok) { ShortcutHeld[c] = true; return false; }
                 held = Value(c) > .5f;
@@ -640,7 +642,13 @@ namespace ArtOfSimRally.Mod
                 startEngineInput = false; return;
             }
             if (Shim.ShimInput.TryOverride(__instance, ref throttleInput, ref brakeInput, ref steerInput,
-                ref handbrakeInput, ref clutchInput, ref startEngineInput)) return;
+                ref handbrakeInput, ref clutchInput, ref startEngineInput))
+            {
+                // Owned actions came from the shared profile; unowned axes keep Art's own bindings.
+                WheelInput.ApplyAxisFallback(__instance, ref throttleInput, ref brakeInput, ref steerInput,
+                    ref handbrakeInput, ref clutchInput, ref startEngineInput);
+                return;
+            }
             if (!WheelInput.Enabled) return;
             try
             {

@@ -16,7 +16,7 @@ namespace ArtOfSimRally.Mod.Shim
             internal bool? CarAutomatic { get; set; } // the current car while driving; null otherwise
         }
         internal const string Unsupported = "Not available in Art: select, look back, reset and horn.";
-        internal const string ArtOnly = "Camera tuning keys and buttons keep Art bindings, and so does the handbrake button while Use assigned controls is On.";
+        internal const string ArtOnly = "Camera tuning keys and buttons keep Art bindings, and so does the handbrake button while Use assigned controls is On. An Art binding on a control the shared profile maps is not used.";
         internal const string Editors = "Art's editors for shared controls are hidden; the handbrake and camera buttons stay editable. Turn the shared profile off and restart to edit the rest. Plugging in or changing devices also needs a restart.";
         // After a stop the car gets no driving input at all: the game's combined values cannot separate
         // keyboard from a re-enabled wheel. Menus keep the keyboard.

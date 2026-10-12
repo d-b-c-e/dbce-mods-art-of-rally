@@ -246,6 +246,10 @@ static class Program
             {
                 DriveRealCore(); Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
             }
+            if (args.Contains("--ordinary-fallback-only"))
+            {
+                OrdinaryFallback(); Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
+            }
             if (args.Contains("--latched-menu-only"))
             {
                 LatchedMenu(); Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
@@ -309,13 +313,14 @@ static class Program
     {
         internal Func<(int Action, ArtOfSimRally.Mod.Shim.ShimStatus Status, float Value)[]> Script = () => Array.Empty<(int, ArtOfSimRally.Mod.Shim.ShimStatus, float)>();
         internal int Ticks, Stops; internal bool Latched, Refuse;
+        internal int[] AxesOwned = { 0, 1, 2, 3, 4 };
         public bool Devices(byte[] bytes, int count) => true;
         public bool Tick(byte[] samples, int count, byte[] frame)
         {
             Ticks++;
             if (Refuse) return false;
             BitConverter.GetBytes(296).CopyTo(frame, 0); frame[4] = 2; BitConverter.GetBytes((ulong)Ticks).CopyTo(frame, 8); BitConverter.GetBytes((long)Ticks).CopyTo(frame, 16);
-            for (int i = 0; i < 31; i++) frame[52 + i * 8] = (byte)(i < 5 ? ArtOfSimRally.Mod.Shim.ShimStatus.Live : ArtOfSimRally.Mod.Shim.ShimStatus.Unbound);
+            for (int i = 0; i < 31; i++) frame[52 + i * 8] = (byte)(i < 5 && Array.IndexOf(AxesOwned, i) >= 0 ? ArtOfSimRally.Mod.Shim.ShimStatus.Live : ArtOfSimRally.Mod.Shim.ShimStatus.Unbound);
             foreach (var a in Script()) { BitConverter.GetBytes(a.Value).CopyTo(frame, 48 + a.Action * 8); frame[52 + a.Action * 8] = (byte)a.Status; if (Latched && a.Status == ArtOfSimRally.Mod.Shim.ShimStatus.Live) frame[53 + a.Action * 8] = 1; }
             if (Latched) { frame[40] = 3; frame[41] = 1; frame[42] = 1; } // Running, latched, native suppressed
             return true;
@@ -694,6 +699,74 @@ static class Program
         }
         finally { WheelInput.Close(); }
         Check(File.ReadAllText(Path.Combine(folder, "host-shutdown.json")).Contains("\"state\":\"resolved\""), "drive stop did not resolve");
+    }
+    // romi 31428: an ordinary (non-latched) session through the production GetInput postfix. Owned actions come
+    // only from the shared profile; native keyboard passes through for unowned, unbound channels; unowned
+    // channels fall back to Art's own binding on the shared copy, except where that physical control is already
+    // one of the profile's (never two actions from one control); nothing falls back after a stop.
+    static void OrdinaryFallback()
+    {
+        const ArtOfSimRally.Mod.Shim.ShimStatus L = ArtOfSimRally.Mod.Shim.ShimStatus.Live;
+        var id = new Guid("d71b8350-61b7-11f1-8001-444553540000");
+        Setup(""); Device.Devices[0].InstanceGuid = id; WheelInput.Close(); WheelInput.Open();
+        var cfg = Host.Settings;
+        string Bind(string element, int rest, int far) => "TSS fixture|0|" + element + "|" + rest + "|" + far + "|guid:" + id.ToString("D");
+        cfg.SteerBinding = Bind("axis:0", 0, 65535);      // owned by the profile: never from Art
+        cfg.ClutchBinding = Bind("axis:3", 0, 65535);     // not in the profile: Art fallback
+        cfg.BrakeBinding = Bind("axis:6", 0, 65535);      // owned brake, Art binding on a free axis: still never from Art
+        cfg.HandbrakeBinding = Bind("axis:5", 0, 65535);  // the profile's brake axis: duplicate, refused
+        cfg.BackBinding = Bind("button:7", 0, 1);         // the profile's camera button: duplicate, refused
+        cfg.StartBinding = Bind("button:12", 0, 1);       // not in the profile: Art fallback
+        cfg.NavLeftBinding = "TSS fixture|0|pov:0|22500|1|guid:" + id.ToString("D"); // overlaps the profile's navDown sector
+        cfg.NavUpBinding = "TSS fixture|0|pov:0|0|1|guid:" + id.ToString("D");        // opposite sector: no overlap
+        cfg.CameraButtonBindings = new string[11]; cfg.CameraButtonBindings[0] = Bind("button:7", 0, 1); // camera tuning on the camera button
+        cfg.CameraButtonBindings[1] = Bind("button:13", 0, 1); // camera tuning on a free button: Art fallback
+        WheelInput.LoadBindings(); Clock.frameCount = 70000; WheelInput.Update();
+        string dev = " dev={" + id.ToString("D") + "}";
+        string profile = "[Controls]\nSchema = 1\nProfile = Ordinary\nsteer = axis 0" + dev + " range=0..65535 rest=32768 travel=+1\nbrake = axis 5" + dev +
+            " range=0..65535 rest=0 travel=+1\nconfirm = button 31" + dev + "\ncamera = button 7" + dev + "\nnavDown = hat 0 18000" + dev + "\n";
+        var source = new BridgeTests.Source { Pressed = -1, Hat0 = 18000, Axis = axis => axis == 3 ? 40000 : axis == 5 ? 30000 : axis == 6 ? 10000 : 0 };
+        source.Buttons.Add(7); source.Buttons.Add(12);
+        var native = new ActionNative { AxesOwned = new[] { 0, 2 }, Script = () => new[] { (0, L, .25f), (2, L, .5f), (9, L, 0f), (17, L, 0f), (14, L, 0f) } };
+        WheelInput.AttachSharedInput(source, native, () => true, () => true, "Sequential", profile);
+        var patch = typeof(WheelInputPatch).GetMethod("Override", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+        ArtOfSimRally.Mod.Shim.DrivingValues Car()
+        {
+            // The game's own (keyboard) values, then the production GetInput postfix.
+            var car = new AxisCarController { SteeringOutOfAlignmentEffect = .02f };
+            object[] a = { car, .3f, .1f, .9f, .2f, .1f, true };
+            patch.Invoke(null, a);
+            return new ArtOfSimRally.Mod.Shim.DrivingValues { Throttle = (float)a[1], Brake = (float)a[2], Steer = (float)a[3], Handbrake = (float)a[4], Clutch = (float)a[5], StartEngine = (bool)a[6] };
+        }
+        void Frame() { Clock.frameCount++; WheelInput.EnsureUpdatedThisFrame(); }
+        Frame(); Frame();
+        var consumer = ArtOfSimRally.Mod.Shim.ShimInput.Consumer;
+        Check(consumer.Started && consumer.Owns(0) && consumer.Owns(2) && !consumer.Owns(1) && !consumer.Owns(3) && !consumer.Owns(4), "fixture ownership");
+        Frame(); var v = Car();
+        Same(v.Steer, .27f, "owned steer not the shared value plus alignment (Art binding leaked?)");
+        Same(v.Brake, .5f, "owned brake not the shared value (Art's own brake binding applied?)");
+        Same(v.Throttle, .3f, "keyboard throttle did not pass through an unowned, unbound axis");
+        Same(v.Clutch, 40000f / 65535, "unowned clutch did not fall back to Art's binding");
+        Same(v.Handbrake, .2f, "Art handbrake on the profile's brake axis was applied (duplicate)");
+        Check(!WheelInput.GameButton(WheelInput.Channel.Back, false), "Art Back on the profile's camera button was applied (duplicate)");
+        Check(WheelInput.GameButton(WheelInput.Channel.Start, false), "unowned Start lost its Art fallback");
+        Check(!WheelInput.GameButton(WheelInput.Channel.NavLeft, false), "Art hat direction overlapping the profile's navDown was applied (duplicate)");
+        // Shortcuts fire on a press edge: release both, then press both.
+        source.Buttons.Remove(7); Frame(); WheelInput.ShortcutPressed(WheelInput.Channel.CameraUp); WheelInput.ShortcutPressed(WheelInput.Channel.CameraDown);
+        source.Buttons.Add(7); source.Buttons.Add(13); Frame();
+        Check(!WheelInput.ShortcutPressed(WheelInput.Channel.CameraUp), "Art camera shortcut on the profile's camera button was applied (duplicate)");
+        Check(WheelInput.ShortcutPressed(WheelInput.Channel.CameraDown), "Art camera shortcut on a free button lost its fallback");
+        Check(WheelInput.SharedEditorText(WheelInput.Channel.Handbrake).Contains("maps to brake") && WheelInput.SharedEditorText(WheelInput.Channel.Back).Contains("maps to camera") &&
+            WheelInput.SharedEditorText(WheelInput.Channel.Clutch).Contains("Art's saved binding applies") && WheelInput.SharedEditorText(WheelInput.Channel.Steer) == "Set by the shared profile." &&
+            WheelInput.SharedEditorText(WheelInput.Channel.NavLeft).Contains("maps to navDown") && WheelInput.SharedEditorText(WheelInput.Channel.NavUp).Contains("Art's saved binding applies"),
+            "panel text: " + WheelInput.SharedEditorText(WheelInput.Channel.Handbrake) + " | " + WheelInput.SharedEditorText(WheelInput.Channel.Clutch));
+        // A transport-only stop keeps the verified keyboard path but nothing falls back to the wheel.
+        native.Refuse = true; Frame(); native.Refuse = false; Frame();
+        v = Car();
+        Check(consumer.Terminal && WheelInput.SharedKeyboardRetained, "transport stop not reached");
+        Same(v.Clutch, .1f, "Art fallback applied after the shared session stopped");
+        Same(v.Throttle, .3f, "keyboard lost after a transport-only stop");
+        WheelInput.Close();
     }
     static void SharedActionChannels()
     {
