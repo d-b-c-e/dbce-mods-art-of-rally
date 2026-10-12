@@ -98,30 +98,43 @@ exports must refuse.
    `render-diagnostics.json` in that same folder: the normal triple-screen
    publisher still runs in the copy. Remove only a probe-created shared file
    that was absent before; otherwise restore its exact original bytes.
-   Keep Steam offline/local and preserve the existing prefs/logs before launch.
+   Preserve the existing Steam session and shared prefs/logs before launch.
+   Never answer a Steam `KickingOtherSession` prompt or restart the owner's client.
    Do not enter a stage, change controls, invoke Steam's normal Play, or run
    Wheelkit Apply. Use no optional recorder/injection markers or extra native
    FFB modules in the disposable copy.
 2. Create a fresh non-junction `$copy` using `robocopy $owner $copy /E /XJ`
    (success exit codes 0–7). No `/MIR`, deletion or owner-file replacement. Copy
    `$result\payload\ArtOfSimRally\*` to the copy's `Mods\ArtOfSimRally` only.
-   Confirm the copied Settings hash equals the source hash. Ensure UMM is active
-   in the copied game and optional other mods are disabled in that copy only.
+   Also place the same candidate native bytes in the copy's
+   `artofrally_Data/Plugins/x86_64/UnityForceFeedback.dll`. Confirm the copied
+   Settings hash equals the source hash. Ensure UMM is active in the copied game;
+   omit optional other mod folders using robocopy `/XD` on their exact source paths.
    The latch verifies exactly one resident `UnityForceFeedback.dll`/`WheelFfb.dll`;
    another loaded copy refuses because it would have an independent force gate.
    Do not fix such a refusal by weakening the check or touching owner DLLs.
-3. Use a child-only environment, not a user/system variable. This launch example
-   is for the coordinator's already-authorized serialized slot, not preparation:
+3. Before direct launch, write `550320` to **the copy's** `steam_appid.txt` using
+   ASCII, with the copied executable directory as its working directory. Without
+   this file Art has been observed restarting through Steam into the owner install
+   and losing the child environment; see `docs/FORCE-FEEDBACK.md`. The development
+   app-ID file suppresses `SteamAPI_RestartAppIfNecessary` according to Valve's
+   [Steamworks startup contract](https://partner.steamgames.com/doc/sdk/api#initialization_and_shutdown).
+   Do not put that file in the owner installation. Use the runner only in the
+   coordinator's already-authorized serialized slot:
 
    ```powershell
-   $start = New-Object Diagnostics.ProcessStartInfo
-   $start.FileName = Join-Path $copy 'artofrally.exe'
-   $start.WorkingDirectory = $copy
-   $start.UseShellExecute = $false
-   $start.EnvironmentVariables['DBCE_ART_SHIM_REQUEST'] = Join-Path $result 'request.json'
-   $process = [Diagnostics.Process]::Start($start)
+   & "$art\tools\testing\Invoke-ShimProbeCopy.ps1" -Result $result
    ```
 
+   It checks candidate pins and optional-mod absence, snapshots shared bytes and
+   raw PlayerPrefs with the existing `SessionEnvironment.ps1`, holds the shared
+   rig lease, and launches with child-only request/`SteamAppId`/`SteamGameId`
+   variables. The exact child path and start time are checked before normal close.
+   After a receipt or 90 seconds it asks that child to close its main window,
+   without keyboard/mouse input or a forced kill. If any Art process remains,
+   backup and lease are retained for recovery. Successful restoration produces
+   `restored.txt`; source payload hashes are checked without rewriting the owner
+   installation. The copied UMM log and `after` shared-file copies remain evidence.
 4. Remain in menus. Read `$result\probe-receipt.json` and the copied UMM log.
    Refusal is a useful result: retain Native and report exact GUID/path evidence.
    Observe should restore promptly. Never infer a HID path bridge from labels.

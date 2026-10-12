@@ -55,7 +55,8 @@ $request = [ordered]@{
 }
 $utf8 = New-Object Text.UTF8Encoding($false)
 [IO.File]::WriteAllText((Join-Path $Result 'request.json'), ($request | ConvertTo-Json -Depth 5), $utf8)
-$inventory = [ordered]@{ SourceGame=$SourceGame; GameCopy=$GameCopy; SettingsSource=[IO.Path]::GetFullPath($Settings); SettingsSourceSha256=(Hash $Settings); SourceCommit=(& git -C $repo rev-parse HEAD); SourceStatus=(@(& git -C $repo status --porcelain)); Files=@() }
+$inventory = [ordered]@{ SourceGame=$SourceGame; GameCopy=$GameCopy; SettingsSource=[IO.Path]::GetFullPath($Settings); SettingsSourceSha256=(Hash $Settings); ProfileSource=[IO.Path]::GetFullPath($Profile); ProfileSourceSha256=(Hash $Profile); SourceCommit=(& git -C $repo rev-parse HEAD); SourceStatus=(@(& git -C $repo status --porcelain)); Files=@() }
+if ($inventory.SettingsSourceSha256 -ne $request.SettingsSha256 -or $inventory.ProfileSourceSha256 -ne $request.ProfileSha256) { throw 'Source settings/profile changed during snapshot; prepare a fresh result.' }
 foreach ($file in Get-ChildItem -LiteralPath $payload -File) { $inventory.Files += [ordered]@{ Name=$file.Name; Sha256=(Hash $file.FullName) } }
 [IO.File]::WriteAllText((Join-Path $Result 'prepared.json'), ($inventory | ConvertTo-Json -Depth 5), $utf8)
 $recipe = @"
@@ -71,9 +72,11 @@ Use docs/research/2026-10-11-shim-muted-probe.md at the serialized rig slot.
 Copy the game to the disposable path using robocopy /E /XJ (no /MIR).
 Remove or disable optional third-party mods ONLY in that disposable copy.
 Copy payload contents into the COPY's Mods/ArtOfSimRally folder.
+Copy the candidate UnityForceFeedback.dll into the COPY's artofrally_Data/Plugins/x86_64 folder too.
+Write ASCII 550320 to the COPY's steam_appid.txt to prevent Steam restarting into the owner installation.
 Keep the source Settings.xml byte-identical. Never run an installer or Wheelkit Apply.
 Create no injection marker, injection command, or saved backend setting.
-At launch give ONLY the child process DBCE_ART_SHIM_REQUEST=<request path>.
+Use Invoke-ShimProbeCopy.ps1 only in the coordinator's explicit rig slot. Its environment is child-only.
 Remain in menus; no physical movement is required. Inspect probe-receipt.json.
 Exit the copy normally; compare source hashes before and after. Do not publish.
 "@
