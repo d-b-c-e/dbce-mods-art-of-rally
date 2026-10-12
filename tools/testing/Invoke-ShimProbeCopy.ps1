@@ -37,9 +37,12 @@ $pins=@{
     ([string]$request.ShimPath)=$request.ShimSha256
     ([string]$request.ProfilePath)=$request.ProfileSha256
 }
-foreach($p in $pins.Keys) { Plain $p; if((Hash $p) -ne $pins[$p]) { throw "Candidate pin differs: $p" } }
-if((Hash (Join-Path $owner 'Mods/ArtOfSimRally/Settings.xml')) -ne $request.SettingsSha256) { throw 'Owner settings changed since preparation.' }
-if((Get-Content -LiteralPath (Join-Path $GameDir 'steam_appid.txt') -Raw).Trim() -cne '550320') { throw 'Copy-only Steam app id missing; direct launch could redirect through Steam.' }
+function Assert-Pins {
+    foreach($p in $pins.Keys) { Plain $p; if((Hash $p) -ne $pins[$p]) { throw "Candidate pin differs: $p" } }
+    if((Hash (Join-Path $owner 'Mods/ArtOfSimRally/Settings.xml')) -ne $request.SettingsSha256) { throw 'Owner settings changed since preparation.' }
+    if((Get-Content -LiteralPath (Join-Path $GameDir 'steam_appid.txt') -Raw).Trim() -cne '550320') { throw 'Copy-only Steam app id missing; direct launch could redirect through Steam.' }
+}
+Assert-Pins
 $otherMods=@(Get-ChildItem -LiteralPath (Join-Path $GameDir 'Mods') -Directory | Where-Object Name -NE 'ArtOfSimRally')
 if($otherMods.Count) { throw 'Disposable copy contains optional mod folders; stage only ArtOfSimRally.' }
 [xml]$umm=Get-Content -LiteralPath (Join-Path $GameDir 'artofrally_Data/Managed/UnityModManager/Params.xml') -Raw
@@ -79,23 +82,30 @@ try {
     Save-SessionEnvironment "$Result/shared-environment"; $environmentSaved=$true
     foreach($p in @('ArtOfSimRally/ffb.log','ArtOfSimRally/ffb.previous.log','ArtOfSimRally/last-session-frame-health.xml',
         'DBCE/TripleScreen/games/art-of-rally/status.json','DBCE/TripleScreen/games/art-of-rally/render-diagnostics.json')) { Save-File (Join-Path $env:LOCALAPPDATA $p) }
-    $rootBefore=@(Files $localLow); $cloudBefore=@(Files $cloud -Recurse)
-    foreach($p in $rootBefore+$cloudBefore) { Save-File $p }
+    # Unity and Screenshots may also be touched even when no stage is entered.
+    $localBefore=@(Files $localLow -Recurse)
+    foreach($p in $localBefore) { Save-File $p }
     $snapshots | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath "$Result/shared-files.json"
-    @{schema=1;gameDir=$GameDir;owner=$owner;lease=$lease;rootBefore=$rootBefore;cloudBefore=$cloudBefore} | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath "$Result/recovery.json"
+    @{schema=1;gameDir=$GameDir;owner=$owner;lease=$lease;localBefore=$localBefore} | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath "$Result/recovery.json"
     $ready=$true
     Assert-StageRigLease -Path $lease.path -Token $lease.token
     if([double](& $ownerInput -IdleSeconds) -lt 300) { throw 'Owner input resumed during preparation; no launch.' }
+    Assert-Pins # close the preparation-to-launch gap while holding the lease
     $start=[Diagnostics.ProcessStartInfo]::new()
     $start.FileName=Join-Path $GameDir 'artofrally.exe'; $start.WorkingDirectory=$GameDir; $start.UseShellExecute=$false
     $start.EnvironmentVariables['DBCE_ART_SHIM_REQUEST']=$requestPath
     $start.EnvironmentVariables['SteamAppId']='550320'; $start.EnvironmentVariables['SteamGameId']='550320'
+    $start.EnvironmentVariables['DBCE_FFB_MUTE']='1' # native load-time latch precedes managed request validation
     $launchAttempted=$true
     $game=[Diagnostics.Process]::Start($start)
-    $processStart=$game.StartTime.ToUniversalTime(); $game.Refresh()
-    if(![string]::Equals($game.MainModule.FileName,$start.FileName,[StringComparison]::OrdinalIgnoreCase)) { throw 'Launched executable path differs; no process action authorized.' }
-    @{pid=$game.Id;startUtc=$processStart.ToString('o');executable=$game.MainModule.FileName;requestSha256=(Hash $requestPath);lease=$lease} | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath "$Result/launch.json"
-    Write-Output "Disposable Art started: pid=$($game.Id), path=$($game.MainModule.FileName). No input sent."
+    $processStart=$game.StartTime.ToUniversalTime(); $imageDeadline=[DateTime]::UtcNow.AddSeconds(5); $imagePath=$null
+    while(!$imagePath -and !$game.HasExited -and [DateTime]::UtcNow -lt $imageDeadline) {
+        try { $game.Refresh(); $imagePath=$game.MainModule.FileName } catch [ComponentModel.Win32Exception] { }
+        if(!$imagePath) { $null=$game.WaitForExit(100) }
+    }
+    if(![string]::Equals($imagePath,$start.FileName,[StringComparison]::OrdinalIgnoreCase)) { throw 'Launched executable path unavailable or differs; no replacement process action authorized.' }
+    @{pid=$game.Id;startUtc=$processStart.ToString('o');executable=$imagePath;requestSha256=(Hash $requestPath);lease=$lease} | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath "$Result/launch.json"
+    Write-Output "Disposable Art started: pid=$($game.Id), path=$imagePath. No input sent."
     $deadline=[DateTime]::UtcNow.AddSeconds($ObserveSeconds)
     while(!$game.HasExited -and !(Test-Path -LiteralPath "$Result/probe-receipt.json") -and [DateTime]::UtcNow -lt $deadline) {
         Assert-StageRigLease -Path $lease.path -Token $lease.token
@@ -124,9 +134,9 @@ try {
             else { New-Item -ItemType Directory -Path (Split-Path $item.path) -Force | Out-Null; Copy-Item -LiteralPath $item.backup -Destination $item.path -Force }
             if((Hash $item.path) -ne $item.before) { throw "Shared file restoration mismatch: $($item.path)" }
         } }
-        foreach($p in @((Files $localLow | Where-Object { $_ -notin $rootBefore })) + @((Files $cloud -Recurse | Where-Object { $_ -notin $cloudBefore }))) { Attempt {
+        foreach($p in @(Files $localLow -Recurse | Where-Object { $_ -notin $localBefore })) { Attempt {
             Plain $p
-            if((Split-Path $p -Parent) -ne $localLow -and !(Within $p $cloud)) { throw 'New file escaped Art shared scope.' }
+            if(!(Within $p $localLow)) { throw 'New file escaped Art shared scope.' }
             Copy-Item -LiteralPath $p -Destination (Join-Path $Result ('after/new-'+[guid]::NewGuid().ToString('N')))
             Remove-Item -LiteralPath $p
         } }

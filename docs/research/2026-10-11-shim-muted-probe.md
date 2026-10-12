@@ -22,9 +22,14 @@ game root, expires within 30 minutes, and writes to a fresh result directory.
 Invalid startup requests refuse the mod load; identity/reader/isolation refusal
 after arming retains Native input. No saved backend field is introduced.
 
-Before custom FFB initialization, the exact resident native module arms its
-existing irreversible `EnableTestInjection(1)` **no-force latch**. No injection
-commands are sent. Settings writes/axis learning/assignment are disabled in this
+The runner sets child-only `DBCE_FFB_MUTE=1`. The reviewed native candidate
+latches its existing irreversible **no-force state during DLL_PROCESS_ATTACH**,
+before any force export can run, even if managed request validation or mod load
+later refuses. Only the exact value `1` activates this fence; its loader path
+does no logging, locking, device, effect or hook work. Both copy-only native
+locations must have these candidate bytes. Before custom FFB initialization,
+the exact resident module also confirms `EnableTestInjection(1)` and status.
+No injection commands are sent. Settings writes/axis learning/assignment are disabled in this
 diagnostic process; the menu watchdog skips force recovery, telemetry sender
 creation, input-backend switching and persistence work. Native logging goes to
 the result directory. Native force exports remain blocked until process exit.
@@ -93,7 +98,9 @@ exports must refuse.
    UMM configuration, and existing game preferences using the established Art
    test restoration procedure. A copied Unity game still shares PlayerPrefs,
    LocalLow logs and Steam integration; **copying files alone is not isolation**.
-   Also snapshot and restore the existence/bytes of
+   Inventory and restore all LocalLow game files recursively, including `cloud`,
+   `Unity` and `Screenshots`, removing only new probe-created files after retaining
+   their evidence. Also snapshot and restore the existence/bytes of
    `%LOCALAPPDATA%/DBCE/TripleScreen/games/art-of-rally/status.json` and
    `render-diagnostics.json` in that same folder: the normal triple-screen
    publisher still runs in the copy. Remove only a probe-created shared file
@@ -129,7 +136,9 @@ exports must refuse.
    It checks candidate pins and optional-mod absence, snapshots shared bytes and
    raw PlayerPrefs with the existing `SessionEnvironment.ps1`, holds the shared
    rig lease, and launches with child-only request/`SteamAppId`/`SteamGameId`
-   variables. The exact child path and start time are checked before normal close.
+   variables plus the native load-time mute. It repins immediately before launch
+   inside the lease and retries image-path observation for at most five seconds.
+   The exact child path and start time are checked before normal close.
    After a receipt or 90 seconds it asks that child to close its main window,
    without keyboard/mouse input or a forced kill. If any Art process remains,
    backup and lease are retained for recovery. Successful restoration produces
@@ -148,10 +157,19 @@ exports must refuse.
    owner payload/Settings hashes; restore shared prefs/logs with the established
    harness and confirm the owner backend was never changed.
 
-The required source candidates are toolkit `64ccf67` and copied shim `574bb88`
+The required source candidates are toolkit `82c40c4` (owned path `64ccf67` plus
+load-time no-force latch) and copied shim `574bb88`
 (includes the shared owned-path report change as `1e88feb`, equivalent to
 `f49cfc5`). The new optional native query and atomic copied-provider paths export
 do not change base ABI 2 or the 144/232-byte extension 1 structs; no old export
 is removed. Art freezes metadata/generation/path through the isolation handoff
 and rechecks the exact Rewired path/product/GUID join during the bounded Apply
 probe. It still has no production backend activation or physical qualification.
+
+Load-time fence validation: x64/x86 fake-COM suites each pass 44 new checks,
+including all force families and external-session entry without touching their
+fake device, plus the previous 111 injection/lifecycle/race checks. The actual
+DLL reports armed **before** `EnableTestInjection` on both .NET and game Unity
+Mono (419 assertions each); clearing the child environment does not clear the
+latch. All 62 exports remain present, version 1000 and snapshot ABI unchanged.
+These are offline/source checks; no physical force was requested.

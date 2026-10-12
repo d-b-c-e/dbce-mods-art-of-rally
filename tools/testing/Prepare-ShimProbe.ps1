@@ -76,7 +76,7 @@ Copy the candidate UnityForceFeedback.dll into the COPY's artofrally_Data/Plugin
 Write ASCII 550320 to the COPY's steam_appid.txt to prevent Steam restarting into the owner installation.
 Keep the source Settings.xml byte-identical. Never run an installer or Wheelkit Apply.
 Create no injection marker, injection command, or saved backend setting.
-Use Invoke-ShimProbeCopy.ps1 only in the coordinator's explicit rig slot. Its environment is child-only.
+Use Invoke-ShimProbeCopy.ps1 only in the coordinator's explicit rig slot. It sets child-only DBCE_FFB_MUTE=1 before native load.
 Remain in menus; no physical movement is required. Inspect probe-receipt.json.
 Exit the copy normally; compare source hashes before and after. Do not publish.
 "@
