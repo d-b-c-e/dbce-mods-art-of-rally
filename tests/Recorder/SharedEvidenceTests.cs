@@ -80,6 +80,16 @@ static class SharedEvidenceTests
         Check(absent.Contains("sharedEvidence=unavailable: MissingMemberException: ShimInput\n") && absent.Contains("sharedInputRequested=unknown\n") &&
             absent.Contains("controlsSha256=absent\n") && absent.Contains("controlsProfile=absent\n") && absent.Contains("shimSha256=absent\n"), "unbound identity");
         Check(SharedEvidence.Identity(null, "line\nbreak", mod, native).Split('\n').Count(l => l.StartsWith("sharedEvidence=")) == 1, "a value spans lines");
+        Check(identity["settingsRead"] == "true", "settings read");
+        // sana 36649: identity never throws; an unreadable path or file is named and the recording continues.
+        var thrown = SharedEvidence.Identity(shared, null, () => throw new IOException("boom"), () => throw new UnauthorizedAccessException("no"));
+        Check(thrown.Contains("inputModIdentity=unreadable: IOException\n") && thrown.Contains("nativeSha256=unreadable: UnauthorizedAccessException\n") &&
+            thrown.Contains("controlsProfile=unreadable: IOException\n") && thrown.Contains("sharedEvidence=bound\n"), "throwing paths: " + thrown);
+        using (new FileStream(Path.Combine(mod, "dbce-controls.ini"), FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            var locked = SharedEvidence.Identity(shared, null, mod, native);
+            Check(locked.Contains("controlsSha256=unreadable\n") && locked.Contains("controlsProfile=unreadable: IOException\n"), "locked controls file: " + locked);
+        }
 
         string[] columns = SharedEvidence.Header.Split('\t');
         Dictionary<string, string> Row(int frame) => columns.Zip(shared.Row(frame, 7).Split('\t'), (c, v) => (c, v)).ToDictionary(p => p.c, p => p.v);
@@ -110,21 +120,49 @@ static class SharedEvidenceTests
         // Replay outcomes (sana 36418/36495): partial only after every driving row played and passed.
         const string Waited = "frames waited 120 s for 'Japan|RESULTS|FINISHED'";
         const string DrivePassed = "passed (driving rows played, trajectory playback)";
-        string stage = ReplayOutcome.PostStage(Waited, true, 1200, 0, DrivePassed);
+        string stage = ReplayOutcome.PostStage(Waited, 1200, 0, DrivePassed);
         Check(stage == "partial:post-stage-divergence: all 1200 driving rows played (driving rows played, trajectory playback); " + Waited, "partial line: " + stage);
-        Check(ReplayOutcome.PostStage(Waited, true, 1200, 1, DrivePassed) == null, "driving rows still unplayed");
-        Check(ReplayOutcome.PostStage(Waited, true, 0, 0, DrivePassed) == null, "no driving rows (divergence before the stage)");
-        Check(ReplayOutcome.PostStage(Waited, true, 1200, 0, "failed: trajectory application") == null, "failed driving verdict");
-        Check(ReplayOutcome.PostStage("frames would skip required rows in 'x'", false, 1200, 0, DrivePassed) == null, "not a wait failure");
-        Check(ReplayOutcome.PostStage(null, true, 1200, 0, DrivePassed) == null, "no failure");
+        Check(ReplayOutcome.PostStage(Waited, 1200, 1, DrivePassed) == null, "driving rows still unplayed");
+        Check(ReplayOutcome.PostStage(Waited, 0, 0, DrivePassed) == null, "no driving rows (divergence before the stage)");
+        Check(ReplayOutcome.PostStage(Waited, 1200, 0, "failed: trajectory application") == null, "failed driving verdict");
+        Check(ReplayOutcome.PostStage("frames would skip required rows in 'x'", 1200, 0, DrivePassed) == null, "not a wait failure");
+        Check(ReplayOutcome.PostStage(null, 1200, 0, DrivePassed) == null, "no failure");
+        Check(ReplayOutcome.AwaitedMarker(Waited) == "Japan|RESULTS|FINISHED" && ReplayOutcome.AwaitedMarker("frames waited 120 s for 'a\nb'") == null &&
+            ReplayOutcome.AwaitedMarker("x frames waited 120 s for 'a'") == null, "awaited marker parse");
+        Check(ReplayOutcome.PostStage("frames waited 120 s for 'a\nb'", 5, 0, DrivePassed) == null, "a malformed wait became partial");
+
+        // sana 36649: the actual vendored cursor, advanced early into the results segment and then timed out, names
+        // that segment, not the next marker; the partial line and expectedMarker must both carry it.
+        var names = new Dictionary<int, string> { [1] = "Japan|STAGE|UNDERWAY", [2] = "Japan|RESULTS|FINISHED", [3] = "Menu|MAIN|NONE" };
+        float clock = 0;
+        Dbce.Wheel.Playback.SegmentCursor<int> Cursor() => new(new List<KeyValuePair<int, int>> {
+            new(1, 0), new(1, 1), new(2, 2), new(2, 3), new(2, 4), new(3, 5) }, names, "frames", () => clock);
+        var early = Cursor();
+        for (int i = 0; i < 5; i++) Check(early.Next(1, out _), "early row " + i); // two driving rows, then three results rows taken early
+        Check(!early.Next(1, out _) && early.Failed == null, "early cursor did not start waiting");
+        clock = 121; Check(!early.Next(1, out _) && early.Failed != null, "early cursor did not time out");
+        string awaited = ReplayOutcome.AwaitedMarker(early.Failed);
+        Check(awaited == "Japan|RESULTS|FINISHED" && names[early.NextMarker] == "Menu|MAIN|NONE", "early awaited marker: " + awaited + " / " + early.Failed);
+        string earlyLine = ReplayOutcome.PostStage(early.Failed, 2, early.SkippedWhere(m => m.EndsWith("|UNDERWAY")), DrivePassed);
+        Check(earlyLine != null && earlyLine.EndsWith("for '" + awaited + "'", StringComparison.Ordinal) &&
+            ReplayOutcome.Fields(earlyLine, 1, awaited, 120).Contains("expectedMarker=" + awaited + "\n"), "early partial target differs from expectedMarker: " + earlyLine);
+        // Without an early advance (the live game shows an unknown screen), the cursor awaits the next marker.
+        clock = 0; var late = Cursor();
+        for (int i = 0; i < 2; i++) Check(late.Next(1, out _), "late row " + i);
+        Check(!late.Next(9, out _) && late.Failed == null, "late cursor did not start waiting");
+        clock = 121; Check(!late.Next(9, out _) && ReplayOutcome.AwaitedMarker(late.Failed) == "Japan|RESULTS|FINISHED", "late awaited marker: " + late.Failed);
+        // Waiting for the stage itself: driving rows remain, so it stays a failure.
+        clock = 0; var preStage = Cursor();
+        Check(!preStage.Next(9, out _), "pre-stage cursor took a row"); clock = 121; preStage.Next(9, out _);
+        Check(preStage.Failed != null && ReplayOutcome.PostStage(preStage.Failed, 2, preStage.SkippedWhere(m => m.EndsWith("|UNDERWAY")), DrivePassed) == null,
+            "a pre-stage wait became partial: " + preStage.Failed);
         string fields = ReplayOutcome.Fields(stage, 2, "Japan|RESULTS|FINISHED", 120);
         Check(fields == "scope=stage-only\nfullSessionPassed=false\ndrivingSegmentsTotal=2\ndrivingSegmentsCompleted=2\nexpectedMarker=Japan|RESULTS|FINISHED\ntimeoutSeconds=120\n",
             "partial fields: " + fields);
         Check(ReplayOutcome.Fields(DrivePassed, 2, "x", 120) == "" && ReplayOutcome.Fields("failed: " + Waited, 2, "x", 120) == "" &&
             ReplayOutcome.Fields("aborted: owner took over (F12)", 2, "x", 120) == "", "passed, failed and aborted results changed");
         Check(!(stage + "\n" + fields).Split('\n').Any(l => l.StartsWith("passed", StringComparison.Ordinal)), "a partial result reads as a pass to Wheelkit");
-        Check(ReplayOutcome.PostStage("frames waited 120 s for 'a\nb'", true, 5, 0, DrivePassed)!.Split('\n').Length == 1 &&
-            ReplayOutcome.Fields(stage, 1, "a\nb", 120).Contains("expectedMarker=a b\n"), "a value spans result lines");
+        Check(ReplayOutcome.Fields(stage, 1, "a\nb", 120).Contains("expectedMarker=a b\n"), "a value spans result lines");
         return before;
     }
 }

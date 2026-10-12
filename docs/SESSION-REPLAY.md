@@ -149,10 +149,18 @@ no longer shows. The menu cursor stops after its 120 s wait, and `result.txt` th
 - then `scope=stage-only`, `fullSessionPassed=false`, `drivingSegmentsTotal`,
   `drivingSegmentsCompleted`, `expectedMarker` and `timeoutSeconds`.
 
-`Session.ps1` exits 0 for it only after its normal cleanup and restore. A divergence
+`expectedMarker` is the marker the cursor actually waited out, as its own failure names
+it. After an early advance that is the current segment, not the next one.
+
+`Session.ps1` exits 0 for a partial result only after a confirmed restore. A divergence
 before or during the stage, or with driving rows unplayed, stays failed. Passed, failed
-and aborted results are unchanged. Replay does not restore the game's `cloud` save
-folder: Steam Cloud syncs it on exit.
+and aborted results are unchanged.
+
+If the game is still running when replay ends (it would not close, or `-KeepGameOpen`
+was given), restoration is pending. `Session.ps1` then writes `restore-pending.txt`
+with the `-RestoreEnvironment` command and exits 4, whatever the replay result. A
+restore failure throws. Replay does not restore the game's `cloud` save folder: Steam
+Cloud syncs it on exit.
 
 ## Evidence and limits
 

@@ -172,12 +172,20 @@ switch ($PSCmdlet.ParameterSetName) {
                 $game = Get-Process artofrally -ErrorAction SilentlyContinue
                 if ($game) { $null = $game.CloseMainWindow(); $null = $game.WaitForExit(20000) }
             }
-            if (Get-Process artofrally -ErrorAction SilentlyContinue) { Write-Warning "Environment restore pending until game closes: $ownerState" }
-            else { Restore-SessionEnvironment $ownerState }
+            $restored = $false
+            if (Get-Process artofrally -ErrorAction SilentlyContinue) {
+                # Explicit pending state (KeepGameOpen, or a game that did not close): never a restored success.
+                $pending = "Environment restore pending until the game closes. Close it, then run: Session.ps1 -RestoreEnvironment `"$ownerState`""
+                Set-Content -LiteralPath (Join-Path $out 'restore-pending.txt') -Value $pending
+                Write-Warning $pending
+            }
+            else { Restore-SessionEnvironment $ownerState; $restored = $true }
         }
         Write-Output "Evidence: $out"
         # 0 passed, or partial:post-stage-divergence (the stage replayed; result.txt says fullSessionPassed=false),
-        # in both cases only after the cleanup and restore above; 1 failed, 2 aborted.
+        # both only after a confirmed restore; 1 failed, 2 aborted; 4 restoration pending (restore-pending.txt), whatever
+        # the replay result. A restore failure throws.
+        if (-not $restored) { exit 4 }
         if ($result[0] -like 'passed*' -or $result[0] -like 'partial:post-stage-divergence*') { exit 0 } elseif ($result[0] -like 'aborted*') { exit 2 } else { exit 1 }
     }
 }

@@ -189,6 +189,8 @@ namespace ArtOfSimRally.Testing
                 try { _harmony?.UnpatchAll(HarmonyId); if (_muteOutputs) PatchOutputs(); } catch (Exception muteError) { _log?.Invoke("OUTPUT MUTE FAILURE: " + muteError); }
                 _mode = Mode.Off;
                 _inputWriter?.Dispose(); _carWriter?.Dispose(); _shiftWriter?.Dispose(); _nativeWriter?.Dispose();
+                try { _sharedWriter?.Dispose(); } catch { }
+                _sharedWriter = null;
                 if (replay && request.TryGetValue("out", out var failedOut))
                 {
                     Directory.CreateDirectory(failedOut);
@@ -218,13 +220,20 @@ namespace ArtOfSimRally.Testing
             }
             // The input path in use (sana 36236). Shared evidence is optional: an unbound mod is named, never refused.
             _shared = SharedEvidence.Bind(out string sharedFailure);
-            var modType = SharedEvidence.Find("ArtOfSimRally.Mod.Main");
-            string modDirectory = modType != null ? Path.GetDirectoryName(modType.Assembly.Location) : Path.Combine(Path.GetDirectoryName(Application.dataPath), "Mods", "ArtOfSimRally");
-            string identity = SharedEvidence.Identity(_shared, sharedFailure, modDirectory, Path.Combine(Application.dataPath, "Plugins", "x86_64", "UnityForceFeedback.dll"));
+            string identity = SharedEvidence.Identity(_shared, sharedFailure, () =>
+            {
+                var modType = SharedEvidence.Find("ArtOfSimRally.Mod.Main");
+                return modType != null ? Path.GetDirectoryName(modType.Assembly.Location) : Path.Combine(Path.GetDirectoryName(Application.dataPath), "Mods", "ArtOfSimRally");
+            }, () => Path.Combine(Application.dataPath, "Plugins", "x86_64", "UnityForceFeedback.dll"));
             if (_shared?.Requested == true)
             {
-                _sharedWriter = new BufferedTapeWriter(Path.Combine(_dir, "shared.tape"));
-                _sharedWriter.WriteLine(SharedEvidence.Header);
+                try { _sharedWriter = new BufferedTapeWriter(Path.Combine(_dir, "shared.tape")); _sharedWriter.WriteLine(SharedEvidence.Header); }
+                catch (Exception ex)
+                {
+                    _sharedTapeFailure = "open: " + ex.GetType().Name + ": " + ex.Message;
+                    try { _sharedWriter?.Dispose(); } catch { }
+                    _sharedWriter = null;
+                }
             }
             File.WriteAllText(Path.Combine(_dir, "session.txt"),
                 "format=" + Format + "\ngame=" + Application.version + "\nunity=" + Application.unityVersion +
@@ -876,8 +885,7 @@ namespace ArtOfSimRally.Testing
                         // Every recorded driving row played and passed, then a later menu marker never came: its own
                         // outcome, never a full pass (sana 36418). Before or during the stage it stays a failure.
                         int unplayed = _car.SkippedWhere(m => m.EndsWith("|UNDERWAY")) + _frames.SkippedWhere(m => m.EndsWith("|UNDERWAY"));
-                        string stage = _car.Failed == null ? ReplayOutcome.PostStage(_frames.Failed, _frames.Failed.Contains(" waited "),
-                            _drivingRows, unplayed, Verdict("driving rows played")) : null;
+                        string stage = _car.Failed == null ? ReplayOutcome.PostStage(_frames.Failed, _drivingRows, unplayed, Verdict("driving rows played")) : null;
                         if (stage != null) Finish(stage); else Fail(_frames.Failed);
                     }
                     else if (_car.Failed != null) Fail(_car.Failed);
@@ -973,7 +981,8 @@ namespace ArtOfSimRally.Testing
             {
                 _divergenceWriter?.Dispose(); _divergenceWriter = null;
                 var tmp = Path.Combine(_out, "result.txt.tmp");
-                string expected = _frames == null ? "none" : _frames.NextMarker >= 0 ? MarkerText(_frames.NextMarker) : "end";
+                // The marker the cursor actually waited out (it names the current segment after an early advance).
+                string expected = ReplayOutcome.AwaitedMarker(_frames?.Failed);
                 File.WriteAllText(tmp, result + "\n" + Describe + "\n" + ReplayOutcome.Fields(result, _drivingSegments, expected,
                     Dbce.Wheel.Playback.SegmentCursor<int>.WaitSeconds));
                 File.Move(tmp, Path.Combine(_out, "result.txt"));

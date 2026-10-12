@@ -14,15 +14,23 @@ namespace ArtOfSimRally.Testing
     {
         internal const string Partial = "partial:post-stage-divergence";
 
+        /// <summary>The marker the cursor waited out, as its own failure names it: the current segment when it had
+        /// already advanced early into it, else the next one (SegmentCursor.Next). Null for any other failure.</summary>
+        internal static string AwaitedMarker(string cursorFailure)
+        {
+            if (cursorFailure == null) return null;
+            var match = System.Text.RegularExpressions.Regex.Match(cursorFailure, @"\A\S+ waited [0-9]+(\.[0-9]+)? s for '(.+)'\z");
+            return match.Success ? match.Groups[2].Value : null;
+        }
+
         /// <summary>The partial first line, or null when the cursor failure must stay a failure.</summary>
-        /// <param name="cursorFailure">The menu cursor's failure text.</param>
-        /// <param name="waitedOut">The cursor stopped only because it waited out its next marker.</param>
+        /// <param name="cursorFailure">The menu cursor's failure text; only a waited-out marker qualifies.</param>
         /// <param name="drivingRows">Recorded driving (UNDERWAY) car rows.</param>
         /// <param name="drivingUnplayed">Driving car and frame rows skipped or not yet reached.</param>
         /// <param name="drivingVerdict">The driving verdict the replay would give now.</param>
-        internal static string PostStage(string cursorFailure, bool waitedOut, int drivingRows, int drivingUnplayed, string drivingVerdict)
+        internal static string PostStage(string cursorFailure, int drivingRows, int drivingUnplayed, string drivingVerdict)
         {
-            if (cursorFailure == null || !waitedOut || drivingRows <= 0 || drivingUnplayed != 0) return null;
+            if (AwaitedMarker(cursorFailure) == null || drivingRows <= 0 || drivingUnplayed != 0) return null;
             if (drivingVerdict == null || !drivingVerdict.StartsWith("passed (", StringComparison.Ordinal)) return null;
             return Partial + ": all " + drivingRows.ToString(CultureInfo.InvariantCulture) + " driving rows played (" +
                 drivingVerdict.Substring("passed (".Length).TrimEnd(')') + "); " + Clean(cursorFailure);
