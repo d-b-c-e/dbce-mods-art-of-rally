@@ -42,6 +42,7 @@ internal static class AbiProbe
     {
         // No force/device/initialization API called. The latch and status alone
         // prove the production exact-resident binding works on CLR and Mono.
+        Environment.SetEnvironmentVariable("DBCE_FFB_LOG", "0"); // this test child must not write the shared default native log
         if (loadMuted) Environment.SetEnvironmentVariable("DBCE_FFB_MUTE", "1");
         IntPtr module = LoadLibraryExW(Path.GetFullPath(path), IntPtr.Zero, 0x100 | 0x1000);
         if (module == IntPtr.Zero) throw new Exception("native latch fixture load failed");

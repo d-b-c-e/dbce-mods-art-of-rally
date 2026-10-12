@@ -96,6 +96,7 @@ try {
     $start.EnvironmentVariables['DBCE_ART_SHIM_REQUEST']=$requestPath
     $start.EnvironmentVariables['SteamAppId']='550320'; $start.EnvironmentVariables['SteamGameId']='550320'
     $start.EnvironmentVariables['DBCE_FFB_MUTE']='1' # native load-time latch precedes managed request validation
+    $start.EnvironmentVariables['DBCE_FFB_LOG_PATH']=Join-Path $Result 'native.log' # also covers pre-Prepare refusals
     $launchAttempted=$true
     $game=[Diagnostics.Process]::Start($start)
     $processStart=$game.StartTime.ToUniversalTime(); $imageDeadline=[DateTime]::UtcNow.AddSeconds(5); $imagePath=$null

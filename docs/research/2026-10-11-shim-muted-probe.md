@@ -156,6 +156,8 @@ exports must refuse.
    raw PlayerPrefs with the existing `SessionEnvironment.ps1`, holds the shared
    rig lease, and launches with child-only request/`SteamAppId`/`SteamGameId`
    variables plus the native load-time mute. It repins immediately before launch
+   and sets child-only `DBCE_FFB_LOG_PATH` to the result's `native.log`, including
+   any native diagnostic emitted before managed request validation. It repins
    inside the lease and retries image-path observation for at most five seconds.
    The exact child path and start time are checked before normal close.
    After a receipt or 90 seconds it asks that child to close its main window,
