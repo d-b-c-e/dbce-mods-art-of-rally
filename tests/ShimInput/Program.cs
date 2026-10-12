@@ -123,6 +123,7 @@ internal static class Program
         {
             Decode(); Consumption(); StatusesAndFailures();
             assertions += BridgeTests.Fake();
+            assertions += IsolationTests.Run();
             if (args.Length == 2 && args[0] == "--abi") assertions += AbiProbe.Check(args[1]);
             if (args.Length == 2 && args[0] == "--bridge") assertions += BridgeTests.Actual(args[1]);
             Console.WriteLine("{\"status\":\"passed\",\"assertions\":" + assertions + "}"); return 0;

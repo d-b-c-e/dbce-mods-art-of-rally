@@ -66,7 +66,19 @@ namespace HarmonyLib
     public sealed class HarmonyTargetMethods : Attribute { }
     public static class AccessTools { public static System.Reflection.MethodInfo Method(Type type, string name, Type[] types) => type.GetMethod(name, types); }
 }
-namespace Rewired { public class Player { } }
+namespace Rewired
+{
+    public class Player { }
+    public sealed class Joystick
+    {
+        public Guid deviceInstanceGuid;
+        private bool value = true;
+        public int Writes;
+        public bool enabled { get => value; set { Writes++; this.value = value; } }
+    }
+    public sealed class ControllerInventory { public readonly List<Joystick> Joysticks = new(); }
+    public static class ReInput { public static bool isReady; public static readonly ControllerInventory controllers = new(); }
+}
 public static class PadManager { public static readonly Rewired.Player Player = new(); public static Rewired.Player GetPlayer() => Player; }
 public static class EventStatusEnums { public enum EventStatus { UNDERWAY, FINISHING_STAGE_ANIMATION } }
 public sealed class EventManager { public EventStatusEnums.EventStatus status = EventStatusEnums.EventStatus.UNDERWAY; }

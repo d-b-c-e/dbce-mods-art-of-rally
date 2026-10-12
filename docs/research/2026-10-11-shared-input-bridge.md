@@ -47,9 +47,12 @@ automatic rediscovery stop. Failure/close retains bridge ownership, clears cache
 and requires restart. There is no backend flag, implicit migration, packaged
 native DLL or startup selection. Accepted Art XML/toolkit pin stay unchanged.
 
-Activation still needs Rewired identity-based wheel isolation and cached-input
-clearing while preserving independent keyboard input. The handoff requires an
-isolation callback; none is installed in production. Also pending: previewed
+Source-only Rewired identity isolation is implemented and compiles against Art's
+shipped API. Core's existing device-report JSON supplies bound instance IDs.
+It changes exact joystick enabled flags only, restores only its own changes and
+waits a frame after changes. Unknown or mismatched RawInput identity refuses with
+an explicit reason. Its first muted runtime proof remains required. The handoff
+accepts isolation/restore callbacks; none is installed in production. Also pending: previewed
 profile Apply/status/capability receipt, explicit startup and lifecycle/recovery
 policy. Menus, shifter and shortcuts stay legacy; only five driving axes consume
 shared frames. Unsupported shared actions are declared to Core.
@@ -58,7 +61,9 @@ shared frames. Unsupported shared actions are declared to Core.
 
 Toolkit snapshot fake-COM x64/x86, actual DLL empty lifecycle, legacy POV,
 retained identity, injection and 871 external-session checks pass. Shared Core,
-old C ABI and copied-provider suites pass. Managed fake source -> actual shim
+old C ABI and copied-provider suites pass. The final P21 default suite passes
+129 supervised host and 84 provider checks plus teardown audits/mutation controls;
+receipt is in `art-shim-bridge-evidence/p21-20261011/receipt.json`. Managed fake source -> actual shim
 DLL -> Core -> Art sink passes on .NET8 and installed Unity 2019 Mono. Mono
 Stopwatch uses a different origin than native QPC on this installation; correcting
 the fixture to QueryPerformanceCounter matched both native ends. Original stale

@@ -233,6 +233,7 @@ static class Program
             else if (args.Contains("--assign-only")) AssignmentReadFailure();
             else { Travel(0, 65535); Travel(65535, 0); RangesAndAssignment(); Lifecycle(); FlipPersistence(); AssignmentReadFailure(); DeviceIdentity(); DeviceRecovery(); ReadHealth(); AssignmentResume(); BindingSaves(); assertions+=ShifterIdentityTests.Run(); assertions+=CalibrationTests.Run(); }
             assertions += GameButtonTests.Run();
+            assertions += IsolationBoundaryTests.Run();
             assertions += ShimConsumerTests.Run();
             Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
         }
@@ -264,7 +265,8 @@ static class Program
         int reads = Device.Reads, opens = Device.Opens, saves = Host.Saves;
         string binding = Host.Settings.HandbrakeBinding;
         var source = new BridgeTests.Source { Raw = 40000 }; var native = new BridgeTests.Native(); bool isolated = true;
-        WheelInput.AttachSharedInput(source, native, () => isolated);
+        int restores = 0;
+        WheelInput.AttachSharedInput(source, native, () => isolated, () => { restores++; return true; });
         Check(source.Reads == 0 && Device.Reads == reads && Device.Opens == opens, "handoff performed an extra read or open");
         Clock.frameCount++; WheelInput.PrepareGameQuery();
         Check(source.Reads == 1 && native.Ticks == 1 && Device.Reads == reads, "production path did not replace exactly one legacy read");
@@ -281,5 +283,6 @@ static class Program
         Check(source.Reads == 2 && Device.Reads == reads && Device.Opens == opens, "stopped bridge resumed/fell back/opened a device");
         Check(Host.Saves == saves && Host.Settings.HandbrakeBinding == binding, "handoff rewrote legacy settings");
         WheelInput.Close(); Check(native.Stops == 1, "close repeated spent native stop");
+        Check(restores == 1, "close did not restore its native isolation lease");
     }
 }

@@ -75,6 +75,8 @@ internal static class BridgeTests
         string profile = "[Controls]\nSchema = 1\nProfile = Bridge\nRevision = r1\nTransmission = Sequential\nsteer = axis 0 dev={d71b8350-61b7-11f1-8001-444553540000} prod={0006346e-0000-0000-0000-504944564944} range=0..65535 rest=32768 travel=+1\n";
         var source = new Source(); var sink = new ShimAxisConsumer();
         var native = new ShimBridgeNative(dll, folder, System.Text.Encoding.UTF8.GetBytes(profile));
+        var ids = native.BoundInstances();
+        Check(ids.Length == 1 && ids[0] == new Guid("d71b8350-61b7-11f1-8001-444553540000"), "Core device-report identity differs from profile");
         var bridge = new ShimBridge(source, native, sink, new[] { 0 }); int frame = 0, copies = 0;
         try
         {

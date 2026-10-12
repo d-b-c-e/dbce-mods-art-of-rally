@@ -42,6 +42,8 @@ Audited 2026-10-04 (read-only standards audit); statuses below are from that aud
 
 The shared frame consumer and copied bridge are dormant until an explicit
 future startup path attaches the reviewed provider with proven native isolation.
+Exact-instance Rewired isolation/restore now has source and fake boundary tests;
+unknown/different RawInput GUIDs refuse. Its first muted compatibility proof is open.
 All existing WheelInput tests pass before any publication. Source checks do not
 upgrade STD-033/034's live qualification. There is no settings/backend migration,
 installation or change to the accepted Art v2 force producer or original captures.

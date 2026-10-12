@@ -32,22 +32,40 @@ injection flags remain immutable. Test-latched frames and bridge capture/control
 flags refuse pending qualified fences and a source recording contract. Accepted
 FFB producer, v2 tune and original recordings are unchanged.
 
+The source-only Rewired isolation adapter reads Core's bound instance IDs from
+its existing device-report JSON (framework serializer, no Controls parser).
+It disables only exact matching joysticks and waits a Unity frame after every
+disable/new controller before asserting a native-clean stamp. Whole players,
+maps, keyboard and mouse are untouched. Restoration undoes only its own changed
+flags and preserves each original enabled value. Unknown joystick identity,
+throwing runtime properties, or a Core-bound GUID missing from Rewired refuses
+qualification; different RawInput identities are never guessed by name/index.
+This adapter also has no production startup caller. Live identity compatibility
+and the one-frame cache assumption still require the first muted rig probe.
+
 ## Validation
 
 - Release mod and net48/net8 tests build with zero warnings/errors.
-- Full legacy WheelInput plus production sink: 420 assertions pass. All legacy
+- Full legacy WheelInput, sink and production Rewired boundary: 426 assertions pass. All legacy
   checks run before publication; explicit dormant checks preserve all stock
   input fields. Native read/save counters and XML remain unchanged.
-- Separate production shared-read fixture: 11 assertions pass: preparation
+- Separate production shared-read fixture: 12 assertions pass: preparation
   does not poll/open, one read/tick per frame, shared exact cache, repeated frame
   retention, failure without fallback/resumption, unchanged settings, single
-  native stop. Final idle-rediscovery regression awaits performance-hold release.
+  native stop and isolation restoration. Idle-rediscovery failure guard passes.
 - Decoder/sink base: 352 assertions, independent marshaled C layout. Fake bridge
-  adds 10 checks; metadata probe adds 35 and passes on .NET8/Unity Mono.
+  adds 10 checks and isolation adds 21; metadata probe adds 35. The prior metadata
+  run passed 416 checks on .NET8 before the two final setter-throws-after-write
+  restoration assertions were added; the earlier base probe also passed Mono.
 - Fake source -> actual candidate DLL -> Core -> Art sink passes .NET8 and
-  Unity 2019 Mono (369/370 total, varying with worker readiness). Fixture uses
+  Unity 2019 Mono (391 each in the final run, count can vary with worker readiness). Fixture uses
   native QPC, preserving the production source clock rather than Mono Stopwatch.
 - Native details: [bridge implementation](../research/2026-10-11-shared-input-bridge.md).
+- The full default P21 provider-host harness passes 129 supervised fake-COM
+  checks, 84 provider checks, teardown lexer/compiler audits and their mutation
+  controls at shim `d46096c`. Receipt:
+  `E:/Source/research/.worktrees/art-shim-bridge-evidence/p21-20261011/receipt.json`.
+  The extra optional host-defect mutation matrix was not run.
 
 Reproduce from this worktree:
 
@@ -68,8 +86,8 @@ No RC package or full rig checkpoint was produced.
 
 Toolkit `ecc49bd` and shim `d46096c` are isolated source candidates for review.
 No candidate replaces a vendored/installed artifact. Attachment still needs
-actual Rewired identity isolation/cached wheel clearing, explicit profile
-Apply/status/startup and lifecycle policy. Legacy XML remains the rollback
+muted proof of actual Rewired identity/cached wheel behavior, explicit profile
+Apply/status/startup and complete lifecycle policy. Legacy XML remains the rollback
 backend. This is a working source bridge, not a complete controls conversion
 or a release-ready runtime.
 

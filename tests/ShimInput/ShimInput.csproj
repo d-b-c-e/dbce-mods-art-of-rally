@@ -12,5 +12,6 @@
     <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ShimAxisConsumer.cs" Link="ShimAxisConsumer.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ShimBridge.cs" Link="ShimBridge.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ShimBridgeNative.cs" Link="ShimBridgeNative.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/Shim/NativeInputIsolation.cs" Link="NativeInputIsolation.cs" />
   </ItemGroup>
 </Project>

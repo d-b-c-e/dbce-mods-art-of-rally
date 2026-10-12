@@ -8,18 +8,21 @@ namespace ArtOfSimRally.Mod
     {
         private static ShimBridge sharedInput;
         private static Func<bool> verifyNativeIsolation;
+        private static Func<bool> restoreNativeInput;
         private static int sharedFrame = -1;
 
         // Source-only handoff: no production caller and no saved backend flag.
         // The reviewed bootstrap must first isolate these exact wheel identities
         // from Rewired, leaving keyboard input independent. A test-session or
         // recorder bootstrap is not supported by copied-provider extension 1.
-        internal static void AttachSharedInput(IPhysicalSnapshotSource source, IShimBridge native, Func<bool> isolation)
+        internal static void AttachSharedInput(IPhysicalSnapshotSource source, IShimBridge native, Func<bool> isolation, Func<bool> restore = null)
         {
             if (sharedInput != null || !_open || _devices.Count == 0 || isolation == null || !isolation())
                 throw new InvalidOperationException("shared input needs an idle, qualified reader and native isolation");
             var slots = new int[_devices.Count]; for (int i = 0; i < slots.Length; i++) slots[i] = _devices[i].Slot;
-            sharedInput = new ShimBridge(source, native, ShimInput.Consumer, slots); verifyNativeIsolation = isolation;
+            try { sharedInput = new ShimBridge(source, native, ShimInput.Consumer, slots); }
+            catch { if (restore != null) restore(); throw; }
+            verifyNativeIsolation = isolation; restoreNativeInput = restore;
         }
 
         private static bool ReadSharedSnapshot()
@@ -59,6 +62,15 @@ namespace ArtOfSimRally.Mod
         {
             if (sharedInput == null) return;
             try { sharedInput.Stop("Art reader closed"); } catch (Exception ex) { ModLog.Error("Shared input stop: " + ex.Message); }
+            try
+            {
+                if (restoreNativeInput != null)
+                {
+                    if (restoreNativeInput()) restoreNativeInput = null;
+                    else ModLog.Error("Shared input: native joystick restoration remains incomplete");
+                }
+            }
+            catch (Exception ex) { ModLog.Error("Shared input restore: " + ex.Message); }
             // Retain ownership through failures and toggles; only a process
             // restart may return to a legacy or a newly qualified backend.
         }
