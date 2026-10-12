@@ -372,19 +372,44 @@ later" (`6bfac99`). The dormant diagnostic path is unchanged. Local only; not in
 - Released Wheelkit 0.6.23 (`b382907`) has the same Configure, Profiles, Settings, Services
   and qualification code as the `5b85809` the harness used, and the same Art catalog entry.
 
+## rc.17: handoff candidate with keyboard steering (sana 35869)
+
+rc.16 plus the reviewed keyboard steering rule (`914247b`, `02c4417`; integration
+`fae3680`, `096bf5e`). It supersedes rc.16 as the private handoff; rc.16 and its evidence
+are kept unchanged. Local only; not installed.
+- `ArtOfSimRally-0.4.2-rc.17-shared-input.zip`, SHA-256
+  `3A5888144A6DD9977881A82BED0D174D389B3AF49DA118846702CE9CA5A546A8`, identity
+  `0.4.2-rc.17+096bf5e….clean`.
+- Mod `AB4C7856` (= `controls.assemblySha256`; it references `IsCurrentInputSource`,
+  `steerAxis` and `AsksKeyboard`, which rc.16's mod does not). Shim `7DDC9621`, native
+  `44E46799`, contract v2 with no writer omissions; the README is unchanged from rc.16.
+- **Gates:** Test-Rc with the corpus passed 20 of 20 on `096bf5e` (throwaway rc.915,
+  `BC328BFF`): keyboard-steering 25, latched suppression 15, ShimInput 12260 on Mono.
+  Test-Installer passed 50 assertions on the extracted rc.17.
+- **Exact-package H-pattern Apply** (`wheelkit-hpattern-apply-rc17-20261012-142321`): the
+  same harness and profile passed with byte-identical output (INI `73E78230`, Settings
+  `0A380211`); restore was exact and the owner inputs were unchanged.
+- **Keyboard steering rule:** while Rewired reports Art's keyboard map as a current source of
+  the car's `steerAxis`, Art's own steer value is kept over the shared wheel. The rule needs
+  this frame's isolation and an ordinary session, a kind fixed at open. Unknown is recorded
+  apart from Absent.
+- **Unqualified:**
+  - Rewired's real keyboard-source detection, and what two opposing held keys report;
+  - physical force feedback, clutch pedal and H-pattern shifter with the shared profile.
+
 ## Remaining gaps
 
 1. **Owner handoff pending.** Wheelkit 0.6.23 (`b382907`, published 2026-10-12) writes
-   Art's profile with contract v2 support; rc.16's README and refusal text both point
-   there. Installing rc.16 for the owner is the coordinator's call.
+   Art's profile with contract v2 support; rc.17's README and refusal text both point
+   there. Installing rc.17 for the owner is the coordinator's call.
 2. **Physical qualification needs the owner.** Wheel, pedals and keyboard through an
    ordinary session were shown only with scripted Rewired values. Force feedback together
    with the shared profile has never run.
-3. **Keyboard steering needs a centred wheel in rc.16.** Without force the wheel rests off
-   centre, so steering stays the wheel's (07:01 run). A source rule after rc.16, under
-   review, keeps Art's own steer value while Rewired reports the keyboard as a current
-   source of the car's `steerAxis` (`Player.IsCurrentInputSource(..., Keyboard)`), with
-   this frame's isolation proven and outside latched sessions. It has fixture evidence only:
+3. **Keyboard steering over a resting wheel is fixture-only.** In rc.16 and earlier, steering
+   stays the wheel's whenever it rests off centre without force (07:01 run). rc.17 keeps
+   Art's own steer value while Rewired reports the keyboard as a current source of the car's
+   `steerAxis` (`Player.IsCurrentInputSource(..., Keyboard)`). That needs this frame's
+   isolation and an ordinary session. It has fixture evidence only:
    - Rewired's real detection, and what two opposing held keys report, are runtime-unknown;
    - proving them needs an attended key press, or other genuine native input.
 4. **Clutch and H-pattern are shown only with latched stimuli.** No physical pedal or
