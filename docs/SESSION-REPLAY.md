@@ -105,6 +105,55 @@ Use an owner-driven reference route for visual acceptance. The synthetic capture
 fixture exercises saving and original-signal capture; its test inputs can leave
 the road and are not a reference racing line.
 
+## Input path, replay isolation and partial outcomes (October 12)
+
+**Recording** names its input path (sana 36130/36236). The recorder reads the mod's
+existing members by reflection; a mod without them records `sharedEvidence=unavailable`
+and the recording continues.
+- `session.txt` adds:
+  - `inputModIdentity` and `inputModSha256`;
+  - the mod's `SharedInput`, `WheelInputEnabled`, `ShifterEnabled` and
+    `ForceFeedbackEnabled` settings;
+  - `sharedInputRequested` and `sharedEvidence`;
+  - the `dbce-controls.ini` hash plus its `Profile`, `Revision` and `Transmission`;
+  - the shim and loaded native hashes.
+- While shared input was requested, `shared.tape` holds one row per rendered frame:
+  - the phase, consumer freshness and this frame's isolation proof;
+  - the shared composition (applied and composed axes, alignment, keyboard source and
+    whether keyboard steering was kept);
+  - the owned shared buttons held.
+
+  It is sealed with the other members. Replay never reads it.
+- `end.txt` adds the final shared phase, attach frame, stop or refusal reason, and row
+  count.
+- Mod-internal shortcuts (settings, stop force, camera) appear only as held shared
+  buttons. They are not replayed.
+
+**Replay reads no input or force device.** After the recorded environment is applied,
+`Session.ps1` sets these off for the replay process only:
+- `SharedInput`;
+- `WheelInputEnabled` and `ShifterEnabled`;
+- the settings, stop-force and camera shortcut bindings;
+- `ForceFeedbackEnabled`.
+
+Turning off `SharedInput` alone would just reopen the mod's direct wheel reader. The tape
+supplies every input, and replay captures no forces. The recorded values are kept in
+`replay-input.json`; the tape's own copy is never edited, and the owner's settings are
+restored as before. A malformed or ambiguous settings file is refused before launch.
+
+**Partial outcome.** Sometimes every recorded driving row plays and passes, but a later
+menu marker is never reached, for example a best-time or unlock screen the current save
+no longer shows. The menu cursor stops after its 120 s wait, and `result.txt` then reads:
+- line 1: `partial:post-stage-divergence: …`;
+- then the status line;
+- then `scope=stage-only`, `fullSessionPassed=false`, `drivingSegmentsTotal`,
+  `drivingSegmentsCompleted`, `expectedMarker` and `timeoutSeconds`.
+
+`Session.ps1` exits 0 for it only after its normal cleanup and restore. A divergence
+before or during the stage, or with driving rows unplayed, stays failed. Passed, failed
+and aborted results are unchanged. Replay does not restore the game's `cloud` save
+folder: Steam Cloud syncs it on exit.
+
 ## Evidence and limits
 
 October 4: owner session 5 completed automatically through all 13,428 driving
