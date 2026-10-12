@@ -40,10 +40,13 @@ Audited 2026-10-04 (read-only standards audit); statuses below are from that aud
 
 ## Shared input source slice (2026-10-11)
 
-The shared frame consumer and copied bridge are dormant until an explicit
-future startup path attaches the reviewed provider with proven native isolation.
-Exact-instance Rewired isolation/restore now has source and fake boundary tests;
-unknown/different RawInput GUIDs refuse. Its first muted compatibility proof is open.
+The shared frame consumer and copied bridge stay dormant in normal launches.
+A process-only, menu-only diagnostic now observes exact Rewired identity,
+disable/restore and raw-axis cache facts independently, using the existing native
+no-force latch. An explicit second Apply probe requires a matching receipt;
+unknown/different RawInput GUIDs refuse. Its first muted compatibility proof and
+the exact HID path join between identity namespaces remain open. See the
+[copy-only probe recipe](docs/research/2026-10-11-shim-muted-probe.md).
 All existing WheelInput tests pass before any publication. Source checks do not
 upgrade STD-033/034's live qualification. There is no settings/backend migration,
 installation or change to the accepted Art v2 force producer or original captures.

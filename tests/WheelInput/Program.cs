@@ -232,12 +232,28 @@ static class Program
             else if (args.Contains("--flip-only")) FlipPersistence();
             else if (args.Contains("--assign-only")) AssignmentReadFailure();
             else { Travel(0, 65535); Travel(65535, 0); RangesAndAssignment(); Lifecycle(); FlipPersistence(); AssignmentReadFailure(); DeviceIdentity(); DeviceRecovery(); ReadHealth(); AssignmentResume(); BindingSaves(); assertions+=ShifterIdentityTests.Run(); assertions+=CalibrationTests.Run(); }
+            ProbeDoesNotLearnOrAssign();
             assertions += GameButtonTests.Run();
             assertions += IsolationBoundaryTests.Run();
             assertions += ShimConsumerTests.Run();
             Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
         }
         catch (Exception ex) { Console.Error.WriteLine(ex); return 1; }
+    }
+
+    static void ProbeDoesNotLearnOrAssign()
+    {
+        Setup("TSS fixture|0|axis:2|0|30000");
+        string before = Host.Settings.HandbrakeBinding; int saves = Host.Saves;
+        ShimStartup.Requested = true;
+        try
+        {
+            WheelInput.BeginAssign(WheelInput.Channel.Brake);
+            Check(!WheelInput.Assigning.HasValue && WheelInput.Status.Contains("probe"), "probe allowed assignment");
+            Device.Axes[2] = 40000; WheelInput.Update();
+            Check(Host.Settings.HandbrakeBinding == before && Host.Saves == saves, "probe changed learned range or settings");
+        }
+        finally { ShimStartup.Requested = false; }
     }
 
     static void ReadHealth()

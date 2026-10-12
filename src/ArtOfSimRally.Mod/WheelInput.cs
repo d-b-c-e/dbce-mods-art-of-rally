@@ -326,7 +326,7 @@ namespace ArtOfSimRally.Mod
                 if (GameState.IsDriving) CancelAssign();
                 else StepAssign(cfg);
             }
-            UpdateValues(cfg, sharedInput == null);
+            UpdateValues(cfg, sharedInput == null && !ShimStartup.Requested);
             if (!reuseSnapshot || _buttonFrame != Time.frameCount) TickGameButtons();
         }
         private static void UpdateValues(Settings cfg, bool allowLearning)
@@ -445,6 +445,7 @@ namespace ArtOfSimRally.Mod
 
         public static void BeginAssign(Channel c)
         {
+            if (ShimStartup.Requested) { Status = "Assignments are disabled during the shared-input probe."; return; }
             if (GameState.IsDriving) { Status = "Pause before assigning a wheel input."; return; }
             // Keep healthy readers alive during a routine rebind. Closing and
             // reopening every device can lose a reader that was already showing

@@ -41,7 +41,7 @@ namespace ArtOfSimRally.Mod
                 ModLog.Error("Native toolkit unavailable: " + Status);
                 return false;
             }
-            string log = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            string log = ShimStartup.NativeLogPath ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "ArtOfSimRally", "ffb.log");
             if (LogFiles.RotateIfLarge(log))
                 ModLog.Info("Force feedback log was over " + LogFiles.RotateBytes / (1024 * 1024) + " MB; kept as ffb.previous.log.");

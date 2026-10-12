@@ -37,4 +37,13 @@ internal static class AbiProbe
         }
         finally { FreeLibrary(module); }
     }
+    internal static int NoForce(string path)
+    {
+        // No force/device/initialization API called. The latch and status alone
+        // prove the production exact-resident binding works on CLR and Mono.
+        IntPtr module = LoadLibraryExW(Path.GetFullPath(path), IntPtr.Zero, 0x100 | 0x1000);
+        if (module == IntPtr.Zero) throw new Exception("native latch fixture load failed");
+        try { ProbeNoForce.Arm(path); ProbeNoForce.Arm(path); return 2; }
+        finally { FreeLibrary(module); }
+    }
 }

@@ -63,7 +63,8 @@ namespace ArtOfSimRally.Mod
 
             // Before anything is applied: a marker from a launch where the
             // DirectInput switch left the keyboard dead turns that setting off.
-            InputBackend.OnLoad();
+            if (!ShimStartup.Prepare(modEntry.Path)) return false;
+            if (!ShimStartup.Requested) InputBackend.OnLoad();
             if (SettingsMigration.NeedsHandbrakeSplit(Settings))
             {
                 try
@@ -97,7 +98,8 @@ namespace ArtOfSimRally.Mod
             modEntry.OnUpdate    = (entry, dt) => TripleScreen.Update();
 
             FfbNative.Load(modEntry.Path);
-            if (Settings.ForceFeedbackEnabled)
+            if (!ShimStartup.Arm()) return false;
+            if (Settings.ForceFeedbackEnabled && !ShimStartup.Requested)
             {
                 ForceReconnect.Request();
                 FfbNative.Waiting();
@@ -121,7 +123,7 @@ namespace ArtOfSimRally.Mod
 
             Enabled = true;
 
-            if (Settings.ShifterEnabled && Settings.ShifterDeviceIndex >= 0)
+            if (!ShimStartup.Requested && Settings.ShifterEnabled && Settings.ShifterDeviceIndex >= 0)
                 Shifter.Open(Settings.ShifterDeviceIndex);
 
             // Releases the wheel and parks telemetry when the game stops driving
@@ -197,6 +199,7 @@ namespace ArtOfSimRally.Mod
 
         internal static void RecoverForceFeedback()
         {
+            if (ShimStartup.Requested) return;
             // USB topology changes can invalidate the shared exclusive handle
             // while native Ready stays true. Reopening reader slots alone keeps
             // referring to that handle. Use the existing focused/idle, strict-
@@ -245,6 +248,7 @@ namespace ArtOfSimRally.Mod
         /// <summary>Persists settings changed outside the panel, e.g. by the camera hotkeys.</summary>
         public static bool SaveSettings()
         {
+            if (ShimStartup.Requested) return false;
             _saveAttempts++;
             try
             {

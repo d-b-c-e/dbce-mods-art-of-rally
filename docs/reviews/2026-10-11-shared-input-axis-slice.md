@@ -84,10 +84,28 @@ No RC package or full rig checkpoint was produced.
 
 ## Activation, migration and rig boundary
 
+The follow-on diagnostic adds a process-only startup hook and copy-only helper;
+normal saved backends are unchanged. [Muted probe recipe](../research/2026-10-11-shim-muted-probe.md)
+documents Observe and optional receipt-gated Apply as temporary menu-only probes.
+Its current source checks pass: Release mod build zero warnings/errors; 401
+sink/bridge/observation/request assertions on .NET8 and Unity Mono; 403 including
+the production exact-resident no-force latch on the actual candidate native DLL
+(no force, initialization, acquisition or device API called); 428 production
+WheelInput assertions; 80 lifecycle assertions. The copy-only preparation fixture
+left source Settings unchanged and did not create a game-copy directory.
+
+Rewired's public RawInput extension compiles against Art's shipped Windows
+assembly. GUID/HID path/product fields are diagnostic only. DRIVE has confirmed
+RawInput/DirectInput GUID namespace mismatch; Art requires the bound GUID be
+observed and refuses that case. Do not activate production until an exact owned
+HID path join is implemented and qualified. Native log redirection during the
+probe is the only FfbNative adapter change; the producer/tune/reference and old
+capture semantics are unchanged.
+
 Toolkit `ecc49bd` and shim `d46096c` are isolated source candidates for review.
-No candidate replaces a vendored/installed artifact. Attachment still needs
-muted proof of actual Rewired identity/cached wheel behavior, explicit profile
-Apply/status/startup and complete lifecycle policy. Legacy XML remains the rollback
+No candidate replaces a vendored/installed artifact. Production attachment still
+needs muted proof of actual Rewired identity/cached wheel behavior, a normal
+Apply/status/startup path and complete lifecycle policy. Legacy XML remains the rollback
 backend. This is a working source bridge, not a complete controls conversion
 or a release-ready runtime.
 

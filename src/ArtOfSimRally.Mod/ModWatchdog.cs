@@ -51,7 +51,11 @@ namespace ArtOfSimRally.Mod
 
         private void Update()
         {
+            ShimStartup.Tick();
             ReadWheelInputs();
+            // Menu-only diagnostic: no telemetry sender, recovery, backend
+            // switch or persistence work. The native force latch is irreversible.
+            if (ShimStartup.Requested) return;
             Main.TickSettingsUi();
             ObserveFrameHealth();
             TickFrameRate();
@@ -147,6 +151,7 @@ namespace ArtOfSimRally.Mod
         /// <summary>Zeroes the wheel, parks telemetry, and releases both.</summary>
         public static void Shutdown(bool unloading = false)
         {
+            ShimStartup.Shutdown();
             Main.CancelForceRecovery();
             // Order matters: park telemetry while the socket is still open, and
             // zero the wheel before releasing the device, or the last non-zero

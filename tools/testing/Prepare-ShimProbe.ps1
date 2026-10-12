@@ -1,0 +1,81 @@
+# Prepares a COPY-ONLY, menu-only diagnostic payload. Never modifies a game,
+# starts a process, sets persistent environment variables, or opens a device.
+[CmdletBinding()]
+param(
+    [Parameter(Mandatory)][string]$Result,
+    [Parameter(Mandatory)][string]$SourceGame,
+    [Parameter(Mandatory)][string]$GameCopy,
+    [Parameter(Mandatory)][string]$Settings,
+    [Parameter(Mandatory)][string]$Profile,
+    [Parameter(Mandatory)][string]$NativeCandidate,
+    [Parameter(Mandatory)][string]$ShimCandidate,
+    [ValidateSet('Observe','Apply')][string]$Mode = 'Observe',
+    [string]$ObserveReceipt,
+    [ValidateRange(1,30)][int]$ExpiresMinutes = 15
+)
+$ErrorActionPreference = 'Stop'
+$repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
+$Result = [IO.Path]::GetFullPath($Result)
+$SourceGame = [IO.Path]::GetFullPath($SourceGame).TrimEnd('\')
+$GameCopy = [IO.Path]::GetFullPath($GameCopy).TrimEnd('\')
+function Within([string]$path, [string]$parent) { $path.Equals($parent, [StringComparison]::OrdinalIgnoreCase) -or $path.StartsWith($parent + '\', [StringComparison]::OrdinalIgnoreCase) }
+if ((Within $GameCopy $SourceGame) -or (Within $SourceGame $GameCopy) -or (Within $Result $SourceGame) -or (Within $Result $GameCopy)) { throw 'Result and game copy must be outside the owner game and distinct from each other.' }
+if (Test-Path -LiteralPath $Result) { throw 'Use a new result folder.' }
+if (-not (Test-Path -LiteralPath (Join-Path $SourceGame 'artofrally.exe'))) { throw 'Source game executable missing.' }
+# Refuse redirection through junctions/symlinks for destinations.
+foreach ($target in @($Result, $GameCopy)) {
+    $ancestor = $target
+    while ($ancestor) {
+        if ((Test-Path -LiteralPath $ancestor) -and ((Get-Item -LiteralPath $ancestor -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw "Destination traverses a link: $ancestor" }
+        $ancestor = [IO.Path]::GetDirectoryName($ancestor)
+    }
+}
+$bin = Join-Path $repo 'src/ArtOfSimRally.Mod/bin/Release'
+$files = @('ArtOfSimRally.Mod.dll','Dbce.Wheel.Ffb.dll','Dbce.Wheel.Telemetry.dll','Dbce.TripleScreen.Core.dll','Dbce.TripleScreen.Protocol.dll')
+foreach ($file in $files) { if (-not (Test-Path -LiteralPath (Join-Path $bin $file))) { throw "Build candidate first: $file" } }
+foreach ($path in @($Settings,$Profile,$NativeCandidate,$ShimCandidate)) { if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Input missing: $path" } }
+if ($Mode -eq 'Apply' -and (-not $ObserveReceipt -or -not (Test-Path -LiteralPath $ObserveReceipt -PathType Leaf))) { throw 'Apply probe needs its earlier Observe receipt.' }
+$payload = Join-Path $Result 'payload/ArtOfSimRally'
+New-Item -ItemType Directory -Path $payload | Out-Null
+foreach ($file in $files) { Copy-Item -LiteralPath (Join-Path $bin $file) -Destination $payload }
+Copy-Item -LiteralPath (Join-Path $repo 'src/ArtOfSimRally.Mod/Info.json') -Destination $payload
+Copy-Item -LiteralPath $Settings -Destination (Join-Path $payload 'Settings.xml')
+Copy-Item -LiteralPath $NativeCandidate -Destination (Join-Path $payload 'UnityForceFeedback.dll')
+Copy-Item -LiteralPath $ShimCandidate -Destination (Join-Path $Result 'dbce_shim.dll')
+Copy-Item -LiteralPath $Profile -Destination (Join-Path $Result 'controls.ini')
+if ($Mode -eq 'Apply') { Copy-Item -LiteralPath $ObserveReceipt -Destination (Join-Path $Result 'observe-receipt.json') }
+function Hash([string]$path) { (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash }
+$request = [ordered]@{
+    Schema=1; Mode=$Mode; Nonce=[Guid]::NewGuid().ToString('N'); ExpiresUtc=[DateTime]::UtcNow.AddMinutes($ExpiresMinutes).ToString('o')
+    GameRoot=$GameCopy; SourceGameRoot=$SourceGame; Result=$Result
+    ModSha256=(Hash (Join-Path $payload 'ArtOfSimRally.Mod.dll')); NativeSha256=(Hash (Join-Path $payload 'UnityForceFeedback.dll'))
+    ShimSha256=(Hash (Join-Path $Result 'dbce_shim.dll')); SettingsSha256=(Hash (Join-Path $payload 'Settings.xml')); ProfileSha256=(Hash (Join-Path $Result 'controls.ini'))
+    ShimPath=(Join-Path $Result 'dbce_shim.dll'); ProfilePath=(Join-Path $Result 'controls.ini')
+    ObserveReceipt=$(if ($Mode -eq 'Apply') { Join-Path $Result 'observe-receipt.json' } else { $null })
+}
+$utf8 = New-Object Text.UTF8Encoding($false)
+[IO.File]::WriteAllText((Join-Path $Result 'request.json'), ($request | ConvertTo-Json -Depth 5), $utf8)
+$inventory = [ordered]@{ SourceGame=$SourceGame; GameCopy=$GameCopy; SettingsSource=[IO.Path]::GetFullPath($Settings); SettingsSourceSha256=(Hash $Settings); SourceCommit=(& git -C $repo rev-parse HEAD); SourceStatus=(@(& git -C $repo status --porcelain)); Files=@() }
+foreach ($file in Get-ChildItem -LiteralPath $payload -File) { $inventory.Files += [ordered]@{ Name=$file.Name; Sha256=(Hash $file.FullName) } }
+[IO.File]::WriteAllText((Join-Path $Result 'prepared.json'), ($inventory | ConvertTo-Json -Depth 5), $utf8)
+$recipe = @"
+Prepared only. No game or profile was modified and no process was launched.
+
+Source game: $SourceGame
+Disposable game: $GameCopy
+Payload: $payload
+Request: $(Join-Path $Result 'request.json')
+Expires UTC: $($request.ExpiresUtc)
+
+Use docs/research/2026-10-11-shim-muted-probe.md at the serialized rig slot.
+Copy the game to the disposable path using robocopy /E /XJ (no /MIR).
+Remove or disable optional third-party mods ONLY in that disposable copy.
+Copy payload contents into the COPY's Mods/ArtOfSimRally folder.
+Keep the source Settings.xml byte-identical. Never run an installer or Wheelkit Apply.
+Create no injection marker, injection command, or saved backend setting.
+At launch give ONLY the child process DBCE_ART_SHIM_REQUEST=<request path>.
+Remain in menus; no physical movement is required. Inspect probe-receipt.json.
+Exit the copy normally; compare source hashes before and after. Do not publish.
+"@
+[IO.File]::WriteAllText((Join-Path $Result 'COPY-ONLY-RECIPE.txt'), $recipe, $utf8)
+Write-Output (Join-Path $Result 'COPY-ONLY-RECIPE.txt')

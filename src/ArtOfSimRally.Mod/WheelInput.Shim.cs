@@ -10,11 +10,20 @@ namespace ArtOfSimRally.Mod
         private static Func<bool> verifyNativeIsolation;
         private static Func<bool> restoreNativeInput;
         private static int sharedFrame = -1;
+        internal static int[] SharedProbeSlots
+        {
+            get
+            {
+                if (!_open || _devices.Count == 0) return new int[0];
+                var result = new int[_devices.Count];
+                for (int i = 0; i < result.Length; i++) result[i] = _devices[i].Slot;
+                return result;
+            }
+        }
+        internal static void StopSharedProbe() => StopSharedInput();
 
-        // Source-only handoff: no production caller and no saved backend flag.
-        // The reviewed bootstrap must first isolate these exact wheel identities
-        // from Rewired, leaving keyboard input independent. A test-session or
-        // recorder bootstrap is not supported by copied-provider extension 1.
+        // Explicit muted probe handoff only; no saved backend flag. Ordinary
+        // copied-provider mode is used: extension 1 has no capture/test fences.
         internal static void AttachSharedInput(IPhysicalSnapshotSource source, IShimBridge native, Func<bool> isolation, Func<bool> restore = null)
         {
             if (sharedInput != null || !_open || _devices.Count == 0 || isolation == null || !isolation())

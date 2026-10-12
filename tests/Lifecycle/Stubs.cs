@@ -91,6 +91,12 @@ namespace ArtOfSimRally.Mod
         public bool Invert=false, DiagnosticLogging=false;
     }
     internal static class Calls { public static List<string> Log = new List<string>(); }
+    internal static class ShimStartup
+    {
+        public static bool Requested => false;
+        public static void Tick() { }
+        public static void Shutdown() { }
+    }
     internal static class Main
     {
         public static Settings Settings = new Settings(); public static bool Enabled=true, OtherCameraModLoaded=false;
