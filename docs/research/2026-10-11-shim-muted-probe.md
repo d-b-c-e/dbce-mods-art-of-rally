@@ -155,10 +155,10 @@ exports must refuse.
    It checks candidate pins and optional-mod absence, snapshots shared bytes and
    raw PlayerPrefs with the existing `SessionEnvironment.ps1`, holds the shared
    rig lease, and launches with child-only request/`SteamAppId`/`SteamGameId`
-   variables plus the native load-time mute. It repins immediately before launch
-   and sets child-only `DBCE_FFB_LOG_PATH` to the result's `native.log`, including
-   any native diagnostic emitted before managed request validation. It repins
-   inside the lease and retries image-path observation for at most five seconds.
+   variables plus the native load-time mute. Child-only `DBCE_FFB_LOG_PATH`
+   sends diagnostics to the result's `native.log`, including any emitted before
+   managed request validation. The runner repins inside the lease immediately
+   before launch and retries image-path observation for at most five seconds.
    The exact child path and start time are checked before normal close.
    After a receipt or 90 seconds it asks that child to close its main window,
    without keyboard/mouse input or a forced kill. If any Art process remains,
