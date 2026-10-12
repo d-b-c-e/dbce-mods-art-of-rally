@@ -145,6 +145,43 @@ unchanged):
   physical state changed, and the edge is kept. A mutant without the guard fails the
   legacy suite.
 
+## Native 44E46799 at runtime (08:29, romi GO 33164)
+
+The muted ordinary-path run on the new native **passed** as sealed.
+- **Run:** `native44e-script-20261012-082728`, source `1538f91`.
+- **Pins:**
+  - runner `26968B8C`, preparer `0E9623A1`;
+  - mod `E62F9581`, native `44E46799`, shim `7DDC9621`;
+  - profile `5206EDFB`, copy Settings `A39B2F06`, recorder `1CE497CE`.
+
+Force was off throughout. The new native has no `DBCE_FFB_MUTE` latch (that is toolkit
+`82c40c4`), so the copy was staged with `ForceFeedbackEnabled=false`, plus the recorder's
+output mutes.
+- `force-check.json` shows the mod loaded with `ffb=False` and never attempted force
+  initialisation.
+- The launch's native log (`WheelFfb 901`) only enumerates devices, opens the DS-8X, R12
+  and Stalk as separate readers, and closes them at exit. There is no `InitDirectInput`,
+  `OpenCandidate` or effect line.
+
+What ran:
+- **Shared session:** attached and accepted its first frame (14 owned actions). Its
+  qualification pins each owned slot through `GetReadDeviceInfoV1` and
+  `GetReadDevicePathV1`. Frames come from `ReadDeviceSnapshotV1`, so all three new exports
+  ran live.
+- **Verdict:**
+  - 1359 stage frames composed with isolation and live steering;
+  - the resting wheel (0.1407) held steering on 342 scripted-steer frames;
+  - pedals and handbrake passed through;
+  - all 721 car ticks matched.
+- **Restoration:** exact, with the lease released and no markers left.
+
+Still unqualified:
+- the borrowed-FFB-handle snapshot path (fixtures only);
+- physical wheel, pedal and keyboard coexistence;
+- force feedback with the profile;
+- keyboard steering;
+- clutch and H-pattern gates.
+
 ## Remaining gaps
 
 1. **No Wheelkit writer for Art's profile.** Wheelkit writes `dbce-controls.ini` only for
