@@ -94,7 +94,10 @@ $context | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath "$Result/preflight
 if($context.decision -eq 'refuse') { throw "Steam launch context refused: $($context.reason)" }
 if($PreflightOnly) { Write-Output "Staged pins, settings, app id, UMM, $(if($native) { 'recorder, route, ' })marker and Steam context ($($context.decision)) checks passed. No launch or shared-state mutation."; return }
 $ownerInput=Join-Path $HubRepo 'tools/Owner-Input.ps1'
-if([double](& $ownerInput -IdleSeconds) -lt 300) { throw 'Owner input is recent; no launch or shared-state mutation.' }
+. (Join-Path $ToolkitRepo 'tools/playback/Stage-OwnerIdle.ps1')
+. (Join-Path $PSScriptRoot 'OwnerActivity.ps1')
+$ownerRecord=Join-Path $Result 'owner-activity.json'
+if(!(Test-OwnerGate $ownerInput 'launch' 300 $ownerRecord)) { throw 'Owner input is recent; no launch or shared-state mutation.' }
 $artLocal=Join-Path $env:LOCALAPPDATA 'ArtOfSimRally'
 $localLow=Join-Path $env:USERPROFILE 'AppData/LocalLow/Funselektor Labs/Art of Rally'
 $customRally=Join-Path $localLow 'customrally' # read by SessionEnvironment.ps1's Get-SessionFiles
@@ -133,7 +136,7 @@ try {
     @{schema=1;gameDir=$GameDir;owner=$owner;lease=$lease;localBefore=$localBefore;artBefore=$artBefore} | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath "$Result/recovery.json"
     $ready=$true
     Assert-StageRigLease -Path $lease.path -Token $lease.token
-    if([double](& $ownerInput -IdleSeconds) -lt 300) { throw 'Owner input resumed during preparation; no launch.' }
+    if(!(Test-OwnerGate $ownerInput 'prepared' 300 $ownerRecord)) { throw 'Owner input resumed during preparation; no launch.' }
     Assert-Pins # close the preparation-to-launch gap while holding the lease
     $context=Get-SteamLaunchContext # Steam may have stopped or changed since preflight
     if($context.decision -eq 'refuse') { $context | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath "$Result/launch-steam-context.json"; throw "Steam launch context refused: $($context.reason)" }
@@ -192,7 +195,7 @@ try {
     while(!$game.HasExited -and [DateTime]::UtcNow -lt $deadline) {
         Assert-StageRigLease -Path $lease.path -Token $lease.token
         if(@(Get-Process artofrally -ErrorAction SilentlyContinue | Where-Object Id -NE $game.Id).Count) { throw 'Another Art process appeared; do not answer Steam session dialogs.' }
-        if([double](& $ownerInput -IdleSeconds) -lt 5) { 'Owner input resumed; ending observation.' | Set-Content -LiteralPath "$Result/interrupted.txt"; $outcome='interrupted'; break }
+        if(!(Test-OwnerGate $ownerInput 'observation' 5 $ownerRecord)) { 'Owner input resumed; ending observation.' | Set-Content -LiteralPath "$Result/interrupted.txt"; $outcome='interrupted'; break }
         $lines=Read-Shared $umLog
         if($lines -match 'Shared input (not used|stopped)') { $outcome='refused-or-stopped'; break }
         if($native) { if(Test-Path -LiteralPath (Join-Path $capture 'end.txt')) { $outcome='captured'; break } }
