@@ -7,5 +7,6 @@
   <ItemGroup>
     <Reference Include="Dbce.Wheel.Playback"><HintPath>../../lib/playback/Dbce.Wheel.Playback.dll</HintPath></Reference>
     <Compile Include="../../tools/testing/Recorder/SessionAligner.cs" Link="SessionAligner.cs" />
+    <Compile Include="../../tools/testing/Recorder/ScenePlayback.cs" Link="ScenePlayback.cs" />
   </ItemGroup>
 </Project>

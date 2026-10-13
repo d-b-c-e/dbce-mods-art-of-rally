@@ -88,4 +88,5 @@ SessionAligner<int> Make(params int[] markers)
     Check(a.Next(2, out var v) && v == 2, "first row of the next state once live arrives");
 }
 
+ScenePlaybackTests.Run(Check);
 Console.WriteLine("{\"status\":\"passed\",\"assertions\":" + assertions + "}");

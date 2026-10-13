@@ -1,0 +1,42 @@
+# Owner session playback: returning from a custom rally
+
+The October 13 owner tape `20261013-004100-65e93dc2` reached the finish on the
+installed rc.18 mod and shared-HUD recorder. The first cold replay played all
+10,484 driving rows with zero detected pose application error and no gear
+mismatches. It returned `partial:post-stage-divergence`, not a full-session pass:
+the expected `MainMenu|ResultsScreen|-` never appeared. Game exit was normal,
+the owner environment was restored, and recording/tool seals were unchanged.
+
+Evidence is private at the hub's `artifacts/art-owner-replay-20261013/run-01`
+and `run-01-wrapper`. The original tape is retained unchanged in the Wheelkit
+Art recording library. This is trajectory playback, not deterministic physics
+or a physical force measurement.
+
+## Cause and correction
+
+The sealed `load-0001.json` targets MainMenu (scene 3, CUSTOM) and contains a
+non-null default Season with `Rallies: []`. `ScenePlayback` intentionally does
+not capture a season for menu loads, but Unity's inline serialization emits a
+default object for that null field. Playback tested only for non-null and
+overwrote the completed live event with the empty placeholder. The first
+`RallyManager.RallyData` index exception follows that return-to-menu load.
+
+The installed Assembly-CSharp has SHA-256
+`7807a1d674c8214fe1fbd15b8edc6e3e5e47700ab6e6c2943cf5bf234551c5e0`, MVID
+`08d2bf0d-3873-4a77-9007-4b3bccb7fb01`. Static REA identity evidence
+`ev_acfb7145927c122362d4c1e8ffd6042d157390be23284de7c7cca58d0bccccea`
+and focused ILSpy output confirm its CUSTOM `RallyData` getter indexes the
+season's Rallies list. The runtime stack and sealed menu JSON establish the
+actual failing path; static inspection alone is not runtime evidence.
+
+Restore now uses the same stage eligibility as capture: scene 0 and scene 3,
+and NULL game mode, never restore a season. The recorded scene and mode checks
+remain in place, and the menu target still applies. Stage loads still restore
+the recorded selection. Existing sealed tapes need no modification or recapture.
+
+The SessionTape fixture compiles the production adapter against engine fakes
+and exercises the empty menu object, valid stage restoration, NULL mode,
+mode/build refusal before mutation, and ignored fading loads. All 28 assertions
+pass; the net48 recorder builds with zero warnings/errors. Nene's independent
+source review found no blocker. A cold replay of the unchanged owner tape with
+this correction is still required before claiming full-session recovery.

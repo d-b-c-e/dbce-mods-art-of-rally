@@ -26,7 +26,7 @@ namespace ArtOfSimRally.Testing
             {
                 var selection = new Selection { sceneIndex = scene, scenePath = SceneUtility.GetScenePathByBuildIndex(scene), mode = GameModeManager.GameMode };
                 // Menu loads have no season to restore.
-                if (scene != 0 && scene != 3 && selection.mode != GameModeManager.GAME_MODES.NULL)
+                if (HasSeason(scene, selection.mode))
                     selection.season = GameModeManager.GetSeasonDataCurrentGameMode();
                 File.WriteAllText(path, JsonUtility.ToJson(selection));
             }
@@ -37,11 +37,18 @@ namespace ArtOfSimRally.Testing
                 if (selection.scenePath != SceneUtility.GetScenePathByBuildIndex(selection.sceneIndex))
                     throw new InvalidDataException("Scene build identity differs from recording");
                 if (selection.mode != GameModeManager.GameMode) throw new InvalidDataException("Game mode differs at scene load " + index);
-                if (selection.season != null)
+                // JsonUtility can materialize a default inline Season for the
+                // null menu field (Rallies=[] in existing sealed tapes). Do not
+                // overwrite the completed live rally with that placeholder.
+                // Use the same load eligibility as capture, not null alone.
+                if (HasSeason(selection.sceneIndex, selection.mode) && selection.season != null)
                     JsonUtility.FromJsonOverwrite(JsonUtility.ToJson(selection.season), GameModeManager.GetSeasonDataCurrentGameMode());
                 scene = selection.sceneIndex;
             }
             index++;
         }
+
+        private static bool HasSeason(int scene, GameModeManager.GAME_MODES mode) =>
+            scene != 0 && scene != 3 && mode != GameModeManager.GAME_MODES.NULL;
     }
 }
