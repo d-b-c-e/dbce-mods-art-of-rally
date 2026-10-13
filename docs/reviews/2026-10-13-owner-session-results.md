@@ -61,3 +61,20 @@ Installed recorder SHA-256:
 SessionTools ZIP SHA-256:
 `023E7D70D6B2CD67690281A278856BC7BEFE92DE489D04AF2AF2F4A27D9F1C41`.
 The ordinary mod, native/bridge/shim binaries and force tune were unchanged.
+
+## Recorder indicator check
+
+At 05:00 CT a bounded synthetic recording with physical inputs isolated and
+all outputs muted showed the shared **REC 00:02 | F11 to stop and save | Outputs
+muted** banner at the top of the observed center window. The image was inspected
+at `artifacts/art-hud-20261013/visible-02/recording.png`. The companion Stop
+command sealed the tape, the game closed normally, and the owner environment
+was restored. This verifies visibility and the stop/save path; physical F11
+was not pressed. The synthetic tape is not an owner force-normalization drive.
+
+The brief Saved image was not captured: the older compiled WGC helper supported
+single images but rejected the newer source's burst arguments. It remains a
+visual follow-up on the next purposeful Art run, not a reason to repeat the
+unchanged route now. A preceding observer attempt also hit the recorder's live
+event-log lock; its game closed and restored normally. Both harness failures
+are retained in the private artifacts and are not product playback failures.
