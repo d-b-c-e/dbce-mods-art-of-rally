@@ -6,7 +6,77 @@ feature or bug fix. After its candidate or final artifact passes the complete
 local automated gate, deploy it for testing without asking again. Public release
 publication and attended sign-off remain separate.
 
-## Current installation — 0.4.2-rc.17 (private shared-input candidate)
+## Current installation — 0.4.2-rc.20 (private shared-input candidate)
+
+Installed October 13 at 13:52:55 UTC (08:52 CDT), exact package source
+`1d845d8bb26090f13893c2249092f371b4f0e861.clean`. It resolves a fresh shared-only
+user's configured steering FFB target before reader qualification, using the
+shared Core's pure profile inspection. Explicit FFB selections, gains, effects,
+saved tuning and the accepted force native are unchanged. This is a local test
+candidate, not physical acceptance or a public release.
+
+- **Exact package:** `ArtOfSimRally-0.4.2-rc.20-shared-input.zip`, SHA-256
+  `8BA67D4EDC3E99F549F3FC2818D8185CC3CC6FE0AB03A7A24EB475FC5B8743EA`.
+  Installed mod `40C837E2`, shim `723E8A38` from private native source `5b96ba8`;
+  both force native copies remain `44E46799` from the accepted `bbbf6e3` line.
+- **Gates:** complete Test-Rc 20/20 with both original recorded cases passed on
+  clean `76d4c10` (throwaway rc.922; runtime/package inputs identical to `1d845d8`).
+  Corpus 215,928 assertions, recorded landing 9,582. Exact rc.20 Test-Installer
+  passed 50 assertions. The required `ART_SHIM_DLL=723E8A38` environment and the
+  preserved earlier stale-fixture refusal are documented in the review below.
+- **Rehearsal and install:** the same reviewed wrapper `5AD5243A` first passed
+  against a scratch copy of the current owner tree. Actual install held lease
+  `3a0f6041a5504c9a9e8532e80af957b9`, 08:52:51–08:52:55 CDT, then released it.
+  Game closed; no launch, profile Apply, device call or force output.
+- **Changed, exactly five files:** `ArtOfSimRally.Mod.dll`, `build.json`,
+  `dbce_shim.dll`, `Dbce.TripleScreen.Core.dll`, `Dbce.TripleScreen.Protocol.dll`.
+  The TripleScreen dependencies were rebuilt without a triple-screen source
+  change in this slice. All other **62 files** in the protected tree retained
+  their hashes, including SessionTools, CustomVehicles, game/loader files, both
+  native copies and all settings/layout files.
+- **Current owner settings retained:** Settings.xml
+  `0A380211744928BF91BF3B8E30F791142286D97DBEF4CF65F05ECA95D2E4F68A` and
+  dbce-controls.ini
+  `73E782304BB56DF5D722A0FADDA7E9C5FFD8347736C11003A6DFEFCDF94FADFA`.
+  No backend, binding, FFB selection or tuning field was rewritten. External
+  Wheelkit mapping profiles `7AE6A254` and the canonical dirty CustomVehicles
+  `SESSION.md` (`42EBDD69`) also retained their hashes.
+- **Receipt and backup:** in
+  `E:/Source/games/.worktrees/art-shared-ffb-target/results/rc20-install-plan/owner-install/`,
+  `install-receipt.json`, `tree-before.json`, `tree-after.json`, `exit.json` and
+  `before-install/`. The verified backup contains the previous Art mod folder
+  and second native copy. The neighboring `rehearsal/` holds the scratch receipt.
+- **Rollback:** with Art closed, restore the backed-up rc.18 payload files and
+  second native; preserve any newer owner settings/profile choices. Keep the
+  prior receipts and backups. Do not use the diagnostic native substitution or
+  the fresh-user fixture Settings for installation or rollback.
+- **Runtime scope:** one disposable startup resolved the expected configured
+  target before qualification and accepted a shared frame, with exact owner/copy
+  restoration. It used the explicitly recorded test-only `DD301314` native and
+  irreversible load-time mute, without injection. Physical controls, production
+  native FFB acquisition/coexistence and force feel remain unqualified by that
+  run. The installed package was not launched after deployment.
+
+Details and exact hashes: [shared steering target review](reviews/2026-10-13-shared-steering-ffb-target.md).
+The shim remains a private packaging input; no public binary/source promotion,
+tag, push or release accompanied this installation.
+
+## Previous installation — 0.4.2-rc.18 (private shared-input candidate)
+
+Installed October 13 at 03:46:04 UTC from clean `26f5cca`, package SHA-256
+`C9506342C55040BAE584CC30D0E14409FB596110547D343D32B9D8AC9943B901`.
+Receipt and verified rc.17 backup remain in the canonical worktree at
+`results/shared-input-rc18-install/`. Full rc.919 Test-Rc at `24439a3` passed
+20/20 with the original corpus; exact-package installer checks passed. Exactly
+four payloads changed (mod, build receipt and both TripleScreen dependencies),
+with 58 other files unchanged and both native copies `44E46799`.
+
+That install's Settings.xml was `91090837` with shared input absent. The owner
+later applied a shared profile; rc.20 preserved the current Settings/profile
+listed above rather than restoring this historical snapshot. rc.18's receipt,
+package and backup remain intact.
+
+## Previous installation — 0.4.2-rc.17 (private shared-input candidate)
 
 Installed October 12, 19:29:51 UTC (14:29 CT), clean source `096bf5e`, at the
 coordinator's request (sana 35954), under the standing authorization above.

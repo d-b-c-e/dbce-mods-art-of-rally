@@ -25,7 +25,8 @@ Changing the saved shared-input flag or file applies next launch. Qualification
 and attachment do not request a force reconnect or retarget the selected device.
 No legacy binding is written and no effect, gain, reference or default is changed.
 The existing locked picker remains; this slice does not enable a device change
-while shared readers are attached. The owner's installed rc18 is untouched.
+while shared readers are attached. The accepted force native and tuning remain
+unchanged; private rc.20 local deployment is recorded below.
 
 The inspector requires a fully consistent profile before returning an automatic
 force target. Core ordinary input retains its existing ability to use valid
@@ -224,8 +225,8 @@ shared input and FFB on the production `44E46799` native. No race was driven.
 
 ## Local deployment gates and plan
 
-No rc.20 installation has been performed. The owner install still identifies
-`0.4.2-rc.18+26f5ccab97566b1e0d5174c5cfe7185eeeb14cf4.clean`. Its receipt is
+The local installation below upgraded the owner's recorded
+`0.4.2-rc.18+26f5ccab97566b1e0d5174c5cfe7185eeeb14cf4.clean`. Its prior receipt is
 `games/dbce-mods-art-of-rally/results/shared-input-rc18-install/install-receipt.json`.
 Its older settings snapshot predates the owner's current shared profile; preserve
 the current Settings/profile bytes, not that historical snapshot.
@@ -315,7 +316,7 @@ rechecks packaged-source equivalence, and requires a successful scratch rehearsa
 using those same receipts, package and wrapper bytes before owner mode can run.
 If owner mutation starts but verification fails, it retains the lease and backup
 for recovery; pre-mutation refusals and scratch failures can release normally.
-Scratch rehearsal and installation are not yet recorded as complete.
+Scratch rehearsal and installation subsequently passed as recorded below.
 
 ### Source integration and owner-state preservation
 
@@ -364,3 +365,27 @@ Rollback, if needed with the game closed, restores the backed-up mod payloads
 and second native byte-for-byte; it does not restore historical owner settings
 over newer owner choices. Keep the rc.18 receipt and backup intact. Release the
 lease immediately after verification. No game launch is included in deployment.
+
+### Completed rehearsal and installation
+
+The exact reviewed `5AD5243A` wrapper passed its scratch rehearsal under lease
+`155bfba745954ae19d95321208e2c24e`, 08:51:21–08:51:26 CDT. It changed only the
+five expected payloads, kept 62 scratch files unchanged, and rehashed the entire
+owner tree plus external files unchanged. Receipt:
+`results/rc20-install-plan/rehearsal/install-receipt.json`.
+
+After the coordinator independently read that receipt and authorized deployment,
+the identical wrapper passed owner mode under lease
+`3a0f6041a5504c9a9e8532e80af957b9`, 08:52:51–08:52:55 CDT. Installed identity is
+`0.4.2-rc.20+1d845d8bb26090f13893c2249092f371b4f0e861.clean`. The exact five-file
+delta matched the rehearsal; the other 62 protected files retained their hashes.
+Both native copies remain `44E46799`, Settings `0A380211`, profile `73E78230`,
+Wheelkit mapping profiles `7AE6A254` and canonical dirty CustomVehicles SESSION
+`42EBDD69`. No game, device, profile Apply or force operation occurred.
+
+The full receipt, verified prior mod/native backup, before/after trees, wrapper
+and gate hashes, and released-lease receipt are under
+`results/rc20-install-plan/owner-install/`. The current installation and rollback
+record is in [LOCAL-DEPLOYMENT](../LOCAL-DEPLOYMENT.md). The installed artifact and
+the diagnostic DD301 native substitution remain separate facts; this installation
+does not qualify physical FFB or unmuted shared-input coexistence.
