@@ -38,5 +38,26 @@ The SessionTape fixture compiles the production adapter against engine fakes
 and exercises the empty menu object, valid stage restoration, NULL mode,
 mode/build refusal before mutation, and ignored fading loads. All 28 assertions
 pass; the net48 recorder builds with zero warnings/errors. Nene's independent
-source review found no blocker. A cold replay of the unchanged owner tape with
-this correction is still required before claiming full-session recovery.
+source review found no blocker.
+
+## Corrected cold replay passed
+
+At 04:37-04:41 CT, optional SessionTools `0.4.0-rc.19` built from `2237b54`
+replayed the unchanged owner tape through ResultsScreen, RallyCompleteScreen,
+and ExitGame. The result is **passed**, with all 10,484 driving rows played,
+10,511 applied poses, zero detected pose error and zero gear mismatches. The
+53 unused rows are non-driving tail rows; this is not a claim of frame-exact
+menu timing. The game closed normally, the owner environment was restored,
+and both source tape and tool seals stayed identical.
+
+Private evidence: `artifacts/art-owner-replay-20261013/run-02` and its wrapper
+receipt. The center HWND was selected by its observed rectangle for WGC;
+`center-01.png` shows the route, normal camera and shared playback banner.
+Unity ScreenCapture images instead show a side view in this configuration and
+must not be used to infer that the center HUD is missing.
+
+Installed recorder SHA-256:
+`CD0F82BD0146BFC4795658CA7531733F91A61DA9BDE1D79D9054EFF0482FDD73`.
+SessionTools ZIP SHA-256:
+`023E7D70D6B2CD67690281A278856BC7BEFE92DE489D04AF2AF2F4A27D9F1C41`.
+The ordinary mod, native/bridge/shim binaries and force tune were unchanged.
