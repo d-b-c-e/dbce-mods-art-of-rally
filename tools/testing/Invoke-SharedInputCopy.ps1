@@ -19,6 +19,8 @@ param([Parameter(Mandatory)][string]$Result,
       [switch]$PreflightOnly,
       [string]$RouteSource,
       [switch]$SharedCar,
+      # Diagnostic (with -SharedCar; sana 45712): the recorder observes the identity mapper's inputs and probes DualShock 4 rows.
+      [switch]$IdentityProbe,
       # A cold replay of a recording made here (sana 36236): the tape's start state, then no input or force device.
       [string]$ReplayTape,
       # A capture-driver recording made here has no environment-at-start of its own: its start state was this route's
@@ -57,9 +59,9 @@ function Read-Shared([string]$p) {
 }
 # The recorder request for a route recording: native scripts Art's Rewired values at the stage; shared leaves the car to
 # the shared profile and holds the route at the title until the shared session has started.
-function New-CaptureRequest([string]$Tape, [string]$Route, [bool]$Shared, [int]$Seconds, [DateTime]$ExpiresUtc) {
+function New-CaptureRequest([string]$Tape, [string]$Route, [bool]$Shared, [int]$Seconds, [DateTime]$ExpiresUtc, [bool]$Probe = $false) {
     @("mode=record","tape=$Tape","captureDriver=$Route","carInput=$(if($Shared) { 'shared' } else { 'native' })") +
-        $(if($Shared) { @('holdForShared=1') } else { @() }) +
+        $(if($Shared) { @('holdForShared=1') } else { @() }) + $(if($Probe) { @('identityProbe=1') } else { @() }) +
         @("captureSeconds=$Seconds","muteOutputs=1","expiresUtc=$($ExpiresUtc.ToString('o'))")
 }
 # A shared-car capture's tapes, summarised (the per-action delivery verdict belongs to the caller's device script).
@@ -74,6 +76,7 @@ function Get-SharedCarSummary([string]$Capture) {
 $Result=Full $Result; Plain $Result
 $native=[bool]$RouteSource
 $replay=[bool]$ReplayTape
+if($IdentityProbe -and !$SharedCar) { throw '-IdentityProbe is a -SharedCar diagnostic.' }
 if($SharedCar -and !$native) { throw '-SharedCar records a route''s stage with the car left to shared input; give -RouteSource.' }
 if($native -and $replay) { throw 'Choose -RouteSource (record) or -ReplayTape (replay), not both.' }
 if($ReplayRoute -and !$replay) { throw '-ReplayRoute only gives a replayed tape its start state.' }
@@ -218,7 +221,7 @@ try {
     if($native) {
         $routeApplied=$true; Set-RouteEnvironment $RouteSource "$Result/shared-environment"
         # The recorder's request (a shared marker, absent before; restoration removes it and its .taken rename).
-        New-CaptureRequest $capture $RouteSource ([bool]$SharedCar) $CaptureSeconds ([DateTime]::UtcNow.AddMinutes(10)) | Set-Content -LiteralPath $sessionRequest -Encoding ascii
+        New-CaptureRequest $capture $RouteSource ([bool]$SharedCar) $CaptureSeconds ([DateTime]::UtcNow.AddMinutes(10)) ([bool]$IdentityProbe) | Set-Content -LiteralPath $sessionRequest -Encoding ascii
         Copy-Item -LiteralPath $sessionRequest -Destination (Join-Path $Result 'session-request.txt')
     }
     # The copy's previous UMM log goes aside as evidence before launch, so every line observed belongs to this launch

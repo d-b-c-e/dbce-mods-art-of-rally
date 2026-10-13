@@ -163,6 +163,13 @@ namespace ArtOfSimRally.Testing
                 _trajectory = !request.TryGetValue("playback", out var playback) || playback == "trajectory";
                 if (!_trajectory && playback != "input-diagnostic") throw new InvalidDataException("unknown playback mode");
                 _harmony = new Harmony(HarmonyId);
+                // Diagnostic, opt-in (sana 45712): observe the identity mapper's inputs and probe DualShock 4 rows.
+                if (request.TryGetValue("identityProbe", out var identityProbe))
+                {
+                    if (identityProbe != "1") throw new InvalidDataException("identityProbe must be 1");
+                    if (replay) throw new InvalidDataException("identityProbe is only valid for recording");
+                    IdentityProbe.Arm(_harmony, () => _dir);
+                }
                 if (request.TryGetValue("captureDriver", out var driverSource))
                 {
                     if (replay) throw new InvalidDataException("capture driver is only valid for recording");

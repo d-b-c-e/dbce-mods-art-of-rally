@@ -36,6 +36,7 @@ namespace ArtOfSimRally.Testing
                 if (header) w.WriteLine(Header);
                 foreach (var r in rows) w.WriteLine(r);
             }
+            if (IdentityProbe.Armed) IdentityProbe.Probe("inventory pass " + _passes);
             return "rewired inventory pass " + _passes + ": " + (rows.Count) + " joystick(s)";
         }
 
