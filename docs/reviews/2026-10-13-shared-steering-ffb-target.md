@@ -79,7 +79,7 @@ building the game or downloading dependencies. WheelInput's strict build hit fou
 pre-existing CS0649 warnings in unchanged `DriveTrial.Sample` fields; the fixture
 build allowed CS0649 only. Both original failure logs are retained.
 
-## Packaging and next bounded runtime check
+## Packaging and bounded runtime check
 
 The private rc.20 package was built from clean
 `1d845d8bb26090f13893c2249092f371b4f0e861` using the existing script (no standalone
@@ -107,7 +107,7 @@ or errors; the fixture retained the four known CS0649 warnings. Receipt and logs
 `results/shared-ffb-package-20261013/package-receipt.json`. No install or launch
 was part of packaging.
 
-Proposed runtime scope: one existing `Prepare-SharedInputCopy` /
+The approved runtime scope was one existing `Prepare-SharedInputCopy` /
 `Invoke-SharedInputCopy` ordinary smoke, with no recorder or injected input,
 60-second observation deadline and 10 seconds after the first accepted frame.
 Use a separate SettingsSource with `SharedInput=true`, empty `SteerBinding`,
@@ -130,16 +130,17 @@ and the SHA-256 of the frozen profile bytes, before entering Waiting. The line
 explicitly states that connection and force are unverified; explicit FFB overrides
 retain priority. New fixture checks cover one-time logging before qualification,
 the exact hash, no repeat after attachment and all three refusal cases. These
-five additional checks passed in the packaging batch. No runtime run is authorized by
-this recipe. Normal physical FFB acceptance remains owner-attended.
+five additional checks passed in the packaging batch. The coordinator separately
+authorized the one run recorded below. Normal physical FFB acceptance remains
+owner-attended.
 
-### Test-only native compatibility and runner proposal
+### Test-only native compatibility and runner
 
 The previously qualified muted native from toolkit `82c40c4` is available at
 `toolkits/.worktrees/art-shim-snapshots/native/wheelffb/build/WheelFfb.dll`, SHA-256
 `DD3013147821364AD8795F76B4500FB479F669E6BD89576F83E725A677273414`.
 Its `DBCE_FFB_MUTE=1` load-time latch independently refuses force entry points.
-It is proposed only for the disposable diagnostic; the production package and
+It was used only for the disposable diagnostic; the production package and
 source pins retain `44E46799`.
 
 Source comparison against `bbbf6e3`: the V1 snapshot header and snapshot-state
@@ -153,7 +154,9 @@ it or use its synthetic POV button indices; Art uses 128 real buttons and the
 available `ReadDeviceStateWithPov`. Force behavior is not claimed equivalent.
 
 The prepared one-shot wrapper is
-`results/fresh-shared-only-rc20-plan/Invoke-FreshSharedOnly.ps1`; it has not run.
+`results/fresh-shared-only-rc20-plan/Invoke-FreshSharedOnly.ps1`, SHA-256
+`03D27D6DABD1E144B8AFD7E2AE1740378020998048A254EE911E83DDFB82026D`.
+The coordinator reviewed these exact bytes before the run.
 It uses existing package-mode staging and `Invoke-SharedInputCopy`, preserving
 their validation, child-only mute, shared-state restoration and process checks.
 The original package staging receipt remains intact. A separate recorded override
@@ -174,3 +177,143 @@ mode. The expected configured steering instance is
 line before qualification, first accepted shared frame and ten seconds without a
 stop. It does not qualify physical force, connected FFB acquisition, driving or
 input/force coexistence with the production native.
+
+### October 13 runtime result
+
+The single authorized attempt passed its scoped startup checks. The inner runner
+held lease `a5e83981cb194c888ca4ab488d1431f4` from 08:23:32 CDT; preparation and
+copy restoration used their own serialized leases. Exact copied-game PID 50160
+started at `2026-10-13T13:23:37.2102432Z`. Evidence is in the isolated worktree's
+`results/fresh-shared-only-rc20-run-01`:
+
+- `run/shared-lines.txt` records the expected configured steering instance and
+  frozen profile hash **before** qualification. The launch logged `ffb=False`.
+  It then attached `Moza KS Pro Triple`, isolated the R12 and DS-8X, and accepted
+  its first frame with 21 owned actions. The subsequent ten-second settling
+  interval completed without a shared-input stop or refusal.
+- `run/staged.json`, `production-staged.json` and `test-only-native.json` retain
+  the production package's `44E46799` pin separately from the actual disposable
+  `DD301314` substitution. Both native paths had the latter, with the irreversible
+  child-only `DBCE_FFB_MUTE=1` load-time latch. No input was injected.
+- `run/native-ffb-log-delta.txt` contains enumeration and four read-slot opens,
+  then four read-slot releases and `FreeDirectInput`. It contains no force
+  initialization, acquisition or effect calls. The mod reported no FFB startup
+  attempt. This is no-force diagnostic evidence, not measured physical output.
+- The shared shutdown receipt in `run/after/new` reports `resolved`, two released
+  devices, zero held devices, `inputReleased=true`, recorder joined/complete and
+  control joined/complete. `CloseMainWindow` closed the owned child normally;
+  no forced termination was used.
+- `run/restored.txt` records shared-state restoration at
+  `2026-10-13T13:24:10.5705527Z`. `copy-restored.json` records all 26 original copy
+  files restored at `13:24:11.0351898Z`, including both `44E46799` native copies
+  and the original recorder. The process was absent and the lease released at
+  08:24:11 CDT. Owner activity policy was honored and recorded truthfully.
+
+Owner Settings remained SHA-256
+`0A380211744928BF91BF3B8E30F791142286D97DBEF4CF65F05ECA95D2E4F68A`;
+the shared profile remained `73E78230` (full hash above). No accepted native,
+force tune, recording, installed backend or owner payload was changed.
+`verdict.json` records target-before-qualification, exact identity/hash and first
+frame plus settling success, with `injection=false`, `nativeSubstitution=true`
+and `physicalFfbQualified=false`.
+
+This establishes the fresh shared-only configured-target startup path using the
+reviewed diagnostic native. It does not establish physical steering/pedal/shifter
+behavior, keyboard driving, visual acceptance, force acquisition or simultaneous
+shared input and FFB on the production `44E46799` native. No race was driven.
+
+## Remaining local deployment gates and plan
+
+No rc.20 installation has been performed. The owner install still identifies
+`0.4.2-rc.18+26f5ccab97566b1e0d5174c5cfe7185eeeb14cf4.clean`. Its receipt is
+`games/dbce-mods-art-of-rally/results/shared-input-rc18-install/install-receipt.json`.
+Its older settings snapshot predates the owner's current shared profile; preserve
+the current Settings/profile bytes, not that historical snapshot.
+
+`AGENTS.md` and `docs/LOCAL-DEPLOYMENT.md` require the complete local automated
+gate before installing. The focused checks and runtime above do not replace it.
+`Test-Rc.ps1` has no shared-candidate argument: it builds a default package and
+always checks the default toolkit native. The existing rc.17/rc.18 procedure is
+therefore the appropriate bounded completion route:
+
+1. Under the shared lease, run the existing 20-gate suite once on this clean
+   branch with the original two-case recorded corpus and a throwaway label.
+   `0.4.2-rc.920` is already occupied; `0.4.2-rc.921` was unused when planned.
+   Recheck occupancy before starting. Keep the rc.20 ZIP unchanged.
+2. Run `Test-Installer.ps1` on a fresh extraction of the exact rc.20 shared ZIP.
+   It tests the actual batch/Windows PowerShell entry points, install/upgrade/
+   removal, optional-shim ownership and settings preservation in fake game
+   folders. It never launches the game. Do not reuse Test-Rc's deliberately
+   corrupted extraction for installation.
+3. Retain the already-passed exact rc.20 release/manifest/actual-export checks
+   and one-shot startup evidence. No native rebuild, extra Mono sweep, new helper
+   Apply or second runtime attempt is needed for this fix's local gate. Physical
+   acceptance and any public release remain separate.
+
+Planned commands, from the isolated Art worktree:
+
+```powershell
+./tools/testing/Test-Rc.ps1 -Version 0.4.2-rc.921 `
+  -Corpus E:/Source/games/dbce-mods-art-of-rally/results/regression-corpus/index.json
+./tools/testing/Test-Installer.ps1 `
+  -PackageDirectory <fresh-rc20-extraction>
+```
+
+The corpus index remains SHA-256
+`C964C158A37F28DB5F677BA4063DAF473737580AF121B28D0DB951122BCAC3D2`.
+The latest earlier full gate is rc.919 at `24439a3`, not this target-selection
+source. It is precedent, not a substitute for the pending gate. The suite covers
+telemetry/signals, input/settings/regression, triples, session tape/environment,
+lifecycle/force models, recorder/actual Unity Mono, replay/trials/rejection,
+release evidence, force vector, native exports, packaging, installers and source
+stability. The production build remains warnings-as-errors; the suite's ordinary
+WheelInput run may report its four already-recorded CS0649 fixture warnings.
+Preserve any failure rather than widening the tests automatically.
+
+### Source integration and owner-state preservation
+
+Canonical `main` is `95203fd`. This branch descends directly from it and adds only
+the reviewed target-selection source/tests, the shim hash/provenance metadata and
+these notes. Unlike the earlier experimental bridge branch, its new history adds
+no shim binary or private native source. The native `5b96ba8` branch and supplied
+shim stay private; neither is merged into this public Art repository. No push,
+tag, public release or license-status change is part of this local plan.
+
+After review, integrate with `git merge --ff-only codex/art-shared-ffb-target` in
+the canonical worktree, only after checking its HEAD/status again. Before and
+after, hash the owner's dirty `experiments/CustomVehicles/SESSION.md` and require
+the same bytes (planning hash
+`42EBDD696A75F695D2655292C180E5E9B7F87F86FCF5A948A8CFF91711F4823F`).
+No branch commit touches that path; do not stash, reset, clean or commit it.
+Refuse and report if the main branch or dirty path set changed unexpectedly.
+The immutable package continues to identify `1d845d8`; later documentation-only
+commits do not become its source identity. A gate on a descendant must demonstrate
+unchanged runtime/package inputs (`src`, `lib`, `tools/package`, `tools/installer`,
+`Version.props`) as the existing rc.18 receipt procedure does.
+
+Installation will reuse the package's existing `install.ps1 -GameDir` after a
+scratch rehearsal and review of its receipt wrapper. With the actual shared lease
+held and Art closed, recheck the exact ZIP/hash and current rc.18 payloads against
+its receipt, then snapshot the current tree before copying. The snapshot covers
+all Mods files (including SessionTools and CustomVehicles), game-root files,
+Plugins/x86_64, UMM Params, Assembly-CSharp, owner Wheelkit mapping profiles and
+the canonical dirty source file. Back up the complete Art mod folder and second
+native copy, and verify the backup hashes. Preserve current Settings.xml,
+dbce-controls.ini, TripleScreen.xml and desired-layout.json exactly; no profile
+Apply or selection/tune edit is part of installation. Refuse the legacy separate
+triple-screen folder if it has appeared, since the installer would migrate it.
+
+The verified current-to-package payload delta is five files in Mods/ArtOfSimRally:
+`ArtOfSimRally.Mod.dll`, `build.json`, `dbce_shim.dll` and both TripleScreen DLLs.
+The latter are rebuilt package dependencies; no triple-screen source change is
+part of this slice. The manifest must verify every installed payload and the
+second native copy. Both force native copies must remain exactly `44E46799`,
+and managed FFB/telemetry and every other protected file must retain their hashes.
+Do not install the diagnostic DD301 native or its fixture Settings. Record the
+exact changed set, prior/current identities, package/gate receipts, backup paths
+and unchanged settings/profile hashes in a new rc.20 install receipt.
+
+Rollback, if needed with the game closed, restores the backed-up mod payloads
+and second native byte-for-byte; it does not restore historical owner settings
+over newer owner choices. Keep the rc.18 receipt and backup intact. Release the
+lease immediately after verification. No game launch is included in deployment.
