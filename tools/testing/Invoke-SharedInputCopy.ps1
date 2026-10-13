@@ -43,6 +43,12 @@ function Within([string]$p,[string]$parent) { $p.Equals($parent,[StringCompariso
 function Assert-GameClosed { if(Get-Process artofrally -ErrorAction SilentlyContinue) { throw 'Art remains open; retain backup and lease, no restoration.' } }
 # The copy's UMM log, read while the game may still write it. A level tag may precede the text: the mod logs its
 # refusal as "[ArtOfSimRally] [Warning] Shared input not used: ..." (run-01 and diag-01 timed out without seeing it).
+# Before launch: the previous launch's log leaves the copy (kept as evidence), so Read-Shared can only see this launch's
+# lines. Its prior bytes were snapshotted first and come back with the restoration.
+function Set-UmmLogAside([string]$Log, [string]$Keep) {
+    if(Test-Path -LiteralPath $Keep) { throw 'The pre-launch UMM log evidence already exists.' }
+    if(Test-Path -LiteralPath $Log) { Move-Item -LiteralPath $Log -Destination $Keep }
+}
 function Read-Shared([string]$p) {
     if(!(Test-Path -LiteralPath $p -PathType Leaf)) { return @() }
     $stream=[IO.File]::Open($p,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete)
@@ -183,6 +189,9 @@ try {
     foreach($p in @('DBCE/TripleScreen/games/art-of-rally/status.json','DBCE/TripleScreen/games/art-of-rally/render-diagnostics.json')) { Save-File (Join-Path $env:LOCALAPPDATA $p) }
     $localBefore=@(Files $localLow -Recurse)
     foreach($p in $localBefore) { Save-File $p }
+    # The copy's own UMM log: snapshotted like every shared file, so restoration returns its prior bytes (or removes this
+    # launch's log if there was none); it is then set aside before launch (Set-UmmLogAside).
+    Save-File $umLog
     $snapshots | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath "$Result/shared-files.json"
     @{schema=1;gameDir=$GameDir;owner=$owner;lease=$lease;localBefore=$localBefore;artBefore=$artBefore} | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath "$Result/recovery.json"
     $ready=$true
@@ -214,7 +223,7 @@ try {
     }
     # The copy's previous UMM log goes aside as evidence before launch, so every line observed belongs to this launch
     # (diag-02 read the previous launch's refusal line before Unity rewrote the log, and closed Art during startup).
-    if(Test-Path -LiteralPath $umLog) { Move-Item -LiteralPath $umLog -Destination (Join-Path $Result 'umm-log-before-launch.txt') }
+    Set-UmmLogAside $umLog (Join-Path $Result 'umm-log-before-launch.txt')
     $exe=Join-Path $GameDir 'artofrally.exe'
     $childEnvironment=[ordered]@{
         SteamAppId='550320'; SteamGameId='550320'

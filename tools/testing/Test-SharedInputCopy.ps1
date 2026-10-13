@@ -150,11 +150,25 @@ try {
         "[ArtOfSimRally] [Warning] Shared input not used: Rewired identity/path unavailable: cannot exclude a duplicate mapped wheel Art bindings remain.`n[ArtOfSimRally] Frame rate (10 s): 120 fps`n")
     $seen = Read-Shared $log
     Check ($seen.Count -eq 3 -and ($seen -match 'Shared input (not used|stopped)').Count -eq 1 -and !($seen -match 'Frame rate')) 'a level-tagged refusal reaches the runner''s shared lines'
-    # The previous launch's log is moved aside before this launch starts (diag-02's stale refusal line).
+    # diag-02: an old refusal line in the copy's log must not end a new launch. Functional: the runner's own
+    # Set-UmmLogAside and Read-Shared on a log holding the previous launch's refusal.
+    $def = @($ast.FindAll({ param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Set-UmmLogAside' }, $true))
+    Check ($def.Count -eq 1) 'one Set-UmmLogAside in the runner'
+    . ([scriptblock]::Create($def[0].Extent.Text))
+    $copyLog = Join-Path $root 'copy-umm/Log.txt'; $keep = Join-Path $root 'copy-umm-result/umm-log-before-launch.txt'
+    $old = "[ArtOfSimRally] [Warning] Shared input not used: Rewired identity/path unavailable (previous launch)`n"
+    Write-Bytes $copyLog $old; New-Item -ItemType Directory -Path (Split-Path $keep) | Out-Null
+    $oldHash = Hash $copyLog
+    Set-UmmLogAside $copyLog $keep
+    Check (@(Read-Shared $copyLog).Count -eq 0 -and (Hash $keep) -eq $oldHash -and !(Test-Path $copyLog)) 'the previous launch''s log leaves the copy as evidence, byte-exact'
+    Write-Bytes $copyLog "[ArtOfSimRally] Shared input: profile found; qualifying in the menus.`n"   # this launch, still qualifying
+    Check (!(@(Read-Shared $copyLog) -match 'Shared input (not used|stopped)')) 'an old refusal cannot end the new launch'
+    Refused { Set-UmmLogAside $copyLog $keep } 'already exists'
+    # The prior bytes come back with the restoration: the log is snapshotted before it is set aside, and before launch.
     $text = [IO.File]::ReadAllText($invoke)
-    $move = $text.IndexOf("Move-Item -LiteralPath `$umLog -Destination (Join-Path `$Result 'umm-log-before-launch.txt')")
+    $snap = $text.IndexOf('Save-File $umLog'); $aside = $text.IndexOf("Set-UmmLogAside `$umLog (Join-Path `$Result 'umm-log-before-launch.txt')")
     $firstLaunch = [Math]::Min($text.IndexOf('$game=[Diagnostics.Process]::Start($start)'), $text.IndexOf('Start-MediumBroker $broker'))
-    $firstRead = $text.IndexOf('$lines=Read-Shared $umLog')
-    Check ($move -gt 0 -and $firstLaunch -gt $move -and $firstRead -gt $move) 'the previous UMM log is moved aside before the launch and before any read'
+    $snapshotsWritten = $text.IndexOf('$snapshots | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath "$Result/shared-files.json"')
+    Check ($snap -gt 0 -and $snapshotsWritten -gt $snap -and $aside -gt $snapshotsWritten -and $firstLaunch -gt $aside) 'the log is snapshotted (restored later), then set aside, then the launch'
 } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
 "PASS: $checks shared-copy staging, Apply confirmation and shared-car request checks (fake packages and copies only)."
