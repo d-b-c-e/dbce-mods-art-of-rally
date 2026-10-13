@@ -27,7 +27,11 @@
 param(
     [Parameter(Mandatory)][string]$Version,
     [switch]$SharedInputCandidate,
-    [string]$SharedInputShim
+    [string]$SharedInputShim,
+    # Private shared-input candidates only: also build the optional controls setup companion ZIP from the pinned helper
+    # bundle (standalone-setup.json). The mod ZIP itself does not change.
+    [switch]$PrivateStandaloneSetup,
+    [string]$StandaloneSetupZip
 )
 
 $ErrorActionPreference = 'Stop'
@@ -41,12 +45,20 @@ if ($info.Version -ne $modVersion) { throw 'Info.json and Version.props disagree
 if ($SharedInputCandidate -and $Version -notmatch '-rc\.') { throw 'The shared-input candidate is a private RC only' }
 if ($SharedInputCandidate -and -not $SharedInputShim) { throw 'The shared-input candidate needs -SharedInputShim, a private copy of the pinned dbce_shim.dll' }
 if ($SharedInputShim -and -not $SharedInputCandidate) { throw '-SharedInputShim is only for -SharedInputCandidate' }
+# The helper's art of rally writer needs the candidate's shared-input controls contract; a baseline package gets none.
+if ($PrivateStandaloneSetup -and (-not $SharedInputCandidate -or -not $StandaloneSetupZip)) { throw '-PrivateStandaloneSetup needs -SharedInputCandidate and -StandaloneSetupZip (the pinned helper ZIP)' }
+if ($StandaloneSetupZip -and -not $PrivateStandaloneSetup) { throw '-StandaloneSetupZip is only for -PrivateStandaloneSetup' }
 $flavour = if ($SharedInputCandidate) { '-shared-input' } else { '' }
 $dist  = Join-Path $root 'dist'
 $stage = Join-Path $dist "stage-$Version$flavour"
 $zip = Join-Path $dist "ArtOfSimRally-$Version$flavour.zip"
 if ((Test-Path -LiteralPath $stage) -or (Test-Path -LiteralPath $zip)) {
     throw 'Candidate already exists. Keep its evidence; choose a new RC number.'
+}
+$companionStage = Join-Path $dist "stage-$Version$flavour-controls-setup"
+$companionZip = Join-Path $dist "ArtOfSimRally-$Version$flavour-controls-setup.zip"
+if ($PrivateStandaloneSetup -and ((Test-Path -LiteralPath $companionStage) -or (Test-Path -LiteralPath $companionZip))) {
+    throw 'Controls setup companion already exists. Keep its evidence; choose a new RC number.'
 }
 $revision = (& git -C $root rev-parse HEAD).Trim()
 if ($LASTEXITCODE -ne 0) { throw 'Cannot identify source revision' }
@@ -164,6 +176,40 @@ foreach ($relative in $payload) { $files[$relative] = (Get-FileHash -LiteralPath
 $null = Assert-Payload $stage
 Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zip
 (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash | Set-Content -LiteralPath "$zip.sha256" -Encoding ASCII
+
+if ($PrivateStandaloneSetup) {
+    # Unity Mod Manager unpacks every entry of a dragged mod ZIP into the game's Mods folder, so the optional helper
+    # ships as its own companion ZIP, never inside the mod ZIP, and its launcher never copies it into the game.
+    $setupPin = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'standalone-setup.json') -Raw | ConvertFrom-Json
+    $StandaloneSetupZip = [IO.Path]::GetFullPath($StandaloneSetupZip)
+    if ([IO.Path]::GetFileName($StandaloneSetupZip) -cne $setupPin.zip -or (Get-FileHash -LiteralPath $StandaloneSetupZip -Algorithm SHA256).Hash -ne $setupPin.zipSha256 -or
+        (Get-Content -LiteralPath "$StandaloneSetupZip.sha256" -Raw).TrimEnd("`r", "`n") -cne ($setupPin.zipSha256 + '  ' + $setupPin.zip)) {
+        throw 'Controls setup helper ZIP or its sidecar differs from standalone-setup.json'
+    }
+    $setupRoot = Join-Path $companionStage 'ModSetup'
+    Expand-Archive -LiteralPath $StandaloneSetupZip -DestinationPath $setupRoot
+    if ((Get-FileHash -LiteralPath (Join-Path $setupRoot 'bundle-manifest.json') -Algorithm SHA256).Hash -ne $setupPin.bundleManifestSha256) { throw 'Helper bundle manifest differs from its pin' }
+    $bundle = Get-Content -LiteralPath (Join-Path $setupRoot 'bundle-manifest.json') -Raw | ConvertFrom-Json
+    if (@($bundle.files).Count -ne $setupPin.files -or @(Get-ChildItem -LiteralPath $setupRoot -File -Recurse).Count -ne $setupPin.files + 1) { throw 'Extracted helper file count differs from its pin' }
+    foreach ($file in $bundle.files) {
+        if ((Get-FileHash -LiteralPath (Join-Path $setupRoot $file.path) -Algorithm SHA256).Hash -ne $file.sha256) { throw "Extracted helper differs from its bundle manifest: $($file.path)" }
+    }
+    $controlsSetup = Join-Path $root 'tools\installer\controls-setup'
+    foreach ($name in @('Set Up Controls.bat', 'Setup-Controls.ps1', 'README.txt')) { Copy-Item -LiteralPath (Join-Path $controlsSetup $name) -Destination $companionStage }
+    Copy-Item -LiteralPath (Join-Path $root 'tools\installer\verify.ps1') -Destination $companionStage   # Find-ArtOfRally, shared with the installer
+    Copy-Item -LiteralPath (Join-Path $root 'LICENSE') -Destination $companionStage
+    $companionBase = [IO.Path]::GetFullPath($companionStage).TrimEnd('\')
+    $companionFiles = [ordered]@{}
+    foreach ($file in Get-ChildItem -LiteralPath $companionBase -File -Recurse | Sort-Object FullName) {
+        $companionFiles[$file.FullName.Substring($companionBase.Length + 1).Replace('\', '/')] = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash
+    }
+    [ordered]@{ schema=1; kind='art-controls-setup-companion'; release=$Version; identity=$identity
+        standaloneSetup=[ordered]@{ zip=$setupPin.zip; zipSha256=$setupPin.zipSha256; sourceCommit=$setupPin.sourceCommit; bundleManifestSha256=$setupPin.bundleManifestSha256; files=$setupPin.files }
+        files=$companionFiles } | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $companionStage 'companion-manifest.json') -Encoding UTF8
+    Compress-Archive -Path (Join-Path $companionStage '*') -DestinationPath $companionZip
+    (Get-FileHash -LiteralPath $companionZip -Algorithm SHA256).Hash | Set-Content -LiteralPath "$companionZip.sha256" -Encoding ASCII
+    Write-Host "Packaged $companionZip" -ForegroundColor Green
+}
 
 Write-Host "Packaged $zip" -ForegroundColor Green
 Get-ChildItem $zip | Select-Object Name, Length

@@ -38,42 +38,14 @@ Say ""
 
 # --- find the game ---------------------------------------------------------
 
-function Find-ArtOfRally {
-    # Steam records its own location in the registry. Reading it is the only
-    # reliable way to find a library that is not on C:.
-    $steam = $null
-    foreach ($key in 'HKCU:\Software\Valve\Steam', 'HKLM:\SOFTWARE\WOW6432Node\Valve\Steam') {
-        try {
-            $v = Get-ItemProperty $key -ErrorAction Stop
-            if ($v.SteamPath)   { $steam = $v.SteamPath }
-            elseif ($v.InstallPath) { $steam = $v.InstallPath }
-            if ($steam) { break }
-        } catch { }
-    }
-    if (-not $steam) { return $null }
-    $steam = $steam -replace '/', '\'
-
-    # Every library folder, not just the default one.
-    $libraries = @($steam)
-    $vdf = Join-Path $steam 'steamapps\libraryfolders.vdf'
-    if (Test-Path -LiteralPath $vdf) {
-        foreach ($line in Get-Content -LiteralPath $vdf) {
-            if ($line -match '"path"\s+"(.+?)"') {
-                $libraries += ($Matches[1] -replace '\\\\', '\')
-            }
-        }
-    }
-
-    # Deduplicate case-insensitively: the registry value and libraryfolders.vdf
-    # routinely disagree on casing for the same path, which would otherwise scan
-    # the same library twice.
-    $seen = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
-    foreach ($lib in $libraries) {
-        if (-not $seen.Add($lib.TrimEnd([char]92))) { continue }   # 92 = backslash
-        $candidate = Join-Path $lib 'steamapps\common\artofrally'
-        if (Test-Path -LiteralPath (Join-Path $candidate 'artofrally.exe') -PathType Leaf) { return $candidate }
-    }
-    return $null
+# Find-ArtOfRally lives in verify.ps1, shared with the optional controls setup launcher. A missing or damaged
+# verifier is an incomplete download: stop before looking for the game or touching anything.
+try { . (Join-Path $here 'verify.ps1') } catch {
+    Fail "The extracted download is incomplete or has changed."
+    Say "  $($_.Exception.Message)" DarkGray
+    Say "  Download the mod ZIP again (not Source code), use Extract All into a"
+    Say "  fresh folder, then run Install.bat. No game files were changed."
+    exit 1
 }
 
 if (-not $GameDir) {
