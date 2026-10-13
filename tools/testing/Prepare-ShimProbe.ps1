@@ -44,6 +44,10 @@ foreach ($target in @($Result, $GameCopy)) {
 $bin = Join-Path $repo 'src/ArtOfSimRally.Mod/bin/Release'
 $files = @('ArtOfSimRally.Mod.dll','Dbce.Wheel.Ffb.dll','Dbce.Wheel.Telemetry.dll','Dbce.TripleScreen.Core.dll','Dbce.TripleScreen.Protocol.dll')
 foreach ($file in $files) { if (-not (Test-Path -LiteralPath (Join-Path $bin $file))) { throw "Build candidate first: $file" } }
+# Only a probe build carries the shim probe (sana 47008); a normal build would ignore the request.
+. (Join-Path $repo 'tools/package/ShimProbeFlavour.ps1')
+try { $null = Assert-ShimProbeFlavour (Join-Path $bin 'ArtOfSimRally.Mod.dll') $true }
+catch { throw "$($_.Exception.Message). Build the probe flavour first: dotnet build src/ArtOfSimRally.Mod/ArtOfSimRally.Mod.csproj -c Release -p:ArtShimProbe=true" }
 foreach ($path in @($Settings,$Profile,$NativeCandidate,$ShimCandidate)) { if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Input missing: $path" } }
 if ($Mode -ne 'Observe' -and (-not $ObserveReceipt -or -not (Test-Path -LiteralPath $ObserveReceipt -PathType Leaf))) { throw "$Mode probe needs its earlier Observe receipt." }
 # Trial (Slice B, latched Core) runs only on the reviewed latched bridge build, art-shim-bridge f38b855.

@@ -90,17 +90,27 @@ for this note. The owner's tune and the uncommitted `experiments/CustomVehicles`
    - Wheelkit 0.6.24 offers it through the main-checkout fallback, and the rc.15 recorder is installed.
    - Selecting the `E:\Tools` rc.15 bundle in Wheelkit is optional.
 8. **Review choices and rebake items:**
-   - **The dormant probe code: proposed, decision pending (sana).** Keep it opt-in and confined to private
-     candidates. Public 0.4.0 and 0.4.1 never contained it; main carries it in source since `5628e9b`.
+   - **The dormant probe code: opt-in, private candidates and tests only (sana 47008; source, not yet packaged).**
+     Public 0.4.0 and 0.4.1 never contained it.
      - The probe is `ShimStartup`, `ShimDrive`, `DriveTrial`, `LatchedTrial` and `ProbeNoForce`. It runs only when the
        game is launched with `DBCE_ART_SHIM_REQUEST`, and only with a validated request: deadline, exact game, mod,
        native and settings paths, and native hash pins. It is still the only machinery for the latched clutch, gate
        and menu evidence in blocker 5.
-     - At the next runtime rebake, compile it only for `-SharedInputCandidate` builds, so a public build from main
-       carries none of it, rather than stripping it.
-     - The recorder probes (SessionTools, developer-only): `ControlsProbe` (request-driven) and the identity probe
-       (`identityProbe=1`) are already opt-in. The Rewired inventory dump, which writes device names, GUIDs and paths
-       in every recording, would become opt-in at the next SessionTools build.
+     - The MSBuild property `ArtShimProbe` (default `false`) now selects the flavour:
+       - A normal build compiles the inert `ShimStartup.Inert.cs` facade and none of the probe's types. A probe
+         request set for it is logged once and ignored.
+       - `package.ps1` passes `true` for `-SharedInputCandidate` and `false` otherwise, then checks the built
+         assembly's `ArtShimProbe` stamp and probe types (`tools/package/ShimProbeFlavour.ps1`).
+       - `Prepare-ShimProbe.ps1` refuses a build that lacks the probe.
+     - The production shared-input path (session, identity lease and mapper, observation, isolation) is in both
+       flavours.
+     - Installed rc.18 was built before the switch and carries the probe, as every candidate does.
+   - **The recorder's Rewired inventory dump: opt-in (source, not yet packaged).**
+     - It runs only with `rewiredInventory=1`, recording only, reset for every request; `identityProbe` follows the
+       same rules. The copy diagnostics ask for it explicitly with `Invoke-SharedInputCopy.ps1 -RewiredInventory`.
+     - **Until a later SessionTools package**, the installed rc.15 recorder (`DAA62504`) still writes
+       `rewired-inventory.tsv` (device names, GUIDs, paths) in every recording.
+     - `ControlsProbe` stays request-driven.
    - **The `CONTROLS.json` clutch omission wording: resolved.** Schema 2 (contract v2, from rc.15) has an empty
      `writerOmits`, so the wrong schema 1 reason ("the reviewed profile does not bind it") no longer exists.
      - rc.17 and rc.18 ship schema 2.

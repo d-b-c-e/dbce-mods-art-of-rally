@@ -47,6 +47,7 @@ namespace ArtOfSimRally.Testing
         private static int _clicksInFrame;
         private static CaptureDriver _captureDriver;
         private static CapturePolicy _capturePolicy;
+        private static RecordingDiagnostics _diagnostics = RecordingDiagnostics.Off;
 
         internal static string RequestPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "ArtOfSimRally", "session-request.txt");
@@ -132,6 +133,9 @@ namespace ArtOfSimRally.Testing
         internal static void TryArm(Action<string> log)
         {
             _log = log;
+            // Every request starts with its opt-in diagnostics off; nothing carries over from an earlier one (sana 47008).
+            _diagnostics = RecordingDiagnostics.Off;
+            IdentityProbe.Disarm();
             Dictionary<string, string> request;
             try
             {
@@ -163,13 +167,9 @@ namespace ArtOfSimRally.Testing
                 _trajectory = !request.TryGetValue("playback", out var playback) || playback == "trajectory";
                 if (!_trajectory && playback != "input-diagnostic") throw new InvalidDataException("unknown playback mode");
                 _harmony = new Harmony(HarmonyId);
-                // Diagnostic, opt-in (sana 45712): observe the identity mapper's inputs and probe DualShock 4 rows.
-                if (request.TryGetValue("identityProbe", out var identityProbe))
-                {
-                    if (identityProbe != "1") throw new InvalidDataException("identityProbe must be 1");
-                    if (replay) throw new InvalidDataException("identityProbe is only valid for recording");
-                    IdentityProbe.Arm(_harmony, () => _dir);
-                }
+                // Opt-in diagnostics for this request only (sana 45712/47008): rewiredInventory=1 and identityProbe=1.
+                _diagnostics = RecordingDiagnostics.Parse(request, replay);
+                if (_diagnostics.IdentityProbe) IdentityProbe.Arm(_harmony, () => _dir);
                 if (request.TryGetValue("captureDriver", out var driverSource))
                 {
                     if (replay) throw new InvalidDataException("capture driver is only valid for recording");
@@ -828,11 +828,17 @@ namespace ArtOfSimRally.Testing
         internal static void Tick()
         {
             if (_mode == Mode.Off) return;
-            // Diagnostic only, first and on its own: Rewired's joystick rows (rewired-inventory.tsv), so a later tick
-            // failure or a shared refusal cannot hide them (sana 45274).
-            if (_mode == Mode.Record)
+            // Diagnostic, only when this recording asked for it (rewiredInventory=1), first and on its own: Rewired's
+            // joystick rows (rewired-inventory.tsv), so a later tick failure or a shared refusal cannot hide them
+            // (sana 45274/47008). An ordinary recording never reaches Rewired here.
+            if (_mode == Mode.Record && _diagnostics.InventoryPending)
             {
-                try { var inventory = RewiredInventory.Maybe(_dir, Time.realtimeSinceStartup); if (inventory != null) Event(inventory); }
+                try
+                {
+                    float now = Time.realtimeSinceStartup;
+                    int pass = _diagnostics.InventoryPassDue(Rewired.ReInput.isReady, now);
+                    if (pass > 0) Event(RewiredInventory.Write(_dir, pass, now));
+                }
                 catch (Exception ex) { Event("rewired inventory failed: " + ex.ToString().Replace('\r', ' ').Replace('\n', ' ')); }
             }
             try

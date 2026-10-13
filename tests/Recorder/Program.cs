@@ -237,6 +237,62 @@ static class Program
         // ShimInput types (sana 45326): 8989f63 handed holdForShared a delegate whose consumer only native bound.
         Readiness(holding, native, shared, synthetic);
     }
+    // The opt-in recording diagnostics (sana 47008): the exact object SessionTape parses for each request and asks on every
+    // recorded frame. An ordinary request never dumps Rewired's rows; a requested one dumps at first readiness and 5 s
+    // later; a later ordinary request in the same process dumps nothing; bad values and replays are refused.
+    static void Diagnostics()
+    {
+        RecordingDiagnostics Parse(bool replay, params string[] pairs)
+        {
+            var request = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["mode"] = replay ? "replay" : "record", ["tape"] = "t" };
+            for (int i = 0; i < pairs.Length; i += 2) request[pairs[i]] = pairs[i + 1];
+            return RecordingDiagnostics.Parse(request, replay);
+        }
+        // 30 s of recorded frames at 10 Hz, Rewired ready from 2 s: the frames a pass falls due on.
+        int[] Due(RecordingDiagnostics d)
+        {
+            var due = new List<int>();
+            for (int i = 0; i <= 300; i++) { float now = i / 10f; if (d.InventoryPending && d.InventoryPassDue(now >= 2f, now) > 0) due.Add(i); }
+            return due.ToArray();
+        }
+        var ordinary = Parse(false);
+        Check(!ordinary.RewiredInventory && !ordinary.IdentityProbe && !ordinary.InventoryPending && Due(ordinary).Length == 0, "an ordinary recording dumped Rewired's rows");
+        var asked = Parse(false, "rewiredInventory", "1");
+        var passes = Due(asked);
+        Check(asked.RewiredInventory && !asked.IdentityProbe && passes.Length == 2 && passes[0] == 20 && passes[1] == 70 && !asked.InventoryPending,
+            "a requested inventory was not written at first readiness and 5 s later: " + string.Join(",", passes));
+        var later = Parse(false);
+        Check(!later.InventoryPending && Due(later).Length == 0, "the inventory carried into a later ordinary request");
+        Check(!RecordingDiagnostics.Off.InventoryPending && Due(RecordingDiagnostics.Off).Length == 0, "the reset state dumped");
+        var both = Parse(false, "identityProbe", "1", "RewiredInventory", "1");
+        Check(both.IdentityProbe && both.RewiredInventory, "identityProbe, or a key in another case (the request reader folds case), not honoured");
+        string Refused(bool replay, params string[] pairs) { try { Parse(replay, pairs); return ""; } catch (InvalidDataException e) { return e.Message; } }
+        foreach (var bad in new[] { "0", "true", "", "2" })
+            Check(Refused(false, "rewiredInventory", bad) == "rewiredInventory must be 1", "rewiredInventory=" + bad + " accepted");
+        Check(Refused(false, "identityProbe", "yes") == "identityProbe must be 1", "identityProbe=yes accepted");
+        Check(Refused(true, "rewiredInventory", "1") == "rewiredInventory is only valid for recording" && Refused(true, "identityProbe", "1") == "identityProbe is only valid for recording",
+            "a replay accepted a recording diagnostic");
+        Check(Refused(true) == "" && !Parse(true).InventoryPending, "an ordinary replay (existing tapes) refused or dumped");
+        // SessionTape's own wiring is Unity-bound, so it is read here as source: each request resets the diagnostics
+        // before reading the request file, parses them with this object, and reaches the inventory only through it.
+        string tape = null;
+        for (var d = new DirectoryInfo(AppContext.BaseDirectory); d != null && tape == null; d = d.Parent)
+        { var f = Path.Combine(d.FullName, "tools", "testing", "Recorder", "SessionTape.cs"); if (File.Exists(f)) tape = File.ReadAllText(f); }
+        Check(tape != null, "tools/testing/Recorder/SessionTape.cs not found above the test binary");
+        int arm = tape.IndexOf("internal static void TryArm(", StringComparison.Ordinal);
+        int read = arm < 0 ? -1 : tape.IndexOf("File.Exists(RequestPath)", arm, StringComparison.Ordinal);
+        int reset = arm < 0 ? -1 : tape.IndexOf("_diagnostics = RecordingDiagnostics.Off;", arm, StringComparison.Ordinal);
+        int disarm = arm < 0 ? -1 : tape.IndexOf("IdentityProbe.Disarm();", arm, StringComparison.Ordinal);
+        Check(arm > 0 && reset > arm && reset < read && disarm > arm && disarm < read, "SessionTape does not reset the diagnostics before reading each request");
+        Check(System.Text.RegularExpressions.Regex.Matches(tape, @"RecordingDiagnostics\.Parse\(").Count == 1 && tape.Contains("_diagnostics = RecordingDiagnostics.Parse(request, replay);"),
+            "SessionTape does not parse each request's diagnostics with RecordingDiagnostics");
+        int gate = tape.IndexOf("if (_mode == Mode.Record && _diagnostics.InventoryPending)", StringComparison.Ordinal);
+        var calls = System.Text.RegularExpressions.Regex.Matches(tape, @"RewiredInventory\.\w+\(");
+        Check(gate > 0 && calls.Count == 1 && calls[0].Index > gate && calls[0].Index - gate < 600 && !tape.Contains("RewiredInventory.Maybe"),
+            "the Rewired inventory is reachable outside the request's opt-in");
+        Check(System.Text.RegularExpressions.Regex.Matches(tape, @"IdentityProbe\.Arm\(").Count == 1 && tape.Contains("if (_diagnostics.IdentityProbe) IdentityProbe.Arm("),
+            "the identity probe is armed outside the request's opt-in");
+    }
     public sealed class StubConsumer { internal bool Started { get; set; } }
     public static class StubShimInput { internal static StubConsumer Consumer; }
     public static class StubShimNoStarted { internal static object Consumer = new object(); }
@@ -348,7 +404,7 @@ static class Program
         {
             string root = Path.GetFullPath(args[0]);
             Check(!Directory.Exists(root), "use a fresh test evidence directory");
-            string capture = Capture(root); Pipe(); Quit(Path.Combine(root, "quit-cases")); Policy(); Native(); assertions += SharedEvidenceTests.Run(Path.Combine(root, "shared-evidence"), (ok, why) => { if (!ok) throw new Exception(why); });
+            string capture = Capture(root); Pipe(); Quit(Path.Combine(root, "quit-cases")); Policy(); Diagnostics(); Native(); assertions += SharedEvidenceTests.Run(Path.Combine(root, "shared-evidence"), (ok, why) => { if (!ok) throw new Exception(why); });
             if (args.Length == 3) Contract(args[1], args[2]);
             Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions, syntheticCapture = capture })); return 0;
         }

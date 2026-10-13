@@ -140,6 +140,13 @@ try {
     $probeRequest = New-CaptureRequest 'C:\t' 'C:\route' $true 30 $until $true
     Check (($probeRequest -join '|') -ceq 'mode=record|tape=C:\t|captureDriver=C:\route|carInput=shared|holdForShared=1|identityProbe=1|captureSeconds=30|muteOutputs=1|expiresUtc=2026-10-12T20:00:00.0000000Z') 'the identity-probe diagnostic request'
     Refused { & $invoke -Result $result -IdentityProbe -PreflightOnly } '-SharedCar diagnostic'
+    # The Rewired inventory is asked for explicitly (sana 47008): never in an ordinary request, with or without the probe.
+    Check (-not (($shared + $nativeRequest + $probeRequest) -match 'rewiredInventory')) 'an ordinary or probe-only request asked for the Rewired inventory'
+    $inventoryRequest = New-CaptureRequest 'C:\t' 'C:\route' $true 30 $until $true $true
+    Check (($inventoryRequest -join '|') -ceq 'mode=record|tape=C:\t|captureDriver=C:\route|carInput=shared|holdForShared=1|identityProbe=1|rewiredInventory=1|captureSeconds=30|muteOutputs=1|expiresUtc=2026-10-12T20:00:00.0000000Z') 'the diagnostic request with the Rewired inventory'
+    $inventoryOnly = New-CaptureRequest 'C:\t' 'C:\route' $true 30 $until $false $true
+    Check ((@($inventoryOnly | Where-Object { $_ -match 'identityProbe|rewiredInventory' }) -join '|') -ceq 'rewiredInventory=1') 'the inventory alone'
+    Refused { & $invoke -Result $result -RewiredInventory -PreflightOnly } '-SharedCar diagnostic'
     $cap = Join-Path $root 'capture'
     Write-Bytes (Join-Path $cap 'shared.tape') "h`n1`n2`n3"; Write-Bytes (Join-Path $cap 'car.tape') "h`n1`n2"; Write-Bytes (Join-Path $cap 'shifts.tape') "h`n1"
     Write-Bytes (Join-Path $cap 'events.log') "segment 3 Japan6|UNDERWAY`n"; Write-Bytes (Join-Path $cap 'end.txt') "captured`n"

@@ -83,6 +83,20 @@ Sessions live under `results/sessions/<name>`:
 - `end.txt`, `complete.tsv`: counts and hashes written after background writers
   close. Truncated, modified or incomplete tapes are refused. Queue overflow
   invalidates the tape rather than silently dropping rows.
+- **Optional diagnostics, only when a request asks** (`rewiredInventory=1`,
+  `identityProbe=1`; recording only, reset for every request):
+  - `rewired-inventory.tsv`: Rewired's joystick names, instance GUIDs and
+    interface paths.
+  - `identity-match.tsv` and `ds4-identity-probe.tsv`: the shared identity join's
+    inputs.
+
+  The disposable-copy diagnostics ask for them explicitly
+  (`Invoke-SharedInputCopy.ps1 -RewiredInventory -IdentityProbe`). An ordinary
+  recording writes none of them.
+  - **Installed recorder:** the SessionTools 0.4.0-rc.15 recorder installed on
+    2026-10-12 (`DAA62504`) predates this switch. It still writes
+    `rewired-inventory.tsv` in every recording until a later package carries it.
+    Keep those files private like the rest of the capture.
 
 Replay writes a separate timestamped directory. Success requires all driving
 rows, the final recorded frame state and valid trajectory application. Faster

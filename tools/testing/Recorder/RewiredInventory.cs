@@ -12,32 +12,28 @@ namespace ArtOfSimRally.Testing
     /// "Rewired identity/path unavailable" can be traced to its row. Read-only reflection on the live Rewired objects:
     /// each joystick's simple public properties (name, instance and hardware identifiers, connection), every member whose
     /// value is a controller extension (its runtime type; a RawInput extension's devicePath and productGuid), and whether
-    /// the mod's rule would accept the row (instance, product and path all present). Written twice to
-    /// rewired-inventory.tsv: at the first frame Rewired is ready, and once 5 s later. Never changes input.</summary>
+    /// the mod's rule would accept the row (instance, product and path all present). Only when the recording asks for it
+    /// (rewiredInventory=1, sana 47008): written twice to rewired-inventory.tsv, at the first frame Rewired is ready and
+    /// once 5 s later (RecordingDiagnostics schedules the passes). Never changes input.</summary>
     internal static class RewiredInventory
     {
-        private static int _passes;
-        private static float _firstAt = -1;
         internal const string Header = "pass\tseconds\tindex\tname\tdeviceInstanceGuid\tproductGuid\tinterfacePath\tacceptedByModRule\textensions\tproperties";
 
-        /// <summary>Called once per recorded frame; returns an event line when it wrote a pass, else null.</summary>
-        internal static string Maybe(string dir, float now)
+        /// <summary>Writes one pass when the request's RecordingDiagnostics says it is due (opt-in, rewiredInventory=1;
+        /// sana 47008); returns the event line.</summary>
+        internal static string Write(string dir, int pass, float now)
         {
-            if (_passes >= 2 || dir == null) return null;
-            if (!Rewired.ReInput.isReady) return null;
-            if (_passes == 1 && now - _firstAt < 5f) return null;
-            if (_passes == 0) _firstAt = now;
-            _passes++;
+            if (dir == null) throw new InvalidOperationException("no tape folder");
             var path = Path.Combine(dir, "rewired-inventory.tsv");
-            var rows = Rows(_passes, now);
+            var rows = Rows(pass, now);
             bool header = !File.Exists(path);
             using (var w = new StreamWriter(path, true, new UTF8Encoding(false)))
             {
                 if (header) w.WriteLine(Header);
                 foreach (var r in rows) w.WriteLine(r);
             }
-            if (IdentityProbe.Armed) IdentityProbe.Probe("inventory pass " + _passes);
-            return "rewired inventory pass " + _passes + ": " + (rows.Count) + " joystick(s)";
+            if (IdentityProbe.Armed) IdentityProbe.Probe("inventory pass " + pass);
+            return "rewired inventory pass " + pass + ": " + (rows.Count) + " joystick(s)";
         }
 
         private static string Clean(object v) => (v == null ? "" : Convert.ToString(v, CultureInfo.InvariantCulture)).Replace('\t', ' ').Replace('\n', ' ').Replace('\r', ' ');

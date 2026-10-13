@@ -9,6 +9,7 @@
     <Compile Include="../../tools/testing/Recorder/SubjectAccess.cs" Link="SubjectAccess.cs" />
     <Compile Include="../../tools/testing/Recorder/CapturePolicy.cs" Link="CapturePolicy.cs" />
     <Compile Include="../../tools/testing/Recorder/SharedReadiness.cs" Link="SharedReadiness.cs" />
+    <Compile Include="../../tools/testing/Recorder/RecordingDiagnostics.cs" Link="RecordingDiagnostics.cs" />
     <Compile Include="../../tools/testing/Recorder/NativeEvidence.cs" Link="NativeEvidence.cs" />
     <Compile Include="../../tools/testing/Recorder/SharedEvidence.cs" Link="SharedEvidence.cs" />
     <Compile Include="../../tools/testing/Recorder/ReplayOutcome.cs" Link="ReplayOutcome.cs" />

@@ -68,6 +68,40 @@
   </ItemGroup>
 
   <!--
+    The shim probe (ShimStartup, ShimDrive and the DriveTrial, LatchedTrial and
+    ProbeNoForce trials) is an opt-in diagnostic for private candidates and
+    tests only (sana 47008). ArtShimProbe defaults to false: a normal build
+    compiles the inert ShimStartup.Inert.cs facade instead and carries none of
+    the probe's types. tools/package/package.ps1 passes true or false
+    explicitly for each flavour; the assembly records which one it is. The
+    production shared-input path (SharedInputSession, the identity lease and
+    mapper, the observation and isolation code) is in both flavours.
+  -->
+  <!--
+    The comparisons below prefix both sides: MSBuild reads yes/on/no/off as
+    booleans in a plain comparison ('yes' == 'true' holds), and only true or
+    false may select a flavour.
+  -->
+  <PropertyGroup>
+    <ArtShimProbe Condition="'$(ArtShimProbe)' == ''">false</ArtShimProbe>
+  </PropertyGroup>
+  <ItemGroup Condition="'_$(ArtShimProbe)' == '_true'">
+    <Compile Remove="ShimStartup.Inert.cs" />
+  </ItemGroup>
+  <ItemGroup Condition="'_$(ArtShimProbe)' != '_true'">
+    <Compile Remove="ShimStartup.cs;ShimDrive.cs;Shim\DriveTrial.cs;Shim\LatchedTrial.cs;Shim\ProbeNoForce.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>ArtShimProbe</_Parameter1>
+      <_Parameter2>$(ArtShimProbe.ToLowerInvariant())</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
+  <Target Name="RequireArtShimProbeFlavour" BeforeTargets="CoreCompile">
+    <Error Condition="'_$(ArtShimProbe)' != '_true' and '_$(ArtShimProbe)' != '_false'" Text="ArtShimProbe must be true or false, not '$(ArtShimProbe)'." />
+  </Target>
+
+  <!--
     Private=false everywhere: these must NOT be copied to the output folder. The
     game already has them loaded, and shipping a second copy of UnityEngine or
     Assembly-CSharp alongside the plugin is a classic way to get type-identity

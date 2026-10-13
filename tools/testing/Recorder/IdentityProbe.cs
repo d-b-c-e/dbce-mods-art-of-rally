@@ -38,6 +38,9 @@ namespace ArtOfSimRally.Testing
         private static readonly List<string> _owned = new List<string>();
         internal static bool Armed => _dir != null;
 
+        // Every request starts disarmed (sana 47008): a later ordinary request in the same process writes nothing.
+        internal static void Disarm() { _dir = null; lock (_owned) _owned.Clear(); }
+
         internal static void Arm(Harmony harmony, Func<string> dir)
         {
             _dir = dir;
@@ -48,6 +51,7 @@ namespace ArtOfSimRally.Testing
         // Harmony prefix: reads Match's arguments, always lets the original run.
         private static void ObserveMatch(Guid[] required, object owned, object rewired)
         {
+            if (!Armed) return;
             try
             {
                 var rows = new List<string>();

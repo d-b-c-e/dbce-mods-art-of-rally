@@ -99,8 +99,12 @@ if ($SharedInputCandidate) {
 }
 
 Write-Host "Building managed mod..." -ForegroundColor Cyan
-& dotnet build (Join-Path $root 'src\ArtOfSimRally.Mod\ArtOfSimRally.Mod.csproj') -c Release -v q --nologo -warnaserror "-p:ReleaseLabel=$Version" "-p:SourceRevisionId=$revision" "-p:BuildSourceState=$sourceState"
+# The shim probe is compiled only into the private shared-input candidate (sana 47008); every package names its flavour.
+$shimProbe = [bool]$SharedInputCandidate
+& dotnet build (Join-Path $root 'src\ArtOfSimRally.Mod\ArtOfSimRally.Mod.csproj') -c Release -v q --nologo -warnaserror "-p:ReleaseLabel=$Version" "-p:SourceRevisionId=$revision" "-p:BuildSourceState=$sourceState" "-p:ArtShimProbe=$($shimProbe.ToString().ToLowerInvariant())"
 if ($LASTEXITCODE -ne 0) { throw "Managed build failed" }
+. (Join-Path $PSScriptRoot 'ShimProbeFlavour.ps1')
+$null = Assert-ShimProbeFlavour (Join-Path $root 'src/ArtOfSimRally.Mod/bin/Release/ArtOfSimRally.Mod.dll') $shimProbe
 # Inspect the compiled metadata without running game code. A stray recorder
 # source file in the production project must fail even if its DLL isn't copied.
 & dotnet run --project (Join-Path $root 'tools/testing/Replay/Replay.csproj') -c Release -- --verify-release (Join-Path $root 'src/ArtOfSimRally.Mod/bin/Release/ArtOfSimRally.Mod.dll')
