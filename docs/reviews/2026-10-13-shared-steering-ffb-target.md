@@ -1,4 +1,4 @@
-# Shared steering force target: source candidate
+# Shared steering force target: private candidate
 
 A fresh user of the shared controls setup has `dbce-controls.ini` but no legacy
 `Settings.SteerBinding`. Following steering previously found no FFB target.
@@ -40,14 +40,23 @@ Source base: Art `95203fd114af33a3459d35e50015039b2c6f1aba`; native copied provi
 base ABI 2, 296-byte frames, 128-byte open arguments, bridge ABI 1 and 144/232-byte
 metadata/samples are unchanged. Existing exports remain.
 
-Source and targeted tests are prepared. No build or test suite has run for this
-slice yet; the coordinator owns the next shared build lease. The current Art
-native pin and `ExpectedShimSha256` still name the earlier qualified artifact.
-This is intentionally reviewable source, not a repinned usable package. Existing
-packages without the optional export give the matching-package message in shared
-follow mode; explicit force selections and shared input remain available.
+Source review passed for native `5b96ba8f3d649f353e2aad1aac8342f4334e0ad0` and
+Art `123379ab0dda3cc1dd05bd92baecc188dca76afb`. The bounded offline batch held the
+shared rig lease from 07:53:22 to 07:56:00 CDT on October 13, then released its
+exact token. It opened no physical devices, game or force output. Logs and hashes:
+`results/shared-ffb-profile-20261013` in the isolated Art worktree.
 
-Prepared checks:
+The reviewed native DLL is 666,112 bytes, SHA-256
+`723E8A38CDA8DDA12546264580A5B3FF5AFFDF469E25E8777149CB792A789276`.
+The coordinator independently checked this hash and approved the private-candidate
+pin. `CANDIDATE.json` and `ExpectedShimSha256` now match it. WheelFfb, toolkit pins,
+settings, gains and accepted force recordings are unchanged. The shim stays outside
+the public repository and is supplied to the existing package script explicitly.
+
+Existing packages without the optional export give the matching-package message
+in shared-follow mode; explicit force selections and shared input remain available.
+
+Executed checks:
 
 - Native pure plan and C ABI: full grammar, duplicate sections/keys, unsupported
   schema, invalid non-steering action, cross-action product conflict, exact hash,
@@ -61,8 +70,50 @@ Prepared checks:
 - Art `ShimInput --profile-info <candidate DLL>` on .NET and Unity Mono: actual
   pure export/response validation without a Core host, device or force output.
 
-After source review, build native and managed candidates under the shared lease,
-run the targeted checks plus existing Core/ABI/bridge regression coverage, then
-review the resulting native hash before changing the source pin. A separate
-muted runtime slot must establish fresh shared-only startup and continued reader
-attachment. Normal physical FFB acceptance remains owner-attended.
+Results: native Core 169, ABI 164, copied-provider 77 and fake-COM 106 checks;
+SettingsUi 146, shared FFB startup 16, ordinary startup 14 and lifecycle 33 checks;
+ShimInput 12,327 each on .NET 8 and the installed Unity Mono. The production mod
+built with zero warnings/errors. The first native configure lacked ZLIB paths;
+the retry used the existing `outrun2-decomp/build-deps/zlib` dependency without
+building the game or downloading dependencies. WheelInput's strict build hit four
+pre-existing CS0649 warnings in unchanged `DriveTrial.Sample` fields; the fixture
+build allowed CS0649 only. Both original failure logs are retained.
+
+## Packaging and next bounded runtime check
+
+After the coordinator dispatches the next build slot, commit the pin first and
+package clean source using the existing script (no standalone helper changes):
+
+```powershell
+./tools/package/package.ps1 -Version 0.4.2-rc.20 -SharedInputCandidate `
+  -SharedInputShim E:/Source/research/.worktrees/art-shim-profile-info/build-profile-info/windows/Release/dbce_shim.dll
+```
+
+SessionTools already uses rc.19; the mod candidate uses rc.20 to avoid ambiguity.
+The script checks the exact shim/native hashes, metadata, release assembly,
+probe flavor and payload manifest. Verify the ZIP and extracted payload hashes;
+run the targeted production startup fixtures with `ART_SHIM_DLL` pointing at the
+new pinned DLL. No install or launch is part of packaging.
+
+Proposed runtime scope: one existing `Prepare-SharedInputCopy` /
+`Invoke-SharedInputCopy` ordinary smoke, with no recorder or injected input,
+60-second observation deadline and 10 seconds after the first accepted frame.
+Use a separate SettingsSource with `SharedInput=true`, empty `SteerBinding`,
+`FfbDeviceMode=steering`, empty preferred name/GUID and preferred index -1. Keep
+the exact shared profile bytes pinned and preserve the owner's files. Stage the
+exact package with `-ExpectedShimSha256` set to the hash above.
+
+The unchanged package native `44E46799` has no load-time force mute or native
+test-injection fence exports (`bbbf6e3`, 51 exports). The existing ordinary runner
+requires `-ForceFeedbackOff` and verifies no force startup attempt, but this is
+not the independent native barrier required for the proposed run. ControlsProbe's
+cold native fence needs `EnableTestInjection` / `GetTestInjectionStatus`, which
+this native does not export. Managed output hooks are not an equivalent barrier.
+The runtime route remains unresolved; do not launch or silently replace WheelFfb.
+
+Pure target inspection runs before qualification even with force off. The ordinary
+log currently records profile discovery, attachment and the first accepted frame,
+but not the cached FFB target. The coordinator approved a separate startup-only
+configured-target/refusal trace with the frozen profile hash; it must not claim
+connected hardware or physical force success. No runtime run is authorized by
+this recipe. Normal physical FFB acceptance remains owner-attended.

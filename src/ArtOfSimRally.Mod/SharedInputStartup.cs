@@ -13,8 +13,8 @@ namespace ArtOfSimRally.Mod
     internal static class SharedInputStartup
     {
         internal const string ProfileFileName = "dbce-controls.ini", ShimFileName = "dbce_shim.dll";
-        // The copied-provider build qualified by the October 12 Observe/Apply (art-shim-bridge 574bb88).
-        internal const string ExpectedShimSha256 = "7DDC962132819EDAE76EF84CE6509F1936B8C38177A36D498B8ABBCFDCFFBCAF";
+        // Reviewed copied-provider build with pure profile inspection (5b96ba8); October 13 offline tests passed.
+        internal const string ExpectedShimSha256 = "723E8A38CDA8DDA12546264580A5B3FF5AFFDF469E25E8777149CB792A789276";
         // A failed joystick restore is retried in the menus about once a second, then left for a restart.
         internal const int RestoreRetries = 10, RestoreRetryFrames = 60;
         private static readonly RewiredInputIsolation inventory = new RewiredInputIsolation();

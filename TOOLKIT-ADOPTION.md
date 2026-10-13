@@ -43,8 +43,10 @@ Audited 2026-10-04 (read-only standards audit); statuses below are from that aud
 October 13 source follow-up for STD-035/036: fresh shared-only FFB selection now
 uses a pure optional Core profile inspection, with a frozen startup identity and
 strict native GUID selection. Explicit device overrides and accepted force tuning
-are unchanged. Source/tests are prepared; builds, repinning and runtime evidence
-remain pending. See [the bounded review](docs/reviews/2026-10-13-shared-steering-ffb-target.md).
+are unchanged. Reviewed native `5b96ba8` / hash `723E8A38` is now pinned for private
+candidates after Core, ABI, bridge, fake-COM and .NET/Unity Mono tests passed.
+Fresh shared-only runtime evidence remains pending. See
+[the bounded review](docs/reviews/2026-10-13-shared-steering-ffb-target.md).
 This does not upgrade any runtime qualification or the historical ledger rows.
 
 The shared frame consumer and copied bridge stay dormant in normal launches.

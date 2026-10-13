@@ -1,9 +1,10 @@
 # Shared input wire contract
 
-This is a source-only Art consumer of the existing shared input shim's experimental
-C ABI 2. It does not fork the profile parser, binding resolver, calibration,
-device selection or normalization. No native shim DLL is packaged; no production
-bootstrap loads or attaches the source-only bridge.
+Art consumes the existing shared input shim's experimental C ABI 2 in private
+shared-input candidates. It does not fork the profile parser, binding resolver,
+calibration, device selection or normalization. The historical source slices below
+record their original scope. Current private-package pins are in `CANDIDATE.json`;
+the default package ships no shim.
 
 The initial `dbce_shim.h` came from DRIVE main
 `f161c02d7ea7eba898aac5b18cc56194522d160a`, whose native artifact provenance pins
@@ -66,8 +67,8 @@ native and no shim.
     releases.
 - `dbce_shim.dll` `7DDC962132819EDAE76EF84CE6509F1936B8C38177A36D498B8ABBCFDCFFBCAF` is
   NOT kept in this public repository.
-  - It is the copied-provider build of outrun2-decomp `574bb88` that the mod pins
-    (`SharedInputStartup`), built with ClangCL (Clang 19.1.5, P21 configure log).
+  - It is the earlier copied-provider build of outrun2-decomp `574bb88`, built
+    with ClangCL (Clang 19.1.5, P21 configure log).
   - Public-repository check, romi 32775. No existing public record covers this binary:
     - DRIVE's vendored shim (`vendor/dbce-shim`, "vendored, provisional") is in a
       private repository;
@@ -78,3 +79,29 @@ native and no shim.
     against the pin. Its bytes are the copy every ordinary shared run used:
     `games/.worktrees/art-shim-probe-evidence/apply-20261012-021108/dbce_shim.dll`.
   - Publishing the shim binary (and its source commit) is a separate owner decision.
+
+## Pure profile inspection candidate (2026-10-13)
+
+The private candidate now pins `dbce_shim.dll` from isolated native source
+`5b96ba8f3d649f353e2aad1aac8342f4334e0ad0`, built with x64 ClangCL 19.1.5:
+666,112 bytes, SHA-256
+`723E8A38CDA8DDA12546264580A5B3FF5AFFDF469E25E8777149CB792A789276`.
+It remains a private packaging input, never a committed public binary.
+
+The additive optional `dbce_shim_profile_action_info` export uses the same parser
+and pure admission planner as Core to inspect exact in-memory profile bytes.
+Art uses it before force recovery to resolve a fresh shared-only user's configured
+steering identity, without opening devices or enabling force. This is an extension
+compatibility requirement for shared-follow mode, not an ABI 2 version upgrade.
+The retained historical headers describe the base ABI and copied-provider seam;
+the optional declaration is in the pinned native source's `windows/shim_dll/dbce_shim.h`.
+All existing exports and 296/128/144/232-byte layouts remain unchanged.
+
+Native Core 169, ABI 164, copied-provider 77 and fake-COM 106 checks passed. Art
+SettingsUi 146, shared FFB startup 16, ordinary startup 14 and lifecycle 33 checks
+passed; ShimInput passed 12,327 checks each on .NET 8 and installed Unity Mono,
+including the actual new export. See the
+[review](../../docs/reviews/2026-10-13-shared-steering-ffb-target.md) for logs and limits.
+The existing `native/WheelFfb.dll` and all force settings/tuning remain unchanged.
+Fresh shared-only runtime qualification is still pending; these offline checks
+do not establish physical FFB or general shared-input parity.
