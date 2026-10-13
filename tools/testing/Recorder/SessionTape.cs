@@ -171,7 +171,7 @@ namespace ArtOfSimRally.Testing
                     PatchOutputs();
                     _capturePolicy = CapturePolicy.Parse(request);
                     if (_capturePolicy.NativeCarInput) PatchNativeEvidence();
-                    _captureDriver = new CaptureDriver(driverSource, _capturePolicy, _capturePolicy.NativeCarInput ? SharedStarted : (Func<bool>)null);
+                    _captureDriver = new CaptureDriver(driverSource, _capturePolicy, _capturePolicy.WaitsForShared ? SharedStarted : (Func<bool>)null);
                 }
                 if (replay) { PatchOutputs(); LoadReplay(request.TryGetValue("out", out var o) && o.Length > 0 ? o : Path.Combine(_dir, "replay-" + DateTime.Now.ToString("yyyyMMdd-HHmmss"))); }
                 else if (string.Equals(mode, "record", StringComparison.OrdinalIgnoreCase)) OpenRecording();

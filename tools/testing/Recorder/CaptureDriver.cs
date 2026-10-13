@@ -39,7 +39,7 @@ namespace ArtOfSimRally.Testing
         {
             bool underway = marker.EndsWith("|UNDERWAY");
             if (policy.Done(underway, Time.realtimeSinceStartup, ref underwayAt, File.Exists)) return true;
-            // Native: the title waits, untouched, until the shared session has started.
+            // Native (and shared with holdForShared=1): the title waits, untouched, until the shared session has started.
             if (!routeStarted)
             {
                 if (policy.Holds(sharedStarted(), Time.realtimeSinceStartup, ref heldSince)) { Values = new Dictionary<string, string>(); return false; }

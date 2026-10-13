@@ -13,10 +13,15 @@ namespace ArtOfSimRally.Testing
     // Art's own result beside the mod's final one; the capture ends after captureSeconds. The route first waits
     // at the title until the mod's shared session has started (it qualifies only in the menus; the 03:23 smoke
     // began qualifying about 29 s after launch, the route reaches the stage about 28 s after recording starts).
+    // holdForShared=1 (carInput=shared only, opt-in): an ordinary (not latched) shared session also qualifies only in
+    // the menus, so the route waits at the title for it exactly as native does. Without it a shared route starts at once
+    // (the latched probe's Drive runs, unchanged).
     internal sealed class CapturePolicy
     {
         internal bool SharedCarInput { get; private set; }
         internal bool NativeCarInput { get; private set; }
+        internal bool HoldForShared { get; private set; }
+        internal bool WaitsForShared => NativeCarInput || HoldForShared;
         internal float Seconds { get; private set; } = 12f;
         internal string StopFile { get; private set; }
         internal string Source => SharedCarInput ? "shared-shim-integration" : NativeCarInput ? "native-script-integration" : "synthetic-integration";
@@ -38,6 +43,12 @@ namespace ArtOfSimRally.Testing
                     throw new InvalidDataException("captureSeconds must be 5..120");
                 policy.Seconds = value;
             }
+            if (request.TryGetValue("holdForShared", out var hold))
+            {
+                if (hold != "1") throw new InvalidDataException("holdForShared must be 1");
+                if (!policy.SharedCarInput) throw new InvalidDataException("holdForShared needs carInput=shared");
+                policy.HoldForShared = true;
+            }
             if (request.TryGetValue("stopWhenFile", out var stop) && stop.Length > 0)
             {
                 if (!policy.SharedCarInput) throw new InvalidDataException("stopWhenFile needs carInput=shared");
@@ -48,10 +59,11 @@ namespace ArtOfSimRally.Testing
         }
 
         internal const float HoldSeconds = 120f;
-        // Native only: true while the route must wait for the shared session; refuses after HoldSeconds.
+        // Native, or shared with holdForShared: true while the route must wait for the shared session; refuses after
+        // HoldSeconds.
         internal bool Holds(bool sharedStarted, float now, ref float heldSince)
         {
-            if (!NativeCarInput || sharedStarted) return false;
+            if (!WaitsForShared || sharedStarted) return false;
             if (heldSince < 0) heldSince = now;
             if (now - heldSince > HoldSeconds) throw new InvalidOperationException("the shared session did not start within " + HoldSeconds + " s in the menus");
             return true;

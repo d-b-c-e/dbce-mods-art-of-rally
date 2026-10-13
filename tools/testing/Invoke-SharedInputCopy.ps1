@@ -10,10 +10,15 @@
 # (carInput=native) while the ordinary session owns the wheel at rest; its native-verdict.txt judges whether the mod
 # returned Art's own result unchanged. Scripted Rewired native-path evidence, not physical keyboard or wheel/FFB
 # qualification.
+# -SharedCar (with -RouteSource; sana 43671/43761): the route's taped menus reach the stage, then the car is left to the
+# mod's ordinary shared input (carInput=shared), with the route held at the title until the shared session has started
+# (holdForShared=1). Whatever the shared profile's devices deliver drives the car; this runner sends none. The capture
+# ends captureSeconds after UNDERWAY; shared-car.json summarises the tapes. Menus stay route-driven (not qualified here).
 [CmdletBinding()]
 param([Parameter(Mandatory)][string]$Result,
       [switch]$PreflightOnly,
       [string]$RouteSource,
+      [switch]$SharedCar,
       # A cold replay of a recording made here (sana 36236): the tape's start state, then no input or force device.
       [string]$ReplayTape,
       # A capture-driver recording made here has no environment-at-start of its own: its start state was this route's
@@ -43,9 +48,26 @@ function Read-Shared([string]$p) {
     try { $reader=[IO.StreamReader]::new($stream); @($reader.ReadToEnd() -split "`r?`n" | Where-Object { $_ -match '\[ArtOfSimRally\] (Shared input|Wheel input|Loaded)' }) }
     finally { $stream.Dispose() }
 }
+# The recorder request for a route recording: native scripts Art's Rewired values at the stage; shared leaves the car to
+# the shared profile and holds the route at the title until the shared session has started.
+function New-CaptureRequest([string]$Tape, [string]$Route, [bool]$Shared, [int]$Seconds, [DateTime]$ExpiresUtc) {
+    @("mode=record","tape=$Tape","captureDriver=$Route","carInput=$(if($Shared) { 'shared' } else { 'native' })") +
+        $(if($Shared) { @('holdForShared=1') } else { @() }) +
+        @("captureSeconds=$Seconds","muteOutputs=1","expiresUtc=$($ExpiresUtc.ToString('o'))")
+}
+# A shared-car capture's tapes, summarised (the per-action delivery verdict belongs to the caller's device script).
+function Get-SharedCarSummary([string]$Capture) {
+    function Rows([string]$name) { $p=Join-Path $Capture $name; if(Test-Path -LiteralPath $p -PathType Leaf) { [Math]::Max(0, @(Get-Content -LiteralPath $p).Count - 1) } else { $null } }
+    $events=Join-Path $Capture 'events.log'; $end=Join-Path $Capture 'end.txt'
+    [ordered]@{ sharedTapeRows=(Rows 'shared.tape'); carTapeRows=(Rows 'car.tape'); shiftRows=(Rows 'shifts.tape')
+        underway=((Test-Path -LiteralPath $events -PathType Leaf) -and [bool](Select-String -LiteralPath $events -Pattern '\|UNDERWAY' -Quiet))
+        end=$(if(Test-Path -LiteralPath $end -PathType Leaf) { (Get-Content -LiteralPath $end -Raw).Trim() } else { $null })
+        incomplete=(Test-Path -LiteralPath (Join-Path $Capture 'incomplete.txt')) }
+}
 $Result=Full $Result; Plain $Result
 $native=[bool]$RouteSource
 $replay=[bool]$ReplayTape
+if($SharedCar -and !$native) { throw '-SharedCar records a route''s stage with the car left to shared input; give -RouteSource.' }
 if($native -and $replay) { throw 'Choose -RouteSource (record) or -ReplayTape (replay), not both.' }
 if($ReplayRoute -and !$replay) { throw '-ReplayRoute only gives a replayed tape its start state.' }
 if($native) {
@@ -53,6 +75,7 @@ if($native) {
     . (Join-Path $PSScriptRoot 'RouteEnvironment.ps1')
     Assert-RouteSource $RouteSource
     if(!$PSBoundParameters.ContainsKey('ObserveSeconds')) { $ObserveSeconds=300 }
+    if($SharedCar -and !$PSBoundParameters.ContainsKey('CaptureSeconds')) { $CaptureSeconds=30 }
 }
 if($replay) {
     $ReplayTape=Full $ReplayTape; Plain $ReplayTape
@@ -71,6 +94,7 @@ if($replay) {
 }
 $staged=Get-Content -LiteralPath (Join-Path $Result 'staged.json') -Raw | ConvertFrom-Json
 if($staged.schema -ne 1 -or $staged.kind -ne 'shared-input-ordinary') { throw 'Not a SharedInput staging result.' }
+if($staged.applyPending -eq $true) { throw 'This staging awaits its production Apply; run Confirm-SharedInputApply.ps1 after the Apply first.' }
 $GameDir=Full $staged.gameCopy; $owner=Full $staged.sourceGame
 foreach($p in @($GameDir,$owner)) { Plain $p }
 if((Within $GameDir $owner) -or (Within $owner $GameDir) -or (Within $Result $GameDir) -or (Within $Result $owner) -or ($native -and (Within $RouteSource $GameDir)) -or
@@ -142,7 +166,7 @@ function Save-File([string]$p) {
 function Files([string]$p,[switch]$Recurse) {
     if(Test-Path -LiteralPath $p) { Get-ChildItem -LiteralPath $p -File -Recurse:$Recurse | ForEach-Object { Plain $_.FullName; $_.FullName } }
 }
-$lease=Enter-StageRigLease -Path (Join-Path $env:LOCALAPPDATA 'dbce/test-slot.txt') -Owner art-shared-input -Purpose $(if($replay) { 'Disposable Art cold replay of a SharedInput recording with every input and force device off; no OS input; restore shared state' } elseif($native) { 'Disposable Art SharedInput ordinary native-script coexistence at a recorder-reached stage; muted, no force or OS input; restore shared state' } else { 'Disposable Art SharedInput ordinary startup smoke; muted, no force or input; restore shared state' })
+$lease=Enter-StageRigLease -Path (Join-Path $env:LOCALAPPDATA 'dbce/test-slot.txt') -Owner art-shared-input -Purpose $(if($replay) { 'Disposable Art cold replay of a SharedInput recording with every input and force device off; no OS input; restore shared state' } elseif($SharedCar) { 'Disposable Art SharedInput ordinary shared-car recording at a recorder-reached stage (the shared profile''s devices drive the car); muted, no force or OS input; restore shared state' } elseif($native) { 'Disposable Art SharedInput ordinary native-script coexistence at a recorder-reached stage; muted, no force or OS input; restore shared state' } else { 'Disposable Art SharedInput ordinary startup smoke; muted, no force or input; restore shared state' })
 try {
     Assert-GameClosed
     New-Item -ItemType Directory -Path "$Result/shared-files","$Result/after" | Out-Null
@@ -184,8 +208,7 @@ try {
     if($native) {
         $routeApplied=$true; Set-RouteEnvironment $RouteSource "$Result/shared-environment"
         # The recorder's request (a shared marker, absent before; restoration removes it and its .taken rename).
-        @("mode=record","tape=$capture","captureDriver=$RouteSource","carInput=native","captureSeconds=$CaptureSeconds",
-          "muteOutputs=1","expiresUtc=$([DateTime]::UtcNow.AddMinutes(10).ToString('o'))") | Set-Content -LiteralPath $sessionRequest -Encoding ascii
+        New-CaptureRequest $capture $RouteSource ([bool]$SharedCar) $CaptureSeconds ([DateTime]::UtcNow.AddMinutes(10)) | Set-Content -LiteralPath $sessionRequest -Encoding ascii
         Copy-Item -LiteralPath $sessionRequest -Destination (Join-Path $Result 'session-request.txt')
     }
     $exe=Join-Path $GameDir 'artofrally.exe'
@@ -229,7 +252,7 @@ try {
         launchMode=$context.decision;brokerSha256=$brokerSha256;steam=$context.steam[0];launcher=$context.launcher;game=$gameIntegrity;integrityMatchesSteam=$matchesSteam;muted=$true} |
         ConvertTo-Json -Depth 4 | Set-Content -LiteralPath "$Result/launch.json"
     if(!$matchesSteam) { throw 'Launched copy integrity differs from Steam; SteamAPI_Init cannot succeed. Closing the exact child without observation.' }
-    Write-Output "Disposable Art started (muted SharedInput $(if($replay) { 'cold replay' } elseif($native) { 'native-script coexistence' } else { 'smoke' })): pid=$($game.Id), path=$imagePath. No OS input sent."
+    Write-Output "Disposable Art started (muted SharedInput $(if($replay) { 'cold replay' } elseif($SharedCar) { 'shared-car recording' } elseif($native) { 'native-script coexistence' } else { 'smoke' })): pid=$($game.Id), path=$imagePath. No OS input sent."
     # Ends on a terminal shared line; after "first frame accepted" it keeps watching SettleSeconds for a stop.
     # A native-script run instead ends when the recorder has closed its capture.
     $deadline=[DateTime]::UtcNow.AddSeconds($ObserveSeconds); $outcome='timeout'; $settleUntil=$null
@@ -252,8 +275,10 @@ try {
     $verdictPath=Join-Path $capture 'native-verdict.txt'
     $nativeVerdict=if(Test-Path -LiteralPath $verdictPath -PathType Leaf) { (Get-Content -LiteralPath $verdictPath -Raw).Trim() } else { $null }
     $replayLines=if($replay -and (Test-Path -LiteralPath $replayResult -PathType Leaf)) { @(Get-Content -LiteralPath $replayResult) } else { @() }
-    @{outcome=$outcome;exited=$game.HasExited;windowTitle=$game.MainWindowTitle;observedUtc=[DateTime]::UtcNow.ToString('o');sharedLines=$lines;nativeVerdict=$nativeVerdict;replayResult=$replayLines} | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath "$Result/observation.json"
-    Write-Output "Observation: $outcome$(if($native) { '; ' + $(if($nativeVerdict) { $nativeVerdict -replace "`n", '; ' } else { 'no native verdict (inspect capture and logs)' }) } elseif($replay) { '; ' + $(if($replayLines.Count) { $replayLines[0] } else { 'no replay result (inspect replay and logs)' }) })"
+    $sharedCarSummary=if($SharedCar) { Get-SharedCarSummary $capture } else { $null }
+    if($SharedCar) { $sharedCarSummary | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath "$Result/shared-car.json" }
+    @{outcome=$outcome;exited=$game.HasExited;windowTitle=$game.MainWindowTitle;observedUtc=[DateTime]::UtcNow.ToString('o');sharedLines=$lines;nativeVerdict=$nativeVerdict;sharedCar=$sharedCarSummary;replayResult=$replayLines} | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath "$Result/observation.json"
+    Write-Output "Observation: $outcome$(if($SharedCar) { '; shared car: ' + ($sharedCarSummary | ConvertTo-Json -Compress) } elseif($native) { '; ' + $(if($nativeVerdict) { $nativeVerdict -replace "`n", '; ' } else { 'no native verdict (inspect capture and logs)' }) } elseif($replay) { '; ' + $(if($replayLines.Count) { $replayLines[0] } else { 'no replay result (inspect replay and logs)' }) })"
 } finally {
     if($game -and !$game.HasExited) {
         $game.Refresh()

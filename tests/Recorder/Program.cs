@@ -212,6 +212,17 @@ static class Program
         bool late = false;
         try { native.Holds(false, 122.5f, ref held); } catch (InvalidOperationException e) { late = e.Message.Contains("did not start within 120 s"); }
         Check(late, "a shared session later than 120 s was waited for");
+        // holdForShared=1: an ordinary shared route waits at the title like native; it is opt-in and shared-only.
+        var holding = Parse("carInput", "shared", "holdForShared", "1", "captureSeconds", "30");
+        float heldShared = -1;
+        Check(holding.SharedCarInput && holding.HoldForShared && holding.WaitsForShared && !shared.HoldForShared && !shared.WaitsForShared && native.WaitsForShared,
+            "holdForShared not parsed or not opt-in");
+        Check(holding.Holds(false, 3, ref heldShared) && heldShared == 3 && !holding.Holds(true, 4, ref heldShared), "a holding shared route did not wait for the shared session");
+        bool lateShared = false;
+        try { holding.Holds(false, 123.5f, ref heldShared); } catch (InvalidOperationException e) { lateShared = e.Message.Contains("did not start within 120 s"); }
+        Check(lateShared, "a holding shared route waited past 120 s");
+        Check(Refusal("holdForShared", "1").Contains("needs carInput=shared") && Refusal("carInput", "native", "holdForShared", "1").Contains("needs carInput=shared") &&
+            Refusal("carInput", "shared", "holdForShared", "yes").Contains("must be 1"), "bad holdForShared accepted");
         Check(Refusal("carInput", "keyboard").Contains("synthetic, shared or native") && Refusal("carInput", "shared", "captureSeconds", "600").Contains("5..120") &&
             Refusal("carInput", "shared", "captureSeconds", "NaN").Contains("5..120") && Refusal("carInput", "shared", "captureSeconds", "Infinity").Contains("5..120") &&
             Refusal("stopWhenFile", stop).Contains("needs carInput=shared") && Refusal("carInput", "shared", "stopWhenFile", "receipt.json").Contains("absolute"), "bad capture policy accepted");
