@@ -24,7 +24,7 @@ for this note. The owner's tune and the uncommitted `experiments/CustomVehicles`
   | Mod | `E4F0BBC8` (rc.17: `AB4C7856`) |
   | Native `UnityForceFeedback.dll` (mod folder and Plugins) | `44E46799`, both copies |
   | `dbce_shim.dll` | `7DDC9621` |
-  | Recorder (SessionTools rc.12) | `5B706C9E` |
+  | Recorder (SessionTools rc.15, since 23:07; was rc.12 `5B706C9E`) | `DAA62504` |
   | `Settings.xml` | `91090837` |
   | Wheelkit profiles | `31283715` |
 
@@ -33,8 +33,18 @@ for this note. The owner's tune and the uncommitted `experiments/CustomVehicles`
   - **No `dbce-controls.ini`:** the shared profile has never been applied to the real install, so Art's own bindings
     drive.
   - **Wheelkit:** the owner runs 0.6.24 (`64fe71e`). Art's last profile application (2026-10-09) wrote triple
-    geometry only. `SourceRoot` is null and `SessionToolsFolders` is empty, so Wheelkit Record/Playback for Art is
-    not set up on the owner's machine.
+    geometry only.
+  - **Recording is available.**
+    - With `SourceRoot` null, 0.6.24 falls back to `E:\Source\games`, so Art's session tools resolve to this main
+      checkout, and an ordinary human-origin Record is offered. The readiness receipt is in the hub, under
+      `artifacts/art-recording-readiness-20261012`. An empty `SessionToolsFolders` is not a blocker.
+    - Main's session scripts are source-identical to the packaged SessionTools rc.14 and rc.15 scripts. The installed
+      rc.15 recorder is built from main's recorder source.
+  - **Optional, stable selection:** the verified rc.15 bundle at `E:\Tools\ArtOfSimRally-SessionTools-0.4.0-rc.15`
+    pins the scripts to a package rather than the checkout. The owner chooses it in Wheelkit; the live settings are
+    untouched.
+  - **Caution:** this checkout's ignored `tools/testing/Recorder/bin` holds a stale 2026-10-10 recorder build
+    (`0EFD97A3`, `8b363f4`). `Install-Recorder.ps1 -SkipBuild` from here would install it.
 
 ## Exact package candidates
 
@@ -44,8 +54,9 @@ for this note. The owner's tune and the uncommitted `experiments/CustomVehicles`
 | Mod, shared input (previous) | `ArtOfSimRally-0.4.2-rc.17-shared-input.zip` | `096bf5e` | `3A588814` | Test-Rc gates, inert-folder Wheelkit Apply, the latched copy run; installed until rc.18 |
 | Native | `UnityForceFeedback.dll` (toolkit `bbbf6e3`, ABI 901) | | `44E46799` | function audit and mixed-reader fixtures; muted runtime only |
 | Shim (private, not in the public repo) | `dbce_shim.dll` (art-shim-bridge `574bb88`) | | `7DDC9621` | every ordinary shared run |
-| Session tools | `ArtOfSimRally-SessionTools-0.4.0-rc.14.zip` | `aea8a58` | `9A2E36A8` | automated plumbing pass (run 162920, accepted with the UMM classification); restore-gap fix `0d2f81b` |
-| Recorder DLL | in rc.14 `064F0E15`; installed rc.12 `5B706C9E` | same recorder source | | |
+| Session tools | `ArtOfSimRally-SessionTools-0.4.0-rc.15.zip` | `5628e9b` | `69F4B691` | scripts identical to rc.14; recorder source equals `02fcf1b` (gated by Test-Rc rc.921); rehearsal; extracted to `E:\Tools`, seal verified |
+| Session tools (previous) | `ArtOfSimRally-SessionTools-0.4.0-rc.14.zip` | `aea8a58` | `9A2E36A8` | automated plumbing pass (run 162920, accepted with the UMM classification); restore-gap fix `0d2f81b` |
+| Recorder DLL | installed rc.15 `DAA62504` (decompiled code equals the copy-qualified `0390B89D` except its informational version); rc.14 `064F0E15` and rc.12 `5B706C9E` share the earlier recorder source | | | |
 | Recorder DLL, copy runs | dev recorder `0390B89D` | `02fcf1b` | | the rc.18 copy runs (diag-03, run-02, run-03); not installed for the owner |
 | Wheelkit | 0.6.24 (`64fe71e`): contract v2 writer (0.6.23) and the Art automated origin | | | sana's integration review |
 
@@ -74,8 +85,10 @@ for this note. The owner's tune and the uncommitted `experiments/CustomVehicles`
    - Per button, record two observations with force off: the same reader (Art's F6 Bind status, through the
      FFB/read handle) and an independent reader (Wheelkit's Controls page).
    - No fix claim for the reporter.
-7. **Ordinary recording (B).** An owner-attended Wheelkit Record with human origin needs a SessionTools folder set in
-   Wheelkit (rc.14 extracted). It is not configured now.
+7. **Ordinary recording (B).** An owner-attended Wheelkit Record with human origin. It needs only the owner at the
+   wheel:
+   - Wheelkit 0.6.24 offers it through the main-checkout fallback, and the rc.15 recorder is installed.
+   - Selecting the `E:\Tools` rc.15 bundle in Wheelkit is optional.
 8. **Review choices and rebake items:**
    - keep or strip the dormant probe code;
    - correct the `CONTROLS.json` clutch omission wording;
@@ -106,7 +119,7 @@ There are three steps. Step A needs no owner; steps B and C need the owner at th
 - Wheelkit's Controls page: the live button index.
 
 Record the pairs. **Afterwards**, the owner keeps the shared profile or the backups are restored exactly. Step B can
-become the B recording once SessionTools is set in Wheelkit.
+itself be the B recording through Wheelkit's Record, human origin, as set up now.
 
 ## rc.18: pinned DualShock 4 identity (2026-10-12)
 
