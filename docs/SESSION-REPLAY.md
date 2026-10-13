@@ -5,10 +5,14 @@ for a recording library outside this checkout and replay-only `-OutputDirectory`
 for separate results. Both resolve relative paths from the PowerShell location.
 Old invocations keep their existing locations. An existing replay result folder
 is refused before starting or applying a recorded environment. Wheelkit uses
-these parameters with `-MuteOutputs` for recording and trajectory mode for playback;
-it holds the shared rig lease around the original Art runner. This changes no
-mod/runtime payload or owner configuration. The first Wheelkit launch is still
-to be qualified.
+these parameters, and holds the shared rig lease around the original Art runner.
+- **Ordinary Human recording** keeps the owner's outputs: the wheel's force and
+  SimHub stay live. Installed 0.6.24 generates `-Record` without `-MuteOutputs`.
+- **Automated recording** asks for `-MuteOutputs` explicitly.
+- **Playback** always mutes those outputs, in trajectory mode.
+
+This changes no mod/runtime payload or owner configuration. The first Wheelkit
+launch is still to be qualified.
 
 `tools/testing/Test-SessionPaths.ps1` executes the actual script against process,
 registry and environment doubles: custom paths with spaces, correct tape identity,
