@@ -124,6 +124,21 @@ foreach ($relative in $fixed.Keys) { Assert ((Get-FileHash -LiteralPath (Join-Pa
 Assert ((Get-FileHash -LiteralPath (Join-Path $game 'artofrally_Data/Plugins/x86_64/UnityForceFeedback.dll')).Hash -eq $nativeHash) 'Setup changed the native plugin copy'
 Pass 'the companion CLI previews then applies an art of rally controls profile on the installed candidate, changing only the controls profile, the shared-input opt-in and the profile gearbox'
 
+# The same helper's screens scope: one given yaw, the other kept; art of rally's own switches reported and never set.
+$triple = Join-Path $mod 'TripleScreen.xml'
+Set-Content -LiteralPath $triple -Value '<Settings><UseLocalLayout>true</UseLocalLayout><ManualSetupConfirmed>false</ManualSetupConfirmed><PanelWidthPx>2560</PanelWidthPx><PanelWidthMm>598</PanelWidthMm><EyeDistanceMm>600</EyeDistanceMm><LeftYawDegrees>40</LeftYawDegrees><RightYawDegrees>50</RightYawDegrees></Settings>'
+$settingsBefore = (Get-FileHash -LiteralPath $settings).Hash
+$screensPath = Join-Path $run 'controls-setup-screens.json'
+[IO.File]::WriteAllText($screensPath, '{"schema":1,"values":{"RightYawDegrees":48}}')
+$screened = Invoke-Cli 'screens-apply' @('apply', '--game', 'art-of-rally', '--game-dir', $game, '--screens', $screensPath) 'APPLY'
+Assert ($screened.code -eq 0 -and $screened.text.Contains('Stored, not used yet') -and -not $screened.text.Contains('uses them from its next start')) "Screens apply failed: $($screened.text)"
+$tripleSaved = [xml](Get-Content -LiteralPath $triple -Raw)
+Assert ($tripleSaved.Settings.LeftYawDegrees -eq '40' -and $tripleSaved.Settings.RightYawDegrees -eq '48') 'Screens apply changed the wrong yaw'
+Assert ($tripleSaved.Settings.UseLocalLayout -eq 'true' -and $tripleSaved.Settings.ManualSetupConfirmed -eq 'false' -and $tripleSaved.Settings.PanelWidthPx -eq '2560') 'Screens apply changed a switch or pixel size'
+Assert ((Get-FileHash -LiteralPath $settings).Hash -eq $settingsBefore) 'Screens apply changed Settings.xml'
+foreach ($relative in $fixed.Keys) { Assert ((Get-FileHash -LiteralPath (Join-Path $game ('Mods/' + $relative))).Hash -eq $fixed[$relative]) "Screens setup changed the installed $relative" }
+Pass 'the same companion helper stores one given art of rally yaw, keeps the other, and says the values are not used yet'
+
 $controlsHash = (Get-FileHash -LiteralPath (Join-Path $mod 'dbce-controls.ini')).Hash
 $settingsHash = (Get-FileHash -LiteralPath $settings).Hash
 $null = Invoke-Batch 'uninstall' (Join-Path $package 'Uninstall.bat') ('-GameDir "' + $game + '"')

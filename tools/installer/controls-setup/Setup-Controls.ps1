@@ -7,7 +7,8 @@
     Run from the extracted controls setup download, normally by double-clicking Set Up Controls.bat. It verifies the
     whole download, finds art of rally the same way the mod installer does, checks that the shared-input package of art
     of sim rally is installed and the game is closed, then opens the DBCE mod setup helper for art of rally only.
-    Controls only: the helper writes the controls profile and the shared-input opt-in, never force or screen settings.
+    For controls the helper writes the controls profile and the shared-input opt-in; on its Screens tab, only the screen
+    measurements entered. It never writes force feedback, screen mode or resolution, or art of rally's switches.
     The helper runs from this folder and is never copied into the game folder.
 
 .PARAMETER GameDir
@@ -66,6 +67,6 @@ $helperRoot = Join-Path $here 'ModSetup'
 $helper = Join-Path $helperRoot 'DbceModSetup.exe'
 $arguments = '--game art-of-rally --game-dir "' + $GameDir + '"'
 if ($PlanOnly) { Write-Output ('PLAN ONLY: "' + $helper + '" ' + $arguments); return }
-Write-Host 'Opening controls setup for art of rally. Choose Preview, then Apply. Force feedback and screen settings are not changed.'
+Write-Host 'Opening setup for art of rally. Choose Preview, then Apply. Force feedback, screen mode and resolution are not changed.'
 $process = Start-Process -FilePath $helper -ArgumentList $arguments -WorkingDirectory $helperRoot -PassThru -Wait
 exit $process.ExitCode
