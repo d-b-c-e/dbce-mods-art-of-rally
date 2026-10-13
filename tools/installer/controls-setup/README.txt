@@ -2,9 +2,9 @@ art of sim rally - optional controls setup (private helper)
 ===========================================================
 
 This optional, private download sets up your wheel controls for the shared-input package of art of sim rally
-without Wheelkit, and, if you want, your triple-screen measurements. For controls it changes the controls profile and
-the shared-input switch. Force feedback, screen mode and resolution stay as they are. If you use Wheelkit, you do not
-need it.
+without Wheelkit, and, if you want, your triple-screen measurements and the mod's own settings. For controls it changes
+the controls profile and the shared-input switch. It writes only what you preview and apply. It does not launch the
+game, change the Windows display mode or send wheel forces. If you use Wheelkit, you do not need it.
 
 1. Install the shared-input package of art of sim rally first (its Install.bat), and close the game.
 2. Extract this download into its own folder, anywhere outside the game folder.
@@ -13,10 +13,14 @@ need it.
    Set Up Controls.bat -GameDir "D:\Games\artofrally"
 4. Bind your wheel, pedals and buttons, choose Preview, then Apply.
 5. Optional: on the Screens tab, choose "Read saved values", change only what you measured (panel size, eye distance,
-   left and right screen angle), then Preview and Apply. art of rally uses these only after "Use measurements entered
-   here" is on and "Use these measurements" has been chosen in its triple-screen Advanced setup; the helper tells you
-   when they are stored but not used yet, and never changes those switches.
-6. Start the game normally.
+   left and right screen angle), then Preview and Apply. art of rally uses these only once its triple screens are on
+   and "Use measurements entered here" and "Entered measurements accepted" are both on. The helper tells you when they
+   are stored but not used yet; saving measurements never changes those switches.
+6. Optional: on the Settings tab, choose "Read saved settings", change the rows you want, then Preview and Apply.
+   Examples are force feedback, "Triple screens", "Use measurements entered here", "Entered measurements accepted"
+   and the panel pixel size. These are the same rows as Wheelkit's Game settings and the mod's own Advanced setup.
+   Only the rows you change are written, and the mod applies them at its next start.
+7. Start the game normally.
 
 The helper runs from this folder and is never copied into the game folder. It keeps its own profiles in
 %LOCALAPPDATA%\Dbce\StandaloneModSetup. Notices and licenses for the helper are in the ModSetup folder.
