@@ -71,8 +71,6 @@ namespace ArtOfSimRally.Testing
         private static int _artFrame = -1;
         private static FieldInfo _isolatedFrame, _lastComposition;
         private static FieldInfo[] _compositionFields;
-        private static object _consumer;
-        private static PropertyInfo _consumerStarted;
         private static StreamWriter _eventWriter;
         private static string _incomplete;
         private static int _drivetrainTick = int.MinValue;
@@ -171,7 +169,9 @@ namespace ArtOfSimRally.Testing
                     PatchOutputs();
                     _capturePolicy = CapturePolicy.Parse(request);
                     if (_capturePolicy.NativeCarInput) PatchNativeEvidence();
-                    _captureDriver = new CaptureDriver(driverSource, _capturePolicy, _capturePolicy.WaitsForShared ? SharedStarted : (Func<bool>)null);
+                    // Every waiting policy (native, or shared with holdForShared) binds the shared session's readiness;
+                    // shared-car mode installs no native evidence hooks (sana 45326).
+                    _captureDriver = new CaptureDriver(driverSource, _capturePolicy, SharedReadiness.For(_capturePolicy, AccessTools.TypeByName));
                 }
                 if (replay) { PatchOutputs(); LoadReplay(request.TryGetValue("out", out var o) && o.Length > 0 ? o : Path.Combine(_dir, "replay-" + DateTime.Now.ToString("yyyyMMdd-HHmmss"))); }
                 else if (string.Equals(mode, "record", StringComparison.OrdinalIgnoreCase)) OpenRecording();
@@ -605,12 +605,9 @@ namespace ArtOfSimRally.Testing
             _lastComposition = AccessTools.Field(shim, "Last") ?? throw new MissingFieldException("ShimInput.Last");
             _compositionFields = new[] { "Frame", "SteerLive", "AppliedSteer", "AppliedThrottle", "AppliedBrake", "AppliedHandbrake", "Alignment" }
                 .Select(n => AccessTools.Field(_lastComposition.FieldType, n) ?? throw new MissingFieldException("ShimInput.Composition." + n)).ToArray();
-            _consumer = (AccessTools.Field(shim, "Consumer") ?? throw new MissingFieldException("ShimInput.Consumer")).GetValue(null);
-            _consumerStarted = AccessTools.Property(_consumer.GetType(), "Started") ?? throw new MissingMemberException("ShimAxisConsumer.Started");
             _harmony.Patch(AccessTools.Method(typeof(AxisCarController), "GetInput"),
                 postfix: new HarmonyMethod(typeof(SessionTape), nameof(BeforeModCarInput)) { priority = Priority.First });
         }
-        private static bool SharedStarted() => (bool)_consumerStarted.GetValue(_consumer, null);
         private static void BeforeModCarInput(AxisCarController __instance, float throttleInput, float brakeInput, float steerInput,
             float handbrakeInput, float clutchInput, bool startEngineInput)
         {
@@ -824,6 +821,13 @@ namespace ArtOfSimRally.Testing
         internal static void Tick()
         {
             if (_mode == Mode.Off) return;
+            // Diagnostic only, first and on its own: Rewired's joystick rows (rewired-inventory.tsv), so a later tick
+            // failure or a shared refusal cannot hide them (sana 45274).
+            if (_mode == Mode.Record)
+            {
+                try { var inventory = RewiredInventory.Maybe(_dir, Time.realtimeSinceStartup); if (inventory != null) Event(inventory); }
+                catch (Exception ex) { Event("rewired inventory failed: " + ex.ToString().Replace('\r', ' ').Replace('\n', ' ')); }
+            }
             try
             {
                 int marker = MarkerId(Marker());
@@ -843,9 +847,6 @@ namespace ArtOfSimRally.Testing
                     // UMM's window opens at startup and blocks stock menus while open;
                     // it's often closed with the mouse, which isn't taped. Tape its state.
                     if (UnityModManagerNet.UnityModManager.UI.Instance?.Opened == true) _frameValues["U.Open"] = "1";
-                    // Diagnostic only: Rewired's joystick rows with their identities (rewired-inventory.tsv), twice.
-                    try { var inventory = RewiredInventory.Maybe(_dir, Time.realtimeSinceStartup); if (inventory != null) Event(inventory); }
-                    catch (Exception ex) { Event("rewired inventory failed: " + (ex.InnerException ?? ex).Message); }
                     TapeCinematicSkip(MarkerText(marker));
                     var line = new StringBuilder();
                     line.Append(_frame.ToString(CultureInfo.InvariantCulture)).Append('\t').Append(marker.ToString(CultureInfo.InvariantCulture));
@@ -898,7 +899,12 @@ namespace ArtOfSimRally.Testing
                 }
                 _frame++;
             }
-            catch (Exception ex) { Fail("tick: " + ex.Message); }
+            catch (Exception ex)
+            {
+                // The full exception with its stack (sana 45274), beside the short reason.
+                try { var where = _mode == Mode.Record ? _dir : _out; if (where != null) File.WriteAllText(Path.Combine(where, "tick-exception.txt"), ex.ToString()); } catch { }
+                Fail("tick: " + ex.Message + " (" + ex.GetType().FullName + "; stack in tick-exception.txt)");
+            }
         }
 
         internal static string Command(string command)

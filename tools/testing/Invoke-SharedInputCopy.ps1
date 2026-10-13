@@ -41,11 +41,12 @@ function Plain([string]$p) {
 }
 function Within([string]$p,[string]$parent) { $p.Equals($parent,[StringComparison]::OrdinalIgnoreCase) -or $p.StartsWith($parent.TrimEnd('\')+'\',[StringComparison]::OrdinalIgnoreCase) }
 function Assert-GameClosed { if(Get-Process artofrally -ErrorAction SilentlyContinue) { throw 'Art remains open; retain backup and lease, no restoration.' } }
-# The copy's UMM log, read while the game may still write it.
+# The copy's UMM log, read while the game may still write it. A level tag may precede the text: the mod logs its
+# refusal as "[ArtOfSimRally] [Warning] Shared input not used: ..." (run-01 and diag-01 timed out without seeing it).
 function Read-Shared([string]$p) {
     if(!(Test-Path -LiteralPath $p -PathType Leaf)) { return @() }
     $stream=[IO.File]::Open($p,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete)
-    try { $reader=[IO.StreamReader]::new($stream); @($reader.ReadToEnd() -split "`r?`n" | Where-Object { $_ -match '\[ArtOfSimRally\] (Shared input|Wheel input|Loaded)' }) }
+    try { $reader=[IO.StreamReader]::new($stream); @($reader.ReadToEnd() -split "`r?`n" | Where-Object { $_ -match '\[ArtOfSimRally\] (\[\w+\] )?(Shared input|Wheel input|Loaded)' }) }
     finally { $stream.Dispose() }
 }
 # The recorder request for a route recording: native scripts Art's Rewired values at the stage; shared leaves the car to

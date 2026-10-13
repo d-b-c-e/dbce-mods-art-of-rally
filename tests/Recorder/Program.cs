@@ -233,6 +233,32 @@ static class Program
         Check(shared.Done(true, 50, ref underwayAt, exists), "bound not applied");
         float early = -1; present = true;
         Check(shared.Done(false, 1, ref early, exists), "probe receipt before the stage did not end the capture");
+        // The production readiness binding (SharedReadiness.For, what SessionTape hands the capture driver), with stub
+        // ShimInput types (sana 45326): 8989f63 handed holdForShared a delegate whose consumer only native bound.
+        Readiness(holding, native, shared, synthetic);
+    }
+    public sealed class StubConsumer { internal bool Started { get; set; } }
+    public static class StubShimInput { internal static StubConsumer Consumer; }
+    public static class StubShimNoStarted { internal static object Consumer = new object(); }
+    static void Readiness(CapturePolicy holding, CapturePolicy native, CapturePolicy shared, CapturePolicy synthetic)
+    {
+        Type Resolve(string name) => name == SharedReadiness.ShimInputType ? typeof(StubShimInput) : null;
+        StubShimInput.Consumer = new StubConsumer();
+        var hold = SharedReadiness.For(holding, Resolve);
+        var nativeReady = SharedReadiness.For(native, Resolve);
+        Check(hold != null && nativeReady != null && !hold() && !nativeReady(), "a waiting policy did not bind the shared session's readiness");
+        StubShimInput.Consumer.Started = true;
+        Check(hold() && nativeReady(), "the bound readiness does not follow the consumer's Started");
+        Check(SharedReadiness.For(shared, Resolve) == null && SharedReadiness.For(synthetic, Resolve) == null, "a policy that does not wait bound the shared session");
+        float held = -1;
+        StubShimInput.Consumer.Started = false;
+        Check(holding.Holds(hold(), 1, ref held) && (StubShimInput.Consumer.Started = true) && !holding.Holds(hold(), 2, ref held), "the bound readiness does not release the holding route");
+        string Bind(Func<string, Type> resolve) { try { SharedReadiness.For(holding, resolve); return ""; } catch (Exception e) { return e.GetType().Name + ": " + e.Message; } }
+        Check(Bind(_ => null).Contains("ShimInput"), "a missing ShimInput type bound");
+        StubShimInput.Consumer = null;
+        Check(Bind(Resolve).Contains("ShimInput.Consumer is null"), "a null consumer bound (the frame-0 NullReferenceException of 8989f63)");
+        Check(Bind(n => n == SharedReadiness.ShimInputType ? typeof(StubShimNoStarted) : null).Contains("ShimAxisConsumer.Started"), "a consumer without Started bound");
+        StubShimInput.Consumer = new StubConsumer();
     }
     // carInput=native: the stage script and the verdict over native.tape and car.tape (romi 31616).
     static void Native()

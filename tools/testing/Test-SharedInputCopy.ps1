@@ -127,7 +127,7 @@ try {
 
     # The runner's shared-car request and its summary (functions read from the script, run without any launch).
     $ast = [Management.Automation.Language.Parser]::ParseFile($invoke, [ref]$null, [ref]$null)
-    foreach ($name in 'New-CaptureRequest', 'Get-SharedCarSummary') {
+    foreach ($name in 'New-CaptureRequest', 'Get-SharedCarSummary', 'Read-Shared') {
         $def = @($ast.FindAll({ param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq $name }, $true))
         Check ($def.Count -eq 1) "one $name in the runner"
         . ([scriptblock]::Create($def[0].Extent.Text))
@@ -144,5 +144,11 @@ try {
     Check ($sum.sharedTapeRows -eq 3 -and $sum.carTapeRows -eq 2 -and $sum.shiftRows -eq 1 -and $sum.underway -and $sum.end -eq 'captured' -and !$sum.incomplete) 'shared-car summary'
     Check ((Get-SharedCarSummary (Join-Path $root 'no-capture')).underway -eq $false) 'an empty capture is not underway'
     Refused { & $invoke -Result $result -SharedCar -PreflightOnly } 'give -RouteSource'
+    # The mod logs its refusal with a level tag; the runner's filter must still see it (run-01/diag-01 timed out).
+    $log = Join-Path $root 'umm.txt'
+    Write-Bytes $log ("[ArtOfSimRally] Shared input: profile found; qualifying in the menus.`n[ArtOfSimRally] Loaded - directSteering=True`n" +
+        "[ArtOfSimRally] [Warning] Shared input not used: Rewired identity/path unavailable: cannot exclude a duplicate mapped wheel Art bindings remain.`n[ArtOfSimRally] Frame rate (10 s): 120 fps`n")
+    $seen = Read-Shared $log
+    Check ($seen.Count -eq 3 -and ($seen -match 'Shared input (not used|stopped)').Count -eq 1 -and !($seen -match 'Frame rate')) 'a level-tagged refusal reaches the runner''s shared lines'
 } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
 "PASS: $checks shared-copy staging, Apply confirmation and shared-car request checks (fake packages and copies only)."
