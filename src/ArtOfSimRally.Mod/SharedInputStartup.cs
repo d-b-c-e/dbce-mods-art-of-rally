@@ -25,6 +25,7 @@ namespace ArtOfSimRally.Mod
         // Force feedback's startup acquisition or a pending reconnect closes and reopens every Art reader.
         // Qualification waits for it so an attach is never closed straight away. Main supplies the check.
         internal static Func<bool> ForceSettled = () => true;
+        internal static Func<string, byte[], SharedSteeringTarget> InspectSteering = ShimProfileNative.ReadSteering;
         private static ISharedQualification session;
         private static string shimPath, reason, profileName, transmission, waitingFor;
         private static string[] devices;
@@ -47,11 +48,13 @@ namespace ArtOfSimRally.Mod
             WheelInput.SharedReadersPinned = next == SharedInputStatus.Phase.Isolating;
         }
 
-        // At mod load, before Art's own shifter could open. Files only; nothing is acquired here.
+        // At mod load, before FFB selection or Art's own shifter could open. Files and pure profile
+        // inspection only; no host, provider, reader or force acquisition here.
         internal static void Prepare(string modDirectory)
         {
             session = null; reason = waitingFor = null; startedLogged = stopLogged = false; restoreAttempts = 0;
             RequestedAtStartup = !ShimStartup.Requested && Main.Settings != null && Main.Settings.SharedInput;
+            FfbSelection.PrepareShared(RequestedAtStartup);
             if (!RequestedAtStartup) { Enter(SharedInputStatus.Phase.Off); return; }
             try
             {
@@ -64,6 +67,15 @@ namespace ArtOfSimRally.Mod
                 var info = new FileInfo(profilePath);
                 if (info.Length == 0 || info.Length > 1024 * 1024) { Refuse("the shared profile is empty or larger than 1 MiB."); return; }
                 profile = File.ReadAllBytes(profilePath);
+                // This byte array also goes to Begin later. Never reread the file after FFB selection,
+                // copy it into legacy SteerBinding, or schedule recovery after the readers attach.
+                try
+                {
+                    var target = InspectSteering(shimPath, profile);
+                    if (target == null) throw new InvalidOperationException("Core returned no shared steering report.");
+                    FfbSelection.PrepareShared(true, target.Name, target.Instance, target.Reason);
+                }
+                catch (Exception ex) { FfbSelection.PrepareShared(true, reason: ex.Message); }
                 Enter(SharedInputStatus.Phase.Waiting);
                 ModLog.Info("Shared input: profile found; qualifying in the menus. Art's own shifter reader stays closed.");
             }

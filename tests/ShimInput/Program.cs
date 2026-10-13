@@ -801,11 +801,13 @@ internal static class Program
             assertions += ProbeTests.Run();
             assertions += IdentityLeaseTests.Run();
             assertions += Ds4IdentityTests.Run();
+            assertions += ProfileInfoTests.Decode();
             if (args.Length == 2 && args[0] == "--abi") assertions += AbiProbe.Check(args[1]);
             if (args.Length == 2 && args[0] == "--no-force") assertions += AbiProbe.NoForce(args[1]);
             if (args.Length == 2 && args[0] == "--load-muted") assertions += AbiProbe.NoForce(args[1], true);
             if (args.Length == 2 && args[0] == "--bridge") assertions += BridgeTests.Actual(args[1]);
             if (args.Length == 2 && args[0] == "--bridge-latched") assertions += BridgeTests.ActualLatchedSession(args[1]);
+            if (args.Length == 2 && args[0] == "--profile-info") assertions += ProfileInfoTests.Actual(args[1]);
             Console.WriteLine("{\"status\":\"passed\",\"assertions\":" + assertions + "}"); return 0;
         }
         catch (Exception e) { Console.Error.WriteLine(e); return 1; }

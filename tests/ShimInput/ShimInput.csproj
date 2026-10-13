@@ -14,6 +14,7 @@
     <Compile Include="../../src/ArtOfSimRally.Mod/Shim/SharedInputStatus.cs" Link="SharedInputStatus.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ShimBridge.cs" Link="ShimBridge.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ShimBridgeNative.cs" Link="ShimBridgeNative.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ShimProfileNative.cs" Link="ShimProfileNative.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/Shim/NativeInputIsolation.cs" Link="NativeInputIsolation.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ProbeObservation.cs" Link="ProbeObservation.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ProbeRequest.cs" Link="ProbeRequest.cs" />

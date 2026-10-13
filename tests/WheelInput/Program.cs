@@ -221,6 +221,10 @@ static class Program
         {
             var directory = Path.GetFullPath(Path.Combine("results", "wheel-input-" + Guid.NewGuid().ToString("N")));
             Directory.CreateDirectory(directory); Host.Path = Path.Combine(directory, "Settings.xml");
+            if (args.Contains("--shared-ffb-only"))
+            {
+                SharedForceSelection(); Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
+            }
             if (args.Contains("--shim-read-only"))
             {
                 SharedRead(); Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
@@ -458,7 +462,8 @@ static class Program
         internal readonly ActionNative Core;
         internal bool Isolated = true; internal string Neutral; internal int RestoreFailures, Restores, Closes;
         internal FakeQualification(ActionNative core) { Core = core; }
-        public void Begin(string shimPath, string runFolder, byte[] exactProfile) { }
+        internal Action<byte[]> Began;
+        public void Begin(string shimPath, string runFolder, byte[] exactProfile) { Began?.Invoke(exactProfile); }
         public string ProfileName => "Lifecycle";
         public string Transmission => "Sequential";
         public string[] DeviceNames => new[] { "TSS fixture" };
@@ -475,6 +480,62 @@ static class Program
         public bool RetryRestore() { Restores++; RestorePending = RestoreFailures-- > 0; return !RestorePending; }
         public void EndObservation() { }
     }
+    // Production Prepare/selection/qualification order; only Core inspection and qualification hardware steps are faked.
+    static void SharedForceSelection()
+    {
+        const string shared = "d71b8350-61b7-11f1-8001-444553540000", explicitId = "aaaaaaaa-0000-0000-0000-000000000001";
+        string dll = Environment.GetEnvironmentVariable("ART_SHIM_DLL") ?? @"E:\Source\games\.worktrees\art-shim-probe-evidence\apply-20261012-021108\dbce_shim.dll";
+        var mod = Path.Combine(Path.GetTempPath(), "art-shared-ffb-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(mod);
+        File.Copy(dll, Path.Combine(mod, SharedInputStartup.ShimFileName));
+        string profilePath = Path.Combine(mod, SharedInputStartup.ProfileFileName);
+        var original = System.Text.Encoding.UTF8.GetBytes("[Controls]\nSchema = 1\nProfile = Frozen\n");
+        File.WriteAllBytes(profilePath, original); SharedInputStartup.RunRoot = Path.Combine(mod, "runs");
+        byte[] inspected = null, begun = null; int inspections = 0, sessions = 0; bool settled = false;
+        var core = new ActionNative { Script = () => new[] { (0, ArtOfSimRally.Mod.Shim.ShimStatus.Live, 0f) } };
+        SharedInputStartup.InspectSteering = (path, bytes) => { inspections++; inspected = bytes; return new ArtOfSimRally.Mod.Shim.SharedSteeringTarget("Shared wheel", shared, null); };
+        SharedInputStartup.NewSession = inventory => { sessions++; return new FakeQualification(core) { Began = bytes => begun = bytes }; };
+        SharedInputStartup.ForceSettled = () => settled;
+        void Frame() { Clock.frameCount++; SharedInputStartup.Tick(); WheelInput.EnsureUpdatedThisFrame(); }
+        Setup(""); Clock.frameCount = 30000; Host.Settings.WheelInputEnabled = false; Host.Settings.SharedInput = true;
+        Host.Settings.ForceFeedbackEnabled = false; Rewired.ReInput.isReady = true;
+        int saves = Host.Saves, opens = Device.Opens;
+        SharedInputStartup.Prepare(mod);
+        Check(inspections == 1 && sessions == 0 && Device.Opens == opens, "target inspection opened/qualified readers or was delayed until attach");
+        Check(FfbSelection.TryTarget(Host.Settings, out var name, out var index, out var guid, out _) && name == "Shared wheel" && index == -1 && guid == shared,
+            "fresh shared-only configuration has no strict steering force target before recovery");
+        Check(!Host.Settings.ForceFeedbackEnabled && Host.Settings.SteerBinding == "" && Host.Saves == saves, "target resolution enabled force, copied legacy bindings or saved settings");
+        Frame(); Check(sessions == 0, "shared qualification ran before force ownership settled");
+        Host.Settings.PreferredDeviceGuid = explicitId; Host.Settings.FfbDeviceMode = "explicit";
+        Check(FfbSelection.TryTarget(Host.Settings, out _, out _, out guid, out _) && guid == explicitId, "explicit force selection did not win");
+        Host.Settings.FfbDeviceMode = "steering"; Host.Settings.SharedInput = false;
+        File.WriteAllText(profilePath, "changed after startup");
+        Check(FfbSelection.TryTarget(Host.Settings, out _, out _, out guid, out _) && guid == shared, "saved shared flag/file edit retargeted an active launch");
+        settled = true; Frame(); Frame(); Frame();
+        Check(sessions == 1 && ReferenceEquals(inspected, begun) && begun.SequenceEqual(original), "Begin did not consume the exact inspected byte array");
+        Check(inspections == 1 && !Host.Settings.ForceFeedbackEnabled && Host.Saves == saves, "attach reran target resolution or changed force state");
+        WheelInput.Close(); SharedInputStartup.Shutdown();
+        Host.Settings.SteerBinding = "Legacy|0|axis:0|32767|65535|guid:" + explicitId;
+        SharedInputStartup.Prepare(mod);
+        Check(!SharedInputStartup.RequestedAtStartup && FfbSelection.TryTarget(Host.Settings, out _, out _, out guid, out _) && guid == explicitId,
+            "next startup did not honor shared mode Off");
+        Host.Settings.SharedInput = true;
+        Check(FfbSelection.TryTarget(Host.Settings, out _, out _, out guid, out _) && guid == explicitId, "changing saved shared mode On retargeted before restart");
+        File.WriteAllBytes(profilePath, original);
+        foreach (string refusal in new[] { "profile invalid", "steer unbound", ArtOfSimRally.Mod.Shim.ShimProfileNative.MatchingPackage })
+        {
+            SharedInputStartup.InspectSteering = (path, bytes) => { throw new InvalidDataException(refusal); };
+            SharedInputStartup.Prepare(mod);
+            Check(!FfbSelection.TryTarget(Host.Settings, out _, out _, out guid, out var why) && guid == "" && why == refusal,
+                "refused/missing inspection fell back to stale legacy force target");
+            Host.Settings.FfbDeviceMode = "explicit";
+            Check(FfbSelection.TryTarget(Host.Settings, out _, out _, out guid, out _) && guid == explicitId, "inspection failure broke explicit selection");
+            Host.Settings.FfbDeviceMode = "steering";
+        }
+        SharedInputStartup.InspectSteering = ArtOfSimRally.Mod.Shim.ShimProfileNative.ReadSteering;
+        SharedInputStartup.ForceSettled = () => true;
+        FfbSelection.PrepareShared(false); WheelInput.Close();
+    }
+
     // romi 28533: shared input alone (no Art bindings or shortcuts), force ownership settling before the
     // attach, Art editors refused except Art-only buttons, a later force reconnect stopping the session
     // truthfully without reattach, and a failed joystick restore kept and retried instead of handed back.

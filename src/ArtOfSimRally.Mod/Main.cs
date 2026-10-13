@@ -65,7 +65,7 @@ namespace ArtOfSimRally.Mod
             // DirectInput switch left the keyboard dead turns that setting off.
             if (!ShimStartup.Prepare(modEntry.Path)) return false;
             if (!ShimStartup.Requested) InputBackend.OnLoad();
-            SharedInputStartup.Prepare(modEntry.Path); // opt-in shared profile: files only, before any shifter reader opens
+            SharedInputStartup.Prepare(modEntry.Path); // frozen profile/FFB target inspection, before recovery or reader qualification
             SharedInputStartup.ForceSettled = () => !ForceReconnect.Pending;
             if (SettingsMigration.NeedsHandbrakeSplit(Settings))
             {

@@ -40,6 +40,13 @@ Audited 2026-10-04 (read-only standards audit); statuses below are from that aud
 
 ## Shared input source slice (2026-10-11)
 
+October 13 source follow-up for STD-035/036: fresh shared-only FFB selection now
+uses a pure optional Core profile inspection, with a frozen startup identity and
+strict native GUID selection. Explicit device overrides and accepted force tuning
+are unchanged. Source/tests are prepared; builds, repinning and runtime evidence
+remain pending. See [the bounded review](docs/reviews/2026-10-13-shared-steering-ffb-target.md).
+This does not upgrade any runtime qualification or the historical ledger rows.
+
 The shared frame consumer and copied bridge stay dormant in normal launches.
 A process-only, menu-only diagnostic now observes exact Rewired identity,
 disable/restore and raw-axis cache facts independently, using the existing native
