@@ -69,13 +69,18 @@ namespace ArtOfSimRally.Mod
                 profile = File.ReadAllBytes(profilePath);
                 // This byte array also goes to Begin later. Never reread the file after FFB selection,
                 // copy it into legacy SteerBinding, or schedule recovery after the readers attach.
+                string configuredTarget;
                 try
                 {
                     var target = InspectSteering(shimPath, profile);
                     if (target == null) throw new InvalidOperationException("Core returned no shared steering report.");
                     FfbSelection.PrepareShared(true, target.Name, target.Instance, target.Reason);
+                    configuredTarget = String.IsNullOrEmpty(target.Instance) ? "unavailable: " + target.Reason : "instance=" + target.Instance;
                 }
-                catch (Exception ex) { FfbSelection.PrepareShared(true, reason: ex.Message); }
+                catch (Exception ex) { FfbSelection.PrepareShared(true, reason: ex.Message); configuredTarget = "unavailable: " + ex.Message; }
+                // One startup-only observation of configuration, never a connected-device or force verdict.
+                ModLog.Info("Shared input: configured steering target " + configuredTarget.Replace('\r', ' ').Replace('\n', ' ') +
+                    "; frozenProfileSha256=" + ShimProfileNative.ProfileHash(profile) + "; connection and force not verified.");
                 Enter(SharedInputStatus.Phase.Waiting);
                 ModLog.Info("Shared input: profile found; qualifying in the menus. Art's own shifter reader stays closed.");
             }

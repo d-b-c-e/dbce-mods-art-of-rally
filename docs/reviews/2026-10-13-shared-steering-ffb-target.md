@@ -111,9 +111,11 @@ cold native fence needs `EnableTestInjection` / `GetTestInjectionStatus`, which
 this native does not export. Managed output hooks are not an equivalent barrier.
 The runtime route remains unresolved; do not launch or silently replace WheelFfb.
 
-Pure target inspection runs before qualification even with force off. The ordinary
-log currently records profile discovery, attachment and the first accepted frame,
-but not the cached FFB target. The coordinator approved a separate startup-only
-configured-target/refusal trace with the frozen profile hash; it must not claim
-connected hardware or physical force success. No runtime run is authorized by
+Pure target inspection runs before qualification even with force off. A separate
+startup-only trace now records the configured steering instance or actual refusal
+and the SHA-256 of the frozen profile bytes, before entering Waiting. The line
+explicitly states that connection and force are unverified; explicit FFB overrides
+retain priority. New fixture checks cover one-time logging before qualification,
+the exact hash, no repeat after attachment and all three refusal cases. These
+five additional checks await the packaging batch. No runtime run is authorized by
 this recipe. Normal physical FFB acceptance remains owner-attended.

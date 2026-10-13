@@ -166,7 +166,8 @@ namespace ArtOfSimRally.Mod
     }
     internal static class ModLog
     {
-        public static void Info(string message) { }
+        public static Action<string> Observe;
+        public static void Info(string message) { Observe?.Invoke(message); }
         public static void Warning(string message) { }
         public static void Error(string message) { }
     }

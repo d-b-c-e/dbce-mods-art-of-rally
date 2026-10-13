@@ -65,8 +65,7 @@ namespace ArtOfSimRally.Mod.Shim
             if (bytes == null || bytes.Length < 2 || bytes[bytes.Length - 1] != 0) throw new InvalidDataException("Core profile report is incomplete.");
             using (var stream = new MemoryStream(bytes, 0, bytes.Length - 1, false))
                 report = (Report)new DataContractJsonSerializer(typeof(Report)).ReadObject(stream);
-            string hash;
-            using (var sha = SHA256.Create()) hash = BitConverter.ToString(sha.ComputeHash(exactProfile)).Replace("-", "");
+            string hash = ProfileHash(exactProfile);
             if (report == null || report.Schema != 1 || report.Action != "steer" || report.Name == null || report.Reason == null ||
                 !String.Equals(report.Hash, hash, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException("Core profile report does not describe the startup profile bytes.");
@@ -80,6 +79,10 @@ namespace ArtOfSimRally.Mod.Shim
                 !Guid.TryParse(report.Product, out product) || product == Guid.Empty)
                 throw new InvalidDataException("Core returned no valid shared steering axis identity.");
             return new SharedSteeringTarget(report.Name, instance.ToString("D"), null);
+        }
+        internal static string ProfileHash(byte[] exactProfile)
+        {
+            using (var sha = SHA256.Create()) return BitConverter.ToString(sha.ComputeHash(exactProfile)).Replace("-", "");
         }
     }
 }

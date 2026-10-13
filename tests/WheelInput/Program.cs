@@ -491,6 +491,8 @@ static class Program
         var original = System.Text.Encoding.UTF8.GetBytes("[Controls]\nSchema = 1\nProfile = Frozen\n");
         File.WriteAllBytes(profilePath, original); SharedInputStartup.RunRoot = Path.Combine(mod, "runs");
         byte[] inspected = null, begun = null; int inspections = 0, sessions = 0; bool settled = false;
+        var targetLines = new System.Collections.Generic.List<string>();
+        ArtOfSimRally.Mod.ModLog.Observe = line => { if (line.StartsWith("Shared input: configured steering target ")) targetLines.Add(line); };
         var core = new ActionNative { Script = () => new[] { (0, ArtOfSimRally.Mod.Shim.ShimStatus.Live, 0f) } };
         SharedInputStartup.InspectSteering = (path, bytes) => { inspections++; inspected = bytes; return new ArtOfSimRally.Mod.Shim.SharedSteeringTarget("Shared wheel", shared, null); };
         SharedInputStartup.NewSession = inventory => { sessions++; return new FakeQualification(core) { Began = bytes => begun = bytes }; };
@@ -501,6 +503,9 @@ static class Program
         int saves = Host.Saves, opens = Device.Opens;
         SharedInputStartup.Prepare(mod);
         Check(inspections == 1 && sessions == 0 && Device.Opens == opens, "target inspection opened/qualified readers or was delayed until attach");
+        Check(targetLines.Count == 1 && targetLines[0].Contains("instance=" + shared) &&
+            targetLines[0].Contains(ArtOfSimRally.Mod.Shim.ShimProfileNative.ProfileHash(original)) && targetLines[0].Contains("connection and force not verified"),
+            "startup target trace lacks the configured identity/frozen hash or claims physical evidence");
         Check(FfbSelection.TryTarget(Host.Settings, out var name, out var index, out var guid, out _) && name == "Shared wheel" && index == -1 && guid == shared,
             "fresh shared-only configuration has no strict steering force target before recovery");
         Check(!Host.Settings.ForceFeedbackEnabled && Host.Settings.SteerBinding == "" && Host.Saves == saves, "target resolution enabled force, copied legacy bindings or saved settings");
@@ -513,6 +518,7 @@ static class Program
         settled = true; Frame(); Frame(); Frame();
         Check(sessions == 1 && ReferenceEquals(inspected, begun) && begun.SequenceEqual(original), "Begin did not consume the exact inspected byte array");
         Check(inspections == 1 && !Host.Settings.ForceFeedbackEnabled && Host.Saves == saves, "attach reran target resolution or changed force state");
+        Check(targetLines.Count == 1, "target trace repeated after attachment");
         WheelInput.Close(); SharedInputStartup.Shutdown();
         Host.Settings.SteerBinding = "Legacy|0|axis:0|32767|65535|guid:" + explicitId;
         SharedInputStartup.Prepare(mod);
@@ -525,6 +531,8 @@ static class Program
         {
             SharedInputStartup.InspectSteering = (path, bytes) => { throw new InvalidDataException(refusal); };
             SharedInputStartup.Prepare(mod);
+            Check(targetLines.Last().Contains("unavailable: " + refusal) && targetLines.Last().Contains(ArtOfSimRally.Mod.Shim.ShimProfileNative.ProfileHash(original)),
+                "startup refusal trace lost its actual reason or frozen profile hash");
             Check(!FfbSelection.TryTarget(Host.Settings, out _, out _, out guid, out var why) && guid == "" && why == refusal,
                 "refused/missing inspection fell back to stale legacy force target");
             Host.Settings.FfbDeviceMode = "explicit";
@@ -532,6 +540,7 @@ static class Program
             Host.Settings.FfbDeviceMode = "steering";
         }
         SharedInputStartup.InspectSteering = ArtOfSimRally.Mod.Shim.ShimProfileNative.ReadSteering;
+        ArtOfSimRally.Mod.ModLog.Observe = null;
         SharedInputStartup.ForceSettled = () => true;
         FfbSelection.PrepareShared(false); WheelInput.Close();
     }
