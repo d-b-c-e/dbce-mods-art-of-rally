@@ -843,6 +843,9 @@ namespace ArtOfSimRally.Testing
                     // UMM's window opens at startup and blocks stock menus while open;
                     // it's often closed with the mouse, which isn't taped. Tape its state.
                     if (UnityModManagerNet.UnityModManager.UI.Instance?.Opened == true) _frameValues["U.Open"] = "1";
+                    // Diagnostic only: Rewired's joystick rows with their identities (rewired-inventory.tsv), twice.
+                    try { var inventory = RewiredInventory.Maybe(_dir, Time.realtimeSinceStartup); if (inventory != null) Event(inventory); }
+                    catch (Exception ex) { Event("rewired inventory failed: " + (ex.InnerException ?? ex).Message); }
                     TapeCinematicSkip(MarkerText(marker));
                     var line = new StringBuilder();
                     line.Append(_frame.ToString(CultureInfo.InvariantCulture)).Append('\t').Append(marker.ToString(CultureInfo.InvariantCulture));
