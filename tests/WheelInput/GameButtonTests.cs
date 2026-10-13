@@ -88,6 +88,13 @@ static class GameButtonTests
         Tick(); Check(GameButtonInput.Axis(13)==0 && !GameButtonInput.Button(13,true,true), "next frame retained released hat");
         Device.Hats[0]=18000; Tick();
         Check(GameButtonInput.Prepare(PadManager.Player) && GameButtonInput.Button(13,true,true), "watchdog-first order lost edge");
+        // 9329cda (romi 32354). With no shared session, a Rewired query after the watchdog's projection
+        // neither reads again nor projects again, even after the physical state changed. The frame keeps
+        // the watchdog's edge, as on main.
+        Check(!ArtOfSimRally.Mod.Shim.ShimInput.Consumer.Started, "a shared session is running in the legacy fixture");
+        Device.Hats[0]=-1; Tick(); Device.Hats[0]=18000; Tick(); reads=Device.Reads; Device.Hats[0]=-1;
+        Check(GameButtonInput.Prepare(PadManager.Player) && GameButtonInput.Prepare(PadManager.Player) && Down(Channel.NavDown) && Held(Channel.NavDown) &&
+            GameButtonInput.Button(13,true,true) && Device.Reads==reads, "legacy query after the watchdog read or projected again (9329cda)");
         Time.frameCount++; Device.Hats[0]=-1;
         Check(!GameButtonInput.Prepare(new Rewired.Player()) && !Down(Channel.NavDown), "other player sampled wheel");
         Check(GameButtonInput.Prepare(PadManager.Player) && GameButtonInput.Axis(13)==0, "primary player did not sample after other player");

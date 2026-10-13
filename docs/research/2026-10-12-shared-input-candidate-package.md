@@ -1,0 +1,419 @@
+# Art shared input: private owner-test candidate package (2026-10-12)
+
+romi 32256 asked for the next offline Art delivery slice. romi 32354 accepted the native
+port (option A) and the private `-SharedInputCandidate` packaging. The independent native
+review passed (32797), and so did the packaging and ownership review (32927).
+
+Main is not fast-forwarded through this branch, because its history carries the shim
+blob (32891). It gets a squash of the clean final tree onto a new branch from `7c1b67e`,
+whose ancestry has no `7DDC9621` blob. Nothing has been merged, installed or launched for
+this slice.
+
+## What the candidate is
+
+`tools/package/package.ps1 -Version X.Y.Z-rc.N -SharedInputCandidate` builds
+`ArtOfSimRally-X.Y.Z-rc.N-shared-input.zip`. It is the normal package plus the following.
+
+| File | SHA-256 | Source |
+|---|---|---|
+| `ArtOfSimRally/dbce_shim.dll` | `7DDC962132819EDAE76EF84CE6509F1936B8C38177A36D498B8ABBCFDCFFBCAF` | art-shim-bridge `574bb88` copied provider (P21 receipt). Byte for byte the shim of every ordinary shared run; the mod refuses any other. |
+| `ArtOfSimRally/UnityForceFeedback.dll` | `44E46799945438BC07DF738472602DB1E3ECC04C3F77CAD5B12FCACF49C69272` | toolkit `mufa/native-091-read-snapshots` `bbbf6e3` (details below) |
+
+`lib/input-shim/CANDIDATE.json` pins both. `build.json` records them as
+`sharedInputCandidate`, and the installer's verifier accepts the shim only with that
+record. The default package is unchanged: the `lib/toolkit` native `F8361A08` and no shim.
+
+Where the two binaries live:
+- **Native:** vendored in `lib/input-shim/native`. It is the same MIT toolkit component
+  this public repository already vendors and ships.
+- **Shim:** not kept in this public repository (romi 32775). The private build passes
+  `-SharedInputShim <private copy>`, which is checked against the pin. See
+  `lib/input-shim/PROVENANCE.md`.
+
+### Shipping the shim (romi 32767)
+
+- `dbce_shim.dll` is an optional payload entry, pinned by the build record.
+- It is this mod's to replace or remove only while the installed `build.json` pins exactly
+  its bytes. That is decided before anything is written.
+  - An uninstall, or an install of a release built from this branch without the shim,
+    removes an owned copy and keeps any other copy.
+  - A candidate install over a different copy stops before writing anything. A
+    byte-identical copy is adopted.
+- **Reverting:** run this candidate's `Uninstall.bat` first (settings are kept), then
+  install the previous package. Older installers, for example the published 0.4.1, do not
+  know about the shim and leave it in place.
+- `Settings.xml` and unknown files, including an owner-placed `dbce-controls.ini`, are
+  kept.
+
+### The opt-in
+
+- **Default:** `Settings.SharedInput` is false; the mod's F6 Controls toggle "Use shared
+  Wheelkit profile (candidate)" turns it on.
+- **When it takes effect:** at startup only, after a restart.
+- **What the Controls page shows:** the status lines say whether the profile attached,
+  or why it was not used. When it was not used, Art's bindings stay in charge.
+
+## Native port (romi 32354, option A)
+
+Shared input reads Art's own wheel handle through `GetReadDeviceInfoV1`,
+`ReadDeviceSnapshotV1` and `GetReadDevicePathV1`. The accepted native has none of them.
+`DD301314`, the native used by the shared runs, sits on a diverged toolkit line, and
+`ecc49bd` does not apply cleanly to the baseline.
+
+The port, `bbbf6e3`:
+- **Base:** exact `c8ec2ee` (`native-0.9.1-fleet-candidate`).
+- **Carried over:** only `ecc49bd` and `64ccf67`. The header, state and test are taken
+  unchanged.
+- **Left out:** the baseline has no external FFB session and no test-injection table, so
+  their guards are absent.
+
+Evidence that force, send, init and hold are unchanged:
+- **Source:** `WheelFfb.cpp` has 11 added lines and none removed:
+  - the snapshot includes;
+  - a handle generation, incremented where `OpenCandidate` creates the force device;
+  - snapshot invalidation on read-slot open, on a failed legacy read, and on close.
+  No force producer, effect, init, send or hold line changes. `.def` and `wheelffb.h`
+  gain only the three exports; the version stays 901.
+- **Tests:** the x64 fake-COM suite was built from untouched `c8ec2ee` and from the
+  port with the same toolchain.
+  - Every shared test has the same exit code and the same PASS lines: burst, constant
+    burst, constant recovery, logging, POV read with FFB acquire/recovery/open, and
+    retained identity.
+  - The only differences are the ABI lifecycle line (48 to 51 exports, version 901) and
+    the new `read_snapshot_test` (PASS).
+  - The vendored DLL `44E46799` itself passes the ABI test.
+
+Master consolidation is not part of this slice (romi 32391). Nene's unreleased
+`GetReadSlotCaps` on toolkit master overlaps with these exports. The direction is to
+prefer this generation-bearing contract, with OutRun adapting once the candidate is
+reviewed.
+
+Review evidence (romi 32682), toolkit `126a992` (tests and docs only; native source and DLL
+unchanged):
+- **Function audit.** `audit_against_baseline.py` compares every function with
+  `c8ec2ee`: 86 of 91 are identical, and five gain one line each (the list above). All 32
+  force, init, send, hold and effect entry points are identical.
+- **Struct sizes.** 144 and 232 bytes, pinned with offsets; the same as Art's
+  `ShimBridge`.
+- **Mixed-reader fixtures.** Slot 0 borrows the FFB handle and slot 1 is a separate
+  reader:
+  - generations are per slot;
+  - an FFB handle change ends only the borrowed slot;
+  - each failed read ends only its own slot;
+  - close and reopen, and a real `OpenCandidate` reopen, never reuse a qualification.
+- **Mutants.**
+  - Killed: the generation bump, either legacy-failure invalidation, and the open and
+    close invalidations removed together.
+  - Equivalent: either one alone, because each covers close-and-reopen.
+
+## Evidence
+
+- **Full suite:** `Test-Rc.ps1 -Version 0.4.2-rc.903 -Corpus <owner corpus>` on clean
+  `c19ad00` passed all 20 gates.
+  - The recorded corpus passed: 2 cases, landing 9582 assertions.
+  - Artifact `646CA450A6A47FB71305A57154FB31B661F72E87A6D1EA0AEAA0FBAF6A3D849A`.
+  - The default package's payload list is unchanged.
+- **Getting the suite to build and parse again** took two fixes, from before this slice:
+  - the regression project needed a `ShimStartup` stub for `a03fb51` (`3633453`);
+  - the shared-input Mono gate now skips Mono's BOM-only line, like the other Mono gates
+    (`c19ad00`).
+- **Candidate package:** `-Version 0.4.2-rc.904 -SharedInputCandidate` built
+  `ArtOfSimRally-0.4.2-rc.904-shared-input.zip`
+  (`BB8AE5733CFB68684D101B43D9B30EA3B35A5F91CBB2BF11CA3E340A71EC9FB0`). It carries the
+  shim `7DDC9621`, the native `44E46799` and the pinned `build.json` record.
+- **Installer runs:**
+  - Candidate, then the baseline rc.903 installed over it: 58 assertions. The shim is
+    removed, the baseline native is restored, and settings are kept.
+  - Baseline package alone: 42 assertions.
+- **Labels:** these RC numbers are local evidence labels. The owner package's label is
+  romi's choice.
+
+## Merge readiness
+
+- **Target:** one squash commit of this branch's final tree on a new branch from
+  `7c1b67e`. `main` is pushed only on romi's word.
+- **With SharedInput off and no `DBCE_ART_SHIM_REQUEST`:**
+  - the probe and shared code are inert;
+  - the shifter and GetInput shared paths require a started consumer;
+  - force reconnect reopens exactly as main does.
+- **The one off-path change, `9329cda`:** `PrepareGameQuery` projects at most once per
+  frame. With no shared session it cannot be reached:
+  - only `PrepareGameQuery` and the watchdog's `UpdateCore` sample the snapshot;
+  - both project at once, and `TickGameButtons` always stamps the frame.
+- **Regression for it:** `GameButtonTests` now asserts that with no shared session, a
+  query after the watchdog's projection does not read or project again, even after the
+  physical state changed, and the edge is kept. A mutant without the guard fails the
+  legacy suite.
+
+## Native 44E46799 at runtime (08:29, romi GO 33164)
+
+The muted ordinary-path run on the new native **passed** as sealed.
+- **Run:** `native44e-script-20261012-082728`, source `1538f91`.
+- **Pins:**
+  - runner `26968B8C`, preparer `0E9623A1`;
+  - mod `E62F9581`, native `44E46799`, shim `7DDC9621`;
+  - profile `5206EDFB`, copy Settings `A39B2F06`, recorder `1CE497CE`.
+
+Force was off throughout. The new native has no `DBCE_FFB_MUTE` latch (that is toolkit
+`82c40c4`), so the copy was staged with `ForceFeedbackEnabled=false`, plus the recorder's
+output mutes.
+- `force-check.json` shows the mod loaded with `ffb=False` and never attempted force
+  initialisation.
+- The launch's native log (`WheelFfb 901`) only enumerates devices, opens the DS-8X, R12
+  and Stalk as separate readers, and closes them at exit. There is no `InitDirectInput`,
+  `OpenCandidate` or effect line.
+
+What ran:
+- **Shared session:** attached and accepted its first frame (14 owned actions). Its
+  qualification pins each owned slot through `GetReadDeviceInfoV1` and
+  `GetReadDevicePathV1`. Frames come from `ReadDeviceSnapshotV1`, so all three new exports
+  ran live.
+- **Verdict:**
+  - 1359 stage frames composed with isolation and live steering;
+  - the resting wheel (0.1407) held steering on 342 scripted-steer frames;
+  - pedals and handbrake passed through;
+  - all 721 car ticks matched.
+- **Restoration:** exact, with the lease released and no markers left.
+
+Still unqualified:
+- the borrowed-FFB-handle snapshot path (fixtures only);
+- physical wheel, pedal and keyboard coexistence;
+- force feedback with the profile;
+- keyboard steering;
+- clutch and H-pattern gates.
+
+## Wheelkit's actual Apply output in game (08:46, romi GO 33349)
+
+**Apply.** Wheelkit `3ccd9de` `LiveApplyRun` (Prepare, Apply, Verify) ran with the owner's
+saved profile onto an inert folder.
+- Inputs: the exact RC14 payload, a read-only copy of the owner's Settings `91090837`, and
+  a read-only snapshot of the owner's `mapping-profiles.json` `31283715` (active "Moza KS
+  Pro Triple"). The owner's files were re-hashed unchanged afterwards.
+- Written (14): steer, throttle, brake, handbrake, shiftUp, shiftDown, confirm, back,
+  start, the four navigation directions, camera.
+- Omitted with reasons (13): clutch, reverse and gear1-7 by policy; select, lookBack,
+  reset and horn as unsupported.
+- Settings changed: only `SharedInput=true` and `TransmissionMode=Sequential`.
+- Output: INI `C685B218` (equal to the reviewed `5206EDFB` minus the unsupported lookBack
+  and reset lines) and Settings `AB4C69E8`. Evidence:
+  `wheelkit-owner-apply-20261012-084134/result.json`.
+
+**Run.** Staged copy-only with `-SettingsSource` (copy Settings `B682797E` = `AB4C69E8`
+plus `ForceFeedbackEnabled=false`), native `44E46799`, run `native44e-wheelkit-20261012-084243`.
+- The copy's files were identical before and after the run.
+- The session attached and accepted its first frame, with the same 14 owned actions.
+- The sealed verdict passed: 1358 stage frames composed; the resting wheel held steering
+  on 345 scripted-steer frames; pedals and handbrake passed through; 722 car ticks
+  matched.
+- Force was off: `ffb=False`, no force attempts, and the native log has readers only.
+- Restoration was exact.
+- This is game evidence for the writer's actual output, not a general writer
+  qualification.
+
+**Wording defect for the next rebake.** `CONTROLS.json`'s clutch omission reason, "the
+reviewed profile does not bind it", is wrong for the owner's saved profile, which binds
+clutch on R12 Axis 6. It should read "unqualified: no runtime evidence".
+
+## Clutch and H-pattern drive steps (source, romi 33299)
+
+**Probe change.** `Prepare-ShimProbe -Mode Drive -DriveSteps gears`, which requires
+`-TransmissionMode H-pattern`, runs the latched Drive probe with clutch and gate steps
+instead of the driving steps. It uses the existing machinery: the Observe receipt, the
+recorder route, latched raw Core stimuli, and the settle and release verdict.
+
+**Bindings.** From the owner's saved profile (Wheelkit): clutch on R12 Axis 6, gear1-7 on
+DS-8X Buttons 0-6, reverse on Button 7. The test INI is derived copy-only with
+Transmission H-pattern; the writer still omits these bindings.
+
+**Steps:**
+1. Clutch 60%: the car's `clutchInput` equals the composition (`max(game, applied)`).
+2. The gear1 gate gives first gear (index 2).
+3. The gear3 gate gives third (index 4).
+4. The reverse gate gives index 0.
+5. The lowest bound gate beyond the car's live gear ratios leaves the gear unchanged, never
+   clamped. If every bound gate exists, the row stays open.
+
+**Checks.** Each gate must reach its gear once the change settles and hold it, and the gear
+must return to neutral (index 1) after release. A gate step fails if the car is already in
+that gear. The run refuses a non-H-pattern profile or an automatic gearbox.
+
+**Native.** The probe's no-force latch needs `EnableTestInjection`, which only `DD301314`
+exports. So this qualifies Art's clutch and gate consumers, not the `44E` native.
+
+**Fixtures** (`tests/ShimInput` `GearSteps`): the production `ShimTransmission` drives a
+simulated gearbox. Covered: a five-speed pass with the out-of-range row on gear6, an
+all-gates-exist case left open, a clamped gate, an ignored gate, a start already in gear,
+a gear kept after release, a car clutch that differs, a non-H-pattern profile and an
+automatic gearbox. ShimInput 12229 on net8 and Mono; 9 of 9 verdict mutants killed.
+
+## Clutch and H-pattern runs (12:53 and 12:59, latched probe on DD301314)
+
+Both runs used the owner's standing activity policy (sana 34111 and 34176). Idle was
+recorded truthfully in `owner-activity.json`: 0 s at each launch check, with the
+override allowed. The lease, muting and restoration were unchanged.
+
+**Shared pins:**
+- source `99ffe5b` (= reviewed `e342262` plus only the runner's owner-activity gate);
+- mod `150FBB1F`, native `DD301314`, latched shim `0D10F913`;
+- Settings `455F8033` (owner `91090837` plus `TransmissionMode=H-pattern`, copy only);
+- profile `27543D6B` (the derived H-pattern INI).
+
+**Observe** (`gears-observe-20261012-125313`, receipt `318345D2`) completed.
+- Identity was qualified and restored.
+- Rewired flags were disabled and restored.
+- Raw axes were neutral after disable.
+- The no-force latch was armed.
+- sana reviewed it: PASS.
+
+**Drive** (`gears-drive-20261012-125509`, recorder `D94B4B42`): "Drive passed: every row
+passed". The fences were verified.
+- Rows (held frames / release frames):
+  - clutch 60%: 209/20;
+  - gear1 gate: 141/20;
+  - gear3 gate: 142/20;
+  - reverse gate: 141/20;
+  - "gear5 gate beyond this car": 144/20.
+- Clutch: applied 0.6, equal to the car's `clutchInput` of 0.6.
+- Gates: gear1 gives index 2, gear3 gives 4 and reverse gives 0, each back to neutral (1)
+  after release. Car_Kei has max gear index 5, so gear5 (index 6) left the gear at neutral
+  on all 144 held frames: never moved or clamped. The gearbox stayed manual.
+- The recorder's car tape agrees independently. UNDERWAY gears run 2 -> 1 -> 2 -> 1 -> 4
+  -> 1 -> 0 -> 1, and clutch is 0 or 0.6.
+- Restoration was exact: no errors, the lease released, no marker; the owner's Settings,
+  mod and native were unchanged.
+
+This is evidence for Art's clutch and gate consumers through latched raw Core stimuli. It
+is not physical shifter or pedal, force or `44E` qualification. Gates 2, 4, 6 and 7 were
+not exercised individually; gear8 is unbound.
+
+## Controls contract v2 (sana 34358 and 34369)
+
+`lib/input-shim/CONTROLS.json` is now schema 2, adapter `art-shim-ini-controls-2`. The
+mod is unchanged: only the metadata and its checks changed. The shared `[Controls]`
+profile schema stays 1.
+- **Writer scope.** `writerOmits` is empty, so a writer may write every delivered action
+  within the transmission conditions:
+  - clutch whenever it is bound;
+  - for an H-pattern profile, the gates. `TransmissionMode=H-pattern` is set only when
+    reverse or a gear gate is bound (neutral alone selects nothing), and no gate is
+    written when two gates share one control.
+- **Labels.** Written does not mean qualified. Each delivered action is labelled once,
+  as runtime-shown or fixture-only:
+  - runtime-shown, latched on `DD301314`: clutch, gear1, gear3 and reverse
+    (`gears-drive-20261012-125509`). The return to neutral and the ignored gear5 are
+    recorded as behaviour, not as qualified actions;
+  - runtime-shown, ordinary on `44E46799` with force off: steer, throttle, brake and
+    handbrake (`native44e-script-20261012-082728`, `native44e-wheelkit-20261012-084243`).
+    The v1 contract had not yet recorded these runs;
+  - fixture-only: neutral, gear2, gear4 to gear8 in range, and the menu actions not shown;
+  - not qualified: clutch and gates from a physical pedal or shifter, or in any unlatched
+    session.
+- **Checks.** `tests/ShimInput` asserts three things:
+  - the identity;
+  - an empty `writerOmits`;
+  - that runtime-shown and fixture-only partition the delivered actions.
+
+  Five contract mutants fail it: an omission, a doubly labelled clutch, an unlabelled
+  gear5, schema 1 and a duplicate label. ShimInput passes 12232 on net8 and Mono.
+- **Packaging.** `package.ps1` accepts only schema 2. An empty `writerOmits` survives
+  `ConvertTo-Json -Depth 8` in pwsh and in Windows PowerShell 5.1. Nothing was rebaked:
+  rc.14 (`F4930FA2`) still carries v1.
+- **Coupling.** Wheelkit `a2edcfc` admits only v1, so a v2 package needs the Wheelkit change
+  on `mufa/wheelkit-art-controls-v2`. That change keeps v1 exactly, so rc.14 is still
+  admitted as v1.
+
+## rc.15: contract v2 package (sana 34912)
+
+Private candidate `ArtOfSimRally-0.4.2-rc.15-shared-input.zip`, built from integration
+`6f38e2e` with the same private shim bytes as rc.14. Local only; not installed.
+- SHA-256 `4B916D5120D6393B8849D740F0FA6EE0695A0C070B3BFF570D8F1E9B2D90ED66`, identity
+  `0.4.2-rc.15+6f38e2e….clean`.
+- Mod `B5162503` (= `controls.assemblySha256`), shim `7DDC9621`, native `44E46799`;
+  contract schema 2, `art-shim-ini-controls-2`, no writer omissions.
+- **Gates:** Test-Rc with the corpus passed 20 of 20 on `6f38e2e` (throwaway label
+  rc.912, package `7EAE41BD`). Test-Installer passed 50 assertions on the extracted rc.15.
+
+**Exact-package H-pattern Apply** (`wheelkit-hpattern-apply-rc15-20261012-134203`, harness
+beside it). Wheelkit `5b85809`'s production `LiveApplyRun` (Prepare, Apply, Verify, Restore)
+ran onto an inert folder: the rc.15 payload plus a read-only copy of the owner's Settings
+`91090837`. The profile was the owner's saved "Moza KS Pro Triple" (`31283715`, saved as
+Sequential), switched to H-pattern in memory only.
+- Written (21): steer, throttle, brake, clutch, handbrake, reverse, confirm, back, start,
+  the four navigation directions, camera, gear1 to gear7.
+- Omitted: shift up and down ("This profile selects H-pattern"), and select, lookBack,
+  reset and horn as unsupported.
+- Settings changed: only `SharedInput=true` and `TransmissionMode=H-pattern`.
+- Every written line is identical to the latched gears profile `27543D6B`; only the line
+  order differs. Core's grammar and Art's own ownership parser agree on all 21.
+- Restore was byte exact, the payload was unchanged, and the owner's Settings and profile
+  store were unchanged.
+- Wheelkit's combined `7aa70bc` changes only session code against `5b85809` (no
+  Configure, Profiles, Settings or qualification changes; the same Art catalog entry).
+
+This is offline writer evidence on the exact package. No game ran, and no physical
+pedal, shifter or force was involved.
+
+## rc.16: handoff candidate (sana 35206)
+
+rc.15 plus text only: the README points at Wheelkit 0.6.23 Apply, and the mod's
+missing-profile refusal says "Apply your profile to art of rally in Wheelkit 0.6.23 or
+later" (`6bfac99`). The dormant diagnostic path is unchanged. Local only; not installed.
+- `ArtOfSimRally-0.4.2-rc.16-shared-input.zip`, SHA-256
+  `D0CAD89206956FB08064BA004A8EDDFFE2E988DF9D38E18949730D98CA1055FF`, identity
+  `0.4.2-rc.16+3d65f2f….clean`.
+- Mod `009BE21A` (= `controls.assemblySha256`; it holds the new string and not the old),
+  shim `7DDC9621`, native `44E46799`, contract v2 with no writer omissions.
+- **Gates:** Test-Rc with the corpus passed 20 of 20 on `3d65f2f` (throwaway rc.913,
+  `9A015442`). Test-Installer passed 50 assertions on the extracted rc.16. ShimInput passed
+  12232 on net8 and Mono.
+- **Exact-package H-pattern Apply** (`wheelkit-hpattern-apply-rc16-20261012-135238`): the
+  same harness and profile as rc.15 passed with byte-identical output (INI `73E78230`,
+  Settings `0A380211`). Restore was exact, and the owner inputs were unchanged.
+- Released Wheelkit 0.6.23 (`b382907`) has the same Configure, Profiles, Settings, Services
+  and qualification code as the `5b85809` the harness used, and the same Art catalog entry.
+
+## rc.17: handoff candidate with keyboard steering (sana 35869)
+
+rc.16 plus the reviewed keyboard steering rule (`914247b`, `02c4417`; integration
+`fae3680`, `096bf5e`). It supersedes rc.16 as the private handoff; rc.16 and its evidence
+are kept unchanged. Local only; not installed.
+- `ArtOfSimRally-0.4.2-rc.17-shared-input.zip`, SHA-256
+  `3A5888144A6DD9977881A82BED0D174D389B3AF49DA118846702CE9CA5A546A8`, identity
+  `0.4.2-rc.17+096bf5e….clean`.
+- Mod `AB4C7856` (= `controls.assemblySha256`; it references `IsCurrentInputSource`,
+  `steerAxis` and `AsksKeyboard`, which rc.16's mod does not). Shim `7DDC9621`, native
+  `44E46799`, contract v2 with no writer omissions; the README is unchanged from rc.16.
+- **Gates:** Test-Rc with the corpus passed 20 of 20 on `096bf5e` (throwaway rc.915,
+  `BC328BFF`): keyboard-steering 25, latched suppression 15, ShimInput 12260 on Mono.
+  Test-Installer passed 50 assertions on the extracted rc.17.
+- **Exact-package H-pattern Apply** (`wheelkit-hpattern-apply-rc17-20261012-142321`): the
+  same harness and profile passed with byte-identical output (INI `73E78230`, Settings
+  `0A380211`); restore was exact and the owner inputs were unchanged.
+- **Keyboard steering rule:** while Rewired reports Art's keyboard map as a current source of
+  the car's `steerAxis`, Art's own steer value is kept over the shared wheel. The rule needs
+  this frame's isolation and an ordinary session, a kind fixed at open. Unknown is recorded
+  apart from Absent.
+- **Unqualified:**
+  - Rewired's real keyboard-source detection, and what two opposing held keys report;
+  - physical force feedback, clutch pedal and H-pattern shifter with the shared profile.
+
+## Remaining gaps
+
+1. **Owner handoff pending.** Wheelkit 0.6.23 (`b382907`, published 2026-10-12) writes
+   Art's profile with contract v2 support; rc.17's README and refusal text both point
+   there. Installing rc.17 for the owner is the coordinator's call.
+2. **Physical qualification needs the owner.** Wheel, pedals and keyboard through an
+   ordinary session were shown only with scripted Rewired values. Force feedback together
+   with the shared profile has never run.
+3. **Keyboard steering over a resting wheel is fixture-only.** In rc.16 and earlier, steering
+   stays the wheel's whenever it rests off centre without force (07:01 run). rc.17 keeps
+   Art's own steer value while Rewired reports the keyboard as a current source of the car's
+   `steerAxis` (`Player.IsCurrentInputSource(..., Keyboard)`). That needs this frame's
+   isolation and an ordinary session. It has fixture evidence only:
+   - Rewired's real detection, and what two opposing held keys report, are runtime-unknown;
+   - proving them needs an attended key press, or other genuine native input.
+4. **Clutch and H-pattern are shown only with latched stimuli.** No physical pedal or
+   shifter, and no unlatched session, has carried them. Gates 2 and 4 to 8 in range, and
+   reverse precedence on a shared gate, have fixture evidence only.
+5. **The probe code ships dormant.** It is gated by an environment variable, a nonce and
+   pins. Keep it or strip it from release builds: a review choice.

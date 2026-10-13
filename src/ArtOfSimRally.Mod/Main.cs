@@ -63,7 +63,10 @@ namespace ArtOfSimRally.Mod
 
             // Before anything is applied: a marker from a launch where the
             // DirectInput switch left the keyboard dead turns that setting off.
-            InputBackend.OnLoad();
+            if (!ShimStartup.Prepare(modEntry.Path)) return false;
+            if (!ShimStartup.Requested) InputBackend.OnLoad();
+            SharedInputStartup.Prepare(modEntry.Path); // opt-in shared profile: files only, before any shifter reader opens
+            SharedInputStartup.ForceSettled = () => !ForceReconnect.Pending;
             if (SettingsMigration.NeedsHandbrakeSplit(Settings))
             {
                 try
@@ -97,7 +100,8 @@ namespace ArtOfSimRally.Mod
             modEntry.OnUpdate    = (entry, dt) => TripleScreen.Update();
 
             FfbNative.Load(modEntry.Path);
-            if (Settings.ForceFeedbackEnabled)
+            if (!ShimStartup.Arm()) return false;
+            if (Settings.ForceFeedbackEnabled && !ShimStartup.Requested)
             {
                 ForceReconnect.Request();
                 FfbNative.Waiting();
@@ -121,7 +125,8 @@ namespace ArtOfSimRally.Mod
 
             Enabled = true;
 
-            if (Settings.ShifterEnabled && Settings.ShifterDeviceIndex >= 0)
+            // A shared profile owns the shifter; Art's own reader never opens alongside it.
+            if (!ShimStartup.Requested && !SharedInputStartup.HoldsShifter && Settings.ShifterEnabled && Settings.ShifterDeviceIndex >= 0)
                 Shifter.Open(Settings.ShifterDeviceIndex);
 
             // Releases the wheel and parks telemetry when the game stops driving
@@ -197,6 +202,8 @@ namespace ArtOfSimRally.Mod
 
         internal static void RecoverForceFeedback()
         {
+            // Shared qualification has pinned the readers for a few frames; recover after it settles.
+            if (ShimStartup.Requested || SharedInputStartup.Qualifying) return;
             // USB topology changes can invalidate the shared exclusive handle
             // while native Ready stays true. Reopening reader slots alone keeps
             // referring to that handle. Use the existing focused/idle, strict-
@@ -222,7 +229,7 @@ namespace ArtOfSimRally.Mod
             }
             // Reader slots may share the old FFB handle. Reopen them after the
             // device switch, and release nonexclusive readers before acquiring FFB.
-            WheelInput.Close();
+            WheelInput.ReleaseForForceReconnect();
             Shifter.Close();
             try
             {
@@ -234,8 +241,8 @@ namespace ArtOfSimRally.Mod
             catch (Exception ex) { ModLog.Warning("FFB recovery failed: " + ex.Message); }
             finally
             {
-                if (Enabled && Settings.WheelInputEnabled) WheelInput.Open();
-                if (Enabled && Settings.ShifterEnabled && Settings.ShifterDeviceIndex >= 0)
+                if (Enabled) WheelInput.ReopenAfterForceReconnect();
+                if (Enabled && !SharedInputStartup.HoldsShifter && Settings.ShifterEnabled && Settings.ShifterDeviceIndex >= 0)
                     Shifter.Open(Settings.ShifterDeviceIndex);
             }
         }
@@ -245,6 +252,7 @@ namespace ArtOfSimRally.Mod
         /// <summary>Persists settings changed outside the panel, e.g. by the camera hotkeys.</summary>
         public static bool SaveSettings()
         {
+            if (ShimStartup.Requested) return false;
             _saveAttempts++;
             try
             {

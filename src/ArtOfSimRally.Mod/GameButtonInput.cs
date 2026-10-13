@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
 using Rewired;
+using UnityEngine;
 
 namespace ArtOfSimRally.Mod
 {
@@ -15,6 +16,9 @@ namespace ArtOfSimRally.Mod
         internal static void Observe(int horizontal, int vertical, int submit, int cancel)
         { _horizontal = horizontal; _vertical = vertical; _submit = submit; _cancel = cancel; }
         internal static bool Primary(Player player) => WheelInput.Enabled && GameButtonCompatibility.Allowed && ReferenceEquals(player, PadManager.GetPlayer());
+        // Only inside a latched Core test session (current frame): its injected actions replace the
+        // primary player's native results. Ordinary sessions OR shared buttons into native input.
+        internal static bool Suppressed => Shim.ShimInput.Consumer.LatchedDelivery(Time.frameCount);
         internal static bool Prepare(Player player)
         {
             if (!Primary(player)) return false;
@@ -80,8 +84,9 @@ namespace ArtOfSimRally.Mod
         private static void After(Player __instance, int __0, MethodBase __originalMethod, ref bool __result)
         {
             if (!GameButtonInput.Prepare(__instance)) return;
-            __result |= GameButtonInput.Button(__0, __originalMethod.Name.StartsWith("GetNegative", StringComparison.Ordinal),
+            bool shared = GameButtonInput.Button(__0, __originalMethod.Name.StartsWith("GetNegative", StringComparison.Ordinal),
                 __originalMethod.Name.EndsWith("Down", StringComparison.Ordinal));
+            __result = GameButtonInput.Suppressed ? shared : __result | shared;
         }
     }
     [HarmonyPatch(typeof(Player), "GetAxis", new[] { typeof(int) })]
@@ -92,7 +97,7 @@ namespace ArtOfSimRally.Mod
         {
             if (!GameButtonInput.Prepare(__instance)) return;
             float value = GameButtonInput.Axis(__0);
-            if (value != 0) __result = value;
+            if (value != 0 || GameButtonInput.Suppressed) __result = value;
         }
     }
     [HarmonyPatch(typeof(Player), "GetAnyButtonDown", new Type[] { })]
@@ -101,7 +106,8 @@ namespace ArtOfSimRally.Mod
         [HarmonyPostfix]
         private static void After(Player __instance, ref bool __result)
         {
-            __result |= GameButtonInput.ContinuePressed(__instance);
+            bool pressed = GameButtonInput.ContinuePressed(__instance);
+            __result = GameButtonInput.Primary(__instance) && GameButtonInput.Suppressed ? pressed : __result | pressed;
         }
     }
 }

@@ -19,6 +19,9 @@ param(
     [Parameter(ParameterSetName = 'Record', Mandatory)][switch]$Record,
     [Parameter(ParameterSetName = 'Record')][switch]$MuteOutputs,
     [Parameter(ParameterSetName = 'Record')][ValidatePattern('^[a-zA-Z0-9][a-zA-Z0-9._-]*$')][string]$ScriptedFrom,
+    # Automated plumbing checks only (sana 37927): no input or force device for the recording; force signals are then
+    # not captured. Normal automated captures keep the muted force calculation path.
+    [Parameter(ParameterSetName = 'Record')][switch]$IsolateDevices,
     [Parameter(ParameterSetName = 'Replay', Mandatory)][switch]$Replay,
     [Parameter(ParameterSetName = 'Stop', Mandatory)][switch]$Stop,
     [Parameter(ParameterSetName = 'Restore', Mandatory)][string]$RestoreEnvironment,
@@ -31,7 +34,7 @@ param(
     # Kept only to reject obsolete automation with an actionable error.
     [Parameter(ParameterSetName = 'Replay')][switch]$Assist,
     [Parameter(ParameterSetName = 'Replay')][double]$PoseThreshold = 2,
-    [Parameter(ParameterSetName = 'Replay')][int]$TimeoutMinutes = 30,
+    [Parameter(ParameterSetName = 'Replay')][Parameter(ParameterSetName = 'Record')][int]$TimeoutMinutes = 30,
     [Parameter(ParameterSetName = 'Replay')][switch]$KeepGameOpen
 )
 $ErrorActionPreference = 'Stop'
@@ -42,6 +45,7 @@ $request = Join-Path $env:LOCALAPPDATA 'ArtOfSimRally/session-request.txt'
 # menus appear, so a replay needs the recorded copy.
 $customRally = Join-Path ([Environment]::GetFolderPath('UserProfile')) 'AppData/LocalLow/Funselektor Labs/Art of Rally/customrally'
 . (Join-Path $PSScriptRoot 'SessionEnvironment.ps1')
+. (Join-Path $PSScriptRoot 'ReplayInputIsolation.ps1')
 
 function Send-Probe([string]$Command) {
     $game = Get-Process artofrally -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -91,20 +95,84 @@ switch ($PSCmdlet.ParameterSetName) {
     'Record' {
         $tape = Join-Path $sessions $Name
         if (Test-Path -LiteralPath $tape) { throw "Session '$Name' already exists: $tape" }
+        # An automated recording (sana 37706): muted, from a verified route in this library, under that route's own
+        # start state. Unlike a player recording it runs to completion: it closes the game and restores the owner's
+        # environment itself.
+        $route = $null
+        if ($IsolateDevices -and -not $ScriptedFrom) { throw '-IsolateDevices is for an automated recording (-ScriptedFrom) only.' }
+        if ($ScriptedFrom) {
+            if (-not $MuteOutputs) { throw 'An automated recording must mute outputs: add -MuteOutputs.' }
+            $route = Join-Path $sessions $ScriptedFrom
+            . (Join-Path $PSScriptRoot 'RouteEnvironment.ps1')
+            Assert-RouteSource $route
+            if (Test-Path -LiteralPath (Join-Path $route 'incomplete.txt')) { throw 'The route recording is marked incomplete.' }
+        }
         Assert-GameClosed
         Assert-TestSlot
         New-Item -ItemType Directory -Force -Path $tape | Out-Null
-        Save-SessionEnvironment (Join-Path $tape 'environment-at-start')
-        # Reference copy of the game's local preferences (stage/car choices may live here).
-        & reg export 'HKCU\Software\Funselektor Labs\art of rally' (Join-Path $tape 'playerprefs-at-start.reg') /y | Out-Null
-        if (Test-Path -LiteralPath $customRally) { Copy-Item -LiteralPath $customRally (Join-Path $tape 'customrally-at-start') }
-        else { New-Item -ItemType File (Join-Path $tape 'customrally-absent-at-start') | Out-Null }
+        # Where this tape begins: the environment, a reference copy of the game's local preferences (stage/car choices
+        # may live here) and the custom rally state.
+        function Save-TapeStart {
+            Save-SessionEnvironment (Join-Path $tape 'environment-at-start')
+            & reg export 'HKCU\Software\Funselektor Labs\art of rally' (Join-Path $tape 'playerprefs-at-start.reg') /y | Out-Null
+            if (Test-Path -LiteralPath $customRally) { Copy-Item -LiteralPath $customRally (Join-Path $tape 'customrally-at-start') }
+            else { New-Item -ItemType File (Join-Path $tape 'customrally-absent-at-start') | Out-Null }
+        }
         $values = @{ mode = 'record'; tape = $tape }
         if ($MuteOutputs) { $values['muteOutputs'] = '1' }
         if ($ScriptedFrom) { $values['captureDriver'] = Join-Path $sessions $ScriptedFrom }
-        Write-Request $values
-        Start-Game
-        Write-Output "Recording session '$Name' from launch into $tape"
+        if (-not $route) {
+            Save-TapeStart
+            Write-Request $values
+            Start-Game
+            Write-Output "Recording session '$Name' from launch into $tape"
+            break
+        }
+        # The owner's state first. Every change after it (the route's start state, the isolation, the request and the
+        # launch) is inside the restore, so a failure at any step still returns the owner's settings (sana 38425).
+        $ownerState = Join-Path $tape 'automation/owner-environment'
+        Save-SessionEnvironment $ownerState
+        $sealed = $false; $restored = $false; $launched = $false; $failure = $null
+        try {
+            # The route's preferences and custom rally; this rig's display and the owner's mod settings stay.
+            Set-RouteEnvironment $route $ownerState
+            # A plumbing check (-IsolateDevices): the route's synthetic input is the only input and no force device is
+            # initialised, so force signals are not captured. The same isolation as replay, recorded in
+            # automation/replay-input.json; the owner restore returns the settings (sana 37706/37927).
+            if ($IsolateDevices) { Set-ReplayInputIsolation (Join-Path $GameDir 'Mods/ArtOfSimRally/Settings.xml') (Join-Path $tape 'automation') }
+            Save-TapeStart
+            Write-Request $values
+            $launched = $true
+            Start-Game
+            Write-Output "Recording automated session '$Name' from route '$ScriptedFrom' into $tape (outputs muted)"
+            $deadline = (Get-Date).AddMinutes($TimeoutMinutes)
+            while (-not (Test-Path -LiteralPath (Join-Path $tape 'complete.tsv')) -and -not (Test-Path -LiteralPath (Join-Path $tape 'incomplete.txt'))) {
+                if (-not (Get-Process artofrally -ErrorAction SilentlyContinue)) { Start-Sleep 2; break }
+                if ((Get-Date) -gt $deadline) {
+                    $status = try { Send-Probe 'SESSION-STATUS' } catch { 'status unavailable: ' + $_.Exception.Message }
+                    Write-Warning "No sealed recording after $TimeoutMinutes minutes; $status"; break
+                }
+                Start-Sleep -Seconds 2
+            }
+            $sealed = (Test-Path -LiteralPath (Join-Path $tape 'complete.tsv')) -and -not (Test-Path -LiteralPath (Join-Path $tape 'incomplete.txt'))
+        } catch { $failure = $_ } finally {
+            Remove-Item -LiteralPath $request -ErrorAction SilentlyContinue
+            # Close only a game this run launched; one it never launched is not its to close (sana 38425).
+            $game = if ($launched) { Get-Process artofrally -ErrorAction SilentlyContinue }
+            if ($game) { $null = $game.CloseMainWindow(); $null = $game.WaitForExit(20000) }
+            if (Get-Process artofrally -ErrorAction SilentlyContinue) {
+                $pending = "Environment restore pending until the game closes. Close it, then run: Session.ps1 -RestoreEnvironment `"$ownerState`""
+                Set-Content -LiteralPath (Join-Path $tape 'automation/restore-pending.txt') -Value $pending
+                Write-Warning $pending
+            }
+            else { Restore-SessionEnvironment $ownerState; $restored = $true }
+        }
+        Write-Output "Evidence: $tape"
+        # 0 sealed and the owner environment restored; 1 not sealed (restored); 4 restoration pending. A failed step
+        # throws once the owner environment is restored; a restore failure throws.
+        if (-not $restored) { if ($failure) { Write-Warning ('Automated recording failed: ' + $failure.Exception.Message) }; exit 4 }
+        if ($failure) { throw $failure }
+        if ($sealed) { exit 0 } else { exit 1 }
     }
     'Stop' { Write-Output (Send-Probe 'SESSION-STOP') }
     'Status' { Write-Output (Send-Probe 'SESSION-STATUS') }
@@ -128,6 +196,7 @@ switch ($PSCmdlet.ParameterSetName) {
         New-Item -ItemType Directory -Force -Path $out | Out-Null
         $ownerState = Join-Path $out 'owner-environment'
         Save-SessionEnvironment $ownerState
+        $launched = $false
         try {
         if (Test-Path -LiteralPath (Join-Path $tape 'environment-at-start/state.json')) {
             Restore-SessionEnvironment (Join-Path $tape 'environment-at-start') -NoReceipt
@@ -147,7 +216,10 @@ switch ($PSCmdlet.ParameterSetName) {
         elseif (Test-Path -LiteralPath (Join-Path $tape 'customrally-absent-at-start')) { Remove-Item -LiteralPath $customRally -ErrorAction SilentlyContinue }
         else { Write-Warning 'Tape predates custom rally snapshots; replaying with the current custom rally state.' }
         Restore-SessionPresentation $ownerState
+        # The tape supplies every input: the replay process reads no input or force device (replay-input.json).
+        Set-ReplayInputIsolation (Join-Path $GameDir 'Mods/ArtOfSimRally/Settings.xml') $out
         Write-Request @{ mode = 'replay'; playback = $Playback; tape = $tape; out = $out; poseThreshold = $threshold.ToString([Globalization.CultureInfo]::InvariantCulture) }
+        $launched = $true
         Start-Game
         Write-Output "Replaying '$Name' into $out"
         $deadline = (Get-Date).AddMinutes($TimeoutMinutes)
@@ -165,15 +237,25 @@ switch ($PSCmdlet.ParameterSetName) {
         }
         } finally {
             Remove-Item -LiteralPath $request -ErrorAction SilentlyContinue
-            if (-not $KeepGameOpen) {
+            # Close only a game this run launched (sana 38425).
+            if ($launched -and -not $KeepGameOpen) {
                 $game = Get-Process artofrally -ErrorAction SilentlyContinue
                 if ($game) { $null = $game.CloseMainWindow(); $null = $game.WaitForExit(20000) }
             }
-            if (Get-Process artofrally -ErrorAction SilentlyContinue) { Write-Warning "Environment restore pending until game closes: $ownerState" }
-            else { Restore-SessionEnvironment $ownerState }
+            $restored = $false
+            if (Get-Process artofrally -ErrorAction SilentlyContinue) {
+                # Explicit pending state (KeepGameOpen, or a game that did not close): never a restored success.
+                $pending = "Environment restore pending until the game closes. Close it, then run: Session.ps1 -RestoreEnvironment `"$ownerState`""
+                Set-Content -LiteralPath (Join-Path $out 'restore-pending.txt') -Value $pending
+                Write-Warning $pending
+            }
+            else { Restore-SessionEnvironment $ownerState; $restored = $true }
         }
         Write-Output "Evidence: $out"
-        # 0 passed, 1 failed, 2 aborted.
-        if ($result[0] -like 'passed*') { exit 0 } elseif ($result[0] -like 'aborted*') { exit 2 } else { exit 1 }
+        # 0 passed, or partial:post-stage-divergence (the stage replayed; result.txt says fullSessionPassed=false),
+        # both only after a confirmed restore; 1 failed, 2 aborted; 4 restoration pending (restore-pending.txt), whatever
+        # the replay result. A restore failure throws.
+        if (-not $restored) { exit 4 }
+        if ($result[0] -like 'passed*' -or $result[0] -like 'partial:post-stage-divergence*') { exit 0 } elseif ($result[0] -like 'aborted*') { exit 2 } else { exit 1 }
     }
 }

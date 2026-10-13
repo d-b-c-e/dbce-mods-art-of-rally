@@ -1,0 +1,191 @@
+#Requires -Version 7.0
+# Developer-only, coordinator-serialized diagnostic. The prepared request is the
+# sole configuration. This runner never installs into SourceGameRoot or sends input.
+[CmdletBinding()]
+param([Parameter(Mandatory)][string]$Result,
+      [switch]$PreflightOnly,
+      [ValidateRange(30,180)][int]$ObserveSeconds=90,
+      [string]$ToolkitRepo='E:/Source/toolkits/dbce-wheel-mod-toolkit',
+      [string]$HubRepo='E:/Source/dbce-project-mgmt')
+$ErrorActionPreference='Stop'
+function Full([string]$p) { [IO.Path]::GetFullPath($p) }
+function Hash([string]$p) { if(Test-Path -LiteralPath $p -PathType Leaf) { (Get-FileHash -LiteralPath $p -Algorithm SHA256).Hash } else { 'absent' } }
+function Plain([string]$p) {
+    $cursor=Full $p
+    while($cursor) {
+        if((Test-Path -LiteralPath $cursor) -and ((Get-Item -LiteralPath $cursor -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw "Linked path refused: $cursor" }
+        $cursor=[IO.Path]::GetDirectoryName($cursor)
+    }
+}
+function Within([string]$p,[string]$parent) { $p.Equals($parent,[StringComparison]::OrdinalIgnoreCase) -or $p.StartsWith($parent.TrimEnd('\')+'\',[StringComparison]::OrdinalIgnoreCase) }
+function Assert-GameClosed { if(Get-Process artofrally -ErrorAction SilentlyContinue) { throw 'Art remains open; retain backup and lease, no restoration.' } }
+$Result=Full $Result; Plain $Result
+$requestPath=Join-Path $Result 'request.json'
+$request=Get-Content -LiteralPath $requestPath -Raw | ConvertFrom-Json
+$GameDir=Full $request.GameRoot; $owner=Full $request.SourceGameRoot
+foreach($p in @($GameDir,$owner)) { Plain $p }
+if($request.Schema -ne 1 -or $request.Mode -notin @('Observe','Apply','Trial') -or (Full $request.Result) -ne $Result -or
+    (Within $GameDir $owner) -or (Within $owner $GameDir) -or (Within $Result $GameDir) -or (Within $Result $owner)) { throw 'Invalid disposable request scope.' }
+if([DateTime]::Parse($request.ExpiresUtc).ToUniversalTime() -lt [DateTime]::UtcNow.AddSeconds($ObserveSeconds+30)) { throw 'Prepare a new request with enough time for the complete observation.' }
+if(Test-Path -LiteralPath "$Result/launch.json") { throw 'Request has already been launched; use a fresh result.' }
+$mod=Join-Path $GameDir 'Mods/ArtOfSimRally'
+$pins=@{
+    (Join-Path $mod 'ArtOfSimRally.Mod.dll')=$request.ModSha256
+    (Join-Path $mod 'UnityForceFeedback.dll')=$request.NativeSha256
+    (Join-Path $GameDir 'artofrally_Data/Plugins/x86_64/UnityForceFeedback.dll')=$request.NativeSha256
+    (Join-Path $mod 'Settings.xml')=$request.SettingsSha256
+    ([string]$request.ShimPath)=$request.ShimSha256
+    ([string]$request.ProfilePath)=$request.ProfileSha256
+}
+function Assert-Pins {
+    foreach($p in $pins.Keys) { Plain $p; if((Hash $p) -ne $pins[$p]) { throw "Candidate pin differs: $p" } }
+    # The owner file as read at preparation (the staged copy may carry a disposable transmission override).
+    $prepared=Get-Content -LiteralPath (Join-Path $Result 'prepared.json') -Raw | ConvertFrom-Json
+    if((Hash (Join-Path $owner 'Mods/ArtOfSimRally/Settings.xml')) -ne $prepared.SettingsSourceSha256) { throw 'Owner settings changed since preparation.' }
+    if((Get-Content -LiteralPath (Join-Path $GameDir 'steam_appid.txt') -Raw).Trim() -cne '550320') { throw 'Copy-only Steam app id missing; direct launch could redirect through Steam.' }
+}
+Assert-Pins
+$otherMods=@(Get-ChildItem -LiteralPath (Join-Path $GameDir 'Mods') -Directory | Where-Object Name -NE 'ArtOfSimRally')
+if($otherMods.Count) { throw 'Disposable copy contains optional mod folders; stage only ArtOfSimRally.' }
+[xml]$umm=Get-Content -LiteralPath (Join-Path $GameDir 'artofrally_Data/Managed/UnityModManager/Params.xml') -Raw
+if(@($umm.Param.ModParams.Mod | Where-Object { $_.Id -eq 'ArtOfSimRally' -and $_.Enabled -eq 'true' }).Count -ne 1) { throw 'Candidate UMM mod is not enabled.' }
+foreach($p in @('ArtOfSimRally/controls-request.txt','ArtOfSimRally/session-request.txt','dbce/art-of-rally/inject.on')) {
+    if(Test-Path -LiteralPath (Join-Path $env:LOCALAPPDATA $p)) { throw "Existing developer marker refused: $p" }
+}
+Assert-GameClosed
+. (Join-Path $PSScriptRoot 'SteamLaunchContext.ps1')
+# SteamAPI_Init needs a running Steam client at the game's access level; refuse before any lease or snapshot.
+$context=Get-SteamLaunchContext
+$context | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath "$Result/preflight-steam-context.json"
+if($context.decision -eq 'refuse') { throw "Steam launch context refused: $($context.reason)" }
+if($PreflightOnly) { Write-Output "Disposable candidate pins, settings, app id, UMM, marker and Steam context ($($context.decision)) checks passed. No launch or shared-state mutation."; return }
+$ownerInput=Join-Path $HubRepo 'tools/Owner-Input.ps1'
+. (Join-Path $ToolkitRepo 'tools/playback/Stage-OwnerIdle.ps1')
+. (Join-Path $PSScriptRoot 'OwnerActivity.ps1')
+$ownerRecord=Join-Path $Result 'owner-activity.json'
+if(!(Test-OwnerGate $ownerInput 'launch' 300 $ownerRecord)) { throw 'Owner input is recent; no launch or shared-state mutation.' }
+$customRally=Join-Path $env:USERPROFILE 'AppData/LocalLow/Funselektor Labs/Art of Rally/customrally'
+$localLow=Split-Path $customRally -Parent; $cloud=Join-Path $localLow 'cloud'
+. (Join-Path $PSScriptRoot 'SessionEnvironment.ps1')
+. (Join-Path $ToolkitRepo 'tools/playback/Stage-RigLease.ps1')
+$snapshots=[Collections.Generic.List[object]]::new(); $ownerPins=[Collections.Generic.List[object]]::new()
+$lease=$null; $game=$null; $ready=$false; $environmentSaved=$false; $launchAttempted=$false
+function Save-File([string]$p) {
+    Plain $p; $p=Full $p
+    if($snapshots.path -contains $p) { return }
+    $before=Hash $p; $backup=Join-Path $Result ('shared-files/'+$snapshots.Count+'.bin')
+    if($before -ne 'absent') { Copy-Item -LiteralPath $p -Destination $backup; if((Hash $backup) -ne $before) { throw 'Snapshot changed during copy.' } }
+    $snapshots.Add([pscustomobject]@{path=$p;before=$before;backup=$backup})
+}
+function Files([string]$p,[switch]$Recurse) {
+    if(Test-Path -LiteralPath $p) { Get-ChildItem -LiteralPath $p -File -Recurse:$Recurse | ForEach-Object { Plain $_.FullName; $_.FullName } }
+}
+$lease=Enter-StageRigLease -Path (Join-Path $env:LOCALAPPDATA 'dbce/test-slot.txt') -Owner art-shim-observe -Purpose 'Disposable Art exact identity/cache diagnostic; no force or input; restore shared state'
+try {
+    Assert-GameClosed
+    New-Item -ItemType Directory -Path "$Result/shared-files","$Result/after" | Out-Null
+    foreach($p in @((Files (Join-Path $owner 'Mods') -Recurse)) + @(
+        (Join-Path $owner 'artofrally_Data/Plugins/x86_64/UnityForceFeedback.dll'),
+        (Join-Path $owner 'artofrally_Data/Managed/UnityModManager/Params.xml'),
+        (Join-Path $owner 'steam_appid.txt'))) { Plain $p; $ownerPins.Add([pscustomobject]@{path=$p;sha256=(Hash $p)}) }
+    $ownerPins | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath "$Result/owner-pins.json"
+    Save-SessionEnvironment "$Result/shared-environment"; $environmentSaved=$true
+    foreach($p in @('ArtOfSimRally/ffb.log','ArtOfSimRally/ffb.previous.log','ArtOfSimRally/last-session-frame-health.xml',
+        'DBCE/TripleScreen/games/art-of-rally/status.json','DBCE/TripleScreen/games/art-of-rally/render-diagnostics.json')) { Save-File (Join-Path $env:LOCALAPPDATA $p) }
+    # Unity and Screenshots may also be touched even when no stage is entered.
+    $localBefore=@(Files $localLow -Recurse)
+    foreach($p in $localBefore) { Save-File $p }
+    $snapshots | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath "$Result/shared-files.json"
+    @{schema=1;gameDir=$GameDir;owner=$owner;lease=$lease;localBefore=$localBefore} | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath "$Result/recovery.json"
+    $ready=$true
+    Assert-StageRigLease -Path $lease.path -Token $lease.token
+    if(!(Test-OwnerGate $ownerInput 'prepared' 300 $ownerRecord)) { throw 'Owner input resumed during preparation; no launch.' }
+    Assert-Pins # close the preparation-to-launch gap while holding the lease
+    $context=Get-SteamLaunchContext # Steam may have stopped or changed since preflight
+    if($context.decision -eq 'refuse') { $context | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath "$Result/launch-steam-context.json"; throw "Steam launch context refused: $($context.reason)" }
+    $exe=Join-Path $GameDir 'artofrally.exe'
+    $childEnvironment=[ordered]@{
+        DBCE_ART_SHIM_REQUEST=$requestPath
+        SteamAppId='550320'; SteamGameId='550320'
+        DBCE_FFB_MUTE='1' # native load-time latch precedes managed request validation
+        DBCE_FFB_LOG_PATH=(Join-Path $Result 'native.log') # also covers pre-Prepare refusals
+    }
+    $brokerSha256=$null
+    if($context.decision -eq 'direct') {
+        $start=[Diagnostics.ProcessStartInfo]::new()
+        $start.FileName=$exe; $start.WorkingDirectory=$GameDir; $start.UseShellExecute=$false
+        foreach($name in $childEnvironment.Keys) { $start.EnvironmentVariables[$name]=$childEnvironment[$name] }
+        $launchAttempted=$true
+        $game=[Diagnostics.Process]::Start($start)
+    } else {
+        # Steam runs at the user's Medium level: start the copy through the user shell with cmd-local variables only.
+        $broker=Join-Path $Result 'launch-broker.cmd'
+        $brokerSha256=New-ChildEnvironmentBroker -Path $broker -Executable $exe -WorkingDirectory $GameDir -Environment $childEnvironment
+        $launchUtc=[DateTime]::UtcNow; $launchAttempted=$true
+        Start-MediumBroker $broker
+        # Adopt only the single new exact copy process; never an older or different Art process.
+        $adoptDeadline=[DateTime]::UtcNow.AddSeconds(15)
+        while(!$game -and [DateTime]::UtcNow -lt $adoptDeadline) {
+            $candidates=@(Get-Process artofrally -ErrorAction SilentlyContinue)
+            if($candidates.Count -gt 1) { throw 'More than one Art process appeared after the broker launch; do not answer Steam session dialogs.' }
+            if($candidates.Count -eq 1 -and $candidates[0].StartTime.ToUniversalTime() -ge $launchUtc.AddSeconds(-1)) { $game=$candidates[0]; $null=$game.SafeHandle }
+            else { Start-Sleep -Milliseconds 100 }
+        }
+        if(!$game) { throw 'Broker launch produced no Art process; nothing to close.' }
+    }
+    $processStart=$game.StartTime.ToUniversalTime(); $imageDeadline=[DateTime]::UtcNow.AddSeconds(5); $imagePath=$null
+    while(!$imagePath -and !$game.HasExited -and [DateTime]::UtcNow -lt $imageDeadline) {
+        try { $game.Refresh(); $imagePath=$game.MainModule.FileName } catch [ComponentModel.Win32Exception] { }
+        if(!$imagePath) { $null=$game.WaitForExit(100) }
+    }
+    if(![string]::Equals($imagePath,$exe,[StringComparison]::OrdinalIgnoreCase)) { throw 'Launched executable path unavailable or differs; no replacement process action authorized.' }
+    $gameIntegrity=try { Get-ProcessIntegrity $game.Id } catch { $null }
+    $matchesSteam=$null -ne $gameIntegrity -and $gameIntegrity.integrity -eq $context.steam[0].integrity
+    @{pid=$game.Id;startUtc=$processStart.ToString('o');executable=$imagePath;requestSha256=(Hash $requestPath);lease=$lease
+        launchMode=$context.decision;brokerSha256=$brokerSha256;steam=$context.steam[0];launcher=$context.launcher;game=$gameIntegrity;integrityMatchesSteam=$matchesSteam} |
+        ConvertTo-Json -Depth 4 | Set-Content -LiteralPath "$Result/launch.json"
+    if(!$matchesSteam) { throw 'Launched copy integrity differs from Steam; SteamAPI_Init cannot succeed. Closing the exact child without observation.' }
+    Write-Output "Disposable Art started: pid=$($game.Id), path=$imagePath. No input sent."
+    $deadline=[DateTime]::UtcNow.AddSeconds($ObserveSeconds)
+    while(!$game.HasExited -and !(Test-Path -LiteralPath "$Result/probe-receipt.json") -and [DateTime]::UtcNow -lt $deadline) {
+        Assert-StageRigLease -Path $lease.path -Token $lease.token
+        if(@(Get-Process artofrally -ErrorAction SilentlyContinue | Where-Object Id -NE $game.Id).Count) { throw 'Another Art process appeared; do not answer Steam session dialogs.' }
+        if(!(Test-OwnerGate $ownerInput 'observation' 5 $ownerRecord)) { 'Owner input resumed; ending observation.' | Set-Content -LiteralPath "$Result/interrupted.txt"; break }
+        $null=$game.WaitForExit(500); $game.Refresh()
+    }
+    @{receiptPresent=(Test-Path -LiteralPath "$Result/probe-receipt.json");exited=$game.HasExited;windowTitle=$game.MainWindowTitle;windowHandle=$game.MainWindowHandle.ToInt64();observedUtc=[DateTime]::UtcNow.ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath "$Result/observation.json"
+    if(!(Test-Path -LiteralPath "$Result/probe-receipt.json")) { Write-Warning 'No probe receipt; inspect the retained candidate/Unity logs. No input sent.' }
+} finally {
+    if($game -and !$game.HasExited) {
+        $game.Refresh()
+        # Close only this exact child identity. Never command a Steam replacement.
+        if($game.StartTime.ToUniversalTime() -ne $processStart -or ![string]::Equals($game.MainModule.FileName,(Join-Path $GameDir 'artofrally.exe'),[StringComparison]::OrdinalIgnoreCase)) { throw 'Child identity changed; backup and lease retained.' }
+        $null=$game.CloseMainWindow(); $null=$game.WaitForExit(20000)
+    }
+    Assert-GameClosed
+    $errors=[Collections.Generic.List[string]]::new()
+    function Attempt([scriptblock]$work) { try { & $work } catch { $errors.Add($_.Exception.Message); Write-Warning $_.Exception.Message } }
+    if($ready -and $launchAttempted) {
+        foreach($item in $snapshots) { Attempt {
+            Plain $item.path; Plain $item.backup
+            if($item.before -ne 'absent' -and (Hash $item.backup) -ne $item.before) { throw 'Recovery backup mismatch.' }
+            if(Test-Path -LiteralPath $item.path -PathType Leaf) { Copy-Item -LiteralPath $item.path -Destination (Join-Path $Result ('after/'+[IO.Path]::GetFileName($item.backup))) }
+            if($item.before -eq 'absent') { if(Test-Path -LiteralPath $item.path) { Remove-Item -LiteralPath $item.path } }
+            else { New-Item -ItemType Directory -Path (Split-Path $item.path) -Force | Out-Null; Copy-Item -LiteralPath $item.backup -Destination $item.path -Force }
+            if((Hash $item.path) -ne $item.before) { throw "Shared file restoration mismatch: $($item.path)" }
+        } }
+        foreach($p in @(Files $localLow -Recurse | Where-Object { $_ -notin $localBefore })) { Attempt {
+            Plain $p
+            if(!(Within $p $localLow)) { throw 'New file escaped Art shared scope.' }
+            Copy-Item -LiteralPath $p -Destination (Join-Path $Result ('after/new-'+[guid]::NewGuid().ToString('N')))
+            Remove-Item -LiteralPath $p
+        } }
+    }
+    if($environmentSaved -and $launchAttempted) { Attempt { Restore-SessionEnvironment "$Result/shared-environment" } }
+    foreach($pin in $ownerPins) { Attempt { if((Hash $pin.path) -ne $pin.sha256) { throw "Owner file differs; retained for review, never overwritten: $($pin.path)" } } }
+    if($errors.Count) { $errors | Set-Content -LiteralPath "$Result/restore-errors.txt"; throw "Restoration incomplete; backup and lease retained: $Result" }
+    # A pre-launch refusal wrote no shared state and must not overwrite a newer
+    # owner preference with an unnecessary restoration.
+    [DateTime]::UtcNow.ToString('o') | Set-Content -LiteralPath "$Result/restored.txt"
+    $null=Exit-StageRigLease -Lease $lease
+}

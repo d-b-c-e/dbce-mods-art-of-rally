@@ -46,6 +46,7 @@ namespace ArtOfSimRally.Testing
         private static bool _sceneSelections;
         private static int _clicksInFrame;
         private static CaptureDriver _captureDriver;
+        private static CapturePolicy _capturePolicy;
 
         internal static string RequestPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "ArtOfSimRally", "session-request.txt");
@@ -59,7 +60,17 @@ namespace ArtOfSimRally.Testing
 
         // Recording.
         private static readonly Dictionary<string, string> _frameValues = new Dictionary<string, string>();
-        private static TextWriter _inputWriter, _carWriter, _shiftWriter;
+        private static TextWriter _inputWriter, _carWriter, _shiftWriter, _nativeWriter;
+        // The mod's shared-input path (sana 36236): identity, per-frame shared.tape, final outcome. Optional analysis.
+        private static SharedEvidence _shared;
+        private static TextWriter _sharedWriter;
+        private static string _sharedTapeFailure;
+        // carInput=native: Art's own GetInput result this frame (before any mod postfix) and the mod's shared state.
+        private static readonly float[] _art = new float[5];
+        private static bool _artStart;
+        private static int _artFrame = -1;
+        private static FieldInfo _isolatedFrame, _lastComposition;
+        private static FieldInfo[] _compositionFields;
         private static StreamWriter _eventWriter;
         private static string _incomplete;
         private static int _drivetrainTick = int.MinValue;
@@ -72,6 +83,7 @@ namespace ArtOfSimRally.Testing
         // Replay.
         private static SessionAligner<Dictionary<string, string>> _frames;
         private static SessionAligner<CarRow> _car;
+        private static int _drivingRows, _drivingSegments;
         private static readonly Dictionary<string, string> Empty = new Dictionary<string, string>();
         private static Dictionary<string, string> _playing = Empty;
         private static CarRow _carPlaying;
@@ -151,11 +163,22 @@ namespace ArtOfSimRally.Testing
                 _trajectory = !request.TryGetValue("playback", out var playback) || playback == "trajectory";
                 if (!_trajectory && playback != "input-diagnostic") throw new InvalidDataException("unknown playback mode");
                 _harmony = new Harmony(HarmonyId);
+                // Diagnostic, opt-in (sana 45712): observe the identity mapper's inputs and probe DualShock 4 rows.
+                if (request.TryGetValue("identityProbe", out var identityProbe))
+                {
+                    if (identityProbe != "1") throw new InvalidDataException("identityProbe must be 1");
+                    if (replay) throw new InvalidDataException("identityProbe is only valid for recording");
+                    IdentityProbe.Arm(_harmony, () => _dir);
+                }
                 if (request.TryGetValue("captureDriver", out var driverSource))
                 {
                     if (replay) throw new InvalidDataException("capture driver is only valid for recording");
                     PatchOutputs();
-                    _captureDriver = new CaptureDriver(driverSource, 12f);
+                    _capturePolicy = CapturePolicy.Parse(request);
+                    if (_capturePolicy.NativeCarInput) PatchNativeEvidence();
+                    // Every waiting policy (native, or shared with holdForShared) binds the shared session's readiness;
+                    // shared-car mode installs no native evidence hooks (sana 45326).
+                    _captureDriver = new CaptureDriver(driverSource, _capturePolicy, SharedReadiness.For(_capturePolicy, AccessTools.TypeByName));
                 }
                 if (replay) { PatchOutputs(); LoadReplay(request.TryGetValue("out", out var o) && o.Length > 0 ? o : Path.Combine(_dir, "replay-" + DateTime.Now.ToString("yyyyMMdd-HHmmss"))); }
                 else if (string.Equals(mode, "record", StringComparison.OrdinalIgnoreCase)) OpenRecording();
@@ -172,7 +195,9 @@ namespace ArtOfSimRally.Testing
                 // Remove input hooks; keep the output mutes if they went in.
                 try { _harmony?.UnpatchAll(HarmonyId); if (_muteOutputs) PatchOutputs(); } catch (Exception muteError) { _log?.Invoke("OUTPUT MUTE FAILURE: " + muteError); }
                 _mode = Mode.Off;
-                _inputWriter?.Dispose(); _carWriter?.Dispose(); _shiftWriter?.Dispose();
+                _inputWriter?.Dispose(); _carWriter?.Dispose(); _shiftWriter?.Dispose(); _nativeWriter?.Dispose();
+                try { _sharedWriter?.Dispose(); } catch { }
+                _sharedWriter = null;
                 if (replay && request.TryGetValue("out", out var failedOut))
                 {
                     Directory.CreateDirectory(failedOut);
@@ -195,12 +220,35 @@ namespace ArtOfSimRally.Testing
             _eventWriter = Create(Path.Combine(_dir, "events.log"));
             _carWriter.WriteLine("step\tmarker\tsteer\tthrottle\tbrake\thandbrake\tclutch\tstart\tgear\tpx\tpy\tpz\tqx\tqy\tqz\tqw\tvx\tvy\tvz\tavx\tavy\tavz\ttick\tresolvedSteer\tresolvedThrottle\tresolvedBrake\trpm");
             _shiftWriter.WriteLine("tick\tgear\tchangeTarget\tphase");
+            if (_capturePolicy?.NativeCarInput == true)
+            {
+                _nativeWriter = new BufferedTapeWriter(Path.Combine(_dir, "native.tape"));
+                _nativeWriter.WriteLine(NativeEvidence.Header);
+            }
+            // The input path in use (sana 36236). Shared evidence is optional: an unbound mod is named, never refused.
+            _shared = SharedEvidence.Bind(out string sharedFailure);
+            string identity = SharedEvidence.Identity(_shared, sharedFailure, () =>
+            {
+                var modType = SharedEvidence.Find("ArtOfSimRally.Mod.Main");
+                return modType != null ? Path.GetDirectoryName(modType.Assembly.Location) : Path.Combine(Path.GetDirectoryName(Application.dataPath), "Mods", "ArtOfSimRally");
+            }, () => Path.Combine(Application.dataPath, "Plugins", "x86_64", "UnityForceFeedback.dll"));
+            if (_shared?.Requested == true)
+            {
+                try { _sharedWriter = new BufferedTapeWriter(Path.Combine(_dir, "shared.tape")); _sharedWriter.WriteLine(SharedEvidence.Header); }
+                catch (Exception ex)
+                {
+                    _sharedTapeFailure = "open: " + ex.GetType().Name + ": " + ex.Message;
+                    try { _sharedWriter?.Dispose(); } catch { }
+                    _sharedWriter = null;
+                }
+            }
             File.WriteAllText(Path.Combine(_dir, "session.txt"),
                 "format=" + Format + "\ngame=" + Application.version + "\nunity=" + Application.unityVersion +
                 "\ngameAssemblySha256=" + ArtifactHash.FileHash(typeof(CarDynamics).Assembly.Location) +
                 "\nfixedDeltaTime=" + N(Time.fixedDeltaTime) + "\nstartedUtc=" + DateTime.UtcNow.ToString("o") +
-                "\nsceneSelections=1\ncaptureSource=" + (_captureDriver == null ? "player" : "synthetic-integration") + "\nphysicalOutput=" + (!_muteOutputs).ToString().ToLowerInvariant() + "\n");
-            RecorderMain.StartSessionSignals(_dir, !_muteOutputs, _captureDriver != null);
+                "\nsceneSelections=1\ncaptureSource=" + (_captureDriver == null ? "player" : _capturePolicy.Source) + "\nphysicalOutput=" + (!_muteOutputs).ToString().ToLowerInvariant() + "\n" +
+                identity);
+            RecorderMain.StartSessionSignals(_dir, !_muteOutputs, _captureDriver == null ? "player" : _capturePolicy.Source);
         }
 
         private static void LoadReplay(string output)
@@ -292,6 +340,8 @@ namespace ArtOfSimRally.Testing
             _frames = new SessionAligner<Dictionary<string, string>>(frames, markers, "frames", () => Time.realtimeSinceStartup);
             _car = new SessionAligner<CarRow>(car, markers, "car", () => Time.realtimeSinceStartup, earlyLimit: 0,
                 required: m => m.EndsWith("|UNDERWAY"));
+            _drivingRows = car.Count(r => markers[r.Key].EndsWith("|UNDERWAY"));
+            _drivingSegments = car.Where((r, i) => markers[r.Key].EndsWith("|UNDERWAY") && (i == 0 || car[i - 1].Key != r.Key)).Count();
             _out = output;
             Directory.CreateDirectory(Path.Combine(_out, "shots"));
             _eventWriter = Create(Path.Combine(_out, "replay.log"));
@@ -537,15 +587,63 @@ namespace ArtOfSimRally.Testing
         }
 
         // Replay only: keep the per-frame read consistent with the taped tick.
-        private static void AfterCarInput(ref float throttleInput, ref float brakeInput, ref float steerInput,
+        private static void AfterCarInput(AxisCarController __instance, ref float throttleInput, ref float brakeInput, ref float steerInput,
             ref float handbrakeInput, ref float clutchInput, ref bool startEngineInput)
         {
             if (_mode == Mode.Record && _captureDriver != null)
-            { _captureDriver.Input(ref throttleInput, ref brakeInput, ref steerInput, ref handbrakeInput, ref clutchInput, ref startEngineInput); return; }
+            {
+                _captureDriver.Input(ref throttleInput, ref brakeInput, ref steerInput, ref handbrakeInput, ref clutchInput, ref startEngineInput);
+                if (_nativeWriter != null && _artFrame == Time.frameCount && IsPlayer(__instance))
+                    NativeRow(steerInput, throttleInput, brakeInput, handbrakeInput, clutchInput, startEngineInput);
+                return;
+            }
             if (_mode != Mode.Replay) return;
             if (!_carActive) { throttleInput = brakeInput = steerInput = handbrakeInput = clutchInput = 0; startEngineInput = false; return; }
             steerInput = _carPlaying.Steer; throttleInput = _carPlaying.Throttle; brakeInput = _carPlaying.Brake;
             handbrakeInput = _carPlaying.Handbrake; clutchInput = _carPlaying.Clutch; startEngineInput = _carPlaying.StartEngine;
+        }
+
+        // Native: Art's own result, ahead of every mod postfix (the recorder's AfterCarInput runs last), and the
+        // mod's shared state that frame, read from its ShimInput (absent or changed members refuse the capture).
+        private static void PatchNativeEvidence()
+        {
+            var shim = AccessTools.TypeByName("ArtOfSimRally.Mod.Shim.ShimInput") ?? throw new MissingMemberException("ShimInput");
+            _isolatedFrame = AccessTools.Field(shim, "IsolatedFrame") ?? throw new MissingFieldException("ShimInput.IsolatedFrame");
+            _lastComposition = AccessTools.Field(shim, "Last") ?? throw new MissingFieldException("ShimInput.Last");
+            _compositionFields = new[] { "Frame", "SteerLive", "AppliedSteer", "AppliedThrottle", "AppliedBrake", "AppliedHandbrake", "Alignment" }
+                .Select(n => AccessTools.Field(_lastComposition.FieldType, n) ?? throw new MissingFieldException("ShimInput.Composition." + n)).ToArray();
+            _harmony.Patch(AccessTools.Method(typeof(AxisCarController), "GetInput"),
+                postfix: new HarmonyMethod(typeof(SessionTape), nameof(BeforeModCarInput)) { priority = Priority.First });
+        }
+        private static void BeforeModCarInput(AxisCarController __instance, float throttleInput, float brakeInput, float steerInput,
+            float handbrakeInput, float clutchInput, bool startEngineInput)
+        {
+            if (_mode != Mode.Record || _nativeWriter == null || !IsPlayer(__instance)) return;
+            _art[0] = steerInput; _art[1] = throttleInput; _art[2] = brakeInput; _art[3] = handbrakeInput; _art[4] = clutchInput;
+            _artStart = startEngineInput; _artFrame = Time.frameCount;
+        }
+        private static void NativeRow(float steer, float throttle, float brake, float handbrake, float clutch, bool start)
+        {
+            try
+            {
+                int frame = Time.frameCount;
+                var last = _lastComposition.GetValue(null);
+                var line = new StringBuilder();
+                void Add(string value) { if (line.Length > 0) line.Append('\t'); line.Append(value); }
+                Add(frame.ToString(CultureInfo.InvariantCulture)); Add(MarkerId(Marker()).ToString(CultureInfo.InvariantCulture)); Add(Application.isFocused ? "1" : "0");
+                foreach (var action in NativeEvidence.AxisNames)
+                    Add(_captureDriver.Values.TryGetValue("R0.GetAxisRaw.s" + action, out var scripted) ? scripted : "0");
+                foreach (var value in _art) Add(N(value));
+                Add(_artStart ? "1" : "0");
+                foreach (var value in new[] { steer, throttle, brake, handbrake, clutch }) Add(N(value));
+                Add(start ? "1" : "0");
+                Add((int)_compositionFields[0].GetValue(last) == frame ? "1" : "0");
+                Add((int)_isolatedFrame.GetValue(null) == frame ? "1" : "0");
+                Add((bool)_compositionFields[1].GetValue(last) ? "1" : "0");
+                for (int i = 2; i < _compositionFields.Length; i++) Add(N((float)_compositionFields[i].GetValue(last)));
+                _nativeWriter.WriteLine(line.ToString());
+            }
+            catch (Exception ex) { MarkIncomplete("native evidence: " + ex.Message); }
         }
 
         private static bool IsPlayer(Component component)
@@ -730,6 +828,13 @@ namespace ArtOfSimRally.Testing
         internal static void Tick()
         {
             if (_mode == Mode.Off) return;
+            // Diagnostic only, first and on its own: Rewired's joystick rows (rewired-inventory.tsv), so a later tick
+            // failure or a shared refusal cannot hide them (sana 45274).
+            if (_mode == Mode.Record)
+            {
+                try { var inventory = RewiredInventory.Maybe(_dir, Time.realtimeSinceStartup); if (inventory != null) Event(inventory); }
+                catch (Exception ex) { Event("rewired inventory failed: " + ex.ToString().Replace('\r', ' ').Replace('\n', ' ')); }
+            }
             try
             {
                 int marker = MarkerId(Marker());
@@ -739,7 +844,7 @@ namespace ArtOfSimRally.Testing
                 {
                     if (_captureDriver != null)
                     {
-                        if (_captureDriver.Tick(MarkerText(marker))) { Stop("synthetic integration capture completed"); return; }
+                        if (_captureDriver.Tick(MarkerText(marker))) { Stop(_capturePolicy.Source + " capture completed"); return; }
                         _playing = _captureDriver.Values;
                         var driverUmm = UnityModManagerNet.UnityModManager.UI.Instance;
                         if (driverUmm != null && driverUmm.Opened != _playing.ContainsKey("U.Open")) driverUmm.ToggleWindow(_playing.ContainsKey("U.Open"));
@@ -754,10 +859,20 @@ namespace ArtOfSimRally.Testing
                     line.Append(_frame.ToString(CultureInfo.InvariantCulture)).Append('\t').Append(marker.ToString(CultureInfo.InvariantCulture));
                     foreach (var pair in _frameValues) line.Append('\t').Append(pair.Key).Append('=').Append(pair.Value);
                     _inputWriter.WriteLine(line.ToString());
+                    // Analysis only: a failed shared row stops shared.tape (named in end.txt), not the recording.
+                    if (_sharedWriter != null)
+                    {
+                        try { _sharedWriter.WriteLine(_shared.Row(Time.frameCount, marker)); }
+                        catch (Exception ex)
+                        {
+                            _sharedTapeFailure = ex.GetType().Name + ": " + (ex.InnerException ?? ex).Message; Event("shared.tape stopped: " + _sharedTapeFailure);
+                            try { _sharedWriter.Dispose(); } catch { } _sharedWriter = null;
+                        }
+                    }
                     _frameValues.Clear();
                     _clicksInFrame = 0;
                     if (marker != _lastMarker) { _lastMarker = marker; Reseed(marker); Event("segment " + MarkerText(marker)); Shot(_dir, marker); }
-                    if (_frame % 60 == 0) { _inputWriter.Flush(); _carWriter.Flush(); _shiftWriter.Flush(); _eventWriter.Flush(); }
+                    if (_frame % 60 == 0) { _inputWriter.Flush(); _carWriter.Flush(); _shiftWriter.Flush(); _nativeWriter?.Flush(); _sharedWriter?.Flush(); _eventWriter.Flush(); }
                 }
                 else
                 {
@@ -776,7 +891,14 @@ namespace ArtOfSimRally.Testing
                     ReplayCinematicSkip(MarkerText(marker));
                     if (marker != _lastMarker) { _lastMarker = marker; Reseed(marker); }
                     if (_frames.Segment != before) { Event("segment " + _frames.Segment + " " + MarkerText(marker)); Shot(_out, marker); }
-                    if (_frames.Failed != null) Fail(_frames.Failed);
+                    if (_frames.Failed != null)
+                    {
+                        // Every recorded driving row played and passed, then a later menu marker never came: its own
+                        // outcome, never a full pass (sana 36418). Before or during the stage it stays a failure.
+                        int unplayed = _car.SkippedWhere(m => m.EndsWith("|UNDERWAY")) + _frames.SkippedWhere(m => m.EndsWith("|UNDERWAY"));
+                        string stage = _car.Failed == null ? ReplayOutcome.PostStage(_frames.Failed, _drivingRows, unplayed, Verdict("driving rows played")) : null;
+                        if (stage != null) Finish(stage); else Fail(_frames.Failed);
+                    }
                     else if (_car.Failed != null) Fail(_car.Failed);
                     else if (_frames.Finished && _car.SkippedWhere(m => m.EndsWith("|UNDERWAY")) == 0)
                         Finish(Verdict("final menu state reached and all driving rows played; unused non-driving rows=" + _car.SkippedWhere(m => !m.EndsWith("|UNDERWAY"))));
@@ -784,7 +906,12 @@ namespace ArtOfSimRally.Testing
                 }
                 _frame++;
             }
-            catch (Exception ex) { Fail("tick: " + ex.Message); }
+            catch (Exception ex)
+            {
+                // The full exception with its stack (sana 45274), beside the short reason.
+                try { var where = _mode == Mode.Record ? _dir : _out; if (where != null) File.WriteAllText(Path.Combine(where, "tick-exception.txt"), ex.ToString()); } catch { }
+                Fail("tick: " + ex.Message + " (" + ex.GetType().FullName + "; stack in tick-exception.txt)");
+            }
         }
 
         internal static string Command(string command)
@@ -802,14 +929,31 @@ namespace ArtOfSimRally.Testing
                 Event("record stopped: " + why + (_incomplete != null ? "; INCOMPLETE: " + _incomplete : ""));
                 try { RecorderMain.StopSessionSignals(_dir); }
                 catch (Exception ex) { MarkIncomplete("signal capture: " + ex.Message); }
-                try { _inputWriter?.Dispose(); _carWriter?.Dispose(); _shiftWriter?.Dispose(); _eventWriter?.Dispose(); }
+                bool native = _nativeWriter != null;
+                try { _sharedWriter?.Dispose(); } catch (Exception ex) { _sharedTapeFailure = _sharedTapeFailure ?? "closing: " + ex.Message; }
+                string sharedOutcome = "";
+                try { sharedOutcome = _shared == null ? "sharedPhase=unavailable\n" : _shared.Outcome(); }
+                catch (Exception ex) { sharedOutcome = "sharedPhase=unreadable: " + ex.GetType().Name + "\n"; }
+                if (_sharedTapeFailure != null) sharedOutcome += "sharedTape=stopped: " + _sharedTapeFailure.Replace('\n', ' ').Replace('\r', ' ') + "\n";
+                try { _inputWriter?.Dispose(); _carWriter?.Dispose(); _shiftWriter?.Dispose(); _nativeWriter?.Dispose(); _eventWriter?.Dispose(); }
                 catch (Exception ex) { MarkIncomplete("closing files: " + ex.Message); }
-                _inputWriter = _carWriter = _shiftWriter = null; _eventWriter = null;
+                _inputWriter = _carWriter = _shiftWriter = _nativeWriter = null; _eventWriter = null; _sharedWriter = null;
+                if (native && _incomplete == null)
+                {
+                    // The verdict is sealed with the tapes it was computed from.
+                    try
+                    {
+                        string verdict = NativeEvidence.Evaluate(File.ReadLines(Path.Combine(_dir, "native.tape")), File.ReadLines(Path.Combine(_dir, "car.tape")),
+                            m => MarkerText(m).EndsWith("|UNDERWAY"), out bool passed);
+                        File.WriteAllText(Path.Combine(_dir, "native-verdict.txt"), "passed=" + (passed ? "true" : "false") + "\nverdict=" + verdict + "\n");
+                    }
+                    catch (Exception ex) { MarkIncomplete("native verdict: " + ex.Message); }
+                }
                 if (_incomplete == null)
                 {
                     try
                     {
-                        File.WriteAllText(Path.Combine(_dir, "end.txt"), "reason=" + why + "\nframes=" + _frame + "\nsteps=" + _fixedStep + "\n");
+                        File.WriteAllText(Path.Combine(_dir, "end.txt"), "reason=" + why + "\nframes=" + _frame + "\nsteps=" + _fixedStep + "\n" + sharedOutcome);
                         var sealedFiles = Directory.GetFiles(_dir).Select(Path.GetFileName).Where(n => n != "complete.tsv" && !n.EndsWith(".tmp")).ToList();
                         var environment = Path.Combine(_dir, "environment-at-start");
                         if (Directory.Exists(environment)) sealedFiles.AddRange(Directory.GetFiles(environment).Select(p => "environment-at-start/" + Path.GetFileName(p)));
@@ -853,7 +997,10 @@ namespace ArtOfSimRally.Testing
             {
                 _divergenceWriter?.Dispose(); _divergenceWriter = null;
                 var tmp = Path.Combine(_out, "result.txt.tmp");
-                File.WriteAllText(tmp, result + "\n" + Describe + "\n");
+                // The marker the cursor actually waited out (it names the current segment after an early advance).
+                string expected = ReplayOutcome.AwaitedMarker(_frames?.Failed);
+                File.WriteAllText(tmp, result + "\n" + Describe + "\n" + ReplayOutcome.Fields(result, _drivingSegments, expected,
+                    Dbce.Wheel.Playback.SegmentCursor<int>.WaitSeconds));
                 File.Move(tmp, Path.Combine(_out, "result.txt"));
             }
             catch (Exception ex) { _log?.Invoke("Session tape result not written: " + ex.Message); }

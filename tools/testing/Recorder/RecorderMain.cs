@@ -68,11 +68,11 @@ namespace ArtOfSimRally.Testing
             if (includeCollision) patches.Patch(subject.Collision, prefix: Hook(nameof(BeforeCollision)));
         }
         private static HarmonyMethod Hook(string name) => new HarmonyMethod(typeof(RecorderMain), name);
-        internal static void StartSessionSignals(string directory, bool physicalOutput, bool synthetic)
+        internal static void StartSessionSignals(string directory, bool physicalOutput, string captureSource)
         {
             var identity = subject.Identity(Application.version, Application.unityVersion);
             identity.SetAttributeValue("physicalOutput", physicalOutput);
-            identity.SetAttributeValue("captureSource", synthetic ? "synthetic-integration" : "player");
+            identity.SetAttributeValue("captureSource", captureSource);
             identity.SetAttributeValue("forceUnits", "signed-normalized-request; device column uses nominal +/-10000 units, not measured torque");
             identity.SetAttributeValue("deliveryMeaning", physicalOutput ? "native-api-acceptance" : "muted-native-api-acceptance");
             if (!Session.Start(false, identity, Path.Combine(directory, "signals"))) throw new InvalidOperationException(Session.Status);

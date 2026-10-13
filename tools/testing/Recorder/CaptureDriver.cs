@@ -7,18 +7,23 @@ using UnityEngine;
 
 namespace ArtOfSimRally.Testing
 {
-    /// <summary>Opt-in integration fixture: an existing menu script plus a short, synthetic physics drive.
-    /// It records the live result, never copies source car poses. Physical/platform outputs must be muted.</summary>
+    /// <summary>Opt-in integration fixture: an existing menu script plus a short, synthetic physics drive,
+    /// (carInput=shared) the car left to the mod's shared input, or (carInput=native) the car reading scripted
+    /// Rewired values through Art and the mod. It records the live result, never copies source car poses.
+    /// Physical/platform outputs must be muted.</summary>
     internal sealed class CaptureDriver
     {
         private readonly SessionAligner<Dictionary<string, string>> menus;
         private readonly Dictionary<string, int> markers;
-        private float underwayAt = -1;
-        private readonly float duration;
+        private float underwayAt = -1, heldSince = -1;
+        private bool routeStarted;
+        private readonly CapturePolicy policy;
+        private readonly Func<bool> sharedStarted;
         internal Dictionary<string, string> Values { get; private set; } = new Dictionary<string, string>();
-        internal CaptureDriver(string source, float duration)
+        internal CaptureDriver(string source, CapturePolicy policy, Func<bool> sharedStarted = null)
         {
-            this.duration = duration;
+            this.policy = policy ?? throw new ArgumentNullException(nameof(policy));
+            this.sharedStarted = sharedStarted ?? (() => true);
             var names = File.ReadAllLines(Path.Combine(source, "markers.tsv")).Select(l => l.Split('\t')).ToDictionary(p => int.Parse(p[0], CultureInfo.InvariantCulture), p => p[1]);
             markers = names.ToDictionary(p => p.Value, p => p.Key);
             var rows = new List<KeyValuePair<int, Dictionary<string, string>>>();
@@ -32,10 +37,20 @@ namespace ArtOfSimRally.Testing
         }
         internal bool Tick(string marker)
         {
-            if (marker.EndsWith("|UNDERWAY"))
+            bool underway = marker.EndsWith("|UNDERWAY");
+            if (policy.Done(underway, Time.realtimeSinceStartup, ref underwayAt, File.Exists)) return true;
+            // Native (and shared with holdForShared=1): the title waits, untouched, until the shared session has started.
+            if (!routeStarted)
             {
-                if (underwayAt < 0) underwayAt = Time.realtimeSinceStartup;
-                return Time.realtimeSinceStartup - underwayAt >= duration;
+                if (policy.Holds(sharedStarted(), Time.realtimeSinceStartup, ref heldSince)) { Values = new Dictionary<string, string>(); return false; }
+                routeStarted = true;
+            }
+            if (underway)
+            {
+                // Shared: no scripted menu value may linger into the drive. Native: only the stage script.
+                if (policy.SharedCarInput) Values = new Dictionary<string, string>();
+                else if (policy.NativeCarInput) Values = NativeEvidence.At(Time.realtimeSinceStartup - underwayAt);
+                return false;
             }
             if (menus.Next(markers.TryGetValue(marker, out var id) ? id : -1, out var values)) Values = values;
             else Values = new Dictionary<string, string>();
@@ -44,6 +59,8 @@ namespace ArtOfSimRally.Testing
         }
         internal void Input(ref float throttle, ref float brake, ref float steer, ref float handbrake, ref float clutch, ref bool start)
         {
+            // Shared and native: the car keeps what the game and the mod produced.
+            if (policy.SharedCarInput || policy.NativeCarInput) return;
             // Stay near the start at modest speed. The captured physics result is the replay oracle.
             throttle = 0.3f; brake = 0; steer = underwayAt < 0 ? 0 : 0.1f * Mathf.Sin((Time.realtimeSinceStartup - underwayAt) * 0.4f);
             handbrake = 0; clutch = 0; start = true;

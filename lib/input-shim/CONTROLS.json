@@ -1,0 +1,189 @@
+{
+  "schema": 2,
+  "adapter": "art-shim-ini-controls-2",
+  "profile": "Mods/ArtOfSimRally/dbce-controls.ini",
+  "settings": "Mods/ArtOfSimRally/Settings.xml",
+  "optIn": {
+    "settingsKey": "SharedInput",
+    "value": "true",
+    "default": "false",
+    "appliesAfterRestart": true
+  },
+  "profileTransmissionKey": "[Controls] Transmission",
+  "delivered": [
+    "steer",
+    "throttle",
+    "brake",
+    "clutch",
+    "handbrake",
+    "shiftUp",
+    "shiftDown",
+    "neutral",
+    "reverse",
+    "confirm",
+    "back",
+    "start",
+    "navUp",
+    "navDown",
+    "navLeft",
+    "navRight",
+    "camera",
+    "modMenu",
+    "muteFfb",
+    "gear1",
+    "gear2",
+    "gear3",
+    "gear4",
+    "gear5",
+    "gear6",
+    "gear7",
+    "gear8"
+  ],
+  "unsupported": {
+    "select": "Art has no select action",
+    "lookBack": "Art has no look-back action in the inspected build",
+    "reset": "Art reset is not a qualified shared action",
+    "horn": "Art has no horn"
+  },
+  "conditions": [
+    {
+      "actions": [
+        "shiftUp",
+        "shiftDown"
+      ],
+      "profileTransmission": "Sequential",
+      "settingsKey": "TransmissionMode",
+      "settingsValues": [
+        "Sequential",
+        "H-pattern"
+      ],
+      "settingsDefault": "Follow game",
+      "note": "Delivered only while the car's gearbox is manual. TransmissionMode Sequential or H-pattern forces manual; Automatic never delivers; Follow game delivers only while the game's own transmission option is manual. A writer applying a Sequential profile sets TransmissionMode=Sequential."
+    },
+    {
+      "actions": [
+        "neutral",
+        "reverse",
+        "gear1",
+        "gear2",
+        "gear3",
+        "gear4",
+        "gear5",
+        "gear6",
+        "gear7",
+        "gear8"
+      ],
+      "profileTransmission": "H-pattern",
+      "settingsKey": "TransmissionMode",
+      "settingsValues": [
+        "Sequential",
+        "H-pattern"
+      ],
+      "settingsDefault": "Follow game",
+      "note": "Same gearbox rule. No gate held is neutral; reverse wins a shared gate; a gate outside the current car's gear ratios is ignored, never clamped. Only reverse and gear1-gear8 select a gear (neutral alone selects nothing), so a writer sets TransmissionMode=H-pattern only for an H-pattern profile with one of them bound, and writes no gate when two gates share one control."
+    }
+  ],
+  "artBindings": "Preserved, never rewritten. An action the profile does not own keeps Art's own Settings.xml binding, unless that physical control (device instance, kind, index, overlapping hat sector) is one the profile maps: then Art's binding is not used (button channels stay neutral). Owned actions never use Art's binding.",
+  "qualification": {
+    "deliveredMeaning": "delivered = this build's source routes the action to an Art consumer. It is not attended, runtime or owner qualification.",
+    "status": "private candidate; not owner-accepted; not a release",
+    "runtimeShown": [
+      {
+        "actions": [
+          "steer",
+          "throttle",
+          "brake",
+          "handbrake",
+          "shiftUp",
+          "shiftDown"
+        ],
+        "how": "latched raw stimuli through Core in a stage (Sequential, manual gearbox)",
+        "native": "DD301314",
+        "force": "muted (DBCE_FFB_MUTE=1)",
+        "evidence": "drive-20261012-060415"
+      },
+      {
+        "actions": [
+          "clutch",
+          "gear1",
+          "gear3",
+          "reverse"
+        ],
+        "how": "latched raw stimuli through Core in a stage (H-pattern, Car_Kei with 4 forward gears): clutch 0.6 reached the car; gear1, gear3 and reverse engaged gear indexes 2, 4 and 0",
+        "alsoShown": "releasing each gate returned neutral (index 1); gear5, beyond this car, was ignored, not clamped",
+        "native": "DD301314",
+        "force": "muted (DBCE_FFB_MUTE=1)",
+        "evidence": "gears-drive-20261012-125509"
+      },
+      {
+        "actions": [
+          "navDown",
+          "navUp"
+        ],
+        "how": "latched menu injection with selection read back",
+        "native": "DD301314",
+        "force": "muted",
+        "evidence": "trial-20261012-044311"
+      },
+      {
+        "actions": [
+          "steer",
+          "throttle",
+          "brake",
+          "handbrake"
+        ],
+        "how": "ordinary session with scripted Rewired values: the resting wheel kept steering, throttle/brake/handbrake passed through",
+        "native": "DD301314",
+        "force": "muted",
+        "evidence": "native-script-20261012-070017"
+      },
+      {
+        "actions": [
+          "steer",
+          "throttle",
+          "brake",
+          "handbrake"
+        ],
+        "how": "ordinary session with scripted Rewired values on the packaged native, its read-snapshot exports live: the resting wheel kept steering, throttle/brake/handbrake passed through; repeated with Wheelkit's actual Apply output",
+        "native": "44E46799",
+        "force": "off (ForceFeedbackEnabled=false in the copy; this native has no mute latch)",
+        "evidence": "native44e-script-20261012-082728, native44e-wheelkit-20261012-084243"
+      },
+      {
+        "actions": [],
+        "how": "ordinary startup attached and accepted frames (14 owned actions of the reviewed profile)",
+        "native": "DD301314",
+        "force": "muted",
+        "evidence": "shared-smoke-20261012-032314"
+      }
+    ],
+    "packagedNative": "44E46799 (native-0.9.1 read-snapshot port) ran only ordinary sessions with force off and the 14 non-gear actions owned; clutch and gates were never owned on it. Every latched run used DD301314.",
+    "fixtureOnly": [
+      "neutral",
+      "gear2",
+      "gear4",
+      "gear5",
+      "gear6",
+      "gear7",
+      "gear8",
+      "confirm",
+      "back",
+      "start",
+      "navLeft",
+      "navRight",
+      "camera",
+      "modMenu",
+      "muteFfb"
+    ],
+    "writerOmits": {},
+    "writerScope": "Schema 2 omits nothing: a writer may write every delivered action, within the transmission conditions. Written is not qualified; runtimeShown, fixtureOnly and notQualified keep that distinction.",
+    "notQualified": [
+      "physical wheel, pedal and keyboard driving through the ordinary session (needs an attended owner run)",
+      "clutch and H-pattern gates from a physical pedal or shifter, or in any unlatched session (never owned there)",
+      "force feedback together with the shared profile (every run was muted)",
+      "keyboard steering, which passes only with the wheel at exact centre",
+      "the packaged native 44E46799 beyond ordinary sessions at rest with force off"
+    ]
+  },
+  "note": "Source of build.json sharedInputCandidate.controls (romi 33009; schema 2, sana 34369). package.ps1 adds assemblySha256, the packaged ArtOfSimRally.Mod.dll; tests/ShimInput asserts delivered and unsupported equal ShimFrame.Names and ShimAxisConsumer's reasons."
+}

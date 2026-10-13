@@ -94,6 +94,10 @@
       <HintPath>$(ManagedDir)\Rewired_Core.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="Rewired_Windows">
+      <HintPath>$(ManagedDir)\Rewired_Windows.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <Reference Include="UnityModManager">
       <HintPath>$(UmmDir)\UnityModManager.dll</HintPath>
       <Private>false</Private>

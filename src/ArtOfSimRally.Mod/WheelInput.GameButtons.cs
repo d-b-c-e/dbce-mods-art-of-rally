@@ -20,9 +20,15 @@ namespace ArtOfSimRally.Mod
             {
                 if (!IsGameButton(channel)) continue;
                 if (!GameButtons.TryGetValue(channel, out var state)) GameButtons[channel] = state = new ButtonState();
-                bool available = Enabled && Application.isFocused && !Main.SettingsVisible && !_assigning.HasValue &&
-                    _bindings.TryGetValue(channel, out var binding) && Resolve(binding)?.Ok == true;
-                bool held = available && Value(channel) > .5f;
+                bool eligible = Enabled && Application.isFocused && !Main.SettingsVisible && !_assigning.HasValue;
+                bool available, held;
+                if (SharedChannel(channel, out bool sharedAvailable, out float sharedValue))
+                { available = eligible && sharedAvailable; held = available && sharedValue > .5f; }
+                else
+                {
+                    available = eligible && _bindings.TryGetValue(channel, out var binding) && Resolve(binding)?.Ok == true;
+                    held = available && Value(channel) > .5f;
+                }
                 state.Down = false;
                 state.Up = false;
                 if (!available) { state.Armed = false; state.Held = false; continue; }
@@ -35,7 +41,7 @@ namespace ArtOfSimRally.Mod
             if (!Enabled || !Application.isFocused || Main.SettingsVisible || _assigning.HasValue) return false;
             if (_buttonFrame != Time.frameCount)
             {
-                if (!_staleLogged && _open && _buttonFrame >= 0 && IsBound(channel))
+                if (!_staleLogged && _open && _buttonFrame >= 0 && (IsBound(channel) || SharedOwns(channel)))
                 { _staleLogged = true; ModLog.Warning("Profile action read preceded this frame's input snapshot; button withheld. Check script execution order."); }
                 return false;
             }
