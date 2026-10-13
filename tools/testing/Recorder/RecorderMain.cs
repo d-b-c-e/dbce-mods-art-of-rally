@@ -38,6 +38,7 @@ namespace ArtOfSimRally.Testing
                     assemblies.Single(a => a.GetName().Name == "Dbce.Wheel.Ffb"));
                 server = new ControlServer("ArtOfSimRally.DevRecorder." + Process.GetCurrentProcess().Id);
                 SessionTape.TryArm(m => entry.Logger.Log(m));
+                RecorderHud.Install(m => entry.Logger.Log(m));
                 ControlsProbe.TryArm(subject.Mod, m => entry.Logger.Log(m));
                 entry.OnUpdate = (mod, delta) => { server?.Pump(Command); SessionTape.Tick(); ControlsProbe.Tick(); };
                 entry.OnUnload = Unload;
@@ -137,6 +138,7 @@ namespace ArtOfSimRally.Testing
         {
             ControlsProbe.Close("probe unload");
             SessionTape.Unload();
+            RecorderHud.Remove();
             if (Session.Pending && !Session.Stop(subject.Driving())) { entry.Logger.Warning(Session.Status); return false; }
             patches?.UnpatchAll(PatchId); server?.Dispose(); server = null; return true;
         }

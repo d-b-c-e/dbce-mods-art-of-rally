@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "repository": "d-b-c-e/dbce-wheel-mod-toolkit",
+  "sourceRevision": "2901e64adfba4157fd47e04eb263f54f485c917c",
+  "files": [
+    {
+      "source": "shared/ui/SessionStatusPresentation.cs",
+      "file": "SessionStatusPresentation.cs",
+      "sha256": "e82fa5b5c3a07f1956fc51e690586a2eb80e08af7f134e713ea44f39ca376e50"
+    },
+    {
+      "source": "shared/ui/unity/SessionStatusHud.cs",
+      "file": "SessionStatusHud.cs",
+      "sha256": "d474afc3634d9bb33f0188c4621fe1081a666df380a0bdc5fa683c37cea5fe9c"
+    },
+    {
+      "source": "LICENSE",
+      "file": "LICENSE",
+      "sha256": "b2212c476244c444d6b7e804ac89c038a88b5c9288a087b30a2343d2dc3021db"
+    }
+  ]
+}

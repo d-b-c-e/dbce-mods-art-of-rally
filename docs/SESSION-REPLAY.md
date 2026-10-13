@@ -29,7 +29,13 @@ mod. Close the game before installing or removing this developer probe.
 ./tools/testing/Session.ps1 -Replay -Name japan-test
 ```
 
-Record from launch, choose a stage, drive, then stop. Normal recording retains
+Record from launch, choose a stage, drive, then press **F11** to stop and save
+without closing the game. The optional recorder shows a persistent **REC** timer
+and the F11 reminder at the top center of the center display, including menus
+and driving. **Recording saved** appears only after the tape is closed and
+sealed; an incomplete recording is labeled separately. Wheelkit's Stop recording
+button and a normal game exit also save. F11 does not start a new recording.
+Normal recording retains
 the owner's physical output settings. Add `-MuteOutputs` to mute the wheel and
 SimHub while recording requested force and telemetry. Replay always mutes those
 outputs for the entire process, including after failure or F12 takeover.

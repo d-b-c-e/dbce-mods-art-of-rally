@@ -5,11 +5,15 @@
 <Reference Include="Dbce.Wheel.Playback"><HintPath>../../../lib/playback/Dbce.Wheel.Playback.dll</HintPath><Private>true</Private></Reference>
 <Reference Include="Dbce.Wheel.Telemetry"><HintPath>../../../lib/toolkit/dotnet/Dbce.Wheel.Telemetry.dll</HintPath><Private>false</Private></Reference>
 <Compile Include="../Common/ArtifactHash.cs" Link="ArtifactHash.cs" />
+<Compile Include="../../../lib/session-ui/SessionStatusPresentation.cs" Link="SessionStatusPresentation.cs" />
+<Compile Include="../../../lib/session-ui/SessionStatusHud.cs" Link="SessionStatusHud.cs" />
 <Compile Include="../../../src/ArtOfSimRally.Mod/NativeDiagnostics.cs" Link="NativeDiagnostics.cs" />
 <Reference Include="Assembly-CSharp"><HintPath>$(ManagedDir)/Assembly-CSharp.dll</HintPath><Private>false</Private></Reference>
 <Reference Include="UnityEngine.CoreModule"><HintPath>$(ManagedDir)/UnityEngine.CoreModule.dll</HintPath><Private>false</Private></Reference>
 <Reference Include="UnityEngine.JSONSerializeModule"><HintPath>$(ManagedDir)/UnityEngine.JSONSerializeModule.dll</HintPath><Private>false</Private></Reference>
 <Reference Include="UnityEngine.UI"><HintPath>$(ManagedDir)/UnityEngine.UI.dll</HintPath><Private>false</Private></Reference>
+<Reference Include="UnityEngine.IMGUIModule"><HintPath>$(ManagedDir)/UnityEngine.IMGUIModule.dll</HintPath><Private>false</Private></Reference>
+<Reference Include="UnityEngine.TextRenderingModule"><HintPath>$(ManagedDir)/UnityEngine.TextRenderingModule.dll</HintPath><Private>false</Private></Reference>
 <Reference Include="UnityEngine.PhysicsModule"><HintPath>$(ManagedDir)/UnityEngine.PhysicsModule.dll</HintPath><Private>false</Private></Reference>
 <Reference Include="UnityEngine"><HintPath>$(ManagedDir)/UnityEngine.dll</HintPath><Private>false</Private></Reference>
 <Reference Include="Assembly-CSharp-firstpass"><HintPath>$(ManagedDir)/Assembly-CSharp-firstpass.dll</HintPath><Private>false</Private></Reference>

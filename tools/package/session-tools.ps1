@@ -6,6 +6,7 @@ $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 $revision = (& git -C $root rev-parse HEAD).Trim()
 if ($LASTEXITCODE -ne 0) { throw 'Cannot identify source' }
 if (@(& git -C $root status --porcelain --untracked-files=all).Count -ne 0) { throw 'SessionTools requires clean source' }
+& (Join-Path $root 'tools/testing/Test-SessionUiPin.ps1')
 $pin = Get-Content (Join-Path $root 'lib/playback/provenance.json') -Raw | ConvertFrom-Json
 if ((Get-FileHash (Join-Path $root 'lib/playback/Dbce.Wheel.Playback.dll')).Hash -ne $pin.sha256) { throw 'Playback library differs from pin' }
 $stage = Join-Path $root "dist/session-tools-$Version"
