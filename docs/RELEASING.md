@@ -195,11 +195,31 @@ The optional controls setup helper is private and separate (sana 51994). Adding
 It is a separate ZIP because UMM extracts every entry of a mod ZIP into `Mods`, so the
 helper never reaches the game folder. The launcher finds the game with the installer's
 own `Find-ArtOfRally` and needs the shared-input package installed; the helper itself
-checks the installed candidate. Never attach the companion to a public release. Test it
+checks the installed candidate. The currently pinned companion is a private test
+artifact, not a public release asset. Test it
 offline with `tools/testing/Test-ControlsSetupCompanion.ps1 -PackageDirectory
 <extracted mod ZIP> -CompanionDirectory <extracted companion>`. Moving `Find-ArtOfRally`
 into `verify.ps1` changed the installer and verifier script bytes of later packages; the
 installed mod files work the same, and published packages are unchanged.
+
+Standalone installation and configuration are supported without Wheelkit: the
+ordinary mod already supplies its installer and F6 setup, and the reusable helper
+adds Controls, Screens and Settings for shared-profile packages. For an eventual
+public package, retain this existing companion route and select its frozen helper
+bundle in the normal release scope; no new configuration framework is needed.
+Keep the companion separate from the UMM mod archive and retain the existing
+exact-package tests. The first-launch requirement for the optional tabs and the
+shared-axis calibration limit are in its packaged README.
+
+The October 13 source/package notice audit of pinned helper `19a5897` found the
+declared .NET, WPF-UI and CommunityToolkit notice/license files, Art and toolkit
+adapter MIT texts, and Vortice/SharpGen copyright and MIT text in the helper's
+`THIRD-PARTY-NOTICES.md`. Its owner-authored `MozaTelemetry.Core` 0.5.0 matches
+the frozen `56FE5A71` dependency pin; the dashboard executable is excluded. The
+bundle includes neither WheelFfb nor dbce_shim. No additional missing notice file
+was identified in that declared set. Choosing public distribution for the helper
+is separate from the mod's existing shared-shim provenance and runtime release
+checks; it does not make Wheelkit installation a prerequisite.
 
 ## Channels
 
