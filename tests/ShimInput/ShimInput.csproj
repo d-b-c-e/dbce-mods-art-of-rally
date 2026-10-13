@@ -22,6 +22,7 @@
     <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ProfileObjects.cs" Link="ProfileObjects.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ProbeIdentityMapper.cs" Link="ProbeIdentityMapper.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ProbeIdentityLease.cs" Link="ProbeIdentityLease.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/Shim/PinnedDs4Identity.cs" Link="PinnedDs4Identity.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ProbeNoForce.cs" Link="ProbeNoForce.cs" />
   </ItemGroup>
 </Project>

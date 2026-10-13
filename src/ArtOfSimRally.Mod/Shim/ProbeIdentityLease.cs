@@ -46,7 +46,8 @@ namespace ArtOfSimRally.Mod.Shim
                     var now = current[i]; JoystickObservation prior;
                     if (now == null || now.Token == null || !seen.Add(now.Token) || !before.TryGetValue(now.Token, out prior) ||
                         !ReferenceEquals(now.ExtensionToken, prior.ExtensionToken) || !now.Connected || now.Instance != prior.Instance || !String.IsNullOrEmpty(now.IdentityPathError))
-                        throw new InvalidOperationException("identity lease controller, extension, GUID or connected state changed");
+                        throw new InvalidOperationException("identity lease controller, extension, GUID or connected state changed" +
+                            (now == null || String.IsNullOrEmpty(now.IdentityPathError) ? "" : " (" + now.IdentityPathError + ")"));
                     Guid product;
                     if (!Guid.TryParse(now.ProductGuid, out product) || now.InterfacePath == null)
                         throw new InvalidOperationException("identity getter returned an unexpected unavailable representation");

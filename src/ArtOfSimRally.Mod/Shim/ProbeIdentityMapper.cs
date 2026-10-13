@@ -53,7 +53,8 @@ namespace ArtOfSimRally.Mod.Shim
             {
                 Guid raw, product;
                 if (!Guid.TryParse(row.Instance, out raw) || raw == Guid.Empty || !Guid.TryParse(row.ProductGuid, out product) || product == Guid.Empty || String.IsNullOrEmpty(row.InterfacePath))
-                    throw new InvalidOperationException("Rewired identity/path unavailable: cannot exclude a duplicate mapped wheel");
+                    throw new InvalidOperationException("Rewired identity/path unavailable" + (String.IsNullOrEmpty(row.IdentityPathError) ? "" : " (" + row.IdentityPathError + ")") +
+                        ": cannot exclude a duplicate mapped wheel");
                 JoystickObservation previous;
                 if (rawIds.TryGetValue(raw, out previous) && (!String.Equals(previous.InterfacePath, row.InterfacePath, StringComparison.OrdinalIgnoreCase) || Guid.Parse(previous.ProductGuid) != product))
                     throw new InvalidOperationException("Rewired instance GUID identifies different interfaces");

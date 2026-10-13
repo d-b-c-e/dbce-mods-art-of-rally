@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Rewired;
+using Rewired.ControllerExtensions;
 using Rewired.Platforms.Windows.RawInput;
 
 namespace ArtOfSimRally.Mod.Shim
@@ -28,6 +29,8 @@ namespace ArtOfSimRally.Mod.Shim
             ReInput.PreShutDownEvent -= Changed; ReInput.ShutDownEvent -= Changed; ReInput.InitializedEvent -= Changed;
             observing = false;
         }
+        // The loaded pair, validated once on the first DualShock 4 read.
+        private static readonly PinnedDs4Identity Ds4 = new PinnedDs4Identity(typeof(DualShock4Extension).Assembly, typeof(RawInputControllerExtension).Assembly);
         private sealed class JoystickView : IRawIsolationJoystick, IRawIdentityDiagnostic, IIdentityLifetimeDiagnostic
         {
             private readonly Joystick joystick;
@@ -36,9 +39,20 @@ namespace ArtOfSimRally.Mod.Shim
             public Guid Instance => joystick.deviceInstanceGuid;
             public bool Enabled { get => joystick.enabled; set => joystick.enabled = value; }
             public string Name => joystick.name;
-            public string InterfacePath => joystick.GetExtension<RawInputControllerExtension>()?.devicePath;
-            public string ProductGuid => joystick.GetExtension<RawInputControllerExtension>()?.productGuid.ToString("D");
-            public object ExtensionToken => joystick.GetExtension<RawInputControllerExtension>();
+            // RawInput first, unchanged. A joystick Rewired reads through its
+            // DualShock 4 driver has no RawInput extension: the pinned reader.
+            private RewiredIdentity Identity()
+            {
+                var raw = joystick.GetExtension<RawInputControllerExtension>();
+                if (raw != null) return new RewiredIdentity(raw, raw.devicePath, raw.productGuid.ToString("D"));
+                var ds4 = joystick.GetExtension<DualShock4Extension>();
+                if (ds4 == null) return default(RewiredIdentity);
+                IHIDControllerExtension hid = ds4;
+                return Ds4.Read(ds4, () => hid.vendorId, () => hid.productId);
+            }
+            public string InterfacePath => Identity().Path;
+            public string ProductGuid => Identity().Product;
+            public object ExtensionToken => Identity().Token;
             public bool Connected => joystick.isConnected;
             public float[] ReadRawAxes()
             {

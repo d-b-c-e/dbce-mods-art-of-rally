@@ -800,6 +800,7 @@ internal static class Program
             assertions += IsolationTests.Run();
             assertions += ProbeTests.Run();
             assertions += IdentityLeaseTests.Run();
+            assertions += Ds4IdentityTests.Run();
             if (args.Length == 2 && args[0] == "--abi") assertions += AbiProbe.Check(args[1]);
             if (args.Length == 2 && args[0] == "--no-force") assertions += AbiProbe.NoForce(args[1]);
             if (args.Length == 2 && args[0] == "--load-muted") assertions += AbiProbe.NoForce(args[1], true);
