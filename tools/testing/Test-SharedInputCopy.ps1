@@ -150,5 +150,11 @@ try {
         "[ArtOfSimRally] [Warning] Shared input not used: Rewired identity/path unavailable: cannot exclude a duplicate mapped wheel Art bindings remain.`n[ArtOfSimRally] Frame rate (10 s): 120 fps`n")
     $seen = Read-Shared $log
     Check ($seen.Count -eq 3 -and ($seen -match 'Shared input (not used|stopped)').Count -eq 1 -and !($seen -match 'Frame rate')) 'a level-tagged refusal reaches the runner''s shared lines'
+    # The previous launch's log is moved aside before this launch starts (diag-02's stale refusal line).
+    $text = [IO.File]::ReadAllText($invoke)
+    $move = $text.IndexOf("Move-Item -LiteralPath `$umLog -Destination (Join-Path `$Result 'umm-log-before-launch.txt')")
+    $firstLaunch = [Math]::Min($text.IndexOf('$game=[Diagnostics.Process]::Start($start)'), $text.IndexOf('Start-MediumBroker $broker'))
+    $firstRead = $text.IndexOf('$lines=Read-Shared $umLog')
+    Check ($move -gt 0 -and $firstLaunch -gt $move -and $firstRead -gt $move) 'the previous UMM log is moved aside before the launch and before any read'
 } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
 "PASS: $checks shared-copy staging, Apply confirmation and shared-car request checks (fake packages and copies only)."

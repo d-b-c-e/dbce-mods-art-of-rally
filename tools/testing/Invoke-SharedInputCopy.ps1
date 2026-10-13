@@ -212,6 +212,9 @@ try {
         New-CaptureRequest $capture $RouteSource ([bool]$SharedCar) $CaptureSeconds ([DateTime]::UtcNow.AddMinutes(10)) | Set-Content -LiteralPath $sessionRequest -Encoding ascii
         Copy-Item -LiteralPath $sessionRequest -Destination (Join-Path $Result 'session-request.txt')
     }
+    # The copy's previous UMM log goes aside as evidence before launch, so every line observed belongs to this launch
+    # (diag-02 read the previous launch's refusal line before Unity rewrote the log, and closed Art during startup).
+    if(Test-Path -LiteralPath $umLog) { Move-Item -LiteralPath $umLog -Destination (Join-Path $Result 'umm-log-before-launch.txt') }
     $exe=Join-Path $GameDir 'artofrally.exe'
     $childEnvironment=[ordered]@{
         SteamAppId='550320'; SteamGameId='550320'
