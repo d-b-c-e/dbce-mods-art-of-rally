@@ -6,7 +6,8 @@ without Wheelkit, and, if you want, your triple-screen measurements and the mod'
 the controls profile and the shared-input switch. It writes only what you preview and apply. It does not launch the
 game, change the Windows display mode or send wheel forces. If you use Wheelkit, you do not need it.
 
-1. Install the shared-input package of art of sim rally first (its Install.bat), and close the game.
+1. Install Unity Mod Manager and the shared-input package of art of sim rally first, as that package's README
+   describes (its Install.bat), and close the game.
 2. Extract this download into its own folder, anywhere outside the game folder.
 3. Double-click "Set Up Controls.bat". It finds art of rally the same way the mod installer does and opens the
    helper for art of rally only. If it cannot find the game, run:
@@ -21,6 +22,14 @@ game, change the Windows display mode or send wheel forces. If you use Wheelkit,
    and the panel pixel size. These are the same rows as Wheelkit's Game settings and the mod's own Advanced setup.
    Only the rows you change are written, and the mod applies them at its next start.
 7. Start the game normally.
+
+Calibration: the helper does not calibrate axes. Each binding keeps the full range the device reports, and Art's own
+Calibrate (F6, Controls) applies only to Art's own bindings, not to this shared profile. If a pedal or handbrake does
+not reach its full value, set its travel or range in your wheel or pedal software.
+
+Removing the helper: delete this extracted folder. Its saved profiles and screen setup stay in
+%LOCALAPPDATA%\Dbce\StandaloneModSetup; delete that folder too if you no longer want them. The installed mod and its
+settings are not affected.
 
 The helper runs from this folder and is never copied into the game folder. It keeps its own profiles in
 %LOCALAPPDATA%\Dbce\StandaloneModSetup. Notices and licenses for the helper are in the ModSetup folder.
