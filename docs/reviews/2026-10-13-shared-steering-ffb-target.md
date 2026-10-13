@@ -222,7 +222,7 @@ reviewed diagnostic native. It does not establish physical steering/pedal/shifte
 behavior, keyboard driving, visual acceptance, force acquisition or simultaneous
 shared input and FFB on the production `44E46799` native. No race was driven.
 
-## Remaining local deployment gates and plan
+## Local deployment gates and plan
 
 No rc.20 installation has been performed. The owner install still identifies
 `0.4.2-rc.18+26f5ccab97566b1e0d5174c5cfe7185eeeb14cf4.clean`. Its receipt is
@@ -250,25 +250,72 @@ therefore the appropriate bounded completion route:
    Apply or second runtime attempt is needed for this fix's local gate. Physical
    acceptance and any public release remain separate.
 
-Planned commands, from the isolated Art worktree:
+Reproducible commands, from the isolated Art worktree, using the reviewed shim
+explicitly in the runner process (restore any inherited value afterward):
 
 ```powershell
-./tools/testing/Test-Rc.ps1 -Version 0.4.2-rc.921 `
-  -Corpus E:/Source/games/dbce-mods-art-of-rally/results/regression-corpus/index.json
+$priorShim = [Environment]::GetEnvironmentVariable('ART_SHIM_DLL', 'Process')
+try {
+  $env:ART_SHIM_DLL = 'E:/Source/research/.worktrees/art-shim-profile-info/build-profile-info/windows/Release/dbce_shim.dll'
+  # Verify SHA-256 723E8A38... (full value above) before invoking the gate.
+  ./tools/testing/Test-Rc.ps1 -Version 0.4.2-rc.922 `
+    -Corpus E:/Source/games/dbce-mods-art-of-rally/results/regression-corpus/index.json
+} finally {
+  [Environment]::SetEnvironmentVariable('ART_SHIM_DLL', $priorShim, 'Process')
+}
 ./tools/testing/Test-Installer.ps1 `
   -PackageDirectory <fresh-rc20-extraction>
 ```
 
 The corpus index remains SHA-256
 `C964C158A37F28DB5F677BA4063DAF473737580AF121B28D0DB951122BCAC3D2`.
-The latest earlier full gate is rc.919 at `24439a3`, not this target-selection
-source. It is precedent, not a substitute for the pending gate. The suite covers
+The latest earlier full gate was rc.919 at `24439a3`, not this target-selection
+source. It was precedent, not a substitute for the gate below. The suite covers
 telemetry/signals, input/settings/regression, triples, session tape/environment,
 lifecycle/force models, recorder/actual Unity Mono, replay/trials/rejection,
 release evidence, force vector, native exports, packaging, installers and source
 stability. The production build remains warnings-as-errors; the suite's ordinary
 WheelInput run may report its four already-recorded CS0649 fixture warnings.
 Preserve any failure rather than widening the tests automatically.
+
+### Completed local gate, October 13
+
+The first attempt, rc.921, stopped at the shared-startup fixture and released its
+lease at 08:39:16 CDT. The wrapper had omitted `ART_SHIM_DLL`; that fixture's
+historical fallback is `art-shim-probe-evidence/apply-20261012-021108/dbce_shim.dll`
+(`7DDC9621`), whereas production correctly requires `723E8A38`. The focused checks
+had supplied the variable. `Test-Rc.ps1` neither sets this variable nor forwards a
+shim argument: future repin gates must set it explicitly. No product source was
+changed to bypass the hash check. Failure receipt and log are retained under
+`results/rc-0.4.2-rc.921-307265fc06ee40379f37d869f6df0f8d`.
+
+The reviewed bounded retry held lease `3252675a267146b69ba096ed24731b14` from
+08:42:56 through 08:45:10 CDT. It verified the DLL hash, set the variable only in
+the runner child process, and restored that environment value in `finally`.
+
+- rc.922 passed **20 of 20 gates** on clean `76d4c10`, whose runtime and packaging
+  inputs are identical to packaged `1d845d8`. The original two-case corpus passed
+  215,928 assertions with zero model/device mismatches; the recorded landing
+  check passed 9,582 assertions. Receipt:
+  `results/rc-0.4.2-rc.922-4fc49cd99362482091248c049417af53/automated.json`, SHA-256
+  `51D72BBF6E9FF9A1A20B6FC8ECF49A036A05F38A56AA6957ADAAAE809275F3F9`.
+- `Test-Installer` passed **50 assertions** against the fresh exact rc.20
+  extraction. Receipt: `results/installer-438c8d49f19849beadce7bb5a0c7c0a4/report.json`,
+  SHA-256 `C52FCE6CB5D4F132F3E054E3ED31DE8FEA0176EE10AFF5B9764BF1F2626A832E`.
+- `results/rc20-final-gates-retry/receipt.json` and `exit.json` record the result,
+  unchanged `8BA67D4E` rc.20 archive and released lease. The throwaway default
+  rc.922 archive is not the installation artifact. No device, game, force or
+  owner installation occurred in this batch. No additional native or runtime
+  sweep was performed.
+
+The concrete receipt wrapper is `results/rc20-install-plan/Install.ps1`, SHA-256
+`5AD5243AB2721D473FB58E697B0C67127C9628A0302972833ABBB7DF940EB6EE`.
+Its PowerShell syntax check passed. It pins the exact two gate receipts above,
+rechecks packaged-source equivalence, and requires a successful scratch rehearsal
+using those same receipts, package and wrapper bytes before owner mode can run.
+If owner mutation starts but verification fails, it retains the lease and backup
+for recovery; pre-mutation refusals and scratch failures can release normally.
+Scratch rehearsal and installation are not yet recorded as complete.
 
 ### Source integration and owner-state preservation
 
