@@ -13,6 +13,9 @@ game, change the Windows display mode or send wheel forces. If you use Wheelkit,
    helper for art of rally only. If it cannot find the game, run:
    Set Up Controls.bat -GameDir "D:\Games\artofrally"
 4. Bind your wheel, pedals and buttons, choose Preview, then Apply.
+   Before using the optional Screens or Settings tabs below, start the game once with the mod installed, then close
+   it. Those tabs need the mod's saved settings files; if a file is missing, the helper asks you to start the game
+   instead of creating it with defaults.
 5. Optional: on the Screens tab, choose "Read saved values", change only what you measured (panel size, eye distance,
    left and right screen angle), then Preview and Apply. art of rally uses these only once its triple screens are on
    and "Use measurements entered here" and "Entered measurements accepted" are both on. The helper tells you when they
