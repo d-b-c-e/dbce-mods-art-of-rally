@@ -183,6 +183,24 @@ Package it with `tools/package/session-tools.ps1 -Version X.Y.Z` from the same
 clean source. Publish its ZIP/checksum as a separate optional asset; never add
 probe dependencies to the player mod. Preserve original captures privately.
 
+The optional controls setup helper is private and separate (sana 51994). Adding
+`-PrivateStandaloneSetup -StandaloneSetupZip <pinned Wheelkit bundle ZIP>` to a
+`-SharedInputCandidate` build also writes
+`ArtOfSimRally-X.Y.Z-rc.N-shared-input-controls-setup.zip` and its checksum. It holds:
+- the Wheelkit standalone bundle pinned in `tools/package/standalone-setup.json`,
+  unmodified, under `ModSetup`;
+- `Set Up Controls.bat` and its script, with `verify.ps1`;
+- a `companion-manifest.json` that hashes every file.
+
+It is a separate ZIP because UMM extracts every entry of a mod ZIP into `Mods`, so the
+helper never reaches the game folder. The launcher finds the game with the installer's
+own `Find-ArtOfRally` and needs the shared-input package installed; the helper itself
+checks the installed candidate. Never attach the companion to a public release. Test it
+offline with `tools/testing/Test-ControlsSetupCompanion.ps1 -PackageDirectory
+<extracted mod ZIP> -CompanionDirectory <extracted companion>`. Moving `Find-ArtOfRally`
+into `verify.ps1` changed the installer and verifier script bytes of later packages; the
+installed mod files work the same, and published packages are unchanged.
+
 ## Channels
 
 | Where | Notes |

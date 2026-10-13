@@ -1,4 +1,43 @@
-# Shared by packaging, the installer, and the RC gate. Integrity, not a signature.
+# Shared by packaging, the installer, the RC gate and the optional controls setup launcher. Integrity, not a signature.
+
+function Find-ArtOfRally {
+    # Steam records its own location in the registry. Reading it is the only
+    # reliable way to find a library that is not on C:.
+    $steam = $null
+    foreach ($key in 'HKCU:\Software\Valve\Steam', 'HKLM:\SOFTWARE\WOW6432Node\Valve\Steam') {
+        try {
+            $v = Get-ItemProperty $key -ErrorAction Stop
+            if ($v.SteamPath)   { $steam = $v.SteamPath }
+            elseif ($v.InstallPath) { $steam = $v.InstallPath }
+            if ($steam) { break }
+        } catch { }
+    }
+    if (-not $steam) { return $null }
+    $steam = $steam -replace '/', '\'
+
+    # Every library folder, not just the default one.
+    $libraries = @($steam)
+    $vdf = Join-Path $steam 'steamapps\libraryfolders.vdf'
+    if (Test-Path -LiteralPath $vdf) {
+        foreach ($line in Get-Content -LiteralPath $vdf) {
+            if ($line -match '"path"\s+"(.+?)"') {
+                $libraries += ($Matches[1] -replace '\\\\', '\')
+            }
+        }
+    }
+
+    # Deduplicate case-insensitively: the registry value and libraryfolders.vdf
+    # routinely disagree on casing for the same path, which would otherwise scan
+    # the same library twice.
+    $seen = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    foreach ($lib in $libraries) {
+        if (-not $seen.Add($lib.TrimEnd([char]92))) { continue }   # 92 = backslash
+        $candidate = Join-Path $lib 'steamapps\common\artofrally'
+        if (Test-Path -LiteralPath (Join-Path $candidate 'artofrally.exe') -PathType Leaf) { return $candidate }
+    }
+    return $null
+}
+
 $PayloadFiles = @(
     'ArtOfSimRally/ArtOfSimRally.Mod.dll', 'ArtOfSimRally/Dbce.Wheel.Telemetry.dll', 'ArtOfSimRally/Dbce.Wheel.Ffb.dll',
     'ArtOfSimRally/UnityForceFeedback.dll', 'ArtOfSimRally/Dbce.TripleScreen.Core.dll', 'ArtOfSimRally/Dbce.TripleScreen.Protocol.dll',
