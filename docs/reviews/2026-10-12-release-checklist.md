@@ -90,9 +90,24 @@ for this note. The owner's tune and the uncommitted `experiments/CustomVehicles`
    - Wheelkit 0.6.24 offers it through the main-checkout fallback, and the rc.15 recorder is installed.
    - Selecting the `E:\Tools` rc.15 bundle in Wheelkit is optional.
 8. **Review choices and rebake items:**
-   - keep or strip the dormant probe code;
-   - correct the `CONTROLS.json` clutch omission wording;
-   - decide whether and how the private shim may ship publicly (licensing).
+   - **The dormant probe code: proposed, decision pending (sana).** Keep it opt-in and confined to private
+     candidates. Public 0.4.0 and 0.4.1 never contained it; main carries it in source since `5628e9b`.
+     - The probe is `ShimStartup`, `ShimDrive`, `DriveTrial`, `LatchedTrial` and `ProbeNoForce`. It runs only when the
+       game is launched with `DBCE_ART_SHIM_REQUEST`, and only with a validated request: deadline, exact game, mod,
+       native and settings paths, and native hash pins. It is still the only machinery for the latched clutch, gate
+       and menu evidence in blocker 5.
+     - At the next runtime rebake, compile it only for `-SharedInputCandidate` builds, so a public build from main
+       carries none of it, rather than stripping it.
+     - The recorder probes (SessionTools, developer-only): `ControlsProbe` (request-driven) and the identity probe
+       (`identityProbe=1`) are already opt-in. The Rewired inventory dump, which writes device names, GUIDs and paths
+       in every recording, would become opt-in at the next SessionTools build.
+   - **The `CONTROLS.json` clutch omission wording: resolved.** Schema 2 (contract v2, from rc.15) has an empty
+     `writerOmits`, so the wrong schema 1 reason ("the reviewed profile does not bind it") no longer exists.
+     - rc.17 and rc.18 ship schema 2.
+     - Clutch is labelled runtime-shown (latched, `DD301314`) and not qualified from a physical pedal or in any
+       unlatched session.
+     - The contract also records rc.18's run-03, the packaged native driven by a virtual DualShock 4 with force off.
+   - **The private shim:** decide whether and how it may ship publicly (licensing).
 
 ## Smallest next test: Apply Controls to one ordinary launch
 

@@ -213,6 +213,8 @@ plus `ForceFeedbackEnabled=false`), native `44E46799`, run `native44e-wheelkit-2
 **Wording defect for the next rebake.** `CONTROLS.json`'s clutch omission reason, "the
 reviewed profile does not bind it", is wrong for the owner's saved profile, which binds
 clutch on R12 Axis 6. It should read "unqualified: no runtime evidence".
+*Resolved by contract v2 (below):* schema 2 has no writer omissions, so the schema 1 reason is gone. rc.17 and rc.18 ship
+schema 2, and clutch is labelled runtime-shown (latched) and not qualified for a physical pedal or an unlatched session.
 
 ## Clutch and H-pattern drive steps (source, romi 33299)
 

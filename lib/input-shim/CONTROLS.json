@@ -150,6 +150,20 @@
         "evidence": "native44e-script-20261012-082728, native44e-wheelkit-20261012-084243"
       },
       {
+        "actions": [
+          "steer",
+          "throttle",
+          "brake",
+          "handbrake",
+          "shiftUp",
+          "shiftDown"
+        ],
+        "how": "ordinary session in a stage on the packaged native, a virtual DualShock 4 (ViGEm) bound by Wheelkit's production Apply and isolated through rc.18's pinned DualShock 4 identity: each hold delivered in order at its amplitude and released, the car and its gear followed in the same order, and the recording replayed cold with no device",
+        "native": "44E46799",
+        "force": "off (ForceFeedbackEnabled=false in the copy)",
+        "evidence": "dbce-project-mgmt artifacts/art-shim-pad-input-20261012/run-03-rc18 (cfbf150)"
+      },
+      {
         "actions": [],
         "how": "ordinary startup attached and accepted frames (14 owned actions of the reviewed profile)",
         "native": "DD301314",
@@ -157,7 +171,7 @@
         "evidence": "shared-smoke-20261012-032314"
       }
     ],
-    "packagedNative": "44E46799 (native-0.9.1 read-snapshot port) ran only ordinary sessions with force off and the 14 non-gear actions owned; clutch and gates were never owned on it. Every latched run used DD301314.",
+    "packagedNative": "44E46799 (native-0.9.1 read-snapshot port) ran only ordinary sessions with force off and the 14 non-gear actions owned (scripted Rewired values at rest, and a virtual DualShock 4 driving a stage); clutch and gates were never owned on it. Every latched run used DD301314.",
     "fixtureOnly": [
       "neutral",
       "gear2",
@@ -182,7 +196,7 @@
       "clutch and H-pattern gates from a physical pedal or shifter, or in any unlatched session (never owned there)",
       "force feedback together with the shared profile (every run was muted)",
       "keyboard steering, which passes only with the wheel at exact centre",
-      "the packaged native 44E46799 beyond ordinary sessions at rest with force off"
+      "the packaged native 44E46799 with force on, or driven by a physical device (only scripted Rewired values and a virtual DualShock 4 have driven it, force off)"
     ]
   },
   "note": "Source of build.json sharedInputCandidate.controls (romi 33009; schema 2, sana 34369). package.ps1 adds assemblySha256, the packaged ArtOfSimRally.Mod.dll; tests/ShimInput asserts delivered and unsupported equal ShimFrame.Names and ShimAxisConsumer's reasons."
