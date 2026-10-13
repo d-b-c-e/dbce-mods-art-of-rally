@@ -81,8 +81,9 @@ build allowed CS0649 only. Both original failure logs are retained.
 
 ## Packaging and next bounded runtime check
 
-After the coordinator dispatches the next build slot, commit the pin first and
-package clean source using the existing script (no standalone helper changes):
+The private rc.20 package was built from clean
+`1d845d8bb26090f13893c2249092f371b4f0e861` using the existing script (no standalone
+helper changes):
 
 ```powershell
 ./tools/package/package.ps1 -Version 0.4.2-rc.20 -SharedInputCandidate `
@@ -90,10 +91,21 @@ package clean source using the existing script (no standalone helper changes):
 ```
 
 SessionTools already uses rc.19; the mod candidate uses rc.20 to avoid ambiguity.
-The script checks the exact shim/native hashes, metadata, release assembly,
-probe flavor and payload manifest. Verify the ZIP and extracted payload hashes;
-run the targeted production startup fixtures with `ART_SHIM_DLL` pointing at the
-new pinned DLL. No install or launch is part of packaging.
+The script checked the exact shim/native hashes, metadata, release assembly,
+probe flavor and payload manifest. All 15 payload files were verified again from
+the extracted ZIP. Package SHA-256:
+`8BA67D4EDC3E99F549F3FC2818D8185CC3CC6FE0AB03A7A24EB475FC5B8743EA`
+(616,249 bytes); extracted manifest:
+`8402DCBC12F6B36855E324555E3D2C436C140647FD6E1F482348D8A02EFA2D54`.
+Packaged mod SHA-256:
+`40C837E26C9BC68B2211AD06AC79C6DB1E9355B3AD082DDA670F89CE00A1E0A4`.
+
+The package batch held its lease 08:11:53–08:13:16 CDT and released it. Release
+assembly checks 281, updated target/startup checks 21/14 and actual shim checks
+12,327 each under .NET 8 and Unity Mono passed. The package build had zero warnings
+or errors; the fixture retained the four known CS0649 warnings. Receipt and logs:
+`results/shared-ffb-package-20261013/package-receipt.json`. No install or launch
+was part of packaging.
 
 Proposed runtime scope: one existing `Prepare-SharedInputCopy` /
 `Invoke-SharedInputCopy` ordinary smoke, with no recorder or injected input,
@@ -109,7 +121,8 @@ requires `-ForceFeedbackOff` and verifies no force startup attempt, but this is
 not the independent native barrier required for the proposed run. ControlsProbe's
 cold native fence needs `EnableTestInjection` / `GetTestInjectionStatus`, which
 this native does not export. Managed output hooks are not an equivalent barrier.
-The runtime route remains unresolved; do not launch or silently replace WheelFfb.
+An explicit test-only substitution was reviewed separately below. Do not launch
+the production package unattended on the strength of config-off alone.
 
 Pure target inspection runs before qualification even with force off. A separate
 startup-only trace now records the configured steering instance or actual refusal
@@ -117,5 +130,47 @@ and the SHA-256 of the frozen profile bytes, before entering Waiting. The line
 explicitly states that connection and force are unverified; explicit FFB overrides
 retain priority. New fixture checks cover one-time logging before qualification,
 the exact hash, no repeat after attachment and all three refusal cases. These
-five additional checks await the packaging batch. No runtime run is authorized by
+five additional checks passed in the packaging batch. No runtime run is authorized by
 this recipe. Normal physical FFB acceptance remains owner-attended.
+
+### Test-only native compatibility and runner proposal
+
+The previously qualified muted native from toolkit `82c40c4` is available at
+`toolkits/.worktrees/art-shim-snapshots/native/wheelffb/build/WheelFfb.dll`, SHA-256
+`DD3013147821364AD8795F76B4500FB479F669E6BD89576F83E725A677273414`.
+Its `DBCE_FFB_MUTE=1` load-time latch independently refuses force entry points.
+It is proposed only for the disposable diagnostic; the production package and
+source pins retain `44E46799`.
+
+Source comparison against `bbbf6e3`: the V1 snapshot header and snapshot-state
+header are byte-identical; the 144/232-byte packed layouts, C calling convention,
+generation/sequence/QPC meaning and owned-path signature are unchanged. The
+snapshot implementation adds an external-session guard (inactive without explicit
+external entry) and rejects an active injection table. This run enters neither
+mode and submits no injections. All 37 required exports in Art's pinned managed
+v0.15 binding are present. `GetInputCapabilities` is absent, but Art does not bind
+it or use its synthetic POV button indices; Art uses 128 real buttons and the
+available `ReadDeviceStateWithPov`. Force behavior is not claimed equivalent.
+
+The prepared one-shot wrapper is
+`results/fresh-shared-only-rc20-plan/Invoke-FreshSharedOnly.ps1`; it has not run.
+It uses existing package-mode staging and `Invoke-SharedInputCopy`, preserving
+their validation, child-only mute, shared-state restoration and process checks.
+The original package staging receipt remains intact. A separate recorded override
+pins DD301 at both disposable native paths; every other package payload remains
+exact. An outer snapshot/restore covers all original copy Mods files, the plugin
+native, UMM parameters and copy Steam app id, since the inner runner restores
+shared state but does not undo payload staging. Preparation, inner run and final
+copy restore each acquire the actual shared lease; contention refuses.
+
+The frozen installed Art profile is SHA-256
+`73E782304BB56DF5D722A0FADDA7E9C5FFD8347736C11003A6DFEFCDF94FADFA`.
+The separate settings fixture is SHA-256
+`8C78D71F65B90346215D3B0F9569FF6C2DEB136FF823F7F07C169F43915E5454`;
+it preserves force tuning and changes only shared selection, force disabled,
+empty legacy steering/preferred fields, preferred index -1 and follow-steering
+mode. The expected configured steering instance is
+`d71b8350-61b7-11f1-8001-444553540000`. Runtime scope is the configured-target/hash
+line before qualification, first accepted shared frame and ten seconds without a
+stop. It does not qualify physical force, connected FFB acquisition, driving or
+input/force coexistence with the production native.
