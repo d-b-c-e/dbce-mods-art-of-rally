@@ -110,6 +110,13 @@ namespace Rewired.Platforms.Windows.RawInput
 {
     public sealed class RawInputControllerExtension { public string devicePath; public Guid productGuid; }
 }
+// The pinned DualShock 4 identity's compile surface only: the stub joystick has no extension, so these never run here
+// (tests/ShimInput's Ds4IdentityTests drives the reader and the lease).
+namespace Rewired.ControllerExtensions
+{
+    public interface IHIDControllerExtension { ushort vendorId { get; } ushort productId { get; } }
+    public sealed class DualShock4Extension : IHIDControllerExtension { ushort IHIDControllerExtension.vendorId => 0; ushort IHIDControllerExtension.productId => 0; }
+}
 public static class PadManager { public static readonly Rewired.Player Player = new(); public static Rewired.Player GetPlayer() => Player; }
 public static class EventStatusEnums { public enum EventStatus { UNDERWAY, FINISHING_STAGE_ANIMATION } }
 public sealed class EventManager { public EventStatusEnums.EventStatus status = EventStatusEnums.EventStatus.UNDERWAY; }
