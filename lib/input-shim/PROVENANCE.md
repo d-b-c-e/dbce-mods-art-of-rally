@@ -105,3 +105,85 @@ including the actual new export. See the
 The existing `native/WheelFfb.dll` and all force settings/tuning remain unchanged.
 Fresh shared-only runtime qualification is still pending; these offline checks
 do not establish physical FFB or general shared-input parity.
+
+## Canonical toolkit shim (2026-10-13)
+
+The private candidate now pins the canonical toolkit shim instead of an isolated
+outrun2-decomp build. This supersedes the header records in the sections above.
+
+- **Source:** dbce-wheel-mod-toolkit `c6594fa` (`native/shim`), built at
+  `421bd4b234c5e0869f082f3dc26ed08845cc7bff`. `c6594fa` adds docs and comments only.
+  It merges the copied-provider bridge (`574bb88`), the fenced latched session
+  (`f38b855`) and the pure profile inspection (`5b96ba8`).
+- **Bytes:** `dbce_shim.dll`, 925,184 bytes, SHA-256
+  `BC9B030A25834D8CCE562F22588EC5E0D3F5C1FA026AD7AD984776D60CD6254B`.
+  - x64 ClangCL 19.1.5 `/MT`, built from clean source by the toolkit's
+    `native/shim/build_test.ps1`.
+  - Imports only `DINPUT8`, `bcrypt` and `KERNEL32`, so there is no new runtime dependency.
+  - Like every earlier shim, it is a private packaging input and never a committed binary.
+    The reviewed copy is
+    `research/.worktrees/toolkit-shim-c6594fa-evidence/x64-mt-421bd4b/dbce_shim.dll`,
+    with `build-receipt.json` and `SHA256SUMS` beside it.
+- **Contract:**
+  - Base ABI 2 and every earlier export are unchanged, including the
+    296/128/144/232-byte layouts.
+  - Bridge extension 1 has seven exports. Its open admits `DBCE_SHIM_LATCHED` only
+    through the base ABI's fence and mute checks, and refuses `CAPTURE`.
+  - `dbce_shim_profile_action_info` stays optional and pure.
+- **Headers:** both are exact copies of toolkit `c6594fa` `native/shim/shim_dll/`, kept
+  LF by `.gitattributes` so their git blobs equal the toolkit's.
+  - `dbce_shim.h`: blob `12f74f5b`, SHA-256
+    `5E92E45D5579D72905CEF067F41161B8A821C5E925139A91E5A5FD00FFC28419`. It now
+    declares `dbce_shim_profile_action_info` itself.
+  - `dbce_shim_bridge.h`: blob `22729ffb`, SHA-256
+    `B76750776E8A37E904882301C82EAB8003B38EDADFE9F6E25C417F6B1A26C14B`. It documents
+    `LATCHED` and `CAPTURE`.
+  - Art calls the shim through P/Invoke, so the headers are references only. No
+    managed layout changed.
+
+Compatibility evidence by nene, with the same bytes, is in
+`dbce-project-mgmt/artifacts/shim-bridge-merge-20261013/final-421bd4b`:
+
+- Toolkit native: Core 192, provider 106, host 37, ABI 186 and bridge 77 checks; the
+  control journal 366 checks and 18 reader cases.
+- Art ShimInput:
+  - `--bridge-latched`: 12,490 checks on .NET 8 and 12,510 on Unity Mono;
+  - `--profile-info`: 12,327 each.
+
+Art's adoption commit changes:
+
+- the runtime pin (`SharedInputStartup.ExpectedShimSha256`) and `CANDIDATE.json`, which
+  `package.ps1` cross-checks;
+- the `--bridge` latched gate, which now reads the reviewed pin from `CANDIDATE.json`.
+  It still expects `574bb88`'s refusal and keeps `f38b855` as reviewed history.
+  Before this change it called the 723E8A38 pin, then BC9B030A, "unreviewed";
+- the default pin in `Prepare-SharedInputCopy.ps1`, which now also reads `CANDIDATE.json`.
+
+The probe flavour keeps its historical latched pin (`ProbeRequest.LatchedShimSha256`,
+`Prepare-ShimProbe.ps1`).
+
+Art checks against these bytes, all offline with device and force endpoints as fixtures,
+are in `dbce-project-mgmt/artifacts/art-shim-canonical-20261013`:
+
+- ShimInput `--bridge`: 12,409 checks on .NET 8 and 12,407 on Unity Mono, ending in
+  a fenced latched open at the gate.
+- WheelInput actual-DLL cases, with `ART_SHIM_DLL` and `ART_LATCHED_SHIM_DLL` set to
+  these bytes:
+  - shared startup 14, shared FFB selection 21, lifecycle 33, transport stop 8;
+  - latched menu 3, drive trial 611;
+  - the default suite 430.
+- Builds: the mod Release (net48) and ShimInput had no warnings. WheelInput had only
+  its four known CS0649 fixture warnings.
+- Assertion counts include per-frame checks, so they vary between runs.
+
+**Limits:** nothing was packaged, installed or run in the game. The installed rc.20
+still carries `723E8A38` (`docs/LOCAL-DEPLOYMENT.md`).
+
+These offline checks do not establish:
+
+- fresh shared-only runtime qualification;
+- physical FFB;
+- input/FFB coexistence;
+- general shared-input parity.
+
+Publishing the shim binary remains a separate owner decision.

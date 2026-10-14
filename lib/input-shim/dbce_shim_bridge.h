@@ -4,8 +4,11 @@
  * return. The source owner qualifies identities/caps and reads once per tick.
  * Source generations are globally unique/increasing for this process. QPC
  * microseconds use the system counter's origin, never a module-relative epoch.
- * Capture/control flags are refused until external provenance is versioned in
- * those formats. Existing ordinary ABI handles refuse bridge operations. */
+ * LATCHED uses the base ABI's verified-fence/process-force-mute requirements and
+ * control journal (inputSource=external-physical-input@1). Copied physical input
+ * remains physical evidence; only accepted control batches are injected.
+ * CAPTURE is refused: external sample provenance is not versioned in that
+ * format. Existing ordinary ABI handles refuse bridge operations. */
 #include "dbce_shim.h"
 #pragma pack(push,8)
 typedef struct dbce_shim_bridge_device_v1 {

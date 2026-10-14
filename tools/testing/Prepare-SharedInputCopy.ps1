@@ -17,7 +17,8 @@ param([Parameter(Mandatory)][string]$GameCopy,
       [string]$PackageZip,
       [string]$ExpectedPackageSha256,
       [switch]$AwaitApply,
-      [string]$ExpectedShimSha256 = '7DDC962132819EDAE76EF84CE6509F1936B8C38177A36D498B8ABBCFDCFFBCAF',
+      # The reviewed private-candidate shim (lib/input-shim/CANDIDATE.json), the same pin the mod and package.ps1 enforce.
+      [string]$ExpectedShimSha256 = (Get-Content -LiteralPath (Join-Path $PSScriptRoot '../../lib/input-shim/CANDIDATE.json') -Raw | ConvertFrom-Json).shimSha256,
       # The toolkit snapshot candidate WheelFfb with the shared read exports (Observe/Apply pin).
       [string]$ExpectedNativeSha256 = 'DD3013147821364AD8795F76B4500FB479F669E6BD89576F83E725A677273414',
       # Native-script coexistence (Invoke-SharedInputCopy -RouteSource): also stage the dev recorder. Without it any

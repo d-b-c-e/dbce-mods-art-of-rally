@@ -110,6 +110,14 @@ DBCE_SHIM_API int32_t dbce_shim_device_reports(void* handle, char* text, int32_t
 /* The profile as Core's own parser read it, "key=value" lines: ok (1/0), error, profile, revision, transmission and
    the SHA-256 of the exact bytes. A game adapter takes its gearbox from transmission, never from its own parse. */
 DBCE_SHIM_API int32_t dbce_shim_profile_info(void* handle, char* text, int32_t len, int32_t* needed);
+/* OPTIONAL extension; ABI 2 alone does not promise this export. Pure inspection of the exact profile bytes (at most
+   64 KiB), using Core's parser and binding admission. No host, worker, provider, files, device or force calls.
+   action is a dbce_shim_action_name index. JSON schema 1: action, status (bound/unbound/invalid), reason, sha256,
+   kind, instance, product and name. Identity fields are empty unless the entire profile has no invalid/conflicting
+   actions and the requested action is bound. This is configured identity, NOT evidence of connected hardware.
+   The usual text/needed contract applies; callers must reject truncation. May be called from any thread. */
+DBCE_SHIM_API int32_t dbce_shim_profile_action_info(const char* profile, int32_t profile_len, int32_t action,
+                                                 char* text, int32_t len, int32_t* needed);
 /* CAPTURE: the game's channel values (in game_channels order) for the frame just ticked, frame_seq its seq. Exactly
    once per frame: another frame's seq, a second call or no pending frame gives DBCE_SHIM_STALE and changes nothing.
    A wrong count or a non-finite value gives DBCE_SHIM_BAD_ARGUMENT and the row is recorded with game.valid=0. A frame

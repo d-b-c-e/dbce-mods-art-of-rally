@@ -137,15 +137,30 @@ internal static class BridgeTests
         Check(File.ReadAllText(Path.Combine(folder, "host-shutdown.json")).Contains("\"state\":\"resolved\""), "trial bridge stop did not resolve");
     }
     // The ordinary pin, 574bb88 (7DDC9621), refuses every open flag on the copied-provider bridge;
-    // f38b855 (0D10F913, reviewed by romi 28531) admits a fenced latched open. Any other build is
-    // unreviewed here, so admitting latched control stays a reviewed change, not a surprise.
+    // f38b855 (0D10F913, reviewed by romi 28531) admits a fenced latched open, and so does the reviewed
+    // private-candidate pin (toolkit c6594fa, BC9B030A when adopted). That pin is read from
+    // lib/input-shim/CANDIDATE.json, so this gate cannot fall behind the record again. Any other build
+    // is unreviewed here, so admitting latched control stays a reviewed change, not a surprise.
     internal const string OrdinaryShim = "7DDC962132819EDAE76EF84CE6509F1936B8C38177A36D498B8ABBCFDCFFBCAF";
     internal const string LatchedShim = "0D10F913C998C97D7DDF3A8F5F470D010092C3681152059DC88D7E0A7BB0386B";
+    private static string CandidateShim()
+    {
+        for (var dir = new DirectoryInfo(Path.GetDirectoryName(typeof(BridgeTests).Assembly.Location)); dir != null; dir = dir.Parent)
+        {
+            string record = Path.Combine(dir.FullName, "lib", "input-shim", "CANDIDATE.json");
+            if (!File.Exists(record)) continue;
+            var pin = System.Text.RegularExpressions.Regex.Match(File.ReadAllText(record), "\"shimSha256\"\\s*:\\s*\"([0-9A-F]{64})\"");
+            Check(pin.Success, "CANDIDATE.json declares no shimSha256");
+            return pin.Groups[1].Value;
+        }
+        Check(false, "lib/input-shim/CANDIDATE.json not found above the test assembly");
+        return null;
+    }
     private static void LatchedBridgeGate(string dll)
     {
         string hash;
         using (var sha = System.Security.Cryptography.SHA256.Create()) hash = BitConverter.ToString(sha.ComputeHash(File.ReadAllBytes(dll))).Replace("-", "");
-        Check(hash == OrdinaryShim || hash == LatchedShim, "unreviewed dbce_shim.dll " + hash);
+        Check(hash == OrdinaryShim || hash == LatchedShim || hash == CandidateShim(), "unreviewed dbce_shim.dll " + hash);
         string folder = Path.Combine(Path.GetTempPath(), "art-copied-latch-gate-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(folder);
         string profile = "[Controls]\nSchema = 1\nProfile = Gate\nRevision = r1\nTransmission = Sequential\nsteer = axis 0 dev={d71b8350-61b7-11f1-8001-444553540000} prod={0006346e-0000-0000-0000-504944564944} range=0..65535 rest=32768 travel=+1\n";
         string why = ""; ShimBridgeNative opened = null;

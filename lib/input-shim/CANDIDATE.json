@@ -1,9 +1,9 @@
 {
   "schema": 1,
   "purpose": "Private owner-test candidate for the opt-in shared Wheelkit profile (romi 32354). Used only by tools/package/package.ps1 -SharedInputCandidate; the default package keeps lib/toolkit's native and ships no shim.",
-  "shimSha256": "723E8A38CDA8DDA12546264580A5B3FF5AFFDF469E25E8777149CB792A789276",
-  "shimSource": "art-shim-profile-info 5b96ba8f3d649f353e2aad1aac8342f4334e0ad0 (copied provider plus optional pure profile inspection; base ABI 2 unchanged; October 13 Core/ABI/bridge/fake-COM and .NET/Unity Mono checks passed)",
-  "shimBytesFrom": "Not kept in this public repository; package.ps1 takes a private copy via -SharedInputShim and checks it against shimSha256. Reviewed private bytes: research/.worktrees/art-shim-profile-info/build-profile-info/windows/Release/dbce_shim.dll (666112 bytes). Evidence: games/.worktrees/art-shared-ffb-target/results/shared-ffb-profile-20261013. Fresh shared-only runtime qualification remains pending.",
+  "shimSha256": "BC9B030A25834D8CCE562F22588EC5E0D3F5C1FA026AD7AD984776D60CD6254B",
+  "shimSource": "dbce-wheel-mod-toolkit c6594fa (native/shim, built from 421bd4b234c5e0869f082f3dc26ed08845cc7bff; c6594fa adds docs and comments only): base ABI 2 unchanged; bridge extension v1 with the fenced LATCHED session (CAPTURE refused); optional pure dbce_shim_profile_action_info. Toolkit native/shim Core/ABI/bridge checks and Art ShimInput --bridge-latched and --profile-info passed on .NET 8 and Unity Mono (nene, October 13)",
+  "shimBytesFrom": "Not kept in this public repository; package.ps1 takes a private copy via -SharedInputShim and checks it against shimSha256. Reviewed private bytes: research/.worktrees/toolkit-shim-c6594fa-evidence/x64-mt-421bd4b/dbce_shim.dll (925184 bytes, x64 ClangCL 19.1.5 /MT, imports DINPUT8/bcrypt/KERNEL32; build-receipt.json and SHA256SUMS beside it). Evidence: dbce-project-mgmt/artifacts/shim-bridge-merge-20261013/final-421bd4b. Fresh shared-only runtime qualification remains pending.",
   "nativeSha256": "44E46799945438BC07DF738472602DB1E3ECC04C3F77CAD5B12FCACF49C69272",
   "nativeSource": "dbce-wheel-mod-toolkit mufa/native-091-read-snapshots bbbf6e3 (native/wheelffb build.ps1, x64)",
   "nativeBase": "c8ec2ee7fc389b2b3a20be849bc39f1203628f26 (native-0.9.1-fleet-candidate; Art's F8361A08) plus only the read-snapshot and interface-path exports from ecc49bd and 64ccf67",
