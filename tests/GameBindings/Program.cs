@@ -40,7 +40,7 @@ static class Program
             Host.SettingsVisible=true;GameBindings.Open();Check(manager.Adds==1,"second route opened before release");
             Host.SettingsVisible=true;GameBindings.Tick();Host.SettingsVisible=false;
             UnityEngine.Time.frameCount+=3;GameBindings.Tick();
-            Check(manager.Adds==1&&GameBindings.Status.Contains("cancelled"),"reopened UMM did not cancel pending route");
+            Check(manager.Adds==1&&GameBindings.Status.Contains("canceled"),"reopened UMM did not cancel pending route");
             foreach (bool focused in new[] { false, true })
             {
                 Host.SettingsVisible=true;
