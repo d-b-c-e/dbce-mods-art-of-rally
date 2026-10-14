@@ -59,7 +59,7 @@ namespace ArtOfSimRally.Mod
                 Status = candidate.Describe() + ": move through full travel and release, then Save calibration.";
                 return;
             }
-            Status = channel == Channel.Steer ? "Centre the wheel before Bind, then turn fully left, fully right, and centre it."
+            Status = channel == Channel.Steer ? "Center the wheel before Bind, then turn fully left, fully right, and center it."
                 : IsButtonChannel(channel) ? "Press and release a button or hat direction."
                 : "Release the control before Bind, then press/pull fully and release. Save calibration when ready.";
         }

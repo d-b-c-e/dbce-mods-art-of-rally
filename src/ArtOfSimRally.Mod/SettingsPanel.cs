@@ -208,7 +208,7 @@ namespace ArtOfSimRally.Mod
                 string keyText = _settingsKey ? "Press a key; Escape cancels." : "Current key: " + CameraKeys.Name(c.SettingsKey);
                 if (CommandRow(keyText, _settingsKey ? "Cancel capture" : "Bind", 110))
                 {
-                    if (_settingsKey) { _settingsKey = false; _keyStatus = "Settings key capture cancelled."; }
+                    if (_settingsKey) { _settingsKey = false; _keyStatus = "Settings key capture canceled."; }
                     else if (!Editing) { _settingsKey = true; _keyStatus = "Press a key within 10 seconds. Escape cancels."; _keyDeadline = Time.unscaledTime + 10; }
                 }
                 Help(_keyStatus);
@@ -252,7 +252,7 @@ namespace ArtOfSimRally.Mod
                 return;
             }
             string hint = !WheelInput.IsButtonChannel(channel)
-                ? channel == WheelInput.Channel.Steer ? "Centre first, then bind or calibrate." : "Release first, then bind or calibrate."
+                ? channel == WheelInput.Channel.Steer ? "Center first, then bind or calibrate." : "Release first, then bind or calibrate."
                 : "Release the button first, then bind.";
             bool enabled = GUI.enabled; GUI.enabled = enabled && !Editing && !GameState.IsDriving;
             bool stack = StackRows;
@@ -301,7 +301,7 @@ namespace ArtOfSimRally.Mod
         {
             float value = WheelInput.Value(channel);
             return !WheelInput.IsBound(channel) ? "Game controls / not bound here" : channel == WheelInput.Channel.Steer
-                ? Math.Abs(value) < .005f ? "Centre" : (value < 0 ? "Left " : "Right ") + (Math.Abs(value) * 100).ToString("F0") + "%"
+                ? Math.Abs(value) < .005f ? "Center" : (value < 0 ? "Left " : "Right ") + (Math.Abs(value) * 100).ToString("F0") + "%"
                 : (value * 100).ToString("F0") + "%";
         }
         private static void Bar(WheelInput.Channel channel, string label, bool showLabel = true)
@@ -331,7 +331,7 @@ namespace ArtOfSimRally.Mod
             if (enabled != c.ForceFeedbackEnabled) Main.SetFeedbackEnabled(enabled);
             Panel.DrawWheelPicker();
             c.Strength = (int)Slider(c.Strength, 0, 100, 50, "Steering strength", 1, "%");
-            Help("Cornering resistance and return-to-centre feel. Crash, landing and shift strengths are independent.");
+            Help("Cornering resistance and return-to-center feel. Crash, landing and shift strengths are independent.");
             Help(!c.ForceFeedbackEnabled ? "Off — choose On when ready." : !FfbNative.Ready ? FfbNative.Status :
                 "Inactive while settings are open. Feedback resumes through normal driving gates.");
             if (!SettingsViewPolicy.Advanced(c))
@@ -362,7 +362,7 @@ namespace ArtOfSimRally.Mod
             Triple.TripleScreen.DrawSettings();
             EndCard();
             c.ShowFrameRate = Toggle(c.ShowFrameRate, "Show frame rate on screen");
-            Help("Frame rate, last 10 s: " + FrameRate.Summary + ". The counter sits at the top right of the centre screen.");
+            Help("Frame rate, last 10 s: " + FrameRate.Summary + ". The counter sits at the top right of the center screen.");
             GUILayout.Space(8 * SettingsPresentation.Scale);
             if (Main.OtherCameraModLoaded) { Help(BonnetCamera.ExternalCameraHelp); return; }
             c.BonnetCameraEnabled = Toggle(c.BonnetCameraEnabled, "Bonnet");

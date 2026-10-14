@@ -57,7 +57,7 @@ namespace ArtOfSimRally.Mod
         {
             if (_pendingTarget == null) return;
             if (Main.SettingsVisible)
-            { CancelPending(); Status = "Opening game controls cancelled."; return; }
+            { CancelPending(); Status = "Opening game controls canceled."; return; }
             // A missing focus handoff must not leave the settings panel hidden
             // indefinitely. Use unscaled time because this route runs paused.
             if (Time.realtimeSinceStartup >= _pendingUntil)

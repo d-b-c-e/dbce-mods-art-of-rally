@@ -35,9 +35,9 @@ Pause before setting up. Opening settings stops mod controls/FFB but does not
 promise to pause the game simulation. Keep a mouse/keyboard available for UMM.
 Simple is the first view; Advanced adds tuning to the same saved values.
 
-* Controls: keep working game bindings. For a missing axis, centre/release it,
+* Controls: keep working game bindings. For a missing axis, center/release it,
   click Bind, move only that control through its full range, then release.
-  Steering needs both full locks and centre. Check the preview, inversion and
+  Steering needs both full locks and center. Check the preview, inversion and
   deadzone, then Save calibration. Cancel/timeout/save failure keeps the old
   binding. Explicitly calibrated ranges do not learn themselves during a drive.
   Calibrate adjusts the saved axis; Bind chooses a new one. Check the status at
@@ -118,7 +118,7 @@ turn detail off. Ordinary errors/settings can be collected with detail off.
 Attach the Desktop support TXT to an issue with wheel/driver, car/stage and
 what happened. Check Saved/error status: failed binding writes keep old values.
 
-Source, docs and licence: https://github.com/d-b-c-e/art-of-sim-rally
+Source, docs and license: https://github.com/d-b-c-e/art-of-sim-rally
 Issues: https://github.com/d-b-c-e/art-of-sim-rally/issues
 Tested hardware history: MOZA R12; positive R5/T300 reports. The full hardware
 transition matrix, Fanatec/TSS travel and stronger crash feel need more reports.
