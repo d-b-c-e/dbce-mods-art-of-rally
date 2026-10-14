@@ -27,9 +27,9 @@ In **Advanced setup and diagnostics**, enter one panel's pixel width/height and 
 |---|---|---|
 | **Off** | Any | The game's normal camera. |
 | **Single wide display** | One display exactly three panels wide, such as NVIDIA Surround | Three camera viewports across the wide output. |
-| **Three separate displays** | Extended desktop, equal native resolutions, center monitor set as Windows primary | A camera on each Unity display. |
+| **Three separate displays** | Extended desktop, center monitor set as Windows primary, with an equal-resolution display directly left and right of it (other displays, such as a dashboard, are ignored) | A camera on each side display, found automatically and checked when it switches on. |
 
-The **Field of view** slider changes all three views together. **Reset field of view** returns to the entered measurements. Set or change the Windows display mode while the game is closed. In separate-display mode, Unity keeps the side windows activated until the game exits, so restart after changing modes. The tested display mapping was center `0`, left `1`, right `2`; Unity may number your side displays differently.
+The **Field of view** slider changes all three views together. **Reset field of view** returns to the entered measurements. Set or change the Windows display mode while the game is closed. In separate-display mode, Unity keeps the side windows activated until the game exits, so restart after changing modes. The side displays are found automatically; there is no display index to set (see [Setup](SETUP.md#three-separate-displays)).
 
 The mod also offers an optional center-menu setting for wide output. Gameplay, stage-finish cinematics, and FOV continuity were exercised on the owner's rig. Replay, photo mode, every menu, other monitor arrangements, and long-term performance still need broader testing.
 
