@@ -6,7 +6,67 @@ feature or bug fix. After its candidate or final artifact passes the complete
 local automated gate, deploy it for testing without asking again. Public release
 publication and attended sign-off remain separate.
 
-## Current installation — 0.4.2-rc.21 (private shared-input candidate)
+## Current installation — 0.4.2-rc.22 (private shared-input candidate)
+
+Installed October 14 at 02:35:45 UTC (October 13, 21:35 CDT), exact package source
+`2decf4d418815ca3835bbb51eb83a6e0ab886bc5.clean` (canonical main).
+
+It is rc.21 plus automatic side displays for **Three separate displays**:
+- The sides are the equal-size displays directly left and right of the primary. A dashboard or other extra display is
+  never used.
+- Unity's position-sorted display order predicts their indices. Each side is then proven by the window its activation
+  opens before side views render.
+- The saved `LeftDisplayIndex`/`RightDisplayIndex` are no longer used or shown; their stored values are untouched.
+
+The shim, force native, explicit FFB selections, gains, effects and saved tuning are unchanged. This is a local test
+candidate, not physical acceptance or a public release.
+
+- **Exact package:** `ArtOfSimRally-0.4.2-rc.22-shared-input.zip`, 766,448 bytes, SHA-256
+  `380BDA3E24A9B895E4CFDC461D99C7486E74A71619C558BE71C1765EE96B29AD`; manifest
+  `0A6F857175199B4C200830361B45BB952C7D46FC3FCF5C6A71FD162699BD61F2`.
+  - Installed mod `C256C8795BE11780F264CEF0D06301E58159144005BBE4DE399E61B6950B7755`.
+  - Shim `BC9B030A` and both force native copies `44E46799`: unchanged from rc.21.
+- **Gates** (receipt `results/rc22-final-gates/receipt.json`):
+  - Throwaway rc.927 on the same clean source passed **20 of 20 gates** (510,530 assertions), with the original
+    two-case corpus (`C964C158`) and landing 9,582. `ART_SHIM_DLL` and `ART_LATCHED_SHIM_DLL` were set to the
+    `BC9B030A` copy for that runner only. Gate `automated.json` `AE22099A…`.
+  - `Test-Installer` passed **50 assertions** on a fresh extraction of the exact ZIP. Report `37A16F95…`.
+- **Runtime evidence reused:** the display change is the code tested in the rc.926 stage proof (`4f02a0f`); since then
+  only documentation changed.
+  - Unity 1 was proven on the left display and Unity 3 on the right.
+  - The dashboard (Unity 2) was never activated.
+  - The captured row showed one continuous scene left to right.
+  - Hub `artifacts/art-separate-display-stage-20261013`. No new runtime run was made for this repack.
+- **Rehearsal and install:** wrapper `results/rc22-install-plan/Install.ps1`, SHA-256
+  `482FDE6E7DD35DCD5B747E3859E203222AA01E2EB7236A2E81694821E0335C24`.
+  - It is the rc.21 wrapper (`CBA51376`) with rc.22 inputs. The rc.21 owner receipt is its prior state, and it expects
+    the four-file delta.
+  - The scratch rehearsal passed with the same bytes, then owner mode ran. Both ran under lease
+    `e638f1a8ba234ed6a4af418f115f7fa7`, 21:31:37–21:35:52 CDT, which also covered the package and gates.
+  - The game was closed. No launch, profile Apply, device call or force output.
+- **Changed, exactly four files:** `ArtOfSimRally.Mod.dll`, `build.json`, `Dbce.TripleScreen.Core.dll` and
+  `Dbce.TripleScreen.Protocol.dll`. All other **63 files** in the protected tree retained their hashes, including the
+  shim and both native copies.
+- **Current owner settings retained:**
+  - Settings.xml `0A380211744928BF91BF3B8E30F791142286D97DBEF4CF65F05ECA95D2E4F68A`;
+  - dbce-controls.ini `73E782304BB56DF5D722A0FADDA7E9C5FFD8347736C11003A6DFEFCDF94FADFA`;
+  - TripleScreen.xml (separate displays on), unchanged;
+  - Wheelkit mapping profiles `7AE6A254` and the canonical dirty CustomVehicles `SESSION.md` (`42EBDD69`), unchanged.
+  - Saves (23 files) and PlayerPrefs (export `44235D65`) are byte-identical before and after
+    (`results/rc22-install-plan/saves-prefs`).
+- **Receipt and backup:** in
+  `E:/Source/games/.worktrees/art-rc22-rita/results/rc22-install-plan/owner-install/`.
+  - `install-receipt.json`, `tree-before.json`, `tree-after.json`, `exit.json` and `before-install/`. The verified
+    backup holds the rc.21 Art mod folder and the second native copy.
+  - The neighboring `rehearsal/` holds the scratch receipt.
+- **Rollback:** with Art closed, restore the backed-up rc.21 payload files. Preserve newer owner settings and profile
+  choices, and keep the prior receipts and backups.
+- **Runtime scope:** the installed package was not launched.
+  - The display proof covers this fixed four-display rig with a synthetic native-script route.
+  - Physical controls, production FFB acquisition and coexistence, and force feel remain unqualified.
+  - There is no public binary or source promotion, tag or release.
+
+## Previous installation — 0.4.2-rc.21 (private shared-input candidate)
 
 Installed October 14 at 01:12:28 UTC (October 13, 20:12 CDT), exact package source
 `b1af29f9168d9f2c6ad8c0e0bff7c1c246508744.clean`. It moves the private candidate to
