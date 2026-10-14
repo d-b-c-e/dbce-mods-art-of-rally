@@ -17,6 +17,7 @@ internal sealed class RenderDiagnostics
     private int _lastSampleFrame;
     private string _lastPresentation;
     private string _lastObservedRow;
+    private string _lastIdentity;
 
     internal string PresentationSummary { get; private set; } = "Waiting for presentation sample.";
 
@@ -58,6 +59,13 @@ internal sealed class RenderDiagnostics
         {
             _lastObservedRow = observedRow.Summary;
             _logger.Log("Observed racing row (diagnostic only; saved Unity display indices are used): " + observedRow.Summary);
+        }
+        // Candidate links from Unity's display indices to those displays: evidence only, nothing is activated or chosen.
+        var identity = UnityDisplayIdentity.Observe();
+        if (identity.Summary != _lastIdentity)
+        {
+            _lastIdentity = identity.Summary;
+            _logger.Log("Unity display identity (diagnostic only; saved Unity display indices are used): " + identity.Summary);
         }
         var camera = Camera.main;
         var postProcessing = camera == null ? null : camera.GetComponent<PostProcessLayer>();
@@ -134,6 +142,7 @@ internal sealed class RenderDiagnostics
                 renderingHeight = display.renderingHeight
             }).ToArray(),
             observedRacingRow = observedRow,
+            unityDisplayIdentity = identity,
             note = "VSync is the Unity request, not proof of synchronized display scanout. " +
                    "Update FPS, render CPU time, and camera callback span are not GPU/present timing. " +
                    "Active physical projection replaces camera FOV but preserves camera pitch and position."

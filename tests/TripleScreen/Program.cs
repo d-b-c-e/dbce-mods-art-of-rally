@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Text;
 using ArtOfSimRally.Mod.Triple;
 using Dbce.TripleScreen;
@@ -29,6 +30,7 @@ internal static class Program
             CanonicalLayoutParsesStrictly();
             SeparateDisplayLayoutParsesWithoutWideOutput();
             ObservedRacingRowIsEvidenceOnly();
+            DisplayIdentityEvidenceIsHypothesisOnly();
             InvalidLayoutsAreRejected();
             StagedLayoutFallbackAndReload();
             RuntimeStatusMatchesCanonicalShape();
@@ -359,6 +361,58 @@ internal static class Program
         Check(refused.Kind == "None" && refused.RowDisplays.Length == 0 && refused.AuxiliaryDisplays.Length == 0 &&
             refused.WindowsDisplays.Length == 3 && refused.Summary.StartsWith("no racing row", StringComparison.Ordinal),
             "no row: nothing is called auxiliary, every display is still listed");
+    }
+
+    // The identity diagnostic's pure parts: the X-order hypothesis and the two probe conventions. Fixture: this rig's
+    // Windows enumeration order (right, center, left, then a 1920x1080 DisplayLink dashboard above).
+    private static void DisplayIdentityEvidenceIsHypothesisOnly()
+    {
+        var left = new Dbce.Wheel.Display.MonitorRect(-2560, 0, 2560, 1440, false);
+        var center = new Dbce.Wheel.Display.MonitorRect(0, 0, 2560, 1440, true);
+        var right = new Dbce.Wheel.Display.MonitorRect(2560, 0, 2560, 1440, false);
+        var dashboard = new Dbce.Wheel.Display.MonitorRect(314, -1080, 1920, 1080, false);
+
+        var rig = ArtOfSimRally.Mod.Triple.DisplayIdentityEvidence.PredictXOrder(new[] { right, center, left, dashboard });
+        Check(rig.SequenceEqual(new[] { center, left, dashboard, right }), "rig: primary, then left, dashboard, right by X");
+        var three = ArtOfSimRally.Mod.Triple.DisplayIdentityEvidence.PredictXOrder(new[] { right, left, center });
+        Check(three.SequenceEqual(new[] { center, left, right }), "three displays: experiment 008's left=1, right=2");
+        var sameSize = new Dbce.Wheel.Display.MonitorRect(0, -1440, 2560, 1440, false);
+        var stacked = ArtOfSimRally.Mod.Triple.DisplayIdentityEvidence.PredictXOrder(new[] { sameSize, right, center, left });
+        Check(stacked.SequenceEqual(new[] { center, left, sameSize, right }), "a same-size dashboard above sorts by X between the sides");
+        var low = new Dbce.Wheel.Display.MonitorRect(2560, 1440, 1920, 1080, false);
+        Check(ArtOfSimRally.Mod.Triple.DisplayIdentityEvidence.PredictXOrder(new[] { low, center, right })
+            .SequenceEqual(new[] { center, right, low }), "equal X: Y breaks the tie");
+        Check(ArtOfSimRally.Mod.Triple.DisplayIdentityEvidence.PredictXOrder(new[] { left, right }).Count == 0, "no primary: no prediction");
+        Check(ArtOfSimRally.Mod.Triple.DisplayIdentityEvidence.PredictXOrder(new[] { center, new Dbce.Wheel.Display.MonitorRect(2560, 0, 2560, 1440, true) }).Count == 0,
+            "two primaries: no prediction");
+
+        Check(ArtOfSimRally.Mod.Triple.DisplayIdentityEvidence.DesktopCenter(left) == (-1280, 720), "desktop center, left");
+        Check(ArtOfSimRally.Mod.Triple.DisplayIdentityEvidence.DesktopCenter(dashboard) == (1274, -540), "desktop center, dashboard");
+        Check(ArtOfSimRally.Mod.Triple.DisplayIdentityEvidence.PrimaryBottomUpCenter(left, center) == (-1280, 720), "bottom-up center, left");
+        Check(ArtOfSimRally.Mod.Triple.DisplayIdentityEvidence.PrimaryBottomUpCenter(dashboard, center) == (1274, 1980), "bottom-up center, dashboard above");
+        Check(ArtOfSimRally.Mod.Triple.DisplayIdentityEvidence.PrimaryBottomUpCenter(right, center) == (3840, 720), "bottom-up center, right");
+
+        var rect = (Func<Dbce.Wheel.Display.MonitorRect, ArtOfSimRally.Mod.Triple.DisplayIdentityEvidence.Rect>)ArtOfSimRally.Mod.Triple.DisplayIdentityEvidence.ToRect;
+        var snapshot = new ArtOfSimRally.Mod.Triple.DisplayIdentityEvidence.Snapshot
+        {
+            Displays = new[]
+            {
+                new ArtOfSimRally.Mod.Triple.DisplayIdentityEvidence.UnityDisplay { Index = 0, Hmonitor = rect(center), XOrderPrediction = rect(center), XOrderSizeAgrees = true },
+                new ArtOfSimRally.Mod.Triple.DisplayIdentityEvidence.UnityDisplay { Index = 1, XOrderPrediction = rect(left), XOrderSizeAgrees = true },
+                new ArtOfSimRally.Mod.Triple.DisplayIdentityEvidence.UnityDisplay { Index = 2, XOrderPrediction = rect(dashboard), XOrderSizeAgrees = false },
+            },
+            Probes = new[]
+            {
+                new ArtOfSimRally.Mod.Triple.DisplayIdentityEvidence.Probe { Target = rect(left), Convention = ArtOfSimRally.Mod.Triple.DisplayIdentityEvidence.DesktopConvention, ResultIndex = 1 },
+                new ArtOfSimRally.Mod.Triple.DisplayIdentityEvidence.Probe { Target = rect(dashboard), Convention = ArtOfSimRally.Mod.Triple.DisplayIdentityEvidence.BottomUpConvention, Error = "x" },
+            },
+        };
+        var summary = ArtOfSimRally.Mod.Triple.DisplayIdentityEvidence.Summarize(snapshot);
+        Check(summary == "nativeDisplay is an HMONITOR for 1/3 [0=0,0 2560x1440 primary] | RelativeMouseAt desktop [-2560,0->1] | " +
+            "RelativeMouseAt primaryBottomUp [314,-1080->error] | X-order hypothesis [0=0,0; 1=-2560,0; 2=314,-1080 size differs]", "summary: " + summary);
+        Check(ArtOfSimRally.Mod.Triple.DisplayIdentityEvidence.Summarize(new ArtOfSimRally.Mod.Triple.DisplayIdentityEvidence.Snapshot { Error = "E: no" })
+            == "identity read failed: E: no", "failed read summary");
+        Check(snapshot.Scope.StartsWith("diagnostic only", StringComparison.Ordinal) && snapshot.Conventions.Length == 2, "scope and conventions stated");
     }
 
     private static void Check(bool condition, string message)
