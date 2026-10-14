@@ -453,59 +453,90 @@ internal static class Program
     private static void SideDisplaysAreProvenOnActivation()
     {
         var left = new Dbce.Wheel.Display.MonitorRect(-2560, 0, 2560, 1440, false);
+        var center = new Dbce.Wheel.Display.MonitorRect(0, 0, 2560, 1440, true);
+        var onCenter = new SideActivationWitness.MainWindow(1, 0, 0, 2560, 1440, "fixture");
         var right = new Dbce.Wheel.Display.MonitorRect(2560, 0, 2560, 1440, false);
         var dashboard = new Dbce.Wheel.Display.MonitorRect(314, -1080, 1920, 1080, false);
         SideActivationWitness.SecondaryWindow W(long handle, Dbce.Wheel.Display.MonitorRect? monitor) => new(handle, monitor, "fixture");
         var none = Array.Empty<SideActivationWitness.SecondaryWindow>();
 
         var activated = new System.Collections.Generic.List<int>();
-        var witness = new SideActivationWitness(1, 3, left, right);
-        Check(witness.Step(0, none, activated.Add) == SideActivationWitness.Phase.ProvingLeft && activated.SequenceEqual(new[] { 1 }), "left activated alone first");
-        Check(witness.Step(0.1, new[] { W(10, null) }, activated.Add) == SideActivationWitness.Phase.ProvingLeft, "an unplaced window is waited for");
-        Check(witness.Step(0.2, new[] { W(10, left) }, activated.Add) == SideActivationWitness.Phase.ProvingRight && activated.SequenceEqual(new[] { 1, 3 }),
+        var witness = new SideActivationWitness(1, 3, left, center, right);
+        Check(witness.Step(0, onCenter, none, activated.Add) == SideActivationWitness.Phase.ProvingLeft && activated.SequenceEqual(new[] { 1 }), "left activated alone first");
+        Check(witness.Step(0.1, onCenter, new[] { W(10, null) }, activated.Add) == SideActivationWitness.Phase.ProvingLeft, "an unplaced window is waited for");
+        Check(witness.Step(0.2, onCenter, new[] { W(10, left) }, activated.Add) == SideActivationWitness.Phase.ProvingRight && activated.SequenceEqual(new[] { 1, 3 }),
             "left proven, then right activated");
-        Check(witness.Step(0.3, new[] { W(10, left), W(30, right) }, activated.Add) == SideActivationWitness.Phase.Proven &&
+        Check(witness.Step(0.3, onCenter, new[] { W(10, left), W(30, right) }, activated.Add) == SideActivationWitness.Phase.Proven &&
               witness.Code == "SIDE_DISPLAYS_PROVEN" && activated.Count == 2, "both sides proven: " + witness.Message);
-        Check(witness.Step(0.4, none, activated.Add) == SideActivationWitness.Phase.Proven && activated.Count == 2, "proven stays proven");
+        Check(witness.Step(0.4, onCenter, none, activated.Add) == SideActivationWitness.Phase.Proven && activated.Count == 2, "proven stays proven");
 
         activated.Clear();
-        var existing = new SideActivationWitness(1, 3, left, right);
-        Check(existing.Step(0, new[] { W(7, left) }, activated.Add) == SideActivationWitness.Phase.Failed &&
+        var existing = new SideActivationWitness(1, 3, left, center, right);
+        Check(existing.Step(0, onCenter, new[] { W(7, left) }, activated.Add) == SideActivationWitness.Phase.Failed &&
               existing.Code == "SECONDARY_DISPLAY_STATE_UNKNOWN" && activated.Count == 0, "a pre-existing window cannot be attributed");
 
-        var swapped = new SideActivationWitness(1, 3, left, right);
-        swapped.Step(0, none, activated.Add);
-        Check(swapped.Step(0.1, new[] { W(10, right) }, activated.Add) == SideActivationWitness.Phase.Failed &&
+        var swapped = new SideActivationWitness(1, 3, left, center, right);
+        swapped.Step(0, onCenter, none, activated.Add);
+        Check(swapped.Step(0.1, onCenter, new[] { W(10, right) }, activated.Add) == SideActivationWitness.Phase.Failed &&
               swapped.Code == "SECONDARY_DISPLAY_IDENTITY_MISMATCH" && activated.SequenceEqual(new[] { 1 }), "left on the right monitor fails before the right is activated");
-        Check(swapped.Step(0.2, new[] { W(10, right) }, activated.Add) == SideActivationWitness.Phase.Failed && activated.Count == 1, "a failure is final");
+        Check(swapped.Step(0.2, onCenter, new[] { W(10, right) }, activated.Add) == SideActivationWitness.Phase.Failed && activated.Count == 1, "a failure is final");
 
         activated.Clear();
-        var onDashboard = new SideActivationWitness(1, 3, left, right);
-        onDashboard.Step(0, none, activated.Add);
-        Check(onDashboard.Step(0.1, new[] { W(10, dashboard) }, activated.Add) == SideActivationWitness.Phase.Failed &&
+        var onDashboard = new SideActivationWitness(1, 3, left, center, right);
+        onDashboard.Step(0, onCenter, none, activated.Add);
+        Check(onDashboard.Step(0.1, onCenter, new[] { W(10, dashboard) }, activated.Add) == SideActivationWitness.Phase.Failed &&
               onDashboard.Code == "SECONDARY_DISPLAY_IDENTITY_MISMATCH", "a window on the dashboard fails");
 
-        var ambiguous = new SideActivationWitness(1, 3, left, right);
-        ambiguous.Step(0, none, _ => { });
-        Check(ambiguous.Step(0.1, new[] { W(10, left), W(11, right) }, _ => { }) == SideActivationWitness.Phase.Failed &&
+        var ambiguous = new SideActivationWitness(1, 3, left, center, right);
+        ambiguous.Step(0, onCenter, none, _ => { });
+        Check(ambiguous.Step(0.1, onCenter, new[] { W(10, left), W(11, right) }, _ => { }) == SideActivationWitness.Phase.Failed &&
               ambiguous.Code == "SECONDARY_DISPLAY_IDENTITY_AMBIGUOUS", "two new windows are ambiguous");
 
-        var slow = new SideActivationWitness(1, 3, left, right, 5);
-        slow.Step(10, none, _ => { });
-        Check(slow.Step(14.9, none, _ => { }) == SideActivationWitness.Phase.ProvingLeft, "within the time limit it waits");
-        Check(slow.Step(15.1, new[] { W(10, null) }, _ => { }) == SideActivationWitness.Phase.Failed && slow.Code == "SECONDARY_DISPLAY_WINDOW_TIMEOUT",
+        var slow = new SideActivationWitness(1, 3, left, center, right, 5);
+        slow.Step(10, onCenter, none, _ => { });
+        Check(slow.Step(14.9, onCenter, none, _ => { }) == SideActivationWitness.Phase.ProvingLeft, "within the time limit it waits");
+        Check(slow.Step(15.1, onCenter, new[] { W(10, null) }, _ => { }) == SideActivationWitness.Phase.Failed && slow.Code == "SECONDARY_DISPLAY_WINDOW_TIMEOUT",
             "no placed window in time fails");
 
         activated.Clear();
-        var rightWrong = new SideActivationWitness(1, 3, left, right);
-        rightWrong.Step(0, none, activated.Add);
-        rightWrong.Step(0.1, new[] { W(10, left) }, activated.Add);
-        Check(rightWrong.Step(0.2, new[] { W(10, left), W(30, dashboard) }, activated.Add) == SideActivationWitness.Phase.Failed &&
+        var rightWrong = new SideActivationWitness(1, 3, left, center, right);
+        rightWrong.Step(0, onCenter, none, activated.Add);
+        rightWrong.Step(0.1, onCenter, new[] { W(10, left) }, activated.Add);
+        Check(rightWrong.Step(0.2, onCenter, new[] { W(10, left), W(30, dashboard) }, activated.Add) == SideActivationWitness.Phase.Failed &&
               rightWrong.Code == "SECONDARY_DISPLAY_IDENTITY_MISMATCH" && activated.SequenceEqual(new[] { 1, 3 }), "a wrong right side fails");
         Check(rightWrong.Observations.Count >= 4, "observations are kept as evidence");
 
+        // The center first (sana 81671): nothing is activated until the game's own main window fills the row's center
+        // display, and that refusal is not final.
+        activated.Clear();
+        var placed = new SideActivationWitness(1, 3, left, center, right);
+        var onLeft = new SideActivationWitness.MainWindow(1, -2560, 0, 2560, 1440, "fixture");
+        Check(placed.Step(0, onLeft, none, activated.Add) == SideActivationWitness.Phase.NotStarted &&
+              placed.Code == "MAIN_WINDOW_NOT_ROW_CENTER" && activated.Count == 0, "a game window on another display activates nothing");
+        var windowed = new SideActivationWitness.MainWindow(1, 8, 31, 2544, 1401, "fixture");
+        Check(placed.Step(0.5, windowed, none, activated.Add) == SideActivationWitness.Phase.NotStarted && activated.Count == 0,
+            "a windowed picture that does not fill the center activates nothing");
+        Check(placed.Step(1, new SideActivationWitness.MainWindow(2, 0, 0, 0, 0, "two"), none, activated.Add) == SideActivationWitness.Phase.NotStarted &&
+              placed.Code == "MAIN_WINDOW_UNKNOWN" && activated.Count == 0, "two main windows cannot confirm the center");
+        Check(placed.Step(2, onCenter, none, activated.Add) == SideActivationWitness.Phase.ProvingLeft && activated.SequenceEqual(new[] { 1 }),
+            "once the game fills the center, the left side is activated");
+
+        // A failed activation is final, its side is called exactly once, and nothing is activated afterwards.
+        var calls = new System.Collections.Generic.List<int>();
+        var throwsRight = new SideActivationWitness(1, 3, left, center, right);
+        Action<int> activateThrowingRight = index => { calls.Add(index); if (index == 3) throw new InvalidOperationException("display\nunavailable"); };
+        throwsRight.Step(0, onCenter, none, activateThrowingRight);
+        Check(throwsRight.Step(0.1, onCenter, new[] { W(10, left) }, activateThrowingRight) == SideActivationWitness.Phase.Failed &&
+              throwsRight.Code == "SECONDARY_DISPLAY_ACTIVATION_FAILED" && calls.SequenceEqual(new[] { 1, 3 }) && !throwsRight.Message.Contains("\n"),
+            "a throwing right activation fails finally: " + throwsRight.Message);
+        Check(throwsRight.Step(0.2, onCenter, new[] { W(10, left), W(30, right) }, activateThrowingRight) == SideActivationWitness.Phase.Failed &&
+              calls.Count == 2, "nothing is activated or proven after the failure");
+        Check(!throwsRight.Observations.Any(o => o.StartsWith("activated Unity 3", StringComparison.Ordinal)), "a failed activation is not recorded as activated");
+        var throwsLeft = new SideActivationWitness(1, 3, left, center, right);
+        Check(throwsLeft.Step(0, onCenter, none, _ => throw new InvalidOperationException("no")) == SideActivationWitness.Phase.Failed &&
+              throwsLeft.Code == "SECONDARY_DISPLAY_ACTIVATION_FAILED", "a throwing left activation fails at once");
         var threw = false;
-        try { _ = new SideActivationWitness(0, 3, left, right); } catch (ArgumentException) { threw = true; }
+        try { _ = new SideActivationWitness(0, 3, left, center, right); } catch (ArgumentException) { threw = true; }
         Check(threw, "index 0 (the primary) is never a side");
     }
 

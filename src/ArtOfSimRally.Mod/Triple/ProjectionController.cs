@@ -288,21 +288,29 @@ internal sealed class ProjectionController
                 "Temporal anti-aliasing can reset custom projection matrices; select another AA mode for this experiment.");
         }
 
-        // Activation happens only here, at the gameplay camera, one side at a time: no side camera renders until both
-        // sides are proven by the windows they open.
+        // Activation happens only here, at the gameplay camera, one side at a time, and only once the game's main window
+        // is confirmed on the row's center display: no side camera renders until both sides are proven by the windows
+        // they open.
         if (s_sideWitness == null)
-            s_sideWitness = new SideActivationWitness(s_sideSelection.LeftIndex, s_sideSelection.RightIndex, s_sideSelection.Left, s_sideSelection.Right);
+            s_sideWitness = new SideActivationWitness(s_sideSelection.LeftIndex, s_sideSelection.RightIndex,
+                s_sideSelection.Left, s_sideSelection.Center, s_sideSelection.Right);
         if (s_sideWitness.Current != SideActivationWitness.Phase.Proven)
         {
+            SideActivationWitness.MainWindow main;
             IReadOnlyList<SideActivationWitness.SecondaryWindow> windows;
-            try { windows = SecondaryDisplayWindows.Read(); }
+            try
+            {
+                main = SecondaryDisplayWindows.ReadMain();
+                windows = SecondaryDisplayWindows.Read();
+            }
             catch (Exception exception)
             {
                 Release();
                 return ProjectionOutcome.Error(layoutResult, "SECONDARY_WINDOW_READ_FAILED", SafeMessage(exception.Message));
             }
-            var phase = s_sideWitness.Step(Time.realtimeSinceStartup, windows, index => Display.displays[index].Activate());
-            if (phase == SideActivationWitness.Phase.Failed)
+            var phase = s_sideWitness.Step(Time.realtimeSinceStartup, main, windows, index => Display.displays[index].Activate());
+            // Failed is final; NotStarted means the center display is not confirmed yet and nothing was activated.
+            if (phase == SideActivationWitness.Phase.Failed || phase == SideActivationWitness.Phase.NotStarted)
             {
                 Release();
                 return ProjectionOutcome.Degraded(layoutResult, s_sideWitness.Code, s_sideWitness.Message);

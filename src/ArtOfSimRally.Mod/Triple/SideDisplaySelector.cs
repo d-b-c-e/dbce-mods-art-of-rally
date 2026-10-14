@@ -7,9 +7,10 @@ namespace ArtOfSimRally.Mod.Triple;
 
 // Chooses the Unity display indices for the side views from the racing row Windows shows (sana 80507/81386), so a
 // dashboard or other extra display is never chosen and the saved LeftDisplayIndex/RightDisplayIndex are no longer used.
-// Unity 2019.4 sorts its display list by virtual-desktop x, y unless the player runs with -multidisplay (Manual:
-// Multi-display), with the primary at index 0. That sort is the only link before activation, and its tie order is not
-// documented, so this choice is a prediction: SideActivationWitness proves each side on activation. Pure.
+// Unity 2019.4's manual says its display order follows the x, y virtual desktop unless the player runs with
+// -multidisplay, and that index 0 is the primary (Manual: Multi-display). The exact rule used here (the primary first,
+// then the others by X, then Y) is a prediction from that and from this rig's runs, not a documented guarantee, so
+// SideActivationWitness proves each side on activation. Pure.
 internal static class SideDisplaySelector
 {
     internal const string UnsortedFlag = "-multidisplay";
@@ -22,6 +23,7 @@ internal static class SideDisplaySelector
         public int LeftIndex { get; set; } = -1;
         public int RightIndex { get; set; } = -1;
         public MonitorRect Left { get; set; }
+        public MonitorRect Center { get; set; }
         public MonitorRect Right { get; set; }
     }
 
@@ -56,6 +58,7 @@ internal static class SideDisplaySelector
         return new Result
         {
             Ok = true, Code = "SIDE_DISPLAYS_PREDICTED", LeftIndex = leftIndex, RightIndex = rightIndex, Left = left, Right = right,
+            Center = row.Displays[1],
             Message = $"Predicted left = Unity {leftIndex} ({left}), right = Unity {rightIndex} ({right}); each is verified on activation.",
         };
     }

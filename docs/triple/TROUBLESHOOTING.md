@@ -10,7 +10,13 @@ Open **Advanced setup and diagnostics**, enter your measurements, select **Use m
 
 ## The side screens are blank, swapped, or frozen
 
-For separate displays, check that Windows is in extended desktop mode, the center screen is primary, and the screens directly left and right of it have the same native resolution, top and bottom. Side displays are found automatically. The triple-screen status names the reason if they could not be found or checked: `RACING_ROW_UNAVAILABLE`, `DISPLAY_IDENTITY_UNPROVEN`, `DISPLAY_ORDER_UNSORTED` (the game was started with `-multidisplay`), or `SECONDARY_DISPLAY_IDENTITY_MISMATCH`. `render-diagnostics.json` records the details under `sideMapping`. Restart the game after changing display mode or arrangement. If a side window did not return after Alt+Tab, bring the game back to the foreground and wait a frame; the mod tries to raise both Unity secondary windows on focus return. Report a repeatable failure with the stage and screenshot.
+For separate displays, check that Windows is in extended desktop mode, the center screen is primary, and the screens directly left and right of it have the same native resolution, top and bottom. Side displays are found automatically. The triple-screen status names the reason if they could not be found or checked:
+- `RACING_ROW_UNAVAILABLE`;
+- `DISPLAY_IDENTITY_UNPROVEN`;
+- `DISPLAY_ORDER_UNSORTED`: the game was started with `-multidisplay`;
+- `MAIN_WINDOW_NOT_ROW_CENTER` or `MAIN_WINDOW_UNKNOWN`: the game is not full screen on the primary. Nothing is activated, so fixing this works without a restart;
+- `SECONDARY_DISPLAY_IDENTITY_MISMATCH`;
+- `SECONDARY_DISPLAY_ACTIVATION_FAILED`. `render-diagnostics.json` records the details under `sideMapping`. Restart the game after changing display mode or arrangement. If a side window did not return after Alt+Tab, bring the game back to the foreground and wait a frame; the mod tries to raise both Unity secondary windows on focus return. Report a repeatable failure with the stage and screenshot.
 
 For Single wide display, check that Windows and the game both report exactly three native panel widths and one panel height. Current bezel-corrected wide resolutions are not supported.
 
