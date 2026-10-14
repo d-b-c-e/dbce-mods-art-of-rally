@@ -52,8 +52,12 @@ saved values. Note each drive's start and end time. Record the owner's words per
    v1 at 50 within 0.4% (50 × 19,166.67 / 11,500 = 83.3).
 
 Afterwards, set Strength back to 50 unless the owner says otherwise. Then run the hub script in fresh mode with
-the two drive windows and a new output folder, and confirm that no preset write or slider move fell inside
-either drive.
+the two drive windows and a new output folder, and require the verdict `clean` for both. Clean needs all of these:
+- Pit House's log covers the whole drive, so Pit House must stay running;
+- the starting preset is known;
+- nothing changed inside the drive.
+
+An `unknown-*` verdict is not a pass.
 
 A preference between A and B shows the preferred steering gain on this base. It does not establish why the
 October 13 drives felt weak. What to do with the preference, including whether to revisit STD-031, is for the
