@@ -1,6 +1,22 @@
 # Release readiness — 2026-09-30
 
-**0.2.7 is the stable release and installed copy.** The final-labelled clean-
+**Current state (reconciled 2026-10-14):**
+
+- **Published:** the latest public stable release is **0.4.1**, GitHub
+  [`v0.4.1`](https://github.com/d-b-c-e/dbce-mods-art-of-rally/releases/tag/v0.4.1),
+  published 2026-10-07 01:08:38 UTC from `7c3de40`. The README download points there.
+- **Installed:** the installed copy is the **private local candidate 0.4.2-rc.22**
+  (shared input), installed 2026-10-14 02:35:45 UTC. It is not a public release and
+  has no physical acceptance.
+
+`docs/LOCAL-DEPLOYMENT.md` (its "Current installation" section) is authoritative for
+what is installed, and the GitHub releases page is authoritative for what is
+published.
+
+**The rest of this page is a historical record from 2026-09-30.** The release
+records for 0.4.0 and later are in `docs/reviews/` and `docs/LOCAL-DEPLOYMENT.md`.
+
+**Historical (2026-09-30): 0.2.7 was then the stable release and installed copy.** The final-labelled clean-
 source build passed all 16 local gates. The installed files and independently
 downloaded GitHub ZIP/checksum match the tested package. The owner requested
 promotion of RC2's behavior; this is not item-by-item hardware acceptance.

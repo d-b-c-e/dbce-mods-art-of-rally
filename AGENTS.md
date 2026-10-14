@@ -8,7 +8,24 @@
 
 ## Repository Purpose
 
-**Current release/install: 0.4.0**, published 2026-10-05 02:13:18 UTC from
+**Current state (reconciled 2026-10-14):**
+
+- **Published:** the latest public stable release is **0.4.1**, GitHub
+  [`v0.4.1`](https://github.com/d-b-c-e/dbce-mods-art-of-rally/releases/tag/v0.4.1),
+  published 2026-10-07 01:08:38 UTC from `7c3de40`. The README download points there.
+- **Installed:** the installed copy is the **private local candidate 0.4.2-rc.22**
+  (shared input), installed 2026-10-14 02:35:45 UTC. It is not a public release and
+  has no physical acceptance.
+
+`docs/LOCAL-DEPLOYMENT.md` (its "Current installation" section) is authoritative for
+what is installed, and the GitHub releases page is authoritative for what is
+published.
+
+The release paragraphs below are kept as history. Each was current when it was
+written.
+
+**Historical: release 0.4.0** (superseded by the 0.4.1 publication and the later
+local release candidates). It was published 2026-10-05 02:13:18 UTC from
 `30d421b26eccebc564cd50bf0733c1ed6a82d849`, tag `v0.4.0`. All 20 local gates
 passed. Exact final normal and optional SessionTools archives are installed;
 downloaded GitHub assets match. Final replay `replay-20261004-210753` applied
