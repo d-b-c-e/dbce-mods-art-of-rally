@@ -8,6 +8,8 @@ namespace ArtOfSimRally.Mod.Triple;
 /// <summary>Raises this game's Unity secondary windows when the game regains focus.</summary>
 internal static class SideWindowFocusRestorer
 {
+    /// <summary>The title Unity gives each activated secondary display's window.</summary>
+    internal const string SecondaryWindowTitle = "Unity Secondary Display";
     private const uint SwpNoSize = 0x0001;
     private const uint SwpNoMove = 0x0002;
     private const uint SwpNoActivate = 0x0010;
@@ -39,7 +41,7 @@ internal static class SideWindowFocusRestorer
             if (windowProcess != ownProcess || !IsWindowVisible(window)) return true;
             var title = new StringBuilder(64);
             GetWindowText(window, title, title.Capacity);
-            if (!string.Equals(title.ToString(), "Unity Secondary Display", StringComparison.Ordinal))
+            if (!string.Equals(title.ToString(), SecondaryWindowTitle, StringComparison.Ordinal))
                 return true;
             if (SetWindowPos(window, IntPtr.Zero, 0, 0, 0, 0,
                     SwpNoSize | SwpNoMove | SwpNoActivate)) raised++;

@@ -41,7 +41,7 @@ This option is not in the published 0.3.11 ZIP yet.
 
 With the game closed, set Windows to **Extend these displays**. Make the center screen Windows primary and use the same native resolution on all three screens. Launch the game at that native center resolution. Choose **Three separate displays** in the mod and start a stage. The title and menus remain on the primary screen.
 
-The tested Unity mapping was left `1`, center `0`, right `2`. If the side views are swapped, change **Left display index** and **Right display index** in Advanced setup. These are Unity indices and need not match the numbers shown by Windows. The side display windows remain activated until the game exits, so restart the game after switching output modes or correcting a display arrangement.
+The side displays are found automatically: the equal-size displays directly left and right of the primary. Other displays, such as a dashboard above the row, are ignored, and nothing needs setting. When a stage starts, the mod activates one side at a time and checks that each side's window opened on the expected screen before drawing side views. If that check fails, the side views stay off for the rest of that game session. Do not start the game with `-multidisplay`, which turns off the display ordering this relies on. The side display windows remain activated until the game exits, so restart the game after switching output modes or changing the display arrangement.
 
 On the tested three-monitor rig this mode had aligned seams, stable vegetation, matched lighting, and no visible tearing during the attended drive. Other monitor mixes and replay/photo flows remain unverified.
 

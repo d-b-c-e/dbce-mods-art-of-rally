@@ -6,14 +6,13 @@ using Dbce.Wheel.Display;
 namespace ArtOfSimRally.Mod.Triple;
 
 // Read-only diagnostics: the racing row the toolkit's shared selector (lib/display) sees in Windows' displays, written
-// beside Unity's own display list. Evidence only. Independent displays keep using the saved Unity indices
-// (LeftDisplayIndex/RightDisplayIndex); nothing here maps a Unity display index to a Windows display, chooses an index
-// or refuses one, because Unity's display order is not a reliable link to these rectangles.
+// beside Unity's own display list. Evidence only: nothing here chooses or refuses a display. Independent displays take
+// their sides from the same policy in SideDisplaySelector, and each side is proven on activation by SideActivationWitness.
 internal static class ObservedRacingRow
 {
     internal const string IndexCorrelation =
-        "unresolved: the saved Unity indices (LeftDisplayIndex/RightDisplayIndex) stay authoritative; Unity's display " +
-        "order is not mapped to these Windows displays";
+        "side views use this row: Unity's position-sorted display order predicts the side indices and each side is " +
+        "proven by the window it opens (render-diagnostics sideMapping); saved LeftDisplayIndex/RightDisplayIndex are not used";
 
     internal sealed class DisplayRect
     {

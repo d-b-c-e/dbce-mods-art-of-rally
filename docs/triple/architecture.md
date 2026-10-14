@@ -24,7 +24,7 @@ CarCameras or Cinemachine on Stage Camera
 ```
 
 - **Single wide display:** center camera renders into the middle third of the 3-panel-wide output; side cameras render into the left and right thirds. This replaced the earlier render-texture compositor, which lost vegetation and camera lighting effects. The viewports use the same projections as separate displays.
-- **Three separate displays:** center uses Unity display 0, while side cameras target two selected secondary Unity displays. Display activation lasts until process exit.
+- **Three separate displays:** center uses Unity display 0. The side cameras target the racing row's left and right displays. They are predicted from Unity's position-sorted display list and the Windows layout (`SideDisplaySelector`), then proven one at a time by the window each activation opens (`SideActivationWitness`). The saved `LeftDisplayIndex`/`RightDisplayIndex` are not used. Display activation lasts until process exit.
 - **Off:** the mod releases camera state and leaves stock rendering. An existing Unity secondary window can retain its last image until process exit; restart after changing modes.
 
 Each side camera gets an isolated PostProcessVolume copied from the center's active effects except MotionBlur, plus the center's enabled occlusion and volumetric effects. Copies must keep camera-specific callbacks independent. The game draws vegetation from its source camera; the mod widens that camera's vegetation culling to 360° while three views are active and restores the original mode on release. Per-camera direct vegetation registration caused side vegetation to disappear in the 0.3.7 attended test.

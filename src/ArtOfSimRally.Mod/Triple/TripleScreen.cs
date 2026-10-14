@@ -220,8 +220,9 @@ internal static class TripleScreen
         if (mode == 2)
         {
             GUILayout.Label("Center must be Windows primary. Exit the game after changing display mode; activated displays release on exit.");
-            _settings.LeftDisplayIndex = IntField("Left display index", _settings.LeftDisplayIndex);
-            _settings.RightDisplayIndex = IntField("Right display index", _settings.RightDisplayIndex);
+            // The side displays are found automatically (the racing row beside the primary); the saved index fields are
+            // no longer used, so they are not shown. Their stored values are left untouched.
+            GUILayout.Label("Side displays are found automatically: the equal-size displays directly left and right of the primary. Other displays, such as a dashboard, are ignored.");
         }
         _settings.CenterMenusOnMiddleScreen = GUILayout.Toggle(_settings.CenterMenusOnMiddleScreen,
             "Center title and main menu on middle screen");

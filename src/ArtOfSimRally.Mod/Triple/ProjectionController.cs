@@ -1,5 +1,8 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using Dbce.TripleScreen;
+using Dbce.Wheel.Display;
 using Dbce.TripleScreen.Protocol;
 using UnityEngine;
 using UnityEngine.Rendering.PostProcessing;
@@ -11,6 +14,26 @@ internal sealed class ProjectionController
     private Camera _camera;
     private CenterProjectionDriver _centerDriver;
     private SeparateDisplayRenderDriver _separateDriver;
+    // Side displays for this process (sana 81386). Activation cannot be undone, so the proof and any failure last
+    // until exit: no other monitor is tried after a mismatch.
+    private static SideActivationWitness s_sideWitness;
+    private static SideDisplaySelector.Result s_sideSelection;
+    private static float s_sideSelectionTime = float.NegativeInfinity;
+
+    /// <summary>Evidence for render-diagnostics: how the side displays were chosen and proven.</summary>
+    internal static object SideMappingEvidence => new
+    {
+        selectionCode = s_sideSelection?.Code,
+        selectionMessage = s_sideSelection?.Message,
+        predictedLeftIndex = s_sideSelection?.LeftIndex,
+        predictedRightIndex = s_sideSelection?.RightIndex,
+        phase = s_sideWitness?.Current.ToString() ?? "NotStarted",
+        code = s_sideWitness?.Code,
+        message = s_sideWitness?.Message,
+        observations = s_sideWitness?.Observations.ToArray(),
+        note = "Saved LeftDisplayIndex/RightDisplayIndex are not used. Unity's position-sorted display order predicts the " +
+               "side indices; each side is proven by the window it opens before side views render.",
+    };
 
     internal double? CenterVerticalFovDegrees { get; private set; }
     internal long SuccessfulWideFrames => _separateDriver?.SpanMode == true
@@ -226,24 +249,21 @@ internal sealed class ProjectionController
                 $"Primary game output is {Screen.width}x{Screen.height}; independent displays require the center monitor at {panel.NativeWidthPx}x{panel.NativeHeightPx}.");
         }
 
-        var displays = Display.displays;
-        if (settings.LeftDisplayIndex < 1 || settings.RightDisplayIndex < 1 ||
-            settings.LeftDisplayIndex == settings.RightDisplayIndex ||
-            settings.LeftDisplayIndex >= displays.Length || settings.RightDisplayIndex >= displays.Length)
+        // The side displays come from the racing row Windows shows, so a dashboard or other extra display is never
+        // used; the saved LeftDisplayIndex/RightDisplayIndex are not read (sana 81386). Nothing is activated here.
+        if (s_sideWitness == null)
         {
-            Release();
-            return ProjectionOutcome.Degraded(layoutResult, "SECONDARY_DISPLAY_MAPPING_INVALID",
-                $"Unity reports {displays.Length} displays; choose distinct secondary indices for left and right (center is 0).");
+            var selection = SelectSideDisplays(panel);
+            if (!selection.Ok)
+            {
+                Release();
+                return ProjectionOutcome.Degraded(layoutResult, selection.Code, selection.Message);
+            }
         }
-
-        if (displays[settings.LeftDisplayIndex].systemWidth != panel.NativeWidthPx ||
-            displays[settings.LeftDisplayIndex].systemHeight != panel.NativeHeightPx ||
-            displays[settings.RightDisplayIndex].systemWidth != panel.NativeWidthPx ||
-            displays[settings.RightDisplayIndex].systemHeight != panel.NativeHeightPx)
+        else if (s_sideWitness.Current == SideActivationWitness.Phase.Failed)
         {
             Release();
-            return ProjectionOutcome.Degraded(layoutResult, "SECONDARY_DISPLAY_RESOLUTION_MISMATCH",
-                "Both selected secondary Unity displays must report the panel's native resolution before activation.");
+            return ProjectionOutcome.Degraded(layoutResult, s_sideWitness.Code, s_sideWitness.Message);
         }
 
         var camera = Camera.main;
@@ -268,6 +288,29 @@ internal sealed class ProjectionController
                 "Temporal anti-aliasing can reset custom projection matrices; select another AA mode for this experiment.");
         }
 
+        // Activation happens only here, at the gameplay camera, one side at a time: no side camera renders until both
+        // sides are proven by the windows they open.
+        if (s_sideWitness == null)
+            s_sideWitness = new SideActivationWitness(s_sideSelection.LeftIndex, s_sideSelection.RightIndex, s_sideSelection.Left, s_sideSelection.Right);
+        if (s_sideWitness.Current != SideActivationWitness.Phase.Proven)
+        {
+            IReadOnlyList<SideActivationWitness.SecondaryWindow> windows;
+            try { windows = SecondaryDisplayWindows.Read(); }
+            catch (Exception exception)
+            {
+                Release();
+                return ProjectionOutcome.Error(layoutResult, "SECONDARY_WINDOW_READ_FAILED", SafeMessage(exception.Message));
+            }
+            var phase = s_sideWitness.Step(Time.realtimeSinceStartup, windows, index => Display.displays[index].Activate());
+            if (phase == SideActivationWitness.Phase.Failed)
+            {
+                Release();
+                return ProjectionOutcome.Degraded(layoutResult, s_sideWitness.Code, s_sideWitness.Message);
+            }
+            if (phase != SideActivationWitness.Phase.Proven)
+                return ProjectionOutcome.Starting(layoutResult, s_sideWitness.Code, s_sideWitness.Message);
+        }
+
         try
         {
             var viewWidthScale = ResolveViewWidthScale(panel, geometry, camera, settings);
@@ -290,7 +333,7 @@ internal sealed class ProjectionController
             }
 
             EnsureSeparateDriver(camera);
-            _separateDriver.Configure(layoutResult.Sha256, projections, rotations, settings.LeftDisplayIndex, settings.RightDisplayIndex);
+            _separateDriver.Configure(layoutResult.Sha256, projections, rotations, s_sideWitness.LeftIndex, s_sideWitness.RightIndex);
             if (_separateDriver.RenderError != null)
                 return ProjectionOutcome.Error(layoutResult, "SEPARATE_DISPLAY_RENDER_ERROR", _separateDriver.RenderError);
             if (!_separateDriver.AllDisplaysRendered)
@@ -394,6 +437,25 @@ internal sealed class ProjectionController
     private string FovDescription(Settings settings, Camera camera) => settings.OverrideFieldOfView
         ? $"custom {CenterVerticalFovDegrees:0}° center FOV"
         : $"the game's {camera.fieldOfView:0}° camera FOV across all views";
+
+    // The racing-row prediction, refreshed at most once a second until activation starts.
+    private static SideDisplaySelector.Result SelectSideDisplays(PanelDocument panel)
+    {
+        var now = Time.realtimeSinceStartup;
+        if (s_sideSelection != null && now - s_sideSelectionTime < 1f) return s_sideSelection;
+        s_sideSelectionTime = now;
+        try
+        {
+            var unity = Display.displays.Select(display => (display.systemWidth, display.systemHeight)).ToArray();
+            s_sideSelection = SideDisplaySelector.Select(WindowsMonitors.Read(), unity, Environment.GetCommandLineArgs(),
+                panel.NativeWidthPx, panel.NativeHeightPx);
+        }
+        catch (Exception exception)
+        {
+            s_sideSelection = new SideDisplaySelector.Result { Ok = false, Code = "DISPLAY_READ_FAILED", Message = SafeMessage(exception.Message) };
+        }
+        return s_sideSelection;
+    }
 
     private static string SafeMessage(string message)
     {

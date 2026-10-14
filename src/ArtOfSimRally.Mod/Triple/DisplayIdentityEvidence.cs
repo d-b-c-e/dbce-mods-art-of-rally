@@ -7,7 +7,7 @@ namespace ArtOfSimRally.Mod.Triple;
 
 // Read-only evidence for how Unity's display indices relate to Windows' displays (sana 80507/80723). Unity 2019.4 gives
 // no positions and documents only that index 0 is the primary. Three candidate identity sources are recorded side by
-// side, and nothing is decided from them: independent displays still use the saved indices.
+// side, and nothing is decided from them (independent displays use SideDisplaySelector and SideActivationWitness).
 //   1. nativeDisplay: Unity's private per-display handle, kept only if GetMonitorInfo accepts it as an HMONITOR.
 //   2. RelativeMouseAt: Unity's own point-to-display query, asked about each Windows display's center in two explicit
 //      coordinate conventions. Only numbers are passed: no cursor, input or focus change.
@@ -17,7 +17,7 @@ namespace ArtOfSimRally.Mod.Triple;
 internal static class DisplayIdentityEvidence
 {
     internal const string Scope =
-        "diagnostic only: no display is activated, selected or saved from this evidence; independent displays use the saved indices";
+        "diagnostic only: no display is activated, selected or saved from this evidence; independent displays use sideMapping";
     internal const string DesktopConvention = "desktop: Windows virtual-desktop pixels, origin at the primary's top-left, y down";
     internal const string BottomUpConvention = "primaryBottomUp: pixels from the primary's bottom-left, y up (Unity screen convention)";
 
