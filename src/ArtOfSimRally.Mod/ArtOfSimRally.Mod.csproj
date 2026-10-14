@@ -85,6 +85,12 @@
   <PropertyGroup>
     <ArtShimProbe Condition="'$(ArtShimProbe)' == ''">false</ArtShimProbe>
   </PropertyGroup>
+  <!-- Exact toolkit source (lib/display/provenance.json): the shared racing-row selector, used read-only by
+       RenderDiagnostics to report the observed racing row beside Unity's display list. -->
+  <ItemGroup>
+    <Compile Include="..\..\lib\display\RacingRow.cs" Link="Toolkit\Display\RacingRow.cs" />
+    <Compile Include="..\..\lib\display\WindowsMonitors.cs" Link="Toolkit\Display\WindowsMonitors.cs" />
+  </ItemGroup>
   <ItemGroup Condition="'_$(ArtShimProbe)' == '_true'">
     <Compile Remove="ShimStartup.Inert.cs" />
   </ItemGroup>

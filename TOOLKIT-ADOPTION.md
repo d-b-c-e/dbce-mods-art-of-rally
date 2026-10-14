@@ -22,7 +22,7 @@ Audited 2026-10-04 (read-only standards audit); statuses below are from that aud
 | STD-012 | Reproduce the route and preserve original signals | unchecked | added 2026-10-05; session playback (v0.4.0) is the likely fit |
 | STD-013 | The installed build launches plainly | unchecked | added 2026-10-05 |
 | STD-014 | Request reciprocal review when progress stalls | unchecked | added 2026-10-05; process standard |
-| STD-015 | Triples on Surround and on separate monitors | unchecked | added 2026-10-05; both modes exist (wide display and three separate displays) |
+| STD-015 | Triples on Surround and on separate monitors | partial | added 2026-10-05; both modes exist (wide display and three separate displays). Separate displays use the saved Unity indices; Art spans no desktop window, so the virtual-desktop-height assumption fixed elsewhere does not apply. The shared racing-row selector (toolkit db0383c, exact source in lib/display) feeds read-only diagnostics only (`observedRacingRow`); the Unity-index-to-display mapping is unresolved (docs/triple/KNOWN-ISSUES.md). |
 | STD-016 | Telemetry: Forza Horizon layout, on by default | unchecked | added 2026-10-05 |
 | STD-017 | Hide settings pages that have nothing to offer | unchecked | added 2026-10-05 |
 | STD-018 | Handling changes never reach online scores | unchecked | added 2026-10-05; DisableSteerAssist is off by default |

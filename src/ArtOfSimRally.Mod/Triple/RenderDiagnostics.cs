@@ -16,6 +16,7 @@ internal sealed class RenderDiagnostics
     private float _lastSampleTime = -1f;
     private int _lastSampleFrame;
     private string _lastPresentation;
+    private string _lastObservedRow;
 
     internal string PresentationSummary { get; private set; } = "Waiting for presentation sample.";
 
@@ -51,6 +52,13 @@ internal sealed class RenderDiagnostics
         PresentationSummary = $"{Screen.width}x{Screen.height}, {Screen.fullScreenMode}, " +
                               $"VSync requested {requestedVsync} / effective {effectiveVsync}, " +
                               $"display {Screen.currentResolution.refreshRate} Hz";
+        // Windows' displays as the shared selector sees them: evidence beside Unity's list, never a mapping to it.
+        var observedRow = ObservedRacingRow.Observe();
+        if (observedRow.Summary != _lastObservedRow)
+        {
+            _lastObservedRow = observedRow.Summary;
+            _logger.Log("Observed racing row (diagnostic only; saved Unity display indices are used): " + observedRow.Summary);
+        }
         var camera = Camera.main;
         var postProcessing = camera == null ? null : camera.GetComponent<PostProcessLayer>();
         var snapshot = new
@@ -125,6 +133,7 @@ internal sealed class RenderDiagnostics
                 renderingWidth = display.renderingWidth,
                 renderingHeight = display.renderingHeight
             }).ToArray(),
+            observedRacingRow = observedRow,
             note = "VSync is the Unity request, not proof of synchronized display scanout. " +
                    "Update FPS, render CPU time, and camera callback span are not GPU/present timing. " +
                    "Active physical projection replaces camera FOV but preserves camera pitch and position."

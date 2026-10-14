@@ -2,3 +2,5 @@
 # Exact source-vendored session presentation.
 lib/session-ui/*.cs text eol=lf
 lib/session-ui/LICENSE text eol=lf
+lib/display/*.cs text eol=lf
+lib/display/LICENSE text eol=lf

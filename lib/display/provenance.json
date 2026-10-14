@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "repository": "d-b-c-e/dbce-wheel-mod-toolkit",
+  "sourceRevision": "db0383c2d1d95423407a0f8cd25707db3ad2ca9f",
+  "files": [
+    {
+      "source": "shared/display/RacingRow.cs",
+      "file": "RacingRow.cs",
+      "gitBlob": "3d43d868a58b619a75f622481325b700d168f5ad",
+      "sha256": "082030feb5fc296cb990a9331824bedc4a45139e200c092474c148021f0a55bc"
+    },
+    {
+      "source": "shared/display/WindowsMonitors.cs",
+      "file": "WindowsMonitors.cs",
+      "gitBlob": "cf20f97be06ba43b26a95c4edbd74d3dff58efd5",
+      "sha256": "0e1ce9604852d6a0875e8d97001f5bac73a55d413920323cebb76d00b053918d"
+    },
+    {
+      "source": "LICENSE",
+      "file": "LICENSE",
+      "sha256": "b2212c476244c444d6b7e804ac89c038a88b5c9288a087b30a2343d2dc3021db"
+    }
+  ]
+}

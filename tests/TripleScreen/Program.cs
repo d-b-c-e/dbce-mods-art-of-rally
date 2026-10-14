@@ -28,6 +28,7 @@ internal static class Program
             BadEyeSideIsRejected();
             CanonicalLayoutParsesStrictly();
             SeparateDisplayLayoutParsesWithoutWideOutput();
+            ObservedRacingRowIsEvidenceOnly();
             InvalidLayoutsAreRejected();
             StagedLayoutFallbackAndReload();
             RuntimeStatusMatchesCanonicalShape();
@@ -328,6 +329,36 @@ internal static class Program
     private static void Near(Vector3d actual, Vector3d expected, double tolerance, string name)
     {
         Check((actual - expected).Length <= tolerance, $"{name}: expected {expected}, got {actual}");
+    }
+
+    // The diagnostic snapshot from the shared selector: the racing row and the displays outside it, with the saved
+    // Unity indices stated as authoritative. Fixture: three 2560x1440 displays plus a 1920x1080 dashboard above.
+    private static void ObservedRacingRowIsEvidenceOnly()
+    {
+        var left = new Dbce.Wheel.Display.MonitorRect(-2560, 0, 2560, 1440, false);
+        var center = new Dbce.Wheel.Display.MonitorRect(0, 0, 2560, 1440, true);
+        var right = new Dbce.Wheel.Display.MonitorRect(2560, 0, 2560, 1440, false);
+        var dashboard = new Dbce.Wheel.Display.MonitorRect(314, -1080, 1920, 1080, false);
+
+        var row = ObservedRacingRow.Describe(new[] { dashboard, right, center, left });
+        Check(row.Kind == "Separate" && row.X == -2560 && row.Y == 0 && row.Width == 7680 && row.Height == 1440, "observed row: " + row.Summary);
+        Check(row.RowDisplays.Length == 3 && row.RowDisplays[0].X == -2560 && row.RowDisplays[1].Primary && row.RowDisplays[2].X == 2560,
+            "row displays left to right");
+        Check(row.AuxiliaryDisplays.Length == 1 && row.AuxiliaryDisplays[0].Width == 1920 && row.AuxiliaryDisplays[0].Y == -1080,
+            "the dashboard is reported outside the row");
+        Check(row.WindowsDisplays.Length == 4 && row.Error == null, "every Windows display is listed");
+        Check(row.IndexCorrelation.StartsWith("unresolved", StringComparison.Ordinal) && row.IndexCorrelation.Contains("LeftDisplayIndex"),
+            "the saved Unity indices are stated as authoritative");
+        Check(row.Summary == "Separate 7680x1440 at -2560,0; 1 other display(s)", "summary line: " + row.Summary);
+
+        var three = ObservedRacingRow.Describe(new[] { left, center, right });
+        Check(three.Kind == "Separate" && three.AuxiliaryDisplays.Length == 0, "the plain three-display row is unchanged");
+
+        var refused = ObservedRacingRow.Describe(new[] { new Dbce.Wheel.Display.MonitorRect(0, 0, 2560, 1440, true), right,
+            new Dbce.Wheel.Display.MonitorRect(5120, 0, 2560, 1440, false) });
+        Check(refused.Kind == "None" && refused.RowDisplays.Length == 0 && refused.AuxiliaryDisplays.Length == 0 &&
+            refused.WindowsDisplays.Length == 3 && refused.Summary.StartsWith("no racing row", StringComparison.Ordinal),
+            "no row: nothing is called auxiliary, every display is still listed");
     }
 
     private static void Check(bool condition, string message)

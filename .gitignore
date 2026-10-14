@@ -456,6 +456,9 @@ lib/*
 !lib/playback/**
 !lib/input-shim/
 !lib/input-shim/**
+# Exact toolkit source, pinned by lib/display/provenance.json (the shared racing-row selector).
+!lib/display/
+!lib/display/**
 
 # Release notes are source documents, not Visual Studio build artifacts.
 !docs/releases/
