@@ -176,8 +176,12 @@ are in `dbce-project-mgmt/artifacts/art-shim-canonical-20261013`:
   its four known CS0649 fixture warnings.
 - Assertion counts include per-frame checks, so they vary between runs.
 
-**Limits:** nothing was packaged, installed or run in the game. The installed rc.20
-still carries `723E8A38` (`docs/LOCAL-DEPLOYMENT.md`).
+**Adoption-check scope:** these offline checks did not package, install or run
+the game. The subsequent private rc.21 package from `b1af29f` was installed on
+October 13 at 20:12 CDT with the exact `BC9B030A` shim after the full corpus gate
+and exact-ZIP installer checks passed. Settings and the force native were retained.
+See [the deployment receipt](../../docs/LOCAL-DEPLOYMENT.md). This dated follow-up
+does not change the retained rc.21 package or its source identity.
 
 These offline checks do not establish:
 
