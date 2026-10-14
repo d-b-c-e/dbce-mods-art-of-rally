@@ -46,8 +46,9 @@ strict native GUID selection. Explicit device overrides and accepted force tunin
 are unchanged. Private candidates now pin the canonical toolkit shim `c6594fa`
 (built at `421bd4b`, hash `BC9B030A`), which carries `5b96ba8`'s inspection plus the
 fenced latched bridge; toolkit native and Art .NET/Unity Mono checks passed (see
-[the shim provenance](lib/input-shim/PROVENANCE.md)). The installed rc.20 still runs
-`723E8A38` from `5b96ba8`, which first passed Core, ABI, bridge, fake-COM and .NET/Unity
+[the shim provenance](lib/input-shim/PROVENANCE.md)). Private rc.21 with that shim is
+installed locally (not launched; see [LOCAL-DEPLOYMENT](docs/LOCAL-DEPLOYMENT.md)). The
+earlier `723E8A38` from `5b96ba8` first passed Core, ABI, bridge, fake-COM and .NET/Unity
 Mono tests. The October 13 disposable startup (with `723E8A38`) resolved the configured target before
 qualification, attached and accepted a shared frame using the test-only muted
 DD301314 native; exact owner/copy restoration passed. Production 44E46799 force

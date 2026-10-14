@@ -6,7 +6,81 @@ feature or bug fix. After its candidate or final artifact passes the complete
 local automated gate, deploy it for testing without asking again. Public release
 publication and attended sign-off remain separate.
 
-## Current installation — 0.4.2-rc.20 (private shared-input candidate)
+## Current installation — 0.4.2-rc.21 (private shared-input candidate)
+
+Installed October 14 at 01:12:28 UTC (October 13, 20:12 CDT), exact package source
+`b1af29f9168d9f2c6ad8c0e0bff7c1c246508744.clean`. It moves the private candidate to
+the canonical toolkit shim `c6594fa` (`BC9B030A`), which merges the copied-provider
+bridge, the fenced latched session and the pure profile inspection. It also carries
+the two main changes since rc.20: observed racing-row diagnostics (`281c6e2`,
+diagnostics only) and American English player text (`dd133b6`). The force native,
+explicit FFB selections, gains, effects and saved tuning are unchanged. This is a
+local test candidate, not physical acceptance or a public release.
+
+- **Exact package:** `ArtOfSimRally-0.4.2-rc.21-shared-input.zip`, 754,813 bytes, SHA-256
+  `D2C754B64361705587FC79C8835BFA3FA917D10C80697C589D4C11A0BC3A25DB`; manifest
+  `B0F36FF0C8FDEDBA43FA6041DC4A8CF5DA119BC8FCFF50660DBB8F1403112F4C`.
+  - Installed mod `7CB24EE8025D59CB43D233FCBB56C59019C06A83E875F52A215057B35F567EC7`.
+  - Shim `BC9B030A25834D8CCE562F22588EC5E0D3F5C1FA026AD7AD984776D60CD6254B`, toolkit
+    `c6594fa` built at `421bd4b`. The private copy and its provenance are described in
+    [lib/input-shim/PROVENANCE.md](../lib/input-shim/PROVENANCE.md).
+  - Both force native copies remain `44E46799`.
+- **Gates:**
+  - The first complete gate, throwaway rc.923 on `b1af29f`, stopped at `game-bindings`.
+    The test still asserted "cancelled" after `dd133b6` changed the player text to
+    "canceled". `aa40524` fixes only that test.
+  - The retry, rc.924 on `aa40524`, passed **20 of 20 gates** (510,450 assertions). Its
+    runtime and package inputs (`src`, `lib`, `tools/package`, `tools/installer`,
+    `Version.props`) are identical to the packaged `b1af29f`. It used the original
+    two-case corpus (`C964C158`), and its recorded landing check passed 9,582 assertions.
+  - `ART_SHIM_DLL` and `ART_LATCHED_SHIM_DLL` were set to the `BC9B030A` copy for that
+    runner only.
+  - `Test-Installer` passed **50 assertions** on a fresh extraction of the exact ZIP.
+  - Receipts: `results/rc21-final-gates-retry/receipt.json`; gate `automated.json`
+    `91FC7840…`; installer report `73C57AE0…`. The failed first attempt is kept in
+    `results/rc21-final-gates`.
+- **Rehearsal and install:** wrapper `results/rc21-install-plan/Install.ps1`, SHA-256
+  `CBA513767F51E03971757F8958D215CE208EAF41DB699556ADBF86625C84051D`.
+  - It is the rc.20 wrapper (`5AD5243A`) with rc.21 inputs. The rc.20 owner receipt is
+    its prior state, and it borrows the announced lease instead of taking its own.
+  - The scratch rehearsal passed with the same bytes, then owner mode ran. Both ran under
+    lease `a3da531b50de401d95931ba90463bbbf`, 20:03:32–20:13:09 CDT, which also covered
+    the gates.
+  - The game was closed. No launch, profile Apply, device call or force output.
+- **Changed, exactly five files:** `ArtOfSimRally.Mod.dll`, `build.json`,
+  `dbce_shim.dll`, `Dbce.TripleScreen.Core.dll` and `Dbce.TripleScreen.Protocol.dll`.
+  - The TripleScreen dependencies were rebuilt again, without a triple-screen source
+    change.
+  - All other **62 files** in the protected tree retained their hashes. That includes
+    SessionTools, CustomVehicles, the game and loader files, both native copies, and all
+    settings and layout files.
+- **Current owner settings retained:**
+  - Settings.xml `0A380211744928BF91BF3B8E30F791142286D97DBEF4CF65F05ECA95D2E4F68A`;
+  - dbce-controls.ini `73E782304BB56DF5D722A0FADDA7E9C5FFD8347736C11003A6DFEFCDF94FADFA`;
+  - Wheelkit mapping profiles `7AE6A254`, and the canonical dirty CustomVehicles
+    `SESSION.md` (`42EBDD69`), both unchanged.
+  - Saves (23 files under `LocalLow\Funselektor Labs`) and PlayerPrefs
+    (`HKCU\Software\Funselektor Labs\art of rally`) were last written before the install.
+- **Receipt and backup:** in
+  `E:/Source/games/.worktrees/art-shim-canonical-rita/results/rc21-install-plan/owner-install/`.
+  - `install-receipt.json`, `tree-before.json`, `tree-after.json`, `exit.json` and
+    `before-install/`. The verified backup holds the rc.20 Art mod folder and the second
+    native copy.
+  - The neighboring `rehearsal/` holds the scratch receipt.
+  - Copies of the wrappers, logs and receipts, without binaries, and the saves/prefs check
+    are in `dbce-project-mgmt/artifacts/art-rc21-install-20261013`.
+- **Rollback:** with Art closed, restore the backed-up rc.20 payload files and the second
+  native. Preserve any newer owner settings or profile choices, and keep the prior
+  receipts and backups.
+- **Runtime scope:** the installed package was not launched. No runtime run used the
+  `BC9B030A` shim, and that includes a fresh shared-only startup. The offline adoption
+  checks are in the shim provenance.
+  - Physical controls, production FFB acquisition and coexistence, and force feel remain
+    unqualified.
+  - The shim stays a private packaging input. There is no public binary or source
+    promotion, tag, push or release.
+
+## Previous installation — 0.4.2-rc.20 (private shared-input candidate)
 
 Installed October 13 at 13:52:55 UTC (08:52 CDT), exact package source
 `1d845d8bb26090f13893c2249092f371b4f0e861.clean`. It resolves a fresh shared-only
