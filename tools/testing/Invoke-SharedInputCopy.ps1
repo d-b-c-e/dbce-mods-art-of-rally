@@ -44,6 +44,10 @@ param([Parameter(Mandatory)][string]$Result,
       [ValidateRange(30,300)][int]$ObserveSeconds=120,
       [ValidateRange(0,60)][int]$SettleSeconds=10,
       [ValidateRange(10,60)][int]$CaptureSeconds=12,
+      # The exact token of a shared lease the caller already holds (sana 131546), so one held slot covers the caller's
+      # build and staging and this run. It is asserted, never renewed, and never released here: the caller releases it,
+      # and a failed restoration leaves it held as before.
+      [ValidatePattern('^[^\r\n]+$')][string]$HeldLease,
       [string]$ToolkitRepo='E:/Source/toolkits/dbce-wheel-mod-toolkit',
       [string]$HubRepo='E:/Source/dbce-project-mgmt')
 $ErrorActionPreference='Stop'
@@ -253,7 +257,9 @@ function Save-File([string]$p) {
 function Files([string]$p,[switch]$Recurse) {
     if(Test-Path -LiteralPath $p) { Get-ChildItem -LiteralPath $p -File -Recurse:$Recurse | ForEach-Object { Plain $_.FullName; $_.FullName } }
 }
-$lease=Enter-StageRigLease -Path (Join-Path $env:LOCALAPPDATA 'dbce/test-slot.txt') -Owner art-shared-input -Purpose $(if($ui) { 'Disposable Art F6 visual and shared-binding messaging capture through the dev recorder (host calls only, no moved control); muted, no force or OS input; restore shared state' } elseif($replay) { 'Disposable Art cold replay of a SharedInput recording with every input and force device off; no OS input; restore shared state' } elseif($SharedCar) { 'Disposable Art SharedInput ordinary shared-car recording at a recorder-reached stage (the shared profile''s devices drive the car); muted, no force or OS input; restore shared state' } elseif($native) { 'Disposable Art SharedInput ordinary native-script coexistence at a recorder-reached stage; muted, no force or OS input; restore shared state' } else { 'Disposable Art SharedInput ordinary startup smoke; muted, no force or input; restore shared state' })
+$leasePath=Join-Path $env:LOCALAPPDATA 'dbce/test-slot.txt'
+if($HeldLease) { Assert-StageRigLease -Path $leasePath -Token $HeldLease; $lease=[pscustomobject]@{path=[IO.Path]::GetFullPath($leasePath);token=$HeldLease;previous=$null;held=$true} }
+else { $lease=Enter-StageRigLease -Path $leasePath -Owner art-shared-input -Purpose $(if($ui) { 'Disposable Art F6 visual and shared-binding messaging capture through the dev recorder (host calls only, no moved control); muted, no force or OS input; restore shared state' } elseif($replay) { 'Disposable Art cold replay of a SharedInput recording with every input and force device off; no OS input; restore shared state' } elseif($SharedCar) { 'Disposable Art SharedInput ordinary shared-car recording at a recorder-reached stage (the shared profile''s devices drive the car); muted, no force or OS input; restore shared state' } elseif($native) { 'Disposable Art SharedInput ordinary native-script coexistence at a recorder-reached stage; muted, no force or OS input; restore shared state' } else { 'Disposable Art SharedInput ordinary startup smoke; muted, no force or input; restore shared state' }) }
 try {
     Assert-GameClosed
     New-Item -ItemType Directory -Path "$Result/shared-files","$Result/after" | Out-Null
@@ -472,6 +478,6 @@ try {
     foreach($pin in $ownerPins) { Attempt { if((Hash $pin.path) -ne $pin.sha256) { throw "Owner file differs; retained for review, never overwritten: $($pin.path)" } } }
     if($errors.Count) { $errors | Set-Content -LiteralPath "$Result/restore-errors.txt"; throw "Restoration incomplete; backup and lease retained: $Result" }
     [DateTime]::UtcNow.ToString('o') | Set-Content -LiteralPath "$Result/restored.txt"
-    if($lease) { $null=Exit-StageRigLease -Lease $lease }
+    if($lease -and !$HeldLease) { $null=Exit-StageRigLease -Lease $lease }
     if($forceViolation) { throw $forceViolation }
 }

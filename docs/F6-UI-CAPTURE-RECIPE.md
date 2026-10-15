@@ -147,7 +147,9 @@ notice (hub AGENTS.md, owner 2026-10-14).
 
 Both earlier runs stopped at the force gate, not at the editor's own gate:
 - Art's force connect needs the OS foreground window to be the game's (`FfbNative.FocusedGameWindow`).
-- Windows refused the runner's one activation, because the live foreground-lock timeout is 2147483647.
+- Windows refused the runner's one activation (`activation.json`: returned False, another process still in front).
+  Separately, the live foreground-lock timeout read 2147483647 (the registry holds 200000). That reading does not by
+  itself prove why the activation was refused.
 - So the shared session waited on "force feedback to finish connecting", and the editor stayed ReadOnly.
 
 The variant stages the copy with `Prepare-SharedInputCopy.ps1 -Recorder -ForceFeedbackOff`.
