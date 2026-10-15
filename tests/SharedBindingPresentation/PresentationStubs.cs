@@ -27,6 +27,8 @@ namespace ArtOfSimRally.Mod
         public bool Segment(string id, string label, bool selected, bool enabled)
         { Buttons[id] = enabled; Labels[id] = label; return enabled && Click == id; }
         public void Caption(string text) => Texts.Add(text);
+        public bool StatusCard(string id, string title, string detail, bool warning, string action)
+        { Texts.Add(title); Texts.Add(detail); return false; }
         public void Help(string text) => Texts.Add(text);
         public Layout BeginRow(string label, string text, int width) { Texts.Add(text); return new Layout(); }
         public void EndRow(Layout layout) { }
