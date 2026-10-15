@@ -86,7 +86,29 @@ No owner-install overwrite, no second reader, no device discovery, no OS input a
    - tabs wrap when narrow;
    - the footer stays visible;
    - the status text is truthful.
-4. Restore receipts and the UMM log go with the shots. The copy is disposable and single-use (a staging cannot be
-   launched twice). The runner hashes the copy's mod folder before and after (`ui-copy-mod-before.json`,
-   `ui-copy-mod-after.json`), so the Save step's profile write in the copy is visible. Owner files are pinned and never
-   written, as in every run.
+4. Restore receipts and the UMM log go with the shots.
+   - The copy is disposable and single-use: a staging cannot be launched twice.
+   - The runner snapshots the copy's `dbce-controls.ini` and `Settings.xml` like shared files. Restoration keeps their
+     post-run bytes under `after/` (`shared-files.json` maps them) and then puts back the staged bytes.
+   - It also hashes the copy's mod folder before and after.
+   - Owner files are pinned and never written, as in every run.
+
+## Exact coverage (kiki 125216)
+
+| Capture | What it includes |
+|---|---|
+| Both views | Every page at the top, plus the lower content of Controls and Cameras, in the starting text mode |
+| Other text mode | Simple Controls and Simple FFB only |
+| 640 width (larger effective scale) | Simple Controls (top and lower), Simple Cameras (top) and Advanced Cameras (lower) |
+| Binding steps | Simple Controls |
+
+## Outcomes
+
+- **No change before the title:** while the game reports driving, the script waits; if it never reaches the title, it
+  fails at expiry with nothing changed.
+- **Refused before any change:** a non-clean binding editor (a capture, a draft, or saved bindings waiting for a
+  restart) changes nothing.
+- **`end.txt`:** `complete` only when every step ran and every shot file was written. Otherwise it is `incomplete: N
+  shot(s) not written` or `failed: <reason>`, and `incomplete.txt` is written as well. An early stop counts as failed:
+  the recorder unloading or the game closing restores first and leaves this evidence.
+- **Runner labels:** `ui-captured`, `ui-incomplete` or `ui-failed`.

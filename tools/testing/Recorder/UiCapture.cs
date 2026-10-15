@@ -43,11 +43,11 @@ namespace ArtOfSimRally.Testing
         private static DateTime _until;
         private static StreamWriter _events;
         private static readonly List<Step> Steps = new List<Step>();
-        private static int _step = -1, _settle, _shotCount, _stableChecks;
+        private static int _step = -1, _settle, _shotCount, _stableChecks, _shotFailures;
         private static float _armedAt, _stepAt, _sharedWaitUntil;
         private static string _pendingShot;
         private static long _lastSize = -1;
-        private static bool _active, _restored, _waitShared;
+        private static bool _active, _restored, _waitShared, _cleanStart;
         private static readonly List<string> Notes = new List<string>();
 
         // Reflection targets (resolved once at arm).
@@ -81,6 +81,9 @@ namespace ArtOfSimRally.Testing
             Build();
             _armedAt = Time.realtimeSinceStartup;
             _active = true;
+            // An early stop (game closing) still restores and leaves incomplete evidence (kiki 123183); the recorder's
+            // Unload calls Abort too.
+            Application.quitting += () => Abort("game closing before the capture completed");
             Event("ui capture armed: " + Steps.Count + " steps, expires " + _until.ToString("o"));
         }
 
@@ -94,7 +97,15 @@ namespace ArtOfSimRally.Testing
                 {
                     // Wait for the title: the mod loaded, UMM's UI present, not driving, and past the splash screens.
                     if (Time.realtimeSinceStartup - _armedAt < ReadySeconds || Value(_main, "Settings") == null || UnityModManager.UI.Instance == null) return;
+                    // Asserted, not assumed: no change is made while the game reports driving (kiki 125216).
+                    if (Value(Need("ArtOfSimRally.Mod.GameState"), "IsDriving") is bool driving && driving) return;
                     SaveState();
+                    // Refuse an editor that is not clean before any change: no capture, draft or saved-pending state of
+                    // someone else's is ever discarded by this script (kiki 125183).
+                    string dirty = HostValue("CapturingAction") != null ? "a capture is active" : HostValue("HasDraft") is bool d && d ? "a draft exists" :
+                        HostValue("SavedPendingRestart") is bool p && p ? "saved bindings already wait for a restart" : null;
+                    if (dirty != null) { Finish("failed: binding editor not clean at start (" + dirty + "); nothing was changed"); return; }
+                    _cleanStart = true;
                     Begin(0);
                     return;
                 }
@@ -140,10 +151,12 @@ namespace ArtOfSimRally.Testing
                 () => Mathf.Abs(Window.x - 640) < .5f ? null : "UMM width did not take 640");
             Add("narrow-p0-lower", () => Scroll(100000), null);
             Add("narrow-p2-top", () => { Select("Simple", 2); Scroll(0); }, null);
+            // Advanced Cameras lower content: the numeric rows with Default commands, most likely to overflow at 640.
+            Add("narrow-advanced-p2-lower", () => { Select("Advanced", 2); Scroll(100000); }, null);
             Add("narrow-restored", () => { Width(_savedWindow.x); FollowHost(_savedFollowHost); Select("Simple", 0); Scroll(0); }, null);
             // Shared-binding messaging through the host (explicit calls only; no moved control).
             Add("bindings-ready", () => { }, () => SharedReady() ? null : "shared session not started; binding steps show the host's actual state", false);
-            Add("bindings-state", () => { Select("Simple", 0); Scroll(0); Focus("bind-" + (FirstBound(null) ?? "steer")); }, () => "access " + HostValue("Access"));
+            Add("bindings-state", () => { Select("Simple", 0); Scroll(0); Focus("bind-" + (FirstBound(null) ?? "steer")); Event("binding editor access " + HostValue("Access") + ": " + HostValue("AccessReason")); }, null);
             string bound = null, other = null;
             Add("bindings-listening", () => { bound = FirstBound(null); if (Editable && bound != null) HostCall("BeginCapture", bound); },
                 () => !Editable ? "not editable: " + HostValue("AccessReason") : bound == null ? "no bound action" :
@@ -176,7 +189,7 @@ namespace ArtOfSimRally.Testing
         private static void Begin(int index)
         {
             _step = index;
-            if (_step >= Steps.Count) { Finish("complete"); return; }
+            if (_step >= Steps.Count) { Finish(_shotFailures == 0 ? "complete" : "incomplete: " + _shotFailures + " shot(s) not written"); return; }
             var step = Steps[_step];
             step.Act();
             _settle = SettleFrames; _stepAt = Time.realtimeSinceStartup;
@@ -203,7 +216,11 @@ namespace ArtOfSimRally.Testing
         // three checks, at most five seconds.
         private static void WaitForShot()
         {
-            if (Time.realtimeSinceStartup - _stepAt > 5f) { Note("shot not written: " + Path.GetFileName(_pendingShot)); _pendingShot = null; Next(); return; }
+            if (Time.realtimeSinceStartup - _stepAt > 5f)
+            {
+                // A missing or unfinished shot makes the whole capture incomplete; the remaining steps still run.
+                _shotFailures++; Note("shot not written within 5 s: " + Path.GetFileName(_pendingShot)); _pendingShot = null; Next(); return;
+            }
             if (!File.Exists(_pendingShot)) return;
             long size = new FileInfo(_pendingShot).Length;
             if (size > 0 && size == _lastSize) _stableChecks++; else _stableChecks = 0;
@@ -225,6 +242,9 @@ namespace ArtOfSimRally.Testing
         }
 
         // ---- finish and restore ----
+
+        /// <summary>An early stop (the recorder unloading, the game closing): restore and record it as failed.</summary>
+        internal static void Abort(string reason) { if (_active) Finish("failed: " + reason); }
 
         private static void Finish(string outcome)
         {
@@ -249,8 +269,12 @@ namespace ArtOfSimRally.Testing
             _restored = true;
             var problems = new List<string>();
             void Try(string what, Action action) { try { action(); } catch (Exception ex) { problems.Add(what + ": " + ex.Message); } }
-            Try("capture", () => { if (HostValue("CapturingAction") != null) HostCall("CancelCapture"); });
-            Try("draft", () => { if (HostValue("HasDraft") is bool d && d) HostCall("Discard"); });
+            // Only this run's own capture and draft are dropped: the start was refused unless the editor was clean.
+            if (_cleanStart)
+            {
+                Try("capture", () => { if (HostValue("CapturingAction") != null) HostCall("CancelCapture"); });
+                Try("draft", () => { if (HostValue("HasDraft") is bool d && d) HostCall("Discard"); });
+            }
             Try("width", () => Width(_savedWindow.x));
             Try("text mode", () => FollowHost(_savedFollowHost));
             Try("page and view", () => Select(_savedView, _savedPage));

@@ -137,6 +137,7 @@ namespace ArtOfSimRally.Testing
         private static bool Unload(UnityModManager.ModEntry entry)
         {
             ControlsProbe.Close("probe unload");
+            UiCapture.Abort("recorder unloaded before the capture completed");   // restores and leaves incomplete evidence
             SessionTape.Unload();
             RecorderHud.Remove();
             if (Session.Pending && !Session.Stop(subject.Driving())) { entry.Logger.Warning(Session.Status); return false; }

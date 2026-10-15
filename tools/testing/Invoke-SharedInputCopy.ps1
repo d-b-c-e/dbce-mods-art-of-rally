@@ -206,6 +206,10 @@ try {
     # The copy's own UMM log: snapshotted like every shared file, so restoration returns its prior bytes (or removes this
     # launch's log if there was none); it is then set aside before launch (Set-UmmLogAside).
     Save-File $umLog
+    # A UI capture's Save bindings step writes the copy's shared profile, and the panel's page and text-mode steps touch
+    # its Settings.xml: snapshot both like shared files, so restoration keeps the post-run bytes under after/ as evidence
+    # and puts the staged bytes back (kiki 125183).
+    if($ui) { Save-File (Join-Path $mod 'dbce-controls.ini'); Save-File (Join-Path $mod 'Settings.xml') }
     $snapshots | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath "$Result/shared-files.json"
     @{schema=1;gameDir=$GameDir;owner=$owner;lease=$lease;localBefore=$localBefore;artBefore=$artBefore} | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath "$Result/recovery.json"
     $ready=$true
@@ -299,7 +303,15 @@ try {
         if($replay) { if(Test-Path -LiteralPath $replayResult) { $outcome='replayed'; break } }
         # The capture ends on the recorder's end.txt, written only after its last shot file is complete; a shared-input
         # refusal does not end it (the binding shots then record the host's actual state).
-        elseif($ui) { if(Test-Path -LiteralPath (Join-Path $uiDir 'end.txt')) { $outcome='ui-captured'; break } }
+        elseif($ui) {
+            $uiEnd=Join-Path $uiDir 'end.txt'
+            if(Test-Path -LiteralPath $uiEnd) {
+                $endText=(Get-Content -LiteralPath $uiEnd -Raw).Trim()
+                # Only an end line that starts with complete counts as a capture; incomplete and failed stay distinct.
+                $outcome=if($endText.StartsWith('complete',[StringComparison]::Ordinal)) { 'ui-captured' } elseif($endText.StartsWith('incomplete',[StringComparison]::Ordinal)) { 'ui-incomplete' } else { 'ui-failed' }
+                break
+            }
+        }
         elseif($lines -match 'Shared input (not used|stopped)') { $outcome='refused-or-stopped'; break }
         elseif($native) { if(Test-Path -LiteralPath (Join-Path $capture 'end.txt')) { $outcome='captured'; break } }
         else {
