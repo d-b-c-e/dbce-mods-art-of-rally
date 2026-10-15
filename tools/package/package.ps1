@@ -186,9 +186,10 @@ if ($PrivateStandaloneSetup) {
     # Unity Mod Manager unpacks every entry of a dragged mod ZIP into the game's Mods folder, so the optional helper
     # ships as its own companion ZIP, never inside the mod ZIP, and its launcher never copies it into the game.
     $setupPin = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'standalone-setup.json') -Raw | ConvertFrom-Json
+    . (Join-Path $PSScriptRoot 'StandaloneSetupChecksum.ps1')
     $StandaloneSetupZip = [IO.Path]::GetFullPath($StandaloneSetupZip)
     if ([IO.Path]::GetFileName($StandaloneSetupZip) -cne $setupPin.zip -or (Get-FileHash -LiteralPath $StandaloneSetupZip -Algorithm SHA256).Hash -ne $setupPin.zipSha256 -or
-        (Get-Content -LiteralPath "$StandaloneSetupZip.sha256" -Raw).TrimEnd("`r", "`n") -cne ($setupPin.zipSha256 + '  ' + $setupPin.zip)) {
+        !(Test-StandaloneSetupChecksumLine (Get-Content -LiteralPath "$StandaloneSetupZip.sha256" -Raw).TrimEnd("`r", "`n") $setupPin.zipSha256 $setupPin.zip)) {
         throw 'Controls setup helper ZIP or its sidecar differs from standalone-setup.json'
     }
     $setupRoot = Join-Path $companionStage 'ModSetup'

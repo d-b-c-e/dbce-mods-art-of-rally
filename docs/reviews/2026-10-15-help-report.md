@@ -49,3 +49,21 @@ manifest E9D54FFF4597DE943A2D2449071DC5DE8600416B7C3DEB7D573A66801D94A702,
 527 files,80614825 bytes. Lola independently read ZIP SHA, embedded manifest SHA
 and manifest count before pinning. This is artifact identity reuse; Art's actual
 package/companion/CLI proof remains deferred. No helper rebuild is requested.
+
+
+## Packaging-tool successor after retained rc26 compile
+
+The e914 production assembly compiled with zero warnings/errors and passed351
+release metadata assertions. Normal rc26 ZIP CCCD73A5 was produced before the
+companion failed its full-line case-sensitive checksum comparison: actual
+qualified sidecar lowercase f3cf matches pinned uppercase F3CF cryptographically.
+No installer/fixtures ran. Hub2fc437bb preserves original failure and independent
+closure (19Absent,scoped0,lease absent). No mod/metadata/normal ZIP repeat.
+
+Request164596 adds a pure sidecar parser: compare exactly64 hexadecimal digest
+characters ignoring letter case, while retaining exact filename and two-space
+separator. Invalid hashes, changed names, separators and extra lines fail.
+Ten pure regression checks passed once; no file writes or child workloads.
+Only package tools/tests/docs change after e914; the retained compiled identity
+stays e914. Companion assembly and remaining affected checks use a separately
+recorded continuation/packager source, not a claim that the mod was rebuilt.
