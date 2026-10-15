@@ -1,5 +1,18 @@
 # Toolkit standards adoption
 
+## October 15 owned prompt labels - source candidate
+
+Scoped STD-020 GLY / STD-033/036 presentation follow-up: native controls/menu
+badges resolve consumed Active shared bindings, or the eligible loaded Art
+fallback, for exact admitted isolated joystick identities. Generic nonnull
+gamepad sprites no longer bypass that lookup. Keyboard and unrelated native
+prompts keep their existing path; no maps, devices or controls are rewritten.
+Niru's shared NativeAction table and Active-only accessor are prerequisites.
+Source inspection only during owner UAT; focused fixtures/build and rendered
+acceptance remain deferred. Existing unchecked/partial rows, including the
+previously noted missing STD-037 adoption, are unchanged. See
+[the scoped review](docs/reviews/2026-10-15-owned-controls-glyphs.md).
+
 Which entries of the wheel toolkit's standards ledger
 (`E:\Source\toolkits\dbce-wheel-mod-toolkit\STANDARDS.md`) this mod has brought in.
 Update a row in the same commit that adopts it. Statuses: `adopted`, `partial`,

@@ -17,9 +17,9 @@ namespace ArtOfSimRally.Mod
     /// glyph) and the keyboard badge stays as the keyboard left it, so both draw at once.
     /// </para>
     /// <para>
-    /// Same remedy as <see cref="GlyphFallback"/> on the controls screen: where no artwork exists, hide the stale
-    /// image and write the bound element's short name ("B12") into the keyboard badge the prompt already lays
-    /// out. Controllers with real artwork keep it. The element is chosen exactly as the game chose it.
+    /// Prefer the effective Active shared binding for an exactly owned joystick,
+    /// even when the stock method supplied generic gamepad artwork. Otherwise,
+    /// retain native artwork and the original missing-artwork fallback.
     /// </para>
     /// </remarks>
     [HarmonyPatch(typeof(ControllerButtonDisplay), "SetupGlpyh")]
@@ -29,7 +29,7 @@ namespace ArtOfSimRally.Mod
         private static readonly List<ActionElementMap> Maps = new List<ActionElementMap>();
 
         [HarmonyPostfix]
-        private static void ShowNameWhenNoGlyph(Player p, Controller controller, InputAction action,
+        internal static void ShowNameWhenNoGlyph(Player p, Controller controller, InputAction action,
             ControllerButtonDisplay.AxisPolarity ___axisPolarity, Image ___displayImage, Text ___displayText,
             Image ___keyboardImage, ControllerGlyphs ___controllerGlyphs)
         {
@@ -39,13 +39,19 @@ namespace ArtOfSimRally.Mod
             {
                 var joystick = controller as Joystick;
                 if (p == null || action == null || joystick == null || ___displayImage == null || ___displayText == null || ___keyboardImage == null) return;
-                var aem = Pick(p, controller, action, ___axisPolarity);
-                if (aem == null) return;
-                if (___controllerGlyphs != null && ___controllerGlyphs.GetGlyph(joystick.hardwareTypeGuid, aem.elementIdentifierId, aem.axisRange) != null) return;
+                bool owned = OwnedPromptGlyph.TryLabel(p, controller, action,
+                    ___axisPolarity == ControllerButtonDisplay.AxisPolarity.NEGATIVE, out var label);
+                if (!owned)
+                {
+                    var aem = Pick(p, controller, action, ___axisPolarity);
+                    if (aem == null) return;
+                    if (___controllerGlyphs != null && ___controllerGlyphs.GetGlyph(joystick.hardwareTypeGuid, aem.elementIdentifierId, aem.axisRange) != null) return;
+                    label = GlyphFallback.Shorten(aem.elementIdentifierName);
+                }
 
                 ___displayImage.enabled = false;
                 ___keyboardImage.enabled = true;
-                ___displayText.text = GlyphFallback.Shorten(aem.elementIdentifierName);
+                ___displayText.text = label;
                 ___displayText.enabled = true;
             }
             catch
