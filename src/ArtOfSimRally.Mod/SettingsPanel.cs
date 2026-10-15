@@ -240,13 +240,16 @@ namespace ArtOfSimRally.Mod
                 }
             }
             else if (!string.IsNullOrEmpty(host.CaptureMessage)) Help(host.CaptureMessage);
+            // Mutually exclusive with every other edit (an Art calibration, camera or Settings key capture, a connection edit):
+            // shared actions start only when nothing else is being edited (kiki 123770).
+            bool idle = !Editing;
             var rows = host.Rows;
-            for (int i = 0; rows != null && i < rows.Count; i++) BindingRow(host, rows[i], editable, capturing);
+            for (int i = 0; rows != null && i < rows.Count; i++) BindingRow(host, rows[i], editable, capturing, idle);
             if (editable && (host.HasDraft || host.SavedPendingRestart))
             {
                 GUILayout.BeginHorizontal(GUILayout.Width(SettingsPresentation.BodyWidth));
-                if (W.Command("bindings-save", "Save bindings", host.HasDraft && capturing == null) && !host.Save(out string message)) Help(message);
-                if (W.Command("bindings-discard", "Discard", host.HasDraft && capturing == null)) host.Discard();
+                if (W.Command("bindings-save", "Save bindings", host.HasDraft && idle) && !host.Save(out string message)) Help(message);
+                if (W.Command("bindings-discard", "Discard", host.HasDraft && idle)) host.Discard();
                 W.Spacer();
                 GUILayout.EndHorizontal();
                 W.Help(host.HasDraft ? "Unsaved changes. Save bindings writes the profile; the game uses it from the next start."
@@ -254,7 +257,7 @@ namespace ArtOfSimRally.Mod
             }
         }
 
-        private static void BindingRow(ISharedBindingHost host, SharedBindingRowView row, bool editable, string capturing)
+        private static void BindingRow(ISharedBindingHost host, SharedBindingRowView row, bool editable, string capturing, bool idle)
         {
             string value = row.Active.Bound ? row.Active.Text : "Unbound";
             if (row.ActiveInverted) value += " · inverted";
@@ -267,13 +270,13 @@ namespace ArtOfSimRally.Mod
             {
                 if (W.Command("bind-" + row.Action, "Cancel (" + Math.Ceiling(host.CaptureSecondsLeft).ToString("0") + " s)")) host.CancelCapture();
             }
-            else if (W.Command("bind-" + row.Action, "Bind", editable && capturing == null)) host.BeginCapture(row.Action);
+            else if (W.Command("bind-" + row.Action, "Bind", editable && idle)) host.BeginCapture(row.Action);
             bool bound = row.Draft.HasValue ? row.Draft.Value.Bound : row.NextStart.HasValue ? row.NextStart.Value.Bound : row.Active.Bound;
-            if (W.Command("clear-" + row.Action, "Clear", editable && capturing == null && bound)) host.Clear(row.Action);
+            if (W.Command("clear-" + row.Action, "Clear", editable && idle && bound)) host.Clear(row.Action);
             if (row.IsAxis)
             {
                 bool inverted = row.DraftInverted ?? row.NextStartInverted ?? row.ActiveInverted;
-                if (W.Segment("invert-" + row.Action, "Invert", inverted, editable && capturing == null && bound)) host.SetInverted(row.Action, !inverted);
+                if (W.Segment("invert-" + row.Action, "Invert", inverted, editable && idle && bound)) host.SetInverted(row.Action, !inverted);
             }
             W.EndRow(layout);
         }
