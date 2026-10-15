@@ -119,7 +119,7 @@ an explicit current-device/Saved choice; reappearance does not confirm it.
 Unavailable-action/profile-mode rows show the host reason and disable Bind,
 Clear and Invert. Initial intentional Saved mode and host/profile/force behavior
 remain unchanged. Working Woden selection is the reference, not a rewrite target.
-Focused source-linked presentation fixture and affected compile remain pending
-one named coordinated batch. No new runtime, physical, package or install claim.
+F6-SHARED-PENDING-0635 passed 24 source-linked presentation checks
+and the affected plugin compile with zero warnings/errors. No new runtime, physical, package or install claim.
 This addresses the scoped STD-004/030 presentation gap; broader partial STD-033/036
 game-delivery/physical checks remain separate from this source change.
