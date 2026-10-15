@@ -37,3 +37,24 @@ setup flow. This limited in-game host is not fresh-device discovery, endpoint ca
 Verification is pending the coordinator's next admitted batch. `tests/SharedBindings` covers the pure host/draft under
 net8.0 and net48; `tests/ShimInput` adds Valo's accepted-cache single-read and observer-failure checks. These use fake bytes,
 temporary files and clocks only. A successful source build or fixture run will not establish attended in-game acceptance.
+
+The additive lifecycle extraction vendors toolkit `bcfb8522b1583fc61b66aa7ecfc48a733f979f38`,
+`BindingCaptureFlow.cs`. Art retains its 144/232-byte decoder and action/menu/focus admission. The shared flow owns
+freshness, one-second analog rest, deadlines, cancellation and the result callback into the existing draft. Art now
+passes the original native sample sequence at offset 16; duplicate or regressed reads cannot refresh eligibility or
+fabricate a button edge, including after reader removal. Production-host fixtures retain their earlier cases and add
+those exact sequence checks. This extraction is source-only and awaits its coordinated offline batch; it is separate
+from the already-qualified helper ZIP and accepted rc.22 install.
+
+The flow belongs to the prepared reader's lifetime. This host is replaced on Prepare and an attached Art session stops
+permanently; it does not recreate a native source behind an existing flow. The capture callback rechecks current
+admission and returns a refusal reason without changing the draft, or null after Set accepted it. Success is never
+reported for a refused result.
+
+Whole-frame Publish success does not prove every original raw read is fresh. Before supplying an observation, Art
+compares its original start/end QPC microseconds with a source-domain QPC clock read after Publish. `BindingSampleClock`
+uses the same system origin and integer conversion as native `dbce_shim.cpp::bridge_clock`. A negative/bad/future
+timestamp, clock failure or read more than 100000 microseconds old is refused and removes capture eligibility. This
+conservative check after Publish dominates Core's earlier 100000-microsecond decision-boundary limit, including when a
+slow later device ages an earlier valid sample. It queries only the clock and adds no provider or device read. Fixtures
+inject that clock and cover delayed earlier reads, future timestamps and clock failure alongside the original cases.

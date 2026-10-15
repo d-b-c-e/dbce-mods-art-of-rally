@@ -9,15 +9,6 @@ namespace ArtOfSimRally.Mod
     // All samples arrive AFTER the existing bridge accepted the whole frame. This class never reads a device.
     internal sealed class SharedBindingCaptureHost : ISharedBindingHost
     {
-        private sealed class Device
-        {
-            internal Guid Instance, Product;
-            internal string Name, Path;
-            internal ulong Generation;
-            internal double Seen;
-            internal BindingCaptureSnapshot Sample;
-            internal int[] Minimum, Maximum;
-        }
         internal static SharedBindingCaptureHost Instance { get; private set; } = new SharedBindingCaptureHost(null, null, () => 0, () => false);
         internal static ISharedBindingHost Current => Instance;
         internal static void Configure(string path, byte[] active, Func<double> clock, Func<bool> canEdit)
@@ -25,16 +16,14 @@ namespace ArtOfSimRally.Mod
 
         private readonly string path;
         private readonly Func<double> clock;
+        private readonly Func<long> sourceClock;
         private readonly Func<bool> canEdit;
         private readonly SharedBindingDraft draft;
-        private readonly Dictionary<Guid, Device> devices = new Dictionary<Guid, Device>();
+        private readonly SharedBindingCaptureFlow flow;
         private SharedBindingRowView[] rows;
-        private string action, error;
-        private Guid captureDevice;
-        private ulong captureGeneration;
-        private double captureStart, deadline;
-        private SharedBindingCaptureSession capture;
-        private string message = "Bind a control, review the draft, then Save bindings. Restart to use saved changes.";
+        private string error;
+        private string action => flow.CapturingAction;
+        private string message { get => flow.Message; set => flow.Message = value; }
         private static readonly string[] Actions = {
             "steer", "throttle", "brake", "clutch", "handbrake", "shiftUp", "shiftDown", "neutral", "reverse",
             "confirm", "back", "start", "select", "navUp", "navDown", "navLeft", "navRight", "camera", "lookBack",
@@ -45,16 +34,22 @@ namespace ArtOfSimRally.Mod
             "Change camera", "Look back", "Reset car", "Horn", "Mod menu", "Mute force feedback",
             "Gear 1", "Gear 2", "Gear 3", "Gear 4", "Gear 5", "Gear 6", "Gear 7", "Gear 8" };
 
-        internal SharedBindingCaptureHost(string path, byte[] active, Func<double> clock, Func<bool> canEdit)
+        internal SharedBindingCaptureHost(string path, byte[] active, Func<double> clock, Func<bool> canEdit, Func<long> sourceClock = null)
         {
             this.path = path; this.clock = clock; this.canEdit = canEdit;
+            this.sourceClock = sourceClock ?? (Func<long>)Shim.BindingSampleClock.Microseconds;
+            flow = new SharedBindingCaptureFlow(clock, (id, binding) => {
+                if (draft == null || !canEdit()) return "The binding editor is no longer editable";
+                string why = ActionReason(id);
+                if (why.Length != 0) return why;
+                draft.Set(id, binding.ToString()); rows = null; return null;
+            });
             if (active == null) return;
             try { draft = new SharedBindingDraft(active); }
             catch (Exception ex) when (ex is System.IO.IOException || ex is System.IO.InvalidDataException || ex is ArgumentException)
             { error = ex.Message; }
         }
-        private bool Fresh(Device d) => clock() - d.Seen <= .25;
-        private bool Editable => draft != null && canEdit() && devices.Values.Any(Fresh);
+        private bool Editable => draft != null && canEdit() && flow.HasFreshObservation;
         public SharedBindingAccess Access { get { Refresh(); return draft == null ? (error == null ? SharedBindingAccess.Missing : SharedBindingAccess.ReadOnly) : Editable ? SharedBindingAccess.Editable : SharedBindingAccess.ReadOnly; } }
         public string AccessReason => draft == null
             ? error ?? "No shared profile is available. Close the game, extract the matching Controls Setup download outside the game folder, run Set Up Controls.bat, then restart. Wheelkit is optional."
@@ -65,14 +60,15 @@ namespace ArtOfSimRally.Mod
         public bool HasDraft => draft != null && draft.HasDraft;
         public bool SavedPendingRestart => draft != null && draft.SavedPendingRestart;
         public string CapturingAction { get { Refresh(); return action; } }
-        public double CaptureSecondsLeft { get { Refresh(); return action == null ? 0 : Math.Max(0, deadline - clock()); } }
+        public double CaptureSecondsLeft { get { Refresh(); return flow.SecondsLeft; } }
         public string CaptureMessage { get { Refresh(); return message; } }
         public IReadOnlyList<SharedBindingDeviceView> Devices
         {
             get
             {
-                Guid preferred = action == null ? DefaultDevice(null) : captureDevice;
-                return devices.Values.Where(Fresh).Select(d => new SharedBindingDeviceView {
+                Refresh();
+                Guid preferred = action == null ? DefaultDevice(null) : flow.CaptureDevice;
+                return flow.Observations.Select(d => new SharedBindingDeviceView {
                     InstanceGuid = d.Instance.ToString("D"), ProductGuid = d.Product.ToString("D"), Name = d.Name,
                     IsDefault = d.Instance == preferred }).OrderBy(d => d.Name).ToArray();
             }
@@ -127,22 +123,16 @@ namespace ArtOfSimRally.Mod
             if (!Editable || action != null && action != id) return;
             string why = ActionReason(id);
             if (Array.IndexOf(Actions, id) < 0 || why.Length != 0) { message = why; return; }
-            if (!Guid.TryParse(instanceGuid, out var instance) || !devices.TryGetValue(instance, out var device) || !Fresh(device))
+            if (!Guid.TryParse(instanceGuid, out var instance))
             { message = "That saved device is not available for capture. Its prior binding was kept; restart or use standalone setup for new devices."; return; }
-            if (ControlBinding.ShapeOf(id) == ControlShape.Centred && !device.Maximum.Where((value, i) => value > device.Minimum[i]).Any())
-            { message = "This reader has no qualified axis range for steering capture. Its prior binding was kept; use standalone setup."; return; }
-            action = id; captureDevice = instance; captureGeneration = device.Generation;
-            captureStart = clock(); deadline = captureStart + (ControlBinding.ShapeOf(id) == ControlShape.Digital ? 10 : 11);
-            capture = null; rows = null; message = "Release buttons and hats. Keep an axis released or centered for one second, then move one control.";
+            flow.Begin(id, instance, Editable); rows = null;
         }
-        public void CancelCapture() { if (action == null) return; action = null; capture = null; rows = null; message = "Binding canceled. The prior binding was kept."; }
+        public void CancelCapture() { flow.Cancel(); rows = null; }
         private void Refresh()
         {
-            if (action == null) return;
-            if (!canEdit()) { CancelCapture(); message = "Capture canceled because the settings lost focus or the main menu closed. The prior binding was kept."; }
-            else if (!devices.TryGetValue(captureDevice, out var device) || !Fresh(device) || device.Generation != captureGeneration)
-            { CancelCapture(); message = "Capture device disconnected or changed. The prior binding was kept."; }
-            else if (clock() >= deadline) { CancelCapture(); message = "Capture timed out. Release other controls and try again; the prior binding was kept."; }
+            string before = action;
+            flow.Refresh(canEdit());
+            if (before != action) rows = null;
         }
 
         internal void ObserveAccepted(string name, string ownedPath, byte[] metadata, byte[] sample, Guid? expectedInstance = null)
@@ -156,14 +146,24 @@ namespace ArtOfSimRally.Mod
             if (instance == Guid.Empty || product == Guid.Empty) return;
             if (expectedInstance.HasValue && expectedInstance.Value != instance)
             {
-                devices.Remove(instance); if (action != null) CancelCapture();
+                flow.Remove(instance, "Capture refused a reader-slot identity mismatch.");
+                flow.Remove(expectedInstance.Value, "Capture refused a reader-slot identity mismatch.");
+                CancelCapture();
                 message = "Capture refused a reader-slot identity mismatch. Restart before editing this device; no alternate identity was substituted.";
                 return;
             }
             if (sample[50] != 1)
             {
-                devices.Remove(instance);
-                if (action != null && captureDevice == instance) { CancelCapture(); message = "Capture device has no valid sample. Its prior binding was kept."; }
+                flow.Remove(instance, "Capture device has no valid sample. Its prior binding was kept."); rows = null;
+                return;
+            }
+            // Publish accepts a whole frame; an individual valid read may still be Core-Stale.
+            // A QPC check AFTER Publish conservatively bounds age at Core's earlier decision boundary.
+            // The pinned copied provider uses the ordinary 100000-us bound, in this same system-QPC domain.
+            long startUs = BitConverter.ToInt64(sample, 24), endUs = BitConverter.ToInt64(sample, 32), nowUs = sourceClock();
+            if (startUs < 0 || endUs < startUs || nowUs < endUs || nowUs < 0 || nowUs - endUs > 100000)
+            {
+                flow.Remove(instance, "Capture refused a stale or unqualified source timestamp. The prior binding was kept."); rows = null;
                 return;
             }
             int[] axes = new int[8], minimum = new int[8], maximum = new int[8], hats = new int[4]; bool[] buttons = new bool[128];
@@ -173,36 +173,14 @@ namespace ArtOfSimRally.Mod
                 axes[i] = BitConverter.ToInt32(sample, 52 + i * 4); minimum[i] = BitConverter.ToInt32(metadata, 80 + i * 4); maximum[i] = BitConverter.ToInt32(metadata, 112 + i * 4);
                 if (maximum[i] <= minimum[i]) { axes[i] = minimum[i] = maximum[i] = 0; continue; }
             }
-            if (!SharedBindingCapture.RangesValid(axes, minimum, maximum))
-            {
-                devices.Remove(instance); if (action != null && captureDevice == instance) CancelCapture();
-                message = "Capture refused an out-of-range raw sample. No control from that frame was bound; the prior binding was kept.";
-                return;
-            }
             for (int i = 0; i < 128; i++) buttons[i] = (metadata[64 + i / 8] & (1 << (i % 8))) != 0 && (sample[84 + i] & 0x80) != 0;
             for (int i = 0; i < 4; i++) { int hat = BitConverter.ToInt32(sample, 212 + i * 4); hats[i] = (hatMask & (1u << i)) != 0 && hat >= 0 && hat < 36000 ? hat : -1; }
-            var latest = new Device { Instance = instance, Product = product, Path = ownedPath, Name = name, Generation = generation, Seen = clock(),
-                Sample = new BindingCaptureSnapshot(axes, buttons, hats), Minimum = minimum, Maximum = maximum };
-            if (devices.TryGetValue(instance, out var previous) && (previous.Generation != generation || previous.Product != product || previous.Path != ownedPath))
-            { if (action != null && captureDevice == instance) CancelCapture(); }
-            devices[instance] = latest;
-            if (action == null || captureDevice != instance) return;
-            Refresh(); if (action == null) return;
-            bool analog = ControlBinding.ShapeOf(action) != ControlShape.Digital;
-            if (analog && clock() - captureStart < 1) return;
-            if (capture == null) { capture = new SharedBindingCaptureSession(latest.Sample, analog, minimum, maximum); message = "Listening: move one control or press one button / hat direction. Release held buttons first."; return; }
-            var detected = capture.Read(latest.Sample); if (detected == null) return;
-            try
-            {
-                var kind = (ControlKind)Enum.Parse(typeof(ControlKind), detected.Kind);
-                var binding = ControlBinding.FromCapture(action, kind, detected.Index, detected.Direction, detected.Rest, instance, product, name,
-                    kind == ControlKind.Axis ? minimum[detected.Index] : 0, kind == ControlKind.Axis ? maximum[detected.Index] : 65535);
-                draft.Set(action, binding.ToString()); action = null; capture = null; rows = null;
-                message = "Binding captured into the draft. Review it and Save bindings; restart to use it.";
-            }
-            catch (ArgumentException ex) { CancelCapture(); message = "Capture refused: " + ex.Message + ". The prior binding was kept."; }
+            string before = action;
+            flow.Observe(new AcceptedBindingObservation(instance, product, name, ownedPath, generation, BitConverter.ToUInt64(sample, 16), clock(),
+                new BindingCaptureSnapshot(axes, buttons, hats), minimum, maximum), draft != null && canEdit());
+            if (before != action) rows = null;
         }
-        internal void ReaderStopped() { devices.Clear(); CancelCapture(); rows = null; }
+        internal void ReaderStopped() { flow.ReaderStopped(); rows = null; }
         public void Clear(string id) { if (Editable && action == null && Array.IndexOf(Actions, id) >= 0) { draft.Set(id, null); rows = null; } }
         public void SetInverted(string id, bool inverted)
         {
