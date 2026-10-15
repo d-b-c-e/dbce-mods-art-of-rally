@@ -18,7 +18,7 @@ namespace ArtOfSimRally.Mod
         private static readonly string[] PageIds = { "page-0", "page-1", "page-2", "page-3", "page-4" };
         private static readonly string[] ViewIds = { "view-Simple", "view-Advanced" }, Views = { "Simple", "Advanced" };
         private static Vector2 _scroll;
-        private static bool _shifter, _cameraKeys, _clutch, _settingsKey, _modButtons, _draftCloseWarned;
+        private static bool _shifter, _cameraKeys, _clutch, _settingsKey, _modButtons;
         private static float _keyDeadline;
         private static string _keyStatus = "";
         private static int _mount;
@@ -36,13 +36,11 @@ namespace ArtOfSimRally.Mod
             WheelInput.CancelAssign(); CameraKeys.Cancel(); Panel.CancelBinding(); Connection.Cancel(); _settingsKey = false;
             Bindings?.CancelCapture();
             DeviceDropdown.CloseAll();
-            if (editing) return true;
-            // Unsaved shared-binding edits are never saved by closing: the first close says so and stays open; a second
-            // close keeps the draft unsaved (it stays in this session) and closes.
-            if (Bindings != null && Bindings.HasDraft && !_draftCloseWarned) { _draftCloseWarned = true; return true; }
-            _draftCloseWarned = false;
-            return false;
+            return editing;
         }
+        /// <summary>For the close paths only: true when an unsaved shared-binding draft holds this close once
+        /// (<see cref="DraftCloseGuard"/>). Closing never saves the draft; a second close goes through.</summary>
+        internal static bool HoldCloseForDraft() => DraftCloseGuard.HoldClose(Bindings != null && Bindings.HasDraft);
         public static void Draw()
         {
             if (Main.Settings == null) return;
@@ -61,7 +59,7 @@ namespace ArtOfSimRally.Mod
                 ViewIds, Views, advanced ? 1 : 0, !Editing, out int view);
             if (view >= 0 && (view == 1) != advanced) Select(c, view == 1, SettingsViewPolicy.Page(c));
             else if (page >= 0 && page != SettingsViewPolicy.Page(c)) Select(c, advanced, page);
-            if (_draftCloseWarned && Bindings != null && Bindings.HasDraft)
+            if (DraftCloseGuard.Warned && Bindings != null && Bindings.HasDraft)
                 W.StatusCard("draft-close", "Unsaved binding changes", "Save bindings or Discard under Controls. Close again to keep them unsaved for now.", true, null);
             // Header stays outside our page scroll; explicit host sizes win.
             _scroll = W.BeginBody(_scroll, SettingsPresentation.PageHeight / SettingsPresentation.Scale);
@@ -278,12 +276,16 @@ namespace ArtOfSimRally.Mod
             }
         }
 
+        private static string ValueText(SharedBindingValue value) =>
+            !string.IsNullOrEmpty(value.Text) ? value.Text : value.Bound ? "Bound" : "Unbound";
         private static void BindingRow(ISharedBindingHost host, SharedBindingRowView row, bool editable, string capturing, bool idle)
         {
-            string value = row.Active.Bound ? row.Active.Text : "Unbound";
+            // The host's own text: "Unbound" for a real clear or missing binding, "Unavailable" when the editor could not read
+            // it (lola 124035); an unreadable control is never shown as absent.
+            string value = ValueText(row.Active);
             if (row.ActiveInverted) value += " · inverted";
-            if (row.NextStart.HasValue) value += "  →  next start: " + (row.NextStart.Value.Bound ? row.NextStart.Value.Text : "Unbound");
-            if (row.Draft.HasValue) value += "  ·  unsaved: " + (row.Draft.Value.Bound ? row.Draft.Value.Text : "Unbound");
+            if (row.NextStart.HasValue) value += "  →  next start: " + ValueText(row.NextStart.Value);
+            if (row.Draft.HasValue) value += "  ·  unsaved: " + ValueText(row.Draft.Value);
             var layout = W.BeginRow(row.Label, value + (string.IsNullOrEmpty(row.Note) ? "" : "\n" + row.Note), 300);
             if (!layout.Stacked) W.Spacer();
             bool listening = capturing == row.Action;

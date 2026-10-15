@@ -114,6 +114,20 @@ static class Program
         var guard=typeof(SettingsCloseGuard).GetMethod("BeforeClose",BindingFlags.Static|BindingFlags.NonPublic);
         Check(!(bool)guard.Invoke(null,new object[]{false})&&!Host.SuppressHostClose,"UMM key-up ignored cancel guard");
         Check((bool)guard.Invoke(null,new object[]{false}),"UMM close permanently blocked");
+        // Unsaved shared-binding draft (kiki 123963): one close intent is the panel button (Main.CloseSettings) followed by
+        // UMM's ToggleWindow Harmony guard. The first close is held with the warning; the second closes, and the guard,
+        // asked for the same intent, does not re-arm the warning. The draft is never saved by closing.
+        Ui.Instance.ToggleWindow(false);Host.TickSettingsUi();
+        SettingsPanel.HasDraft=true;Host.ToggleSettings();Host.TickSettingsUi();
+        Host.CloseSettings();Check(Ui.Instance.Opened&&DraftCloseGuard.Warned,"first close with an unsaved draft is not held");
+       Host.CloseSettings();Check(!Ui.Instance.Opened,"second close with an unsaved draft did not close");
+        Check((bool)guard.Invoke(null,new object[]{false}),"the ToggleWindow guard re-armed the acknowledged draft warning");
+        Host.TickSettingsUi();Check(!DraftCloseGuard.Warned,"hiding did not reset the draft warning");
+        Host.ToggleSettings();Host.TickSettingsUi();
+        Check(!(bool)guard.Invoke(null,new object[]{false})&&DraftCloseGuard.Warned,"a UMM-only close in a later session did not warn first");
+        Check((bool)guard.Invoke(null,new object[]{false}),"a second UMM-only close was blocked");
+        Ui.Instance.ToggleWindow(false);Host.TickSettingsUi();SettingsPanel.HasDraft=false;
+        Host.ToggleSettings();Host.CloseSettings();Check(!Ui.Instance.Opened&&!DraftCloseGuard.Warned,"without a draft the first close did not close");
     }
     static int Main()
     {
