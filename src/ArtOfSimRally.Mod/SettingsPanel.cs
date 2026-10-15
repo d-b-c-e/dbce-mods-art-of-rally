@@ -22,6 +22,7 @@ namespace ArtOfSimRally.Mod
         private static float _keyDeadline;
         private static string _keyStatus = "";
         private static int _mount;
+        private static string _bindDevice;   // instance GUID for the next shared Bind; null = the action's saved device
         private static readonly ConnectionEdit Connection = new ConnectionEdit();
         private static ISharedBindingHost Bindings => SharedBindingCaptureHost.Current;
         /// <summary>Every edit except a shared-binding capture. The shared host's canEdit callback reads this, never
@@ -242,7 +243,24 @@ namespace ArtOfSimRally.Mod
                     if (pick >= 0 && pick != selected) host.BeginCapture(capturing, devices[pick].InstanceGuid);
                 }
             }
-            else if (!string.IsNullOrEmpty(host.CaptureMessage)) Help(host.CaptureMessage);
+            else
+            {
+                if (!string.IsNullOrEmpty(host.CaptureMessage)) Help(host.CaptureMessage);
+                // An explicit device for the next Bind, chosen before capture starts (lola 123857): an action whose saved device
+                // is unavailable can still be bound on another open, qualified device. Only the host's current devices are
+                // offered; nothing is substituted or discovered.
+                var devices = host.Devices;
+                if (editable && devices != null && devices.Count > 1)
+                {
+                    var names = new string[devices.Count + 1]; int selected = 0;
+                    names[0] = "Saved device";
+                    for (int i = 0; i < devices.Count; i++) { names[i + 1] = devices[i].Name; if (devices[i].InstanceGuid == _bindDevice) selected = i + 1; }
+                    if (selected == 0) _bindDevice = null;
+                    int pick = W.ChoiceRow("binding-device-next", "Bind from", "Which open device the next Bind listens to.", names, selected, !LegacyEditing);
+                    if (pick >= 0) _bindDevice = pick == 0 ? null : devices[pick - 1].InstanceGuid;
+                }
+                else _bindDevice = null;
+            }
             // Mutually exclusive with every other edit (an Art calibration, camera or Settings key capture, a connection edit):
             // shared actions start only when nothing else is being edited (kiki 123770).
             bool idle = !LegacyEditing && capturing == null;
@@ -273,7 +291,7 @@ namespace ArtOfSimRally.Mod
             {
                 if (W.Command("bind-" + row.Action, "Cancel (" + Math.Ceiling(host.CaptureSecondsLeft).ToString("0") + " s)")) host.CancelCapture();
             }
-            else if (W.Command("bind-" + row.Action, "Bind", editable && idle)) host.BeginCapture(row.Action);
+            else if (W.Command("bind-" + row.Action, "Bind", editable && idle)) { if (_bindDevice != null) host.BeginCapture(row.Action, _bindDevice); else host.BeginCapture(row.Action); }
             bool bound = row.Draft.HasValue ? row.Draft.Value.Bound : row.NextStart.HasValue ? row.NextStart.Value.Bound : row.Active.Bound;
             if (W.Command("clear-" + row.Action, "Clear", editable && idle && bound)) host.Clear(row.Action);
             if (row.IsAxis)
