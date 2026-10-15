@@ -13,7 +13,9 @@ namespace ArtOfSimRally.Mod.Triple;
 internal sealed class RenderDiagnostics
 {
     private readonly UnityModManager.ModEntry.ModLogger _logger;
+    private const float IdleIntervalSeconds = 10f, DrivingIntervalSeconds = 60f;
     private float _lastSampleTime = -1f;
+    private float _interval = IdleIntervalSeconds;
     private int _lastSampleFrame;
     private string _lastPresentation;
     private string _lastObservedRow;
@@ -39,7 +41,11 @@ internal sealed class RenderDiagnostics
     private void SampleCore(ProjectionOutcome outcome, ProjectionController projection, bool force)
     {
         var now = Time.realtimeSinceStartup;
-        if (!force && _lastSampleTime >= 0 && now - _lastSampleTime < 10f) return;
+        // Build B (perf candidate): while driving with the settings panel closed, the full sample (scene scans, Win32
+        // display observation, serialize and file write) runs every 60 s instead of every 10 s. In menus or with the
+        // panel open it stays at 10 s. The cadence in force is recorded in the snapshot (sampleIntervalSeconds).
+        _interval = GameState.IsDriving && !Main.SettingsVisible ? DrivingIntervalSeconds : IdleIntervalSeconds;
+        if (!force && _lastSampleTime >= 0 && now - _lastSampleTime < _interval) return;
         long costStart = HotPathCost.Begin();
         try { SampleFull(outcome, projection, now); }
         finally { HotPathCost.End(HotPathCost.Kind.Diagnostics, costStart); }
@@ -105,6 +111,7 @@ internal sealed class RenderDiagnostics
                 .ToArray(),
             sourceDepthTextureMode = camera == null ? null : camera.depthTextureMode.ToString(),
             sourceRenderingPath = camera == null ? null : camera.actualRenderingPath.ToString(),
+            sampleIntervalSeconds = _interval,
             genericRendererCount = UnityEngine.Object.FindObjectsOfType<GenericRenderer>().Length,
             vegetationSystemCount = UnityEngine.Object.FindObjectsOfType<AwesomeTechnologies.VegetationSystem.VegetationSystemPro>().Length,
             expandedVegetationSystems = projection.ExpandedVegetationSystems,
