@@ -815,13 +815,18 @@ static class Program
         cfg.NavUpBinding = "TSS fixture|0|pov:0|0|1|guid:" + id.ToString("D");        // opposite sector: no overlap
         cfg.CameraButtonBindings = new string[11]; cfg.CameraButtonBindings[0] = Bind("button:7", 0, 1); // camera tuning on the camera button
         cfg.CameraButtonBindings[1] = Bind("button:13", 0, 1); // camera tuning on a free button: Art fallback
+        cfg.RepairPunctureBinding = Bind("button:7", 0, 1);  // Art-only action on the profile's camera button: duplicate, refused
+        cfg.QuickRestartBinding = Bind("button:14", 0, 1);   // Art-only action on a free button: from the shared copy
+        cfg.HornBinding = Bind("button:15", 0, 1);           // the profile owns horn: Art's binding is never used
         WheelInput.LoadBindings(); Clock.frameCount = 70000; WheelInput.Update();
         string dev = " dev={" + id.ToString("D") + "}";
         string profile = "[Controls]\nSchema = 1\nProfile = Ordinary\nsteer = axis 0" + dev + " range=0..65535 rest=32768 travel=+1\nbrake = axis 5" + dev +
             " range=0..65535 rest=0 travel=+1\nconfirm = button 31" + dev + "\ncamera = button 7" + dev + "\nnavDown = hat 0 18000" + dev + "\n";
         var source = new BridgeTests.Source { Pressed = -1, Hat0 = 18000, Axis = axis => axis == 3 ? 40000 : axis == 5 ? 30000 : axis == 6 ? 10000 : 0 };
-        source.Buttons.Add(7); source.Buttons.Add(12);
-        var native = new ActionNative { AxesOwned = new[] { 0, 2 }, Script = () => new[] { (0, L, .25f), (2, L, .5f), (9, L, 0f), (17, L, 0f), (14, L, 0f) } };
+        source.Buttons.Add(7); source.Buttons.Add(12); source.Buttons.Add(14); source.Buttons.Add(15);
+        float horn = 0f; // the profile's horn (20), with look back (18) and reset (19) owned and released
+        var native = new ActionNative { AxesOwned = new[] { 0, 2 }, Script = () => new[] { (0, L, .25f), (2, L, .5f), (9, L, 0f), (17, L, 0f), (14, L, 0f),
+            (18, L, 0f), (19, L, 0f), (20, L, horn) } };
         WheelInput.AttachSharedInput(source, native, () => true, () => true, "Sequential", profile);
         var patch = typeof(WheelInputPatch).GetMethod("Override", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
         ArtOfSimRally.Mod.Shim.DrivingValues Car()
@@ -845,6 +850,16 @@ static class Program
         Check(!WheelInput.GameButton(WheelInput.Channel.Back, false), "Art Back on the profile's camera button was applied (duplicate)");
         Check(WheelInput.GameButton(WheelInput.Channel.Start, false), "unowned Start lost its Art fallback");
         Check(!WheelInput.GameButton(WheelInput.Channel.NavLeft, false), "Art hat direction overlapping the profile's navDown was applied (duplicate)");
+        // Art-only actions (sana 162429) read this frame's shared copy, never a control the profile maps.
+        Check(WheelInput.GameButton(WheelInput.Channel.QuickRestart, false), "Art-only quick restart lost its shared-copy binding");
+        Check(!WheelInput.GameButton(WheelInput.Channel.RepairPuncture, false), "Art-only repair on the profile's camera button was applied (duplicate)");
+        // The profile's horn, look back and reset are its own: Art's horn binding (held) is never used.
+        Check(consumer.Owns(18) && consumer.Owns(19) && consumer.Owns(20) && !WheelInput.GameButton(WheelInput.Channel.Horn, false) &&
+            !WheelInput.GameButton(WheelInput.Channel.LookBack, false) && !WheelInput.GameButton(WheelInput.Channel.RecoverCar, false), "owned horn used Art's binding");
+        horn = 1f; Frame();
+        Check(WheelInput.GameButton(WheelInput.Channel.Horn, true) && WheelInput.GameButton(WheelInput.Channel.Horn, false), "shared horn press not delivered");
+        horn = 0f; Frame(); Check(WheelInput.GameButtonReleased(WheelInput.Channel.Horn) && !WheelInput.GameButton(WheelInput.Channel.Horn, false), "shared horn release not delivered");
+        horn = 1f; Frame(); Check(WheelInput.GameButton(WheelInput.Channel.Horn, true), "second shared horn press");
         // Shortcuts fire on a press edge: release both, then press both.
         source.Buttons.Remove(7); Frame(); WheelInput.ShortcutPressed(WheelInput.Channel.CameraUp); WheelInput.ShortcutPressed(WheelInput.Channel.CameraDown);
         source.Buttons.Add(7); source.Buttons.Add(13); Frame();
@@ -855,9 +870,14 @@ static class Program
             WheelInput.SharedEditorText(WheelInput.Channel.NavLeft).Contains("maps to navDown") && WheelInput.SharedEditorText(WheelInput.Channel.NavUp).Contains("Art's saved binding applies"),
             "panel text: " + WheelInput.SharedEditorText(WheelInput.Channel.Handbrake) + " | " + WheelInput.SharedEditorText(WheelInput.Channel.Clutch));
         // A transport-only stop keeps the verified keyboard path but nothing falls back to the wheel.
-        native.Refuse = true; Frame(); native.Refuse = false; Frame();
+        // The horn is still held: the stop owes the game its GetButtonUp, once.
+        native.Refuse = true; Frame();
+        Check(WheelInput.GameButtonReleased(WheelInput.Channel.Horn) && !WheelInput.GameButton(WheelInput.Channel.Horn, false), "stopped session left the horn sounding");
+        native.Refuse = false; Frame();
+        Check(!WheelInput.GameButtonReleased(WheelInput.Channel.Horn), "horn released twice after the stop");
         v = Car();
         Check(consumer.Terminal && WheelInput.SharedKeyboardRetained, "transport stop not reached");
+        Check(!WheelInput.GameButton(WheelInput.Channel.QuickRestart, false), "Art-only action applied after the shared session stopped");
         Same(v.Clutch, .1f, "Art fallback applied after the shared session stopped");
         Same(v.Throttle, .3f, "keyboard lost after a transport-only stop");
         WheelInput.Close();

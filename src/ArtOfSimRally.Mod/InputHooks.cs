@@ -13,7 +13,7 @@ namespace ArtOfSimRally.Mod
         internal static string Missing()
         {
             var missing = new List<string>();
-            foreach (var name in new[] { "GetButton", "GetButtonDown", "GetNegativeButton", "GetNegativeButtonDown" })
+            foreach (var name in GameButtonPatch.Names)
                 Need(missing, AccessTools.Method(typeof(Player), name, new[] { typeof(int) }), typeof(GameButtonPatch), name);
             Need(missing, AccessTools.Method(typeof(Player), "GetAxis", new[] { typeof(int) }), typeof(GameButtonAxisPatch), "GetAxis");
             Need(missing, AccessTools.Method(typeof(Player), "GetAnyButtonDown", Type.EmptyTypes), typeof(GameContinuePatch), "GetAnyButtonDown");

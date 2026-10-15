@@ -33,7 +33,7 @@ namespace ArtOfSimRally.Mod
         private static readonly string[] Labels = {
             "Steering", "Accelerator", "Brake", "Clutch", "Handbrake", "Shift up", "Shift down", "Neutral", "Reverse",
             "Confirm", "Back", "Start / pause", "Select / view", "Navigate up", "Navigate down", "Navigate left", "Navigate right",
-            "Change camera", "Look back", "Reset car", "Horn", "Mod menu", "Mute force feedback",
+            "Change camera", "Look back", "Recover car (hold 1 s)", "Horn", "Mod menu", "Mute force feedback",
             "Gear 1", "Gear 2", "Gear 3", "Gear 4", "Gear 5", "Gear 6", "Gear 7", "Gear 8" };
 
         internal SharedBindingCaptureHost(string path, byte[] active, Func<double> clock, Func<bool> canEdit, Func<long> sourceClock = null)
@@ -81,8 +81,16 @@ namespace ArtOfSimRally.Mod
             {
                 Refresh();
                 if (rows != null) return rows;
-                rows = Actions.Select((id, index) => Row(id, Labels[index])).ToArray(); return rows;
+                rows = Actions.Select((id, index) => Shown(id) ? Row(id, Labels[index]) : null).Where(r => r != null).ToArray(); return rows;
             }
+        }
+        // Art has no select action (the shim marks it unsupported), so it gets no row, capture or clear here.
+        private static bool Shown(string id) => Array.IndexOf(Actions, id) >= 0 && id != "select";
+        // Prompt labels: the startup Active profile only. Never Saved or Draft, no Refresh, no device read.
+        internal bool TryActiveBinding(string sharedAction, out ControlBinding binding)
+        {
+            binding = null;
+            return draft != null && sharedAction != null && draft.Active.Bindings.TryGetValue(sharedAction, out binding) && binding != null;
         }
         private SharedBindingRowView Row(string id, string label)
         {
@@ -106,7 +114,7 @@ namespace ArtOfSimRally.Mod
             (b.Inverted ? " · inverted" : "") + " · " + b.Name);
         private string ActionReason(string id)
         {
-            if (id == "select" || id == "lookBack" || id == "reset" || id == "horn") return "This Art candidate does not consume this shared action.";
+            if (!Shown(id)) return "Art has no such action.";
             if (draft == null) return "";
             if ((id == "shiftUp" || id == "shiftDown") && draft.Saved.Transmission != "Sequential") return "This profile does not select Sequential. Change transmission with the standalone setup helper.";
             if ((id == "neutral" || id == "reverse" || id.StartsWith("gear", StringComparison.Ordinal)) && draft.Saved.Transmission != "H-pattern") return "This profile does not select H-pattern. Change transmission with the standalone setup helper.";
@@ -124,7 +132,7 @@ namespace ArtOfSimRally.Mod
             Refresh();
             if (!Editable || action != null && action != id) return;
             string why = ActionReason(id);
-            if (Array.IndexOf(Actions, id) < 0 || why.Length != 0) { message = why; return; }
+            if (!Shown(id) || why.Length != 0) { message = why; return; }
             if (!Guid.TryParse(instanceGuid, out var instance))
             { message = "That saved device is not available for capture. Its prior binding was kept; restart or use standalone setup for new devices."; return; }
             flow.Begin(id, instance, Editable); rows = null;
@@ -183,10 +191,10 @@ namespace ArtOfSimRally.Mod
             if (before != action) rows = null;
         }
         internal void ReaderStopped() { flow.ReaderStopped(); rows = null; }
-        public void Clear(string id) { if (Editable && action == null && Array.IndexOf(Actions, id) >= 0) { draft.Set(id, null); rows = null; } }
+        public void Clear(string id) { if (Editable && action == null && Shown(id)) { draft.Set(id, null); rows = null; } }
         public void SetInverted(string id, bool inverted)
         {
-            if (!Editable || action != null) return;
+            if (!Editable || action != null || !Shown(id)) return;
             var binding = draft.Binding(id);
             if (binding?.Kind != ControlKind.Axis) return;
             draft.Set(id, binding.WithInverted(inverted).ToString()); rows = null;

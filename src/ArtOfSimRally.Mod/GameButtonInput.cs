@@ -41,25 +41,60 @@ namespace ArtOfSimRally.Mod
             splash.EndSplashScreen();
             ModLog.Info("Profile " + (WheelInput.GameButtonReleased(WheelInput.Channel.Start) ? "start" : "confirm") + " release advanced the title screen.");
         }
-        internal static bool Button(int action, bool negative, bool down)
+        // The one native-to-shared table, for dispatch and prompt labels: a Rewired action id and pole to its
+        // shared action (null when Art-only) and Art channel (null for shifts, which Core steps).
+        // build 17584229 (RewiredConsts.Action and the game's own reads):
+        // - CarCameras.UpdateSwitchCamera=61; PauseScreen.UpdateMe=19 (do not also send 8 and toggle twice);
+        // - SoundController plays the horn on GetButtonDown(30) and stops it on GetButtonUp(30);
+        // - ShortcutManager arms 44 recover, 45 repair puncture or 46 quick restart on GetButtonDown and acts
+        //   after GetButton is held for one second (its own context checks stay the game's);
+        // - CarCameras orbits on GetAxis(22) and GetAxis(63): 63- looks back, 63+ forward, 22- left, 22+ right;
+        // - AxisCarController reads 0 steer (split), 2 throttle, 3 brake, 4 handbrake, 5 clutch, 12/13 shifts.
+        internal static bool NativeAction(int rewiredId, bool negative, out string sharedId, out WheelInput.Channel? artChannel)
         {
-            if (action < 0) return false;
-            if (action == _horizontal || action == 14)
-                return WheelInput.GameButton(negative ? WheelInput.Channel.NavLeft : WheelInput.Channel.NavRight, down);
-            if (action == _vertical)
-                return WheelInput.GameButton(negative ? WheelInput.Channel.NavDown : WheelInput.Channel.NavUp, down);
+            sharedId = null; artChannel = null;
+            if (rewiredId < 0) return false;
+            if (rewiredId == _horizontal || rewiredId == 14) return Map(negative ? "navLeft" : "navRight", negative ? WheelInput.Channel.NavLeft : WheelInput.Channel.NavRight, out sharedId, out artChannel);
+            if (rewiredId == _vertical) return Map(negative ? "navDown" : "navUp", negative ? WheelInput.Channel.NavDown : WheelInput.Channel.NavUp, out sharedId, out artChannel);
+            if (rewiredId == 63) return Map(negative ? "lookBack" : null, negative ? WheelInput.Channel.LookBack : WheelInput.Channel.LookForward, out sharedId, out artChannel);
+            if (rewiredId == 22) return Map(null, negative ? WheelInput.Channel.LookLeft : WheelInput.Channel.LookRight, out sharedId, out artChannel);
+            if (rewiredId == 0) return Map("steer", WheelInput.Channel.Steer, out sharedId, out artChannel);
             if (negative) return false;
-            if (action == _submit) return WheelInput.GameButton(WheelInput.Channel.Confirm, down);
-            if (action == _cancel || action == 17) return WheelInput.GameButton(WheelInput.Channel.Back, down);
-            // build 17584229: CarCameras.UpdateSwitchCamera=61;
-            // PauseScreen.UpdateMe=19 (do not also send 8 and toggle twice).
-            if (action == 61) return WheelInput.GameButton(WheelInput.Channel.CameraSwitch, down);
-            if (action == 19) return WheelInput.GameButton(WheelInput.Channel.Start, down);
-            return false;
+            if (rewiredId == _submit) return Map("confirm", WheelInput.Channel.Confirm, out sharedId, out artChannel);
+            if (rewiredId == _cancel || rewiredId == 17) return Map("back", WheelInput.Channel.Back, out sharedId, out artChannel);
+            switch (rewiredId)
+            {
+                case 61: return Map("camera", WheelInput.Channel.CameraSwitch, out sharedId, out artChannel);
+                case 19: return Map("start", WheelInput.Channel.Start, out sharedId, out artChannel);
+                case 30: return Map("horn", WheelInput.Channel.Horn, out sharedId, out artChannel);
+                case 44: return Map("reset", WheelInput.Channel.RecoverCar, out sharedId, out artChannel);
+                case 45: return Map(null, WheelInput.Channel.RepairPuncture, out sharedId, out artChannel);
+                case 46: return Map(null, WheelInput.Channel.QuickRestart, out sharedId, out artChannel);
+                case 2: return Map("throttle", WheelInput.Channel.Throttle, out sharedId, out artChannel);
+                case 3: return Map("brake", WheelInput.Channel.Brake, out sharedId, out artChannel);
+                case 4: return Map("handbrake", WheelInput.Channel.Handbrake, out sharedId, out artChannel);
+                case 5: return Map("clutch", WheelInput.Channel.Clutch, out sharedId, out artChannel);
+                case 12: sharedId = "shiftUp"; return true;
+                case 13: sharedId = "shiftDown"; return true;
+                default: return false;
+            }
         }
+        private static bool Map(string shared, WheelInput.Channel channel, out string sharedId, out WheelInput.Channel? artChannel)
+        { sharedId = shared; artChannel = channel; return true; }
+        // Only game-button channels are dispatched here; driving axes and shifts have their own consumers.
+        private static bool GameChannel(int action, bool negative, out WheelInput.Channel channel)
+        {
+            channel = default(WheelInput.Channel);
+            if (!NativeAction(action, negative, out _, out var mapped) || !mapped.HasValue || !WheelInput.IsGameButton(mapped.Value)) return false;
+            channel = mapped.Value; return true;
+        }
+        internal static bool Button(int action, bool negative, bool down) =>
+            GameChannel(action, negative, out var channel) && WheelInput.GameButton(channel, down);
+        // GetButtonUp: the release edge, including a horn release owed after an interrupted press.
+        internal static bool Released(int action) => GameChannel(action, false, out var channel) && WheelInput.GameButtonReleased(channel);
         internal static float Axis(int action)
         {
-            if (action < 0 || (action != _horizontal && action != _vertical && action != 14)) return 0;
+            if (action < 0 || (action != _horizontal && action != _vertical && action != 14 && action != 22 && action != 63)) return 0;
             return (Button(action, false, false) ? 1 : 0) - (Button(action, true, false) ? 1 : 0);
         }
         internal static bool ContinuePressed(Player player)
@@ -77,15 +112,17 @@ namespace ArtOfSimRally.Mod
         [HarmonyTargetMethods]
         private static IEnumerable<MethodBase> Targets()
         {
-            foreach (var name in new[] { "GetButton", "GetButtonDown", "GetNegativeButton", "GetNegativeButtonDown" })
+            foreach (var name in Names)
                 yield return AccessTools.Method(typeof(Player), name, new[] { typeof(int) });
         }
+        internal static readonly string[] Names = { "GetButton", "GetButtonDown", "GetButtonUp", "GetNegativeButton", "GetNegativeButtonDown" };
         [HarmonyPostfix]
         private static void After(Player __instance, int __0, MethodBase __originalMethod, ref bool __result)
         {
             if (!GameButtonInput.Prepare(__instance)) return;
-            bool shared = GameButtonInput.Button(__0, __originalMethod.Name.StartsWith("GetNegative", StringComparison.Ordinal),
-                __originalMethod.Name.EndsWith("Down", StringComparison.Ordinal));
+            string name = __originalMethod.Name;
+            bool shared = name == "GetButtonUp" ? GameButtonInput.Released(__0)
+                : GameButtonInput.Button(__0, name.StartsWith("GetNegative", StringComparison.Ordinal), name.EndsWith("Down", StringComparison.Ordinal));
             __result = GameButtonInput.Suppressed ? shared : __result | shared;
         }
     }

@@ -1,6 +1,6 @@
 {
-  "schema": 2,
-  "adapter": "art-shim-ini-controls-2",
+  "schema": 3,
+  "adapter": "art-shim-ini-controls-3",
   "profile": "Mods/ArtOfSimRally/dbce-controls.ini",
   "settings": "Mods/ArtOfSimRally/Settings.xml",
   "optIn": {
@@ -28,6 +28,9 @@
     "navLeft",
     "navRight",
     "camera",
+    "lookBack",
+    "reset",
+    "horn",
     "modMenu",
     "muteFfb",
     "gear1",
@@ -40,10 +43,7 @@
     "gear8"
   ],
   "unsupported": {
-    "select": "Art has no select action",
-    "lookBack": "Art has no look-back action in the inspected build",
-    "reset": "Art reset is not a qualified shared action",
-    "horn": "Art has no horn"
+    "select": "Art has no select action"
   },
   "conditions": [
     {
@@ -187,17 +187,22 @@
       "navRight",
       "camera",
       "modMenu",
-      "muteFfb"
+      "muteFfb",
+      "lookBack",
+      "reset",
+      "horn"
     ],
     "writerOmits": {},
-    "writerScope": "Schema 2 omits nothing: a writer may write every delivered action, within the transmission conditions. Written is not qualified; runtimeShown, fixtureOnly and notQualified keep that distinction.",
+    "writerScope": "Schema 3, like schema 2, omits nothing: a writer may write every delivered action, within the transmission conditions. Written is not qualified; runtimeShown, fixtureOnly and notQualified keep that distinction.",
     "notQualified": [
       "physical wheel, pedal and keyboard driving through the ordinary session (needs an attended owner run)",
       "clutch and H-pattern gates from a physical pedal or shifter, or in any unlatched session (never owned there)",
       "force feedback together with the shared profile (every run was muted)",
       "keyboard steering, which passes only with the wheel at exact centre",
-      "the packaged native 44E46799 with force on, or driven by a physical device (only scripted Rewired values and a virtual DualShock 4 have driven it, force off)"
-    ]
+      "the packaged native 44E46799 with force on, or driven by a physical device (only scripted Rewired values and a virtual DualShock 4 have driven it, force off)",
+      "look back, reset (Art's recover car, held one second) and horn in the running game (source and fixtures only)"
+    ],
+    "artOnlyActions": "Repair puncture, quick restart and look left, right and forward have no shared action. They use Art's own Settings.xml bindings on the shared copy (artBindings rules); no writer sets them."
   },
-  "note": "Source of build.json sharedInputCandidate.controls (romi 33009; schema 2, sana 34369). package.ps1 adds assemblySha256, the packaged ArtOfSimRally.Mod.dll; tests/ShimInput asserts delivered and unsupported equal ShimFrame.Names and ShimAxisConsumer's reasons."
+  "note": "Source of build.json sharedInputCandidate.controls (romi 33009; schema 2, sana 34369; schema 3, sana 162623). package.ps1 adds assemblySha256, the packaged ArtOfSimRally.Mod.dll; tests/ShimInput asserts delivered and unsupported equal ShimFrame.Names and ShimAxisConsumer's reasons."
 }

@@ -51,7 +51,7 @@ internal static class Program
                     p.GetType().GetMethod("Patch").Invoke(p, null);
                 }
                 uiMethods = ((System.Collections.IEnumerable)uiHarmony.GetType().GetMethod("GetPatchedMethods").Invoke(uiHarmony,null)).Cast<MethodBase>();
-                Check(uiMethods.Count(m => m.DeclaringType.FullName == "Rewired.Player" && new[] { "GetButton", "GetButtonDown", "GetNegativeButton", "GetNegativeButtonDown", "GetAxis" }.Contains(m.Name)) == 5, "game button action seams changed");
+                Check(uiMethods.Count(m => m.DeclaringType.FullName == "Rewired.Player" && new[] { "GetButton", "GetButtonDown", "GetButtonUp", "GetNegativeButton", "GetNegativeButtonDown", "GetAxis" }.Contains(m.Name)) == 6, "game button action seams changed");
                 foreach (string type in new[] { "RewiredStandaloneInputModule", "PanelManager", "ModsPanel", "PauseScreen", "ReplayManager" })
                     Check(uiMethods.Any(m=>m.DeclaringType.Name==type),"stock input hook missing: "+type);
                 Check(((string)missingHooks.Invoke(null, null) ?? "") == "GetInput", "fence hooks other than car input missing: " + missingHooks.Invoke(null, null));

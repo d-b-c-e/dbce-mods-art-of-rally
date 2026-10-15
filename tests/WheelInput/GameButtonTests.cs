@@ -228,6 +228,82 @@ static class GameButtonTests
         GameButtonInput.Prepare(PadManager.Player);
         Check(Device.Reads==reads && WheelInput.PendingCalibration==null, "query advanced assignment");
         WheelInput.CancelAssign(); WheelInput.Close(); Array.Fill(Device.Hats,-1);
+        NativeActions();
         return checks;
+    }
+    static bool GetButtonUp(int action) => false; // names the production postfix's original method
+    static bool PatchedUp(int action, bool native)
+    {
+        const System.Reflection.BindingFlags Private = System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic;
+        object[] args = { PadManager.Player, action, typeof(GameButtonTests).GetMethod("GetButtonUp", Private), native };
+        typeof(GameButtonPatch).GetMethod("After", Private).Invoke(null, args);
+        return (bool)args[3];
+    }
+    // sana 162429, build 17584229: horn plays on GetButtonDown(30) and stops only on GetButtonUp(30); recover 44,
+    // repair 45 and restart 46 keep the game's one-second hold (GetButton); look directions are the orbit axes
+    // 22 and 63. One table maps them for dispatch and prompt labels.
+    static void NativeActions()
+    {
+        WheelInput.Close(); Device.ReadOk=true; Device.ThrowRead=Device.FailOpen=false;
+        Device.Devices = new[] { new Device.DeviceInfo { InstanceGuid=Identity } };
+        Array.Clear(Device.Buttons); Array.Fill(Device.Hats,-1);
+        Main.Enabled=true; Main.SettingsVisible=false; Application.isFocused=true; GameState.IsDriving=false;
+        Main.Settings = new Settings { WheelInputEnabled=true, HornBinding=Binding("button:40"), LookBackBinding=Binding("button:41"),
+            RecoverCarBinding=Binding("button:42"), RepairPunctureBinding=Binding("button:43"), QuickRestartBinding=Binding("button:44"),
+            LookLeftBinding=Binding("pov:0",27000), LookRightBinding=Binding("pov:0",9000), LookForwardBinding=Binding("pov:0",0) };
+        Time.realtimeSinceStartup+=60; WheelInput.LoadBindings(); WheelInput.Open(); GameButtonInput.Observe(12,13,16,17);
+        Tick(); Tick();
+        foreach (var (id, negative, shared, channel) in new (int, bool, string, Channel?)[] {
+            (30,false,"horn",Channel.Horn), (44,false,"reset",Channel.RecoverCar), (45,false,null,Channel.RepairPuncture), (46,false,null,Channel.QuickRestart),
+            (63,true,"lookBack",Channel.LookBack), (63,false,null,Channel.LookForward), (22,true,null,Channel.LookLeft), (22,false,null,Channel.LookRight),
+            (61,false,"camera",Channel.CameraSwitch), (19,false,"start",Channel.Start), (16,false,"confirm",Channel.Confirm), (17,false,"back",Channel.Back),
+            (12,true,"navLeft",Channel.NavLeft), (0,true,"steer",Channel.Steer), (0,false,"steer",Channel.Steer), (2,false,"throttle",Channel.Throttle), (5,false,"clutch",Channel.Clutch) })
+            Check(GameButtonInput.NativeAction(id, negative, out var s, out var c) && s == shared && c == channel, "native table " + id + (negative ? "-" : "+"));
+        Check(!GameButtonInput.NativeAction(8,false,out _,out _) && !GameButtonInput.NativeAction(64,false,out _,out _) && !GameButtonInput.NativeAction(30,true,out _,out _),
+            "unrouted native action mapped (8 pause, 64 view collectible, negative horn)");
+        GameButtonInput.Observe(14,15,16,17);
+        Check(GameButtonInput.NativeAction(12,false,out var up,out var noChannel) && up=="shiftUp" && noChannel==null &&
+            GameButtonInput.NativeAction(13,false,out var downShift,out _) && downShift=="shiftDown", "sequential shift ids");
+        GameButtonInput.Observe(12,13,16,17);
+        Check(!GameButtonInput.Button(0,false,false) && GameButtonInput.Axis(2)==0, "a driving axis was dispatched as a game button");
+
+        // Horn: press, hold, release; the release reaches the game's GetButtonUp through the production postfix.
+        Device.Buttons[40]=1; Tick();
+        Check(GameButtonInput.Button(30,false,true) && GameButtonInput.Button(30,false,false) && !PatchedUp(30,false), "horn press");
+        Tick(); Check(!GameButtonInput.Button(30,false,true) && GameButtonInput.Button(30,false,false), "held horn repeated its press");
+        Device.Buttons[40]=0; Tick(); Check(PatchedUp(30,false) && !GameButtonInput.Button(30,false,false), "horn release missing");
+        Tick(); Check(!PatchedUp(30,false) && PatchedUp(30,true) && !PatchedUp(8,false), "horn release repeated or native release lost");
+        // A held horn cut off by the settings panel, focus, a failed read or a binding reload still gets one release,
+        // and resumes only after a fresh press.
+        foreach (string gate in new[] { "panel", "focus", "read", "reload" })
+        {
+            Device.Buttons[40]=1; Tick(); Check(Held(Channel.Horn), "horn setup " + gate);
+            if (gate=="panel") Main.SettingsVisible=true; else if (gate=="focus") Application.isFocused=false; else if (gate=="read") Device.ReadOk=false; else WheelInput.LoadBindings();
+            Tick();
+            bool early = WheelInput.GameButtonReleased(Channel.Horn);
+            Main.SettingsVisible=false; Application.isFocused=true; Device.ReadOk=true;
+            if (!early) Tick();
+            Check(early || WheelInput.GameButtonReleased(Channel.Horn), "interrupted horn never released: " + gate);
+            Check(!Held(Channel.Horn), "interrupted horn resumed without a fresh press: " + gate);
+            Device.Buttons[40]=0; Tick(); Tick(); Check(!WheelInput.GameButtonReleased(Channel.Horn), "horn released twice: " + gate);
+        }
+
+        // Recover car, repair puncture and quick restart: one press edge, then held for the game's own one-second timer.
+        foreach (var (button, action) in new[] { (42,44), (43,45), (44,46) })
+        {
+            Device.Buttons[button]=1; Tick(); Check(GameButtonInput.Button(action,false,true) && GameButtonInput.Button(action,false,false), "hold action press " + action);
+            for (int i=0; i<3; i++) { Tick(); Check(!GameButtonInput.Button(action,false,true) && GameButtonInput.Button(action,false,false), "hold action not continuous " + action); }
+            Check(!GameButtonInput.Button(action,true,false), "negative hold action " + action);
+            Device.Buttons[button]=0; Tick(); Check(!GameButtonInput.Button(action,false,false), "hold action held after release " + action);
+        }
+
+        // Look back is VerticalOrbit negative; forward, left and right are the other orbit poles.
+        Device.Buttons[41]=1; Tick();
+        Check(GameButtonInput.Axis(63)==-1 && GameButtonInput.Button(63,true,false) && !GameButtonInput.Button(63,false,false) && GameButtonInput.Axis(22)==0, "look back is not VerticalOrbit negative");
+        Device.Buttons[41]=0; Tick(); Check(GameButtonInput.Axis(63)==0, "look back held after release");
+        foreach (var (angle, action, value) in new[] { (0,63,1), (27000,22,-1), (9000,22,1) })
+        { Device.Hats[0]=-1; Tick(); Device.Hats[0]=angle; Tick(); Check(GameButtonInput.Axis(action)==value, "look direction " + angle); }
+        Device.Hats[0]=-1; Tick(); Check(GameButtonInput.Axis(22)==0 && GameButtonInput.Axis(63)==0, "look direction held after release");
+        WheelInput.Close(); Array.Clear(Device.Buttons); Array.Fill(Device.Hats,-1);
     }
 }

@@ -28,15 +28,13 @@ namespace ArtOfSimRally.Mod.Shim
         internal ShimFrame OriginalFrame => current;
 
         // Actions with an Art consumer: driving axes, sequential shifts, H-pattern gates
-        // (validated against the current car), menu buttons and the two mod shortcuts.
+        // (validated against the current car), menu buttons, look back, recover car, horn and the two
+        // mod shortcuts (GameButtonInput.NativeAction).
         private static readonly string[] Reasons = BuildReasons();
         private static string[] BuildReasons()
         {
             var reasons = new string[ShimFrame.Count];
             reasons[12] = "Art has no select action";
-            reasons[18] = "Art has no look-back action in the inspected build";
-            reasons[19] = "Art reset is not a qualified shared action";
-            reasons[20] = "Art has no horn";
             return reasons;
         }
         internal static bool Supported(int action) => action >= 0 && action < ShimFrame.Count && Reasons[action] == null;

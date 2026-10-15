@@ -157,7 +157,8 @@ $build = [ordered]@{ schema=1; release=$Version; modVersion=$modVersion; identit
 if ($candidate) {
     $build['artShimProbe'] = $shimProbe
     $controls = Get-Content -LiteralPath (Join-Path $root 'lib/input-shim/CONTROLS.json') -Raw | ConvertFrom-Json
-    if ($controls.schema -ne 2 -or $controls.adapter -ne 'art-shim-ini-controls-2') { throw 'Unsupported shared-input controls contract' }
+    # Schema 3 (sana 162623) needs a Wheelkit helper that admits art-shim-ini-controls-3 (zele a8583c5).
+    if ($controls.schema -ne 3 -or $controls.adapter -ne 'art-shim-ini-controls-3') { throw 'Unsupported shared-input controls contract' }
     $controls | Add-Member -NotePropertyName assemblySha256 -NotePropertyValue (Get-FileHash -LiteralPath (Join-Path $modDir 'ArtOfSimRally.Mod.dll') -Algorithm SHA256).Hash
     $build['sharedInputCandidate'] = [ordered]@{ shimSha256=$candidate.shimSha256; shimSource=$candidate.shimSource
         nativeSha256=$candidate.nativeSha256; nativeSource=$candidate.nativeSource; nativeBase=$candidate.nativeBase; controls=$controls }

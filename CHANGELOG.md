@@ -10,6 +10,7 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - Frame-rate readout (STD-023/024): settings Cameras page shows the average fps, 1% low and worst frame of the last 10 s; "Show frame rate on screen" draws a counter at the top right of the centre screen; the log gets a line every 30 s. Uses the toolkit FrameRateMonitor (vendored until the toolkit pin moves).
+- Native in-stage actions on the wheel. The shared profile's horn, look back and reset now drive the game's horn, look back and recover car (held one second, as in the game), and the horn stops when the button is released. Repair puncture, quick restart and look left, right and forward can be bound to Art buttons (local to Art, not part of the shared profile). Select has no game action, so it is no longer listed. Shared input contract schema 3: needs a Controls Setup helper that admits it. Source only; not yet run in the game.
 
 ### Fixed
 
