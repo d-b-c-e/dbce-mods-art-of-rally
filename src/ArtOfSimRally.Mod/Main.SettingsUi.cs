@@ -62,7 +62,8 @@ namespace ArtOfSimRally.Mod
         }
         internal static void CloseSettings()
         {
-            if (SettingsPanel.CancelPendingEdit()) return;
+            // One close intent: cancel an edit first, then hold once for an unsaved binding draft (DraftCloseGuard).
+            if (SettingsPanel.CancelPendingEdit() || SettingsPanel.HoldCloseForDraft()) return;
             UnityModManager.UI.Instance?.ToggleWindow(false);
             FlushUiSettings(true);
         }
@@ -81,7 +82,7 @@ namespace ArtOfSimRally.Mod
             if (SettingsVisible || !Application.isFocused) Shifter.SuppressUntilRelease();
             if (SettingsVisible && !_settingsWereVisible) FfbNative.StopOutputs();
             if (!SettingsVisible && _settingsWereVisible)
-            { SettingsPanel.CancelPendingEdit(); CameraTuner.SuppressUntilRelease(); FlushUiSettings(true); }
+            { SettingsPanel.CancelPendingEdit(); DraftCloseGuard.Reset(); CameraTuner.SuppressUntilRelease(); FlushUiSettings(true); }
             _settingsWereVisible = SettingsVisible;
             GameBindings.Tick();
             CameraKeys.Tick();
@@ -101,7 +102,8 @@ namespace ArtOfSimRally.Mod
             if (Main.Enabled) StockUiInput.Capture();
             if (open || !Main.Enabled) return true;
             if (Main.SuppressHostClose) { Main.SuppressHostClose = false; return false; }
-            return !SettingsPanel.CancelPendingEdit();
+            // The same close intent as Main.CloseSettings: an acknowledged draft warning is not re-armed here.
+            return !(SettingsPanel.CancelPendingEdit() || SettingsPanel.HoldCloseForDraft());
         }
     }
 }

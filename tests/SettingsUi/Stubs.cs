@@ -45,8 +45,9 @@ namespace ArtOfSimRally.Mod
     internal static class GameBindings { public static void Tick(){} }
     internal static class SettingsPanel
     {
-        public static bool Editing;
+        public static bool Editing, HasDraft;
         public static bool CancelPendingEdit(){bool result=Editing; Editing=false; return result;}
+        public static bool HoldCloseForDraft()=>DraftCloseGuard.HoldClose(HasDraft);
     }
     internal static class FfbNative
     {
