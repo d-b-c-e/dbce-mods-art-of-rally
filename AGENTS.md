@@ -13,9 +13,12 @@
 - **Published:** the latest public stable release is **0.4.1**, GitHub
   [`v0.4.1`](https://github.com/d-b-c-e/dbce-mods-art-of-rally/releases/tag/v0.4.1),
   published 2026-10-07 01:08:38 UTC from `7c3de40`. The README download points there.
-- **Installed:** the installed copy is the **private local candidate 0.4.2-rc.22**
-  (shared input), installed 2026-10-14 02:35:45 UTC. It is not a public release and
-  has no physical acceptance.
+- **Installed:** the installed copy is the **private local candidate 0.4.2-rc.23**
+  (shared input), source `1ec4c60357d7892e76fb451d33bfbafa837be130`, installed
+  2026-10-15 09:58:55 UTC. All nine mod payloads and the second native copy match;
+  exactly four owned files changed. Current settings/profile/tune, saves and raw
+  preferences were preserved. No game launch or physical acceptance accompanied
+  the update. It is not a public release. See `docs/LOCAL-DEPLOYMENT.md`.
 
 `docs/LOCAL-DEPLOYMENT.md` (its "Current installation" section) is authoritative for
 what is installed, and the GitHub releases page is authoritative for what is

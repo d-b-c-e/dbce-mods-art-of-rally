@@ -6,7 +6,56 @@ feature or bug fix. After its candidate or final artifact passes the complete
 local automated gate, deploy it for testing without asking again. Public release
 publication and attended sign-off remain separate.
 
-## Current installation — 0.4.2-rc.22 (private shared-input candidate)
+## Current installation — 0.4.2-rc.23 (private shared-input candidate)
+
+Installed October15 at09:58:55 UTC (04:58:55 CDT), exact clean package source
+`1ec4c60357d7892e76fb451d33bfbafa837be130`. This is the normal private shared-input
+payload; its optional standalone setup remains a separate companion outside the
+game. The force algorithms, native libraries and saved owner tune are retained.
+
+- **Normal package:** `ArtOfSimRally-0.4.2-rc.23-shared-input.zip`, SHA256
+  `38F54CA8449EA75A2AC12BA212D1ECB264922BCB9380AB2057AD08AD1BBBEC8B`;
+  manifest `8B2C349652B454E14C79FAFAB4A0327B71D26BA1FE8EBADB44917EB1B84BA2B5`.
+- **Mod assembly:** `402AE0C509A4A28D6433C09F1D7376E4ADA2A7BB73D63FFAAECDC83A7F14A64C`.
+  Installed identity is `0.4.2-rc.23+1ec4c60357d7892e76fb451d33bfbafa837be130.clean`.
+- **Exact four-path delta from rc22:** ArtOfSimRally.Mod.dll, build.json,
+  Dbce.TripleScreen.Core.dll and Dbce.TripleScreen.Protocol.dll. All nine mod
+  payloads match the package, with the other five unchanged. Both native copies
+  remain44E46799; shimBC9B030A and managed FFB6FC2BE91 remain exact.
+- **Qualification retained:** normal package's50 exact installer assertions;
+  helper-r3 actual Preview/Apply/idempotence on disposable current payloads.
+  The initial helper-fixture failures were retained and corrected without a
+  package rebuild. Hub review `docs/reviews/2026-10-15-art-rc23-package-result-sana.md`
+  gives source/runtime/physical limits. No gate, suite, build or rehearsal reran
+  for this installation.
+- **Reviewed installer recipe:** hub
+  `artifacts/art-rc23-owner-test-20261015/owner-install-plan/Install.ps1`, SHA256
+  `EA89FDF359B83141E373DCB36C1D231B70F37BAE2820F99FD1C123007C4384A8`.
+  Sana136243 approved the exact recipe; execution followed Lola FINAL EXIT136258
+  and actual lease absence. The actual shared lease covered09:58:43.495–09:58:55.147
+  UTC, then released; direct FINAL EXIT went to the coordinator and next agent.
+- **Owner state:**85 other protected file/absence entries and18 directory/root
+  markers unchanged, including20 current LocalLow files, native bindings,
+  Wheelkit profiles, dirty CustomVehicles SESSION.md and raw PlayerPrefs
+  names/types/bytes. Current hashes:
+  - Settings.xml `1ED90E601D646F5FCB963A017B6B986B5C09F7AC537B763769CCEE3FD69DD8B1`;
+  - dbce-controls.ini `73E782304BB56DF5D722A0FADDA7E9C5FFD8347736C11003A6DFEFCDF94FADFA`;
+  - TripleScreen.xml `13F0FD93B02D3457801D7720F33B94A9ABB3C967FF2FBCDF50214C6CCF4D17FC`.
+  The historical rc22 settings snapshot was not substituted for current choices.
+- **Receipt:** hub `owner-install-plan/owner-install-r1/install-receipt.json`,
+  SHA256 `882E7A2D04FF1E97482E5032FF4C5DD55C0679BE8CD17690D2A5C26AC68E2C48`.
+- **Backup:** hub
+  `artifacts/art-rc23-owner-test-20261015/owner-install-plan/owner-install-r1/before/`.
+  All protected file bytes have independent hash-verified copies under files/;
+  raw-preferences.json retains exact registry data. Owner contents remain local.
+  Preserve this backup and rc22's prior receipt/backups. Rollback is limited to
+  the four known owned paths while closed and leased; preserve newer owner
+  settings/profile choices and refuse unrecognized changed bytes.
+- **Limits:** no helper installed, profile Apply, backend switch, retune, game
+  launch, native call, force test, display change, source push, tag or publication.
+  This update is installed software, not new runtime or physical acceptance.
+
+## Previous installation — 0.4.2-rc.22 (private shared-input candidate)
 
 Installed October 14 at 02:35:45 UTC (October 13, 21:35 CDT), exact package source
 `2decf4d418815ca3835bbb51eb83a6e0ab886bc5.clean` (canonical main).
