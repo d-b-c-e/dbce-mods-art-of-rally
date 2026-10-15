@@ -143,7 +143,12 @@ Evidence lives in hub `artifacts/art-f6-ui-capture-20261015/final-9B343429-a475f
 and shots). The durable hub result is
 `docs/reviews/2026-10-15-art-final-payload-result-livo.md`.
 
-Still open: real moved-control capture while foreground with FFB on; force
-feedback with the shared profile; actual driving response to the cleared action;
-disconnect/rebind; exact production-native acceptance. These menu shots do not
-qualify triple-view gameplay rendering or a performance comparison.
+Remaining new-controls checks: real moved-control binding while foreground,
+standalone setup for an unavailable/new device, restart usability and the actual
+runtime response to the relevant saved control. The owner's accepted Art/DRIVE
+force feel and performance after Wallpaper Engine closed remain accepted. The
+unexercised production native is a limitation of these muted editor runs, not
+an automatic requirement to repeat accepted force or gameplay tests. Reopen
+force qualification only for a concrete changed force/device path or regression.
+These menu shots do not qualify triple-view gameplay rendering or a performance
+comparison.

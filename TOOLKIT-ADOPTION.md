@@ -102,8 +102,10 @@ the production native or physical controls. Focused temporary-copy checks are in
 `tools/testing/Test-MutedPackageCopy.ps1`; 18 checks passed in the named offline
 slot, followed by the two-start normal managed-payload Save/restart PASS. Both
 starts restored and the shared lease was released. See the final section of
-`docs/SHARED-BINDING-EDITOR.md` for the exact pins and remaining physical/native
-limits. This is scoped workflow evidence, not general parity or attended sign-off.
+`docs/SHARED-BINDING-EDITOR.md` for the exact pins, remaining controls checks and
+native substitution limit. Existing accepted force/performance results remain
+accepted; this tooling-only change does not reopen them. This is scoped workflow
+evidence, not general parity or attended sign-off for new controls.
 Historical unchecked STD-011/012/013/014/016/017/018/019 rows remain open. The
 toolkit's STD-037 schema-2 endpoint standard is missing from the adoption table;
 this staging change does not enable or change schema-2 controls.
