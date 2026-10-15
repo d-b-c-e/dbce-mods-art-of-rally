@@ -5,6 +5,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using HarmonyLib;
 using UnityEngine;
 using UnityModManagerNet;
@@ -257,8 +258,20 @@ namespace ArtOfSimRally.Testing
                    " width " + Window.x.ToString("0", CultureInfo.InvariantCulture) + " access " + HostValue("Access") + " capturing " + (HostValue("CapturingAction") ?? "-") +
                    " draft " + HostValue("HasDraft") + " savedPendingRestart " + HostValue("SavedPendingRestart") + " closeWarned " + Value(_guard, "Warned") +
                    " editing " + Value(_panel, "Editing") + " stockUiBlocked " + Value(_stock, "Blocked") + " sharedStarted " + SharedReady() +
-                   " focused " + Application.isFocused + " body " + Px(_presentation, "BodyHeight") + " estimate " + Px(_presentation, "PageHeight") +
+                   " focused " + Application.isFocused + " osForeground " + OsForeground() + " body " + Px(_presentation, "BodyHeight") + " estimate " + Px(_presentation, "PageHeight") +
                    " viewport " + Px(_presentation, "_viewport") + " panelTop " + Px(_presentation, "_panelTop") + " fixedRows " + Px(_presentation, "_fixedRows");
+        }
+        [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
+        [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr window, out uint process);
+        // The OS foreground beside Unity's isFocused (sana 131300): True only while the foreground window belongs to this
+        // game process, the same test as the mod's force connect (FfbNative.FocusedGameWindow). Read only; nothing is
+        // activated.
+        private static bool OsForeground()
+        {
+            IntPtr window = GetForegroundWindow();
+            if (window == IntPtr.Zero) return false;
+            GetWindowThreadProcessId(window, out uint process);
+            return process == (uint)System.Diagnostics.Process.GetCurrentProcess().Id;
         }
         // A measured panel height for the state line ("?" when the mod has no such member).
         private static string Px(Type type, string member)

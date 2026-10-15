@@ -200,6 +200,12 @@ if($copySettings.DocumentElement.SharedInput -ne 'true') { throw 'Staged setting
 # with force feedback off in the copy, so the mod never initialises a force device (checked again after the run).
 $latchedNatives=@('DD3013147821364AD8795F76B4500FB479F669E6BD89576F83E725A677273414')
 $forceOff=$staged.files.'Mods/ArtOfSimRally/UnityForceFeedback.dll' -notin $latchedNatives
+# A copy staged with -ForceFeedbackOff is checked the same way even with the latched native (sana 131300): its
+# Settings.xml must say false, and the launch's own UMM log must show ffb=False with no force attempt.
+if($staged.forceFeedbackOff -eq $true) {
+    if($copySettings.DocumentElement.ForceFeedbackEnabled -ne 'false') { throw 'Staged with -ForceFeedbackOff, but the copy''s Settings.xml does not turn force feedback off.' }
+    $forceOff=$true
+}
 if($forceOff -and ($staged.forceFeedbackOff -ne $true -or $copySettings.DocumentElement.ForceFeedbackEnabled -ne 'false')) {
     throw 'This native has no DBCE_FFB_MUTE latch: stage with Prepare-SharedInputCopy -ForceFeedbackOff.'
 }
@@ -398,7 +404,11 @@ try {
         shots=@(Get-ChildItem -LiteralPath (Join-Path $uiDir 'shots') -Filter *.png -ErrorAction SilentlyContinue | ForEach-Object { [pscustomobject]@{name=$_.Name;bytes=$_.Length;sha256=(Hash $_.FullName)} })
         incomplete=(Test-Path -LiteralPath (Join-Path $uiDir 'incomplete.txt')) } } else { $null }
     if($SharedCar) { $sharedCarSummary | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath "$Result/shared-car.json" }
-    @{outcome=$outcome;exited=$game.HasExited;windowTitle=$game.MainWindowTitle;observedUtc=[DateTime]::UtcNow.ToString('o');sharedLines=$lines;nativeVerdict=$nativeVerdict;sharedCar=$sharedCarSummary;ui=$uiSummary;activation=$activation;replayResult=$replayLines} | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath "$Result/observation.json"
+    # A UI capture staged with force feedback off is binding-host evidence with FFB disabled, never an attended
+    # foreground or force result (sana 131300).
+    $evidence=if($ui -and $staged.forceFeedbackOff -eq $true) { 'FFB-off binding-host evidence (no attended foreground or force claim)' } else { $null }
+    @{outcome=$outcome;evidence=$evidence;forceFeedbackOff=($staged.forceFeedbackOff -eq $true);exited=$game.HasExited;windowTitle=$game.MainWindowTitle;observedUtc=[DateTime]::UtcNow.ToString('o');sharedLines=$lines;nativeVerdict=$nativeVerdict;sharedCar=$sharedCarSummary;ui=$uiSummary;activation=$activation;replayResult=$replayLines} | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath "$Result/observation.json"
+    if($evidence) { Write-Output "Evidence label: $evidence" }
     Write-Output "Observation: $outcome$(if($SharedCar) { '; shared car: ' + ($sharedCarSummary | ConvertTo-Json -Compress) } elseif($native) { '; ' + $(if($nativeVerdict) { $nativeVerdict -replace "`n", '; ' } else { 'no native verdict (inspect capture and logs)' }) } elseif($replay) { '; ' + $(if($replayLines.Count) { $replayLines[0] } else { 'no replay result (inspect replay and logs)' }) })"
 } finally {
     if($game -and !$game.HasExited) {
