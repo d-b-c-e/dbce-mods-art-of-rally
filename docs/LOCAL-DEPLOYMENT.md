@@ -1,6 +1,31 @@
 # Local deployment
 
-## Current installation — 0.4.2-rc.24 (private shared-input candidate)
+## Current installation — 0.4.2-rc.25 (private shared-input candidate)
+
+Closed-game October15 22:26 UTC update from clean package source
+`ac5f3c8490b07211fc35f13806bf23dbc801dc85`; mod C955FC1B/build81C8D4A6,
+ZIP AF07AC99/manifest9BFD4149. Retained final managed compilation and metadata345
+passed; the actual package passed disposable stock PS5.1 installation and actual
+companion Preview/Apply/zero-change Preview. Original failed wrapper receipts
+and their successful build/production stages remain retained.
+
+All nine installed mod payloads and both normal native copies verified. Exactly
+four paths changed: mod, TripleScreen Core/Protocol and build.json. Current
+Settings/profile/triple XML, saves, dirty custom-vehicle work, raw preferences,
+force/tune/native/shim and all protected nonowned files remained exact. Receipt
+4E1D76C8, parent02AEE401 and independentB6BF82BC confirm successful installation,
+all3 processes Absent and lease absence. Rollback is retained privately under
+hub `artifacts/art-rc25-owner-install-20261015/owner-r1/art/before/`.
+
+One subsequent private muted Controls-first screenshot passed actual image
+review: PNG25939EC9 with exact shared/owner/copy restoration and independent
+D1E9/E6DC closure. Only the changed first view is covered; the recorder's deliberate
+early-close incomplete-tour outcome remains unchanged. No Save/binding workflow,
+force/performance baseline or physical click/device acceptance was repeated.
+Public release remains0.4.1; the optional bff4ce86/67DCD71C companion stays external.
+[Detailed source, qualification and view evidence](reviews/2026-10-15-controls-editor-first.md).
+
+## Previous installation — 0.4.2-rc.24 (private shared-input candidate)
 
 Closed-game October15 12:51:53 UTC update, source8d4fbd0, modC1CAC9EA/buildCA402E06. Exact ZIP02BCA721 passed release343, installer50 and actual companion helper checks. All nine mod payloads and both native copies verified; four stamped payloads changed. Settings/profiles/tune, nonowned files, saves and raw preferences remain exact. Backup and receipt603AE2D0 are retained privately. No game/force test/public push; public release remains0.4.1. [Full exact delivery evidence](2026-10-15-f6-ui-owner-delivery.md).
 

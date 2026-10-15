@@ -13,7 +13,7 @@
 - **Published:** the latest public stable release is **0.4.1**, GitHub
   [`v0.4.1`](https://github.com/d-b-c-e/dbce-mods-art-of-rally/releases/tag/v0.4.1),
   published 2026-10-07 01:08:38 UTC from `7c3de40`. The README download points there.
-- **Installed:** private local **0.4.2-rc.24**, clean package source `8d4fbd08091353d658fac2919361676764a24f80`, installed October15 12:51:53 UTC. All nine owned payloads and the second normal native copy verify; four stamped payloads changed. Config/profile/tune, saves, nonowned files and raw preferences are unchanged. No game/physical acceptance or public push accompanies it. See `docs/2026-10-15-f6-ui-owner-delivery.md`.
+- **Installed:** private local **0.4.2-rc.25**, clean package source `ac5f3c8490b07211fc35f13806bf23dbc801dc85`, installed October15 22:26 UTC. All nine owned payloads and both normal native copies verify; four stamped payloads changed. Current configs/profile/tune, saves, nonowned files and raw preferences are unchanged. One private muted Controls-first view passed rendered review with exact restoration; physical interaction/binding acceptance remains separate. See `docs/LOCAL-DEPLOYMENT.md` and `docs/reviews/2026-10-15-controls-editor-first.md`.
 
 `docs/LOCAL-DEPLOYMENT.md` (its "Current installation" section) is authoritative for
 what is installed, and the GitHub releases page is authoritative for what is
