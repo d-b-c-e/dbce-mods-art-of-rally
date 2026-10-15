@@ -2,7 +2,7 @@
   <PropertyGroup>
     <!-- UMM expects a numeric version; the complete RC identity lives in the assembly. -->
     <ModVersion>0.4.2</ModVersion>
-    <ReleaseLabel Condition="'$(ReleaseLabel)' == ''">0.4.2-dev</ReleaseLabel>
+    <ReleaseLabel Condition="'$(ReleaseLabel)' == ''">0.4.2-rc.24</ReleaseLabel>
     <BuildSourceState Condition="'$(BuildSourceState)' == ''">unpackaged</BuildSourceState>
     <AssemblyVersion>$(ModVersion).0</AssemblyVersion>
     <FileVersion>$(ModVersion).0</FileVersion>
