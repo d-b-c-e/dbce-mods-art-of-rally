@@ -27,6 +27,16 @@ namespace ArtOfSimRally.Mod
             c.BonnetPitch != 3 || c.BonnetFOV != 75 || c.BonnetLean != .1f || c.BumperHeight != .45f ||
             c.BumperForward != 1.9f || c.BumperSide != 0 || c.BumperPitch != 2 || c.BumperFOV != 80 ||
             c.CameraMoveStep != .02f || c.CameraTiltStep != 1 || c.CameraFovStep != 2;
+        // The footer's save state. Ordinary settings save automatically; shared bindings save only with Save bindings, so
+        // an unsaved draft or a binding saved for the next start is said first (Lola 129455; Woden's footer wording). The
+        // settings status itself (pending, saved or an error) always stays visible; a plain "Saved" is named "Settings
+        // saved" only beside a binding state, so it never reads as if the bindings were saved.
+        public static string FooterStatus(string settingsStatus, bool bindingsUnsaved, bool bindingsSavedForNextStart)
+        {
+            if (!bindingsUnsaved && !bindingsSavedForNextStart) return settingsStatus;
+            string settings = settingsStatus == "Saved" ? "Settings saved" : settingsStatus;
+            return (bindingsUnsaved ? "Bindings unsaved · " : "Bindings saved for next start · ") + settings;
+        }
     }
 
     internal sealed class ConnectionEdit

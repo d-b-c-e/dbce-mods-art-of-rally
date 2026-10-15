@@ -110,6 +110,15 @@ static class Program
         int saves=Host.Saves;Host.TickSettingsUi();Check(Host.Saves==saves+1&&Host.SettingsSaveStatus=="Write failed","failed save hidden");
         Host.TickSettingsUi();Check(Host.Saves==saves+1,"failed write retried each frame");
         Host.WriteSucceeds=true;Time.realtimeSinceStartup+=6;Host.TickSettingsUi();Check(Host.SettingsSaveStatus=="Saved","failed write not retried");
+        // Footer save state (Lola 129455): settings autosave, shared bindings need Save bindings, so the footer never shows a
+        // bare "Saved" while a binding draft is unsaved, keeps the saved-for-next-start state distinct, and keeps errors.
+        Check(SettingsViewPolicy.FooterStatus("Saved",false,false)=="Saved"&&SettingsViewPolicy.FooterStatus("Changes pending",false,false)=="Changes pending",
+            "footer without binding state changed");
+        Check(SettingsViewPolicy.FooterStatus("Saved",true,false)=="Bindings unsaved · Settings saved","unsaved binding draft hidden behind Saved");
+        Check(SettingsViewPolicy.FooterStatus("Saved",false,true)=="Bindings saved for next start · Settings saved","saved-for-next-start state hidden");
+        Check(SettingsViewPolicy.FooterStatus("Saved",true,true)=="Bindings unsaved · Settings saved","a new draft over a saved binding not shown as unsaved");
+        Check(SettingsViewPolicy.FooterStatus("Write failed",true,false)=="Bindings unsaved · Write failed"&&
+              SettingsViewPolicy.FooterStatus("Changes pending",false,true)=="Bindings saved for next start · Changes pending","settings status lost beside a binding state");
         Host.SuppressHostClose=true;
         var guard=typeof(SettingsCloseGuard).GetMethod("BeforeClose",BindingFlags.Static|BindingFlags.NonPublic);
         Check(!(bool)guard.Invoke(null,new object[]{false})&&!Host.SuppressHostClose,"UMM key-up ignored cancel guard");

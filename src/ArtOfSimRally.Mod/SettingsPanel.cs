@@ -91,7 +91,9 @@ namespace ArtOfSimRally.Mod
             W.Spacer();
             if (W.Command("ffb-stop", "Stop FFB (F8)")) Main.StopFeedback();
             GUILayout.EndHorizontal();
-            W.Help(Main.SettingsSaveStatus + " · F8 stops FFB · " + CameraKeys.Name(c.SettingsKey) + " opens and closes settings");
+            var bindings = Bindings;
+            W.Help(SettingsViewPolicy.FooterStatus(Main.SettingsSaveStatus, bindings != null && bindings.HasDraft,
+                bindings != null && bindings.SavedPendingRestart) + " · F8 stops FFB · " + CameraKeys.Name(c.SettingsKey) + " opens and closes settings");
         }
         private static void Select(Settings c, bool advanced, int page)
         {
