@@ -63,8 +63,13 @@ namespace ArtOfSimRally.Testing
 
         internal static bool Active => _active;
 
-        internal static void Arm(string dir, DateTime untilUtc, Action<string> log)
+        /// <param name="set">The request's uiSet: null or "full" for the whole tour; "followup" for the bounded re-check
+        /// after a fix (sana 126101): normal FFB, 640 Advanced Cameras at the larger scale, and the binding steps.</param>
+        internal static void Arm(string dir, DateTime untilUtc, Action<string> log, string set = null)
         {
+            bool followup = string.Equals(set, "followup", StringComparison.OrdinalIgnoreCase);
+            if (!followup && set != null && !string.Equals(set, "full", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("uiSet must be full or followup, not " + set);
             _log = log; _dir = dir; _until = untilUtc;
             _shots = Path.Combine(dir, "shots");
             Directory.CreateDirectory(_shots);
@@ -78,13 +83,13 @@ namespace ArtOfSimRally.Testing
             _host = Need("Dbce.Wheel.Input.ISharedBindingHost");
             try { _sharedStarted = SharedReadiness.Bind(AccessTools.TypeByName); }
             catch (Exception ex) { Note("shared readiness unavailable: " + ex.Message); }
-            Build();
+            Build(followup);
             _armedAt = Time.realtimeSinceStartup;
             _active = true;
             // An early stop (game closing) still restores and leaves incomplete evidence (kiki 123183); the recorder's
             // Unload calls Abort too.
             Application.quitting += () => Abort("game closing before the capture completed");
-            Event("ui capture armed: " + Steps.Count + " steps, expires " + _until.ToString("o"));
+            Event("ui capture armed (" + (followup ? "followup" : "full") + "): " + Steps.Count + " steps, expires " + _until.ToString("o"));
         }
 
         internal static void Tick()
@@ -129,30 +134,43 @@ namespace ArtOfSimRally.Testing
 
         // ---- script ----
 
-        private static void Build()
+        private static void Build(bool followup)
         {
             Steps.Clear();
             string[] views = { "Simple", "Advanced" };
             Add("open", () => { if (!Visible) Call(_main, "ToggleSettings"); Select("Simple", 0); Scroll(0); }, () => Visible ? null : "settings did not open");
-            foreach (var view in views)
-                for (int page = 0; page < 5; page++)
-                {
-                    int p = page; string v = view;
-                    Add(v.ToLowerInvariant() + "-p" + p + "-top", () => { Select(v, p); Scroll(0); }, null);
-                    if (p == 0 || p == 2) Add(v.ToLowerInvariant() + "-p" + p + "-lower", () => Scroll(100000), null);
-                }
-            // Text size: the other mode for Controls and FFB, then back; remember which mode gives the larger scale.
             float scaleA = 0, scaleB = 0;
-            Add("scale-current", () => { Select("Simple", 0); Scroll(0); }, () => { scaleA = Scale; return null; });
-            Add("scale-other-p0", () => FollowHost(!_savedFollowHost), () => { scaleB = Scale; return null; });
-            Add("scale-other-p1", () => Select("Simple", 1), null);
-            // Narrow: UMM's in-memory window width 640 at the larger effective scale, header and footer together.
-            Add("narrow-p0-top", () => { FollowHost(scaleB > scaleA ? !_savedFollowHost : _savedFollowHost); Width(640); Select("Simple", 0); Scroll(0); },
-                () => Mathf.Abs(Window.x - 640) < .5f ? null : "UMM width did not take 640");
-            Add("narrow-p0-lower", () => Scroll(100000), null);
-            Add("narrow-p2-top", () => { Select("Simple", 2); Scroll(0); }, null);
-            // Advanced Cameras lower content: the numeric rows with Default commands, most likely to overflow at 640.
-            Add("narrow-advanced-p2-lower", () => { Select("Advanced", 2); Scroll(100000); }, null);
+            Func<string> narrow = () => Mathf.Abs(Window.x - 640) < .5f ? null : "UMM width did not take 640";
+            Action narrowAtLargerScale = () => { FollowHost(scaleB > scaleA ? !_savedFollowHost : _savedFollowHost); Width(640); };
+            if (followup)
+            {
+                // Normal FFB at the starting text mode, then both text modes read without shots to find the larger scale.
+                Add("simple-p1-top", () => { Select("Simple", 1); Scroll(0); }, null);
+                Add("scale-current", () => { }, () => { scaleA = Scale; return null; }, false);
+                Add("scale-other", () => FollowHost(!_savedFollowHost), () => { scaleB = Scale; return null; }, false);
+                Add("narrow-advanced-p2-top", () => { narrowAtLargerScale(); Select("Advanced", 2); Scroll(0); }, narrow);
+                Add("narrow-advanced-p2-lower", () => Scroll(100000), narrow);
+            }
+            else
+            {
+                foreach (var view in views)
+                    for (int page = 0; page < 5; page++)
+                    {
+                        int p = page; string v = view;
+                        Add(v.ToLowerInvariant() + "-p" + p + "-top", () => { Select(v, p); Scroll(0); }, null);
+                        if (p == 0 || p == 2) Add(v.ToLowerInvariant() + "-p" + p + "-lower", () => Scroll(100000), null);
+                    }
+                // Text size: the other mode for Controls and FFB, then back; remember which mode gives the larger scale.
+                Add("scale-current", () => { Select("Simple", 0); Scroll(0); }, () => { scaleA = Scale; return null; });
+                Add("scale-other-p0", () => FollowHost(!_savedFollowHost), () => { scaleB = Scale; return null; });
+                Add("scale-other-p1", () => Select("Simple", 1), null);
+                // Narrow: UMM's in-memory window width 640 at the larger effective scale, header and footer together.
+                Add("narrow-p0-top", () => { narrowAtLargerScale(); Select("Simple", 0); Scroll(0); }, narrow);
+                Add("narrow-p0-lower", () => Scroll(100000), null);
+                Add("narrow-p2-top", () => { Select("Simple", 2); Scroll(0); }, null);
+                // Advanced Cameras lower content: the numeric rows with Default commands, most likely to overflow at 640.
+                Add("narrow-advanced-p2-lower", () => { Select("Advanced", 2); Scroll(100000); }, null);
+            }
             Add("narrow-restored", () => { Width(_savedWindow.x); FollowHost(_savedFollowHost); Select("Simple", 0); Scroll(0); }, null);
             // Shared-binding messaging through the host (explicit calls only; no moved control).
             Add("bindings-ready", () => { }, () => SharedReady() ? null : "shared session not started; binding steps show the host's actual state", false);
@@ -238,7 +256,15 @@ namespace ArtOfSimRally.Testing
             return "visible " + Visible + " page " + page + " view " + view + " scale " + Scale.ToString("0.00", CultureInfo.InvariantCulture) +
                    " width " + Window.x.ToString("0", CultureInfo.InvariantCulture) + " access " + HostValue("Access") + " capturing " + (HostValue("CapturingAction") ?? "-") +
                    " draft " + HostValue("HasDraft") + " savedPendingRestart " + HostValue("SavedPendingRestart") + " closeWarned " + Value(_guard, "Warned") +
-                   " editing " + Value(_panel, "Editing") + " stockUiBlocked " + Value(_stock, "Blocked") + " sharedStarted " + SharedReady();
+                   " editing " + Value(_panel, "Editing") + " stockUiBlocked " + Value(_stock, "Blocked") + " sharedStarted " + SharedReady() +
+                   " focused " + Application.isFocused + " body " + Px(_presentation, "BodyHeight") + " estimate " + Px(_presentation, "PageHeight") +
+                   " viewport " + Px(_presentation, "_viewport") + " panelTop " + Px(_presentation, "_panelTop") + " fixedRows " + Px(_presentation, "_fixedRows");
+        }
+        // A measured panel height for the state line ("?" when the mod has no such member).
+        private static string Px(Type type, string member)
+        {
+            try { return Value(type, member) is float v ? v.ToString("0", CultureInfo.InvariantCulture) : "?"; }
+            catch (MissingMemberException) { return "?"; }
         }
 
         // ---- finish and restore ----

@@ -33,6 +33,14 @@ param([Parameter(Mandatory)][string]$Result,
       # script opens Wheel settings at the title, takes game-only shots of every page and the host's binding states, and
       # puts everything back. Explicit host calls only: no moved control, no OS input, no device API, outputs muted.
       [switch]$UiCapture,
+      # With -UiCapture: full (every page, both text modes, the narrow pass and the binding steps) or followup (normal FFB,
+      # 640 Advanced Cameras at the larger scale and the binding steps; the bounded re-check after a fix, sana 126101).
+      [ValidateSet('full','followup')][string]$UiSet='full',
+      # With -UiCapture (sana 126190/126330; owner direction 2026-10-14 in the hub AGENTS.md: advance notice first): one
+      # bare SetForegroundWindow on the exact child's own visible Unity window, because Art's force connect and its binding
+      # editor both need a focused game. No keys, Alt taps or SendInput, one call and no retry; if Windows refuses, that
+      # is recorded in activation.json, not worked around.
+      [switch]$Activate,
       [ValidateRange(30,300)][int]$ObserveSeconds=120,
       [ValidateRange(0,60)][int]$SettleSeconds=10,
       [ValidateRange(10,60)][int]$CaptureSeconds=12,
@@ -80,12 +88,64 @@ function Get-SharedCarSummary([string]$Capture) {
         end=$(if(Test-Path -LiteralPath $end -PathType Leaf) { (Get-Content -LiteralPath $end -Raw).Trim() } else { $null })
         incomplete=(Test-Path -LiteralPath (Join-Path $Capture 'incomplete.txt')) }
 }
+# -Activate: the exact child's own visible top-level UnityWndClass window, one bare SetForegroundWindow, and the foreground
+# window's owner a second later. Window titles are never read (the foreground before may be the owner's own window).
+function Invoke-ChildActivation([Diagnostics.Process]$Child, [string]$Path) {
+    if(!('DbceChildWindow' -as [type])) {
+        Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+using System.Text;
+public static class DbceChildWindow {
+    private delegate bool EnumProc(IntPtr window, IntPtr data);
+    [DllImport("user32.dll")] private static extern bool EnumWindows(EnumProc callback, IntPtr data);
+    [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr window, out uint pid);
+    [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr window);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetClassName(IntPtr window, StringBuilder name, int capacity);
+    [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr window);
+    [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+    public static IntPtr Find(uint pid) {
+        IntPtr found = IntPtr.Zero;
+        EnumProc visit = (window, data) => {
+            uint owner; GetWindowThreadProcessId(window, out owner);
+            if (owner != pid || !IsWindowVisible(window)) return true;
+            var name = new StringBuilder(64); GetClassName(window, name, name.Capacity);
+            if (name.ToString() != "UnityWndClass") return true;
+            found = window; return false;
+        };
+        EnumWindows(visit, IntPtr.Zero);
+        GC.KeepAlive(visit);
+        return found;
+    }
+    public static uint Owner(IntPtr window) { uint pid = 0; if (window != IntPtr.Zero) GetWindowThreadProcessId(window, out pid); return pid; }
+}
+'@
+    }
+    $deadline=[DateTime]::UtcNow.AddSeconds(30); $window=[IntPtr]::Zero
+    while($window -eq [IntPtr]::Zero -and !$Child.HasExited -and [DateTime]::UtcNow -lt $deadline) {
+        $window=[DbceChildWindow]::Find([uint32]$Child.Id)
+        if($window -eq [IntPtr]::Zero) { $null=$Child.WaitForExit(250) }
+    }
+    $record=[ordered]@{ utc=[DateTime]::UtcNow.ToString('o'); pid=$Child.Id; window=[int64]$window
+        method='SetForegroundWindow on the child''s UnityWndClass window; no keys, Alt taps or SendInput; one call, no retry'
+        foregroundBeforeOwnerPid=[int64][DbceChildWindow]::Owner([DbceChildWindow]::GetForegroundWindow())
+        called=$false; returned=$null; foregroundAfterIsChild=$null; foregroundAfterOwnerPid=$null; reason=$null }
+    if($window -ne [IntPtr]::Zero) {
+        $record.called=$true; $record.returned=[DbceChildWindow]::SetForegroundWindow($window)
+        Start-Sleep -Seconds 1
+        $after=[DbceChildWindow]::GetForegroundWindow()
+        $record.foregroundAfterIsChild=($after -eq $window); $record.foregroundAfterOwnerPid=[int64][DbceChildWindow]::Owner($after)
+    } else { $record.reason='the child showed no visible UnityWndClass window within 30 s' }
+    $record | ConvertTo-Json | Set-Content -LiteralPath $Path
+    [pscustomobject]$record
+}
 $Result=Full $Result; Plain $Result
 $native=[bool]$RouteSource
 $replay=[bool]$ReplayTape
 $ui=[bool]$UiCapture
 if($ui -and ($native -or $replay -or $SharedCar)) { throw '-UiCapture runs alone: not with -RouteSource, -SharedCar or -ReplayTape.' }
 if($ui -and !$PSBoundParameters.ContainsKey('ObserveSeconds')) { $ObserveSeconds=240 }
+if(($Activate -or $PSBoundParameters.ContainsKey('UiSet')) -and !$ui) { throw '-Activate and -UiSet belong to -UiCapture.' }
 if($IdentityProbe -and !$SharedCar) { throw '-IdentityProbe is a -SharedCar diagnostic.' }
 if($RewiredInventory -and !$SharedCar) { throw '-RewiredInventory is a -SharedCar diagnostic.' }
 if($SharedCar -and !$native) { throw '-SharedCar records a route''s stage with the car left to shared input; give -RouteSource.' }
@@ -244,7 +304,7 @@ try {
         # hashed before and after: a Save bindings step writes this disposable copy's profile only.
         $uiDir=Join-Path $Result 'ui'
         @(Get-ChildItem -LiteralPath $mod -File | ForEach-Object { [pscustomobject]@{name=$_.Name;sha256=(Hash $_.FullName)} }) | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath "$Result/ui-copy-mod-before.json"
-        @("mode=ui","tape=$uiDir","muteOutputs=1","expiresUtc=$([DateTime]::UtcNow.AddMinutes(10).ToString('o'))") | Set-Content -LiteralPath $sessionRequest -Encoding ascii
+        @("mode=ui","tape=$uiDir","uiSet=$UiSet","muteOutputs=1","expiresUtc=$([DateTime]::UtcNow.AddMinutes(10).ToString('o'))") | Set-Content -LiteralPath $sessionRequest -Encoding ascii
         Copy-Item -LiteralPath $sessionRequest -Destination (Join-Path $Result 'session-request.txt')
     }
     # The copy's previous UMM log goes aside as evidence before launch, so every line observed belongs to this launch
@@ -291,7 +351,12 @@ try {
         launchMode=$context.decision;brokerSha256=$brokerSha256;steam=$context.steam[0];launcher=$context.launcher;game=$gameIntegrity;integrityMatchesSteam=$matchesSteam;muted=$true} |
         ConvertTo-Json -Depth 4 | Set-Content -LiteralPath "$Result/launch.json"
     if(!$matchesSteam) { throw 'Launched copy integrity differs from Steam; SteamAPI_Init cannot succeed. Closing the exact child without observation.' }
-    Write-Output "Disposable Art started (muted SharedInput $(if($replay) { 'cold replay' } elseif($SharedCar) { 'shared-car recording' } elseif($native) { 'native-script coexistence' } else { 'smoke' })): pid=$($game.Id), path=$imagePath. No OS input sent."
+    Write-Output "Disposable Art started (muted SharedInput $(if($replay) { 'cold replay' } elseif($SharedCar) { 'shared-car recording' } elseif($native) { 'native-script coexistence' } elseif($ui) { "UI capture ($UiSet)" } else { 'smoke' })): pid=$($game.Id), path=$imagePath. No OS input sent."
+    $activation=$null
+    if($Activate) {
+        $activation=Invoke-ChildActivation $game "$Result/activation.json"
+        Write-Output "Activation: $(if(!$activation.called) { 'not called: ' + $activation.reason } else { 'SetForegroundWindow returned ' + $activation.returned + '; child in front 1 s later: ' + $activation.foregroundAfterIsChild })"
+    }
     # Ends on a terminal shared line; after "first frame accepted" it keeps watching SettleSeconds for a stop.
     # A native-script run instead ends when the recorder has closed its capture.
     $deadline=[DateTime]::UtcNow.AddSeconds($ObserveSeconds); $outcome='timeout'; $settleUntil=$null
@@ -307,8 +372,11 @@ try {
             $uiEnd=Join-Path $uiDir 'end.txt'
             if(Test-Path -LiteralPath $uiEnd) {
                 $endText=(Get-Content -LiteralPath $uiEnd -Raw).Trim()
-                # Only an end line that starts with complete counts as a capture; incomplete and failed stay distinct.
-                $outcome=if($endText.StartsWith('complete',[StringComparison]::Ordinal) -and $endText -match 'restore ok' -and !(Test-Path -LiteralPath (Join-Path $uiDir 'incomplete.txt'))) { 'ui-captured' } elseif($endText.StartsWith('incomplete',[StringComparison]::Ordinal)) { 'ui-incomplete' } else { 'ui-failed' }
+                # Only an end line that starts with complete counts as a capture; incomplete and failed stay distinct, and a
+                # capture with unmet step expectations says so (run-cd67994 read ui-captured with all six binding steps unmet).
+                $complete=$endText.StartsWith('complete',[StringComparison]::Ordinal) -and $endText -match 'restore ok' -and !(Test-Path -LiteralPath (Join-Path $uiDir 'incomplete.txt'))
+                $unmet=if($endText -match 'unmet (\d+)') { [int]$Matches[1] } else { 0 }
+                $outcome=if($complete -and $unmet -eq 0) { 'ui-captured' } elseif($complete) { 'ui-captured-unmet' } elseif($endText.StartsWith('incomplete',[StringComparison]::Ordinal)) { 'ui-incomplete' } else { 'ui-failed' }
                 break
             }
         }
@@ -330,7 +398,7 @@ try {
         shots=@(Get-ChildItem -LiteralPath (Join-Path $uiDir 'shots') -Filter *.png -ErrorAction SilentlyContinue | ForEach-Object { [pscustomobject]@{name=$_.Name;bytes=$_.Length;sha256=(Hash $_.FullName)} })
         incomplete=(Test-Path -LiteralPath (Join-Path $uiDir 'incomplete.txt')) } } else { $null }
     if($SharedCar) { $sharedCarSummary | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath "$Result/shared-car.json" }
-    @{outcome=$outcome;exited=$game.HasExited;windowTitle=$game.MainWindowTitle;observedUtc=[DateTime]::UtcNow.ToString('o');sharedLines=$lines;nativeVerdict=$nativeVerdict;sharedCar=$sharedCarSummary;ui=$uiSummary;replayResult=$replayLines} | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath "$Result/observation.json"
+    @{outcome=$outcome;exited=$game.HasExited;windowTitle=$game.MainWindowTitle;observedUtc=[DateTime]::UtcNow.ToString('o');sharedLines=$lines;nativeVerdict=$nativeVerdict;sharedCar=$sharedCarSummary;ui=$uiSummary;activation=$activation;replayResult=$replayLines} | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath "$Result/observation.json"
     Write-Output "Observation: $outcome$(if($SharedCar) { '; shared car: ' + ($sharedCarSummary | ConvertTo-Json -Compress) } elseif($native) { '; ' + $(if($nativeVerdict) { $nativeVerdict -replace "`n", '; ' } else { 'no native verdict (inspect capture and logs)' }) } elseif($replay) { '; ' + $(if($replayLines.Count) { $replayLines[0] } else { 'no replay result (inspect replay and logs)' }) })"
 } finally {
     if($game -and !$game.HasExited) {

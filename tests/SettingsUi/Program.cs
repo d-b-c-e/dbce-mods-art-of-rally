@@ -211,7 +211,16 @@ static class Program
         Check(SettingsDisplayPolicy.Width(3840,2,960)==890,"actual default UMM host escaped");
         Check(SettingsDisplayPolicy.PageHeight(2160,2,0)>=300 && SettingsDisplayPolicy.PageHeight(2160,2,0)<=340,
             "compact header must leave room for an actionable binding group inside the default host");
-        Check(SettingsDisplayPolicy.PageColumns(890,2)==5,"4K default host did not keep five compact tabs on one row");
+        // Measured fit (run-cd67994: footer below UMM's viewport, kiki 126079). Values as that capture drew them at 1440p.
+        Check(SettingsDisplayPolicy.BodyHeight(0,87,150,1,420)==420,"unmeasured body did not keep the estimate");
+        Check(SettingsDisplayPolicy.BodyHeight(583,87,float.NaN,1,420)==420,"NaN measurement replaced the estimate");
+        float fit=SettingsDisplayPolicy.BodyHeight(583,87,150,1,420);
+        Check(87+150+fit<=583 && fit>=300,"measured 1440p panel still overflows UMM's viewport or wastes it: "+fit);
+        float narrow=SettingsDisplayPolicy.BodyHeight(583,87,260,1.33f,420);
+        Check(87+260+narrow<=583 && narrow<fit,"wrapped narrow header did not shrink the body to keep the footer in view: "+narrow);
+        Check(SettingsDisplayPolicy.BodyHeight(300,87,250,1,420)==120,"tiny viewport body below the readable minimum");
+        float below=SettingsDisplayPolicy.BodyHeight(583,400,150,1,420);
+        Check(150+below<=583 && below>=300,"panel below other mods shrank instead of fitting when scrolled to: "+below);
         Check(SettingsDisplayPolicy.PageColumns(890,1)==5,"ordinary host did not keep five tabs on one row");
         Check(SettingsDisplayPolicy.PageColumns(700,2)==4,"narrow host did not wrap compact tabs");
         Check(SettingsDisplayPolicy.PageColumns(200,5)==1,"narrow high-scale page grid invalid");

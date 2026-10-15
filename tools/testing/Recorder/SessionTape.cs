@@ -179,7 +179,8 @@ namespace ArtOfSimRally.Testing
                 if (string.Equals(mode, "ui", StringComparison.OrdinalIgnoreCase))
                 {
                     if (!_muteOutputs) throw new InvalidDataException("mode=ui requires muteOutputs=1");
-                    UiCapture.Arm(_dir, until, _log);
+                    request.TryGetValue("uiSet", out var uiSet);
+                    UiCapture.Arm(_dir, until, _log, uiSet);
                     return;
                 }
                 if (request.TryGetValue("poseThreshold", out var threshold))

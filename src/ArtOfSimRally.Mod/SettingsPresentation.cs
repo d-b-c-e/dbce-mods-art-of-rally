@@ -25,9 +25,22 @@ namespace ArtOfSimRally.Mod
         internal static bool StackRows => SettingsDisplayPolicy.StackRows(BodyWidth, Scale);
         internal static GUILayoutOption Width(float value) => GUILayout.Width(Math.Min(value * Scale, BodyWidth));
         internal static float PageHeight => SettingsDisplayPolicy.PageHeight(Screen.height, Scale, WindowSize.y);
+        // UMM's outer scroll viewport as the topmost clip (GUIClip.visibleRect, internal to Unity's IMGUI). Missing on
+        // another Unity build: the PageHeight estimate stays.
+        private static readonly PropertyInfo VisibleClip = typeof(GUI).Assembly.GetType("UnityEngine.GUIClip")?
+            .GetProperty("visibleRect", BindingFlags.Static | BindingFlags.NonPublic);
+        // Measured in the last repaint and used from the next event on, so one event's layout and drawing agree.
+        private static float _viewport, _panelTop, _fixedRows, _bodyDrawn, _viewportNow;
+        /// <summary>The page body's height in screen pixels: what keeps the footer inside UMM's viewport, measured.</summary>
+        internal static float BodyHeight => SettingsDisplayPolicy.BodyHeight(_viewport, _panelTop, _fixedRows, Scale, PageHeight);
+        /// <summary>Right after the page body ends: its drawn height (repaint only).</summary>
+        internal static void NoteBody() { if (Event.current.type == EventType.Repaint) _bodyDrawn = GUILayoutUtility.GetLastRect().height; }
         internal SettingsPresentation()
         {
             _previous = GUI.skin;
+            _viewportNow = 0;
+            if (Event.current.type == EventType.Repaint && VisibleClip != null)
+                try { _viewportNow = ((Rect)VisibleClip.GetValue(null, null)).height; } catch (Exception) { _viewportNow = 0; }
             Scale = SettingsDisplayPolicy.Scale(Screen.height, UnityModManager.UI.Scale(1f), Main.Settings.SettingsFollowHostScale);
             if (_skin == null || _source != _previous || _font != _previous.font || Math.Abs(_lastScale - Scale) > .01f)
             {
@@ -53,6 +66,17 @@ namespace ArtOfSimRally.Mod
             // Bound both the outer group and the nested scroll body explicitly.
             GUILayout.BeginVertical(GUILayout.Width(ContentWidth));
         }
-        public void Dispose() { GUILayout.EndVertical(); GUI.skin = _previous; }
+        public void Dispose()
+        {
+            GUILayout.EndVertical();
+            if (Event.current.type == EventType.Repaint && _bodyDrawn > 0)
+            {
+                // The panel group's own rect, in the same scroll-content space as UMM's viewport.
+                var panel = GUILayoutUtility.GetLastRect();
+                _viewport = _viewportNow; _panelTop = panel.y; _fixedRows = panel.height - _bodyDrawn;
+            }
+            _bodyDrawn = 0;
+            GUI.skin = _previous;
+        }
     }
 }

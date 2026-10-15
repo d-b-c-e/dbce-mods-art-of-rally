@@ -61,8 +61,8 @@ namespace ArtOfSimRally.Mod
             else if (page >= 0 && page != SettingsViewPolicy.Page(c)) Select(c, advanced, page);
             if (DraftCloseGuard.Warned && Bindings != null && Bindings.HasDraft)
                 W.StatusCard("draft-close", "Unsaved binding changes", "Save bindings or Discard under Controls. Close again to keep them unsaved for now.", true, null);
-            // Header stays outside our page scroll; explicit host sizes win.
-            _scroll = W.BeginBody(_scroll, SettingsPresentation.PageHeight / SettingsPresentation.Scale);
+            // Header and footer stay outside our page scroll and inside UMM's viewport (measured, SettingsPresentation).
+            _scroll = W.BeginBody(_scroll, SettingsPresentation.BodyHeight / SettingsPresentation.Scale);
             GUILayout.BeginVertical(GUILayout.Width(SettingsPresentation.BodyWidth));
             switch (SettingsViewPolicy.Page(c))
             {
@@ -72,7 +72,7 @@ namespace ArtOfSimRally.Mod
                 case 3: Telemetry(c); break;
                 case 4: Support(c); break;
             }
-            GUILayout.EndVertical(); W.EndBody();
+            GUILayout.EndVertical(); W.EndBody(); SettingsPresentation.NoteBody();
             Footer(c);
             W.End();
         }

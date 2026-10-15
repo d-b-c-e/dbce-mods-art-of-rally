@@ -102,6 +102,32 @@ No owner-install overwrite, no second reader, no device discovery, no OS input a
 | 640 width (larger effective scale) | Simple Controls (top and lower), Simple Cameras (top) and Advanced Cameras (lower) |
 | Binding steps | Simple Controls |
 
+## Run 1 (run-cd67994, 2026-10-15) and the follow-up
+
+Run 1 drew all 32 shots, with restore ok and the owner's files unchanged.
+- **Footer below the viewport.** The footer sat below UMM's outer viewport in every shot (kiki 126079). The body
+  height is now measured in `SettingsPresentation` (`BodyHeight`). It takes UMM's viewport height from
+  `GUIClip.visibleRect`, the panel's top, and its fixed rows (the panel height minus the drawn body), all from the last
+  repaint. The body is then sized so that the footer stays in view. Until a repaint has measured these values, the old
+  `PageHeight` estimate applies.
+- **Binding steps unmet.** All six binding steps were unmet because the copy was never focused:
+  - Art's force connect (`FfbReconnect`) waits for a focused game window, so the shared session stayed "waiting for
+    force feedback to finish connecting".
+  - The binding editor also needs `Application.isFocused`.
+
+The follow-up is `-UiCapture -UiSet followup -Activate`. It runs only under a fresh coordinator handoff with owner
+notice (hub AGENTS.md, owner 2026-10-14).
+- **Activation.** The runner makes one bare `SetForegroundWindow` call on the exact child's visible `UnityWndClass`
+  window, as soon as that window exists.
+  - No keys, Alt taps or SendInput, and no retry.
+  - `activation.json` records the call's return value and whether the child was in front one second later.
+  - If Windows refuses, the refusal is recorded and not worked around.
+- **Shots.** Normal FFB (`simple-p1-top`), then 640 Advanced Cameras at the larger scale (`narrow-advanced-p2-top` and
+  `-lower`), then the binding steps.
+  - Each state line now also carries `focused`, `body`, `estimate`, `viewport`, `panelTop` and `fixedRows`.
+  - The binding steps count only after `focused True`, a force-connect line, and the `Shared input: attached` and
+    `first frame accepted` lines in the UMM log.
+
 ## Outcomes
 
 - **No change before the title:** while the game reports driving, the script waits; if it never reaches the title, it
@@ -111,4 +137,8 @@ No owner-install overwrite, no second reader, no device discovery, no OS input a
 - **`end.txt`:** `complete` only when every step ran and every shot file was written. Otherwise it is `incomplete: N
   shot(s) not written` or `failed: <reason>`, and `incomplete.txt` is written as well. An early stop counts as failed:
   the recorder unloading or the game closing restores first and leaves this evidence.
-- **Runner labels:** `ui-captured`, `ui-incomplete` or `ui-failed`.
+- **Runner labels:**
+  - `ui-captured`: complete with no unmet step;
+  - `ui-captured-unmet`: complete, but with an unmet step expectation, as in run 1's binding steps;
+  - `ui-incomplete`;
+  - `ui-failed`.
