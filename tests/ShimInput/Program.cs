@@ -272,6 +272,8 @@ internal static class Program
         Check(Lines(new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.Waiting })[0].Contains("waiting") && Lines(new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.Isolating })[0].Contains("isolating"), "pending text");
         var attached = Lines(new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.Attached, ProfileName = "Moza KS Pro Triple", Transmission = "Sequential",
             ArtTransmissionMode = "Sequential", Devices = new[] { "MOZA R12 Base", "DS-8X Shifter" } });
+        var compact = SharedInputStatus.Lines(new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.Attached, ProfileName = "Moza KS Pro Triple" }, false);
+        Check(compact.Length == 1 && compact[0].Contains("Moza KS Pro Triple") && compact[0].Contains("Saved bindings apply after a restart"), "compact active state lost profile/restart meaning");
         Check(attached[0].Contains("Moza KS Pro Triple") && attached[0].Contains("Keyboard stays native") && attached[1].Contains("MOZA R12 Base, DS-8X Shifter"), "attached identity text");
         Check(Array.IndexOf(attached, SharedInputStatus.Unsupported) > 0 && Array.IndexOf(attached, SharedInputStatus.ArtOnly) > 0, "scope caveats missing");
         Check(attached[attached.Length - 2].Contains("Gears follow the profile (Sequential)") && attached[attached.Length - 1] == SharedInputStatus.Editors, "manual gear/editor text");
@@ -279,6 +281,8 @@ internal static class Program
         Check(onAutomatic[onAutomatic.Length - 2].Contains("automatic now"), "attached text claimed gears on an automatic car");
         var stopped = Lines(new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.Attached, Stopped = true, StopReason = "native input isolation lost" });
         Check(stopped.Length == 2 && stopped[0].Contains("native input isolation lost") && stopped[0].Contains("wheel and keyboard alike") && stopped[1] == SharedInputStatus.Editors, "stopped text");
+        var compactStopped = SharedInputStatus.Lines(new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.Attached, Stopped = true, StopReason = "native input isolation lost" }, false);
+        Check(compactStopped.Length == 1 && compactStopped[0] == stopped[0], "compact state hid stop cause or neutral/keyboard warning");
         var transport = Lines(new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.Attached, Stopped = true, StopReason = "shared provider refused physical batch", KeyboardRetained = true });
         Check(transport[0].Contains("refused physical batch") && transport[0].Contains("keyboard driving continues") && !transport[0].Contains("alike"), "transport stop text");
         Check(Lines(new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.Waiting, WaitingFor = "force feedback to finish connecting" })[0].Contains("for force feedback to finish connecting"), "waiting cause missing");
@@ -904,6 +908,12 @@ internal static class Program
         }
         try
         {
+            if (args.Length == 1 && args[0] == "--shared-status-only")
+            {
+                SharedStatus();
+                Console.WriteLine("PASS " + assertions + " focused shared input status checks; no native, device, game or file writes.");
+                return 0;
+            }
             Decode(); Consumption(); KeyboardSteerRule(); StatusesAndFailures(); SharedActions(); SharedStatus(); TrialSteps(); DriveSteps(); GearSteps(); ProfileControls(); ControlsContractMatches();
             AcceptedSnapshots();
             assertions += BridgeTests.Fake();

@@ -40,6 +40,14 @@ other qualification lanes owned the rig. No new runtime is required solely to
 correct this text; this commit does not claim rendered acceptance of the new
 ordering. No canonical integration, package, installation or publication.
 
+Requested affected batch (Sana159384): actual normal mod compilation, existing
+SharedBindingPresentation fixture and existing ShimInput.SharedStatus fixture.
+The fixture now accepts --shared-status-only to call SharedStatus without the
+unrelated frame/bridge/isolation/identity suites. Two focused compact-state
+checks cover the new healthy summary and preserved stop/neutral warning. Normal
+no-argument and existing explicit modes retain their former behavior. This
+selector is prepared source, not an executed check or permission to run a batch.
+
 Future runtime wrapper work must adopt the reviewed shared identity classifier
 52a86ee0 and retain original Art02 receipts; no private tolerance correction was
 introduced here. Cross-process scope comparisons must compare fields rather
