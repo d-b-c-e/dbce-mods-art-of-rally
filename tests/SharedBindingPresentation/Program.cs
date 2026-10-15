@@ -54,10 +54,32 @@ Check(readOnly.StatusIds.SequenceEqual(new[] { "bindings-access" }) && readOnly.
 replacement.Access = SharedBindingAccess.Missing; var missingProfile = SettingsPanel.Draw(replacement);
 Check(missingProfile.StatusIds.SequenceEqual(new[] { "bindings-access" }) && missingProfile.Texts.Contains("No shared profile") && !missingProfile.Buttons["bind-steer"] && !missingProfile.Buttons["clear-steer"], "missing-profile status card and rows remain read-only");
 Check(!host.Calls.Contains("save") && !replacement.Calls.Contains("save"), "presentation checks never save implicitly");
+var warningHost = new FakeHost { Draft = true, SaveSucceeds = false };
+warningHost.RowList.Add(Row("steer")); warningHost.DeviceList.Add(Device(a, "Wheel"));
+SettingsPanel.Reset();
+var failed = SettingsPanel.Draw(warningHost, click: "bindings-save");
+string failure = warningHost.SaveFailure;
+Check(failure.Length > 0 && failed.Texts.Contains(failure), "actual production panel renders failed Save status");
+warningHost.CaptureText = "Listening for a new control"; warningHost.CapturingAction = "steer";
+var afterCapture = SettingsPanel.Draw(warningHost);
+Check(afterCapture.Texts.Contains(failure) && afterCapture.Texts.Contains(warningHost.CaptureText), "warning remains rendered alongside new transient capture text");
+warningHost.CapturingAction = null; warningHost.Access = SharedBindingAccess.ReadOnly;
+Check(SettingsPanel.Draw(warningHost).Texts.Contains(failure), "later read-only access does not hide unresolved Save failure");
+warningHost.Access = SharedBindingAccess.Editable;
+Check(!SettingsPanel.Draw(warningHost, click: "bindings-discard").Texts.Contains(failure) && warningHost.SaveFailure.Length == 0,
+    "explicit Discard removes the warning from the production panel");
+warningHost.Draft = true; SettingsPanel.Draw(warningHost, click: "bindings-save"); warningHost.SaveSucceeds = true;
+Check(!SettingsPanel.Draw(warningHost, click: "bindings-save").Texts.Contains(failure) && warningHost.SaveFailure.Length == 0,
+    "successful checked Save resolves its earlier warning");
+Check(new FakeHost().SaveFailure.Length == 0, "new host begins with no inherited Save failure");
 Console.WriteLine($"PASS {checks} source-linked Art binding presentation checks; no game, file or device.");
 
-internal sealed class FakeHost : ISharedBindingHost
+internal sealed class FakeHost : ISharedBindingHost, Dbce.Wheel.Ui.ISharedBindingSaveStatus
 {
+    private readonly Dbce.Wheel.Ui.BindingSaveStatus saveStatus = new();
+    public string SaveFailure => saveStatus.SaveFailure;
+    public bool Draft, SaveSucceeds = true;
+    public string CaptureText = "Fixture capture";
     public SharedBindingAccess Access { get; set; } = SharedBindingAccess.Editable;
     public string AccessReason => "Fixture access";
     public string ActiveSource => "Fixture profile";
@@ -68,14 +90,14 @@ internal sealed class FakeHost : ISharedBindingHost
     public IReadOnlyList<SharedBindingRowView> Rows => RowList;
     public string CapturingAction { get; set; }
     public double CaptureSecondsLeft => 5;
-    public string CaptureMessage => "Fixture capture";
-    public bool HasDraft => false;
+    public string CaptureMessage => CaptureText;
+    public bool HasDraft => Draft;
     public bool SavedPendingRestart => false;
     public void BeginCapture(string action) => Calls.Add("bind " + action);
     public void BeginCapture(string action, string guid) => Calls.Add("bind " + action + " " + guid);
     public void CancelCapture() { Calls.Add("cancel"); CapturingAction = null; }
     public void Clear(string action) => Calls.Add("clear " + action);
     public void SetInverted(string action, bool inverted) => Calls.Add("invert " + action);
-    public bool Save(out string message) { Calls.Add("save"); message = "Fixture saved"; return true; }
-    public void Discard() => Calls.Add("discard");
+    public bool Save(out string message) { Calls.Add("save"); message = SaveSucceeds ? "Fixture saved" : "Fixture checked Save refused"; if (SaveSucceeds) Draft = false; return saveStatus.Record(SaveSucceeds, message); }
+    public void Discard() { Calls.Add("discard"); Draft = false; saveStatus.Discard(); }
 }

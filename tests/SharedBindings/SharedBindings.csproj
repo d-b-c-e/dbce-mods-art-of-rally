@@ -12,5 +12,6 @@
     <Compile Include="../../src/ArtOfSimRally.Mod/Shim/BindingSampleClock.cs" Link="BindingSampleClock.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/Toolkit/Input/*.cs" Link="Toolkit/%(Filename)%(Extension)" />
     <Compile Include="../../src/ArtOfSimRally.Mod/Toolkit/Ui/SettingsPresentation.cs" Link="SettingsPresentation.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/Toolkit/Ui/BindingSaveStatus.cs" Link="BindingSaveStatus.cs" />
   </ItemGroup>
 </Project>

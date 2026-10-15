@@ -123,3 +123,11 @@ F6-SHARED-PENDING-0635 passed 24 source-linked presentation checks
 and the affected plugin compile with zero warnings/errors. No new runtime, physical, package or install claim.
 This addresses the scoped STD-004/030 presentation gap; broader partial STD-033/036
 game-delivery/physical checks remain separate from this source change.
+
+### STD-004 / STD-030 - shared binding Save warnings (October15 source candidate)
+
+Independent binding Save-failure presentation adopts toolkit d342370/BindingSaveStatus.
+Warning survives capture/general messages and resolves on successful Save/Discard
+or a new host. Existing F6/capture/writer/ActiveSaved/FFB behavior stays in place.
+Focused host/presentation fixtures are updated but not run; candidate not installed.
+Other preexisting unchecked ledger items remain outside this status-only scope.

@@ -69,13 +69,14 @@ namespace ArtOfSimRally.Mod
             if (editable && (host.HasDraft || host.SavedPendingRestart))
             {
                 GUILayout.BeginHorizontal(GUILayout.Width(SettingsPresentation.BodyWidth));
-                if (W.Command("bindings-save", "Save bindings", host.HasDraft && idle) && !host.Save(out string message)) Help(message);
+                if (W.Command("bindings-save", "Save bindings", host.HasDraft && idle) && !host.Save(out string message) && !(host is ISharedBindingSaveStatus)) Help(message);
                 if (W.Command("bindings-discard", "Discard", host.HasDraft && idle)) host.Discard();
                 W.Spacer();
                 GUILayout.EndHorizontal();
                 W.Help(host.HasDraft ? "Unsaved changes. Save bindings writes the profile; the game uses it from the next start."
                     : "Saved. Restart the game to use these bindings.");
             }
+            if (host is ISharedBindingSaveStatus saveStatus && !string.IsNullOrEmpty(saveStatus.SaveFailure)) Help(saveStatus.SaveFailure);
         }
 
         private static string ValueText(SharedBindingValue value) =>

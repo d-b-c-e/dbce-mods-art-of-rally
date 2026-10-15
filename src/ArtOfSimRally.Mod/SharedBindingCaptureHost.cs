@@ -7,7 +7,7 @@ using Dbce.Wheel.Ui;
 namespace ArtOfSimRally.Mod
 {
     // All samples arrive AFTER the existing bridge accepted the whole frame. This class never reads a device.
-    internal sealed class SharedBindingCaptureHost : ISharedBindingHost
+    internal sealed class SharedBindingCaptureHost : ISharedBindingHost, ISharedBindingSaveStatus
     {
         internal static SharedBindingCaptureHost Instance { get; private set; } = new SharedBindingCaptureHost(null, null, () => 0, () => false);
         internal static ISharedBindingHost Current => Instance;
@@ -20,6 +20,8 @@ namespace ArtOfSimRally.Mod
         private readonly Func<bool> canEdit;
         private readonly SharedBindingDraft draft;
         private readonly SharedBindingCaptureFlow flow;
+        private readonly BindingSaveStatus saveStatus = new BindingSaveStatus();
+        public string SaveFailure => saveStatus.SaveFailure;
         private SharedBindingRowView[] rows;
         private string error;
         private string action => flow.CapturingAction;
@@ -192,9 +194,9 @@ namespace ArtOfSimRally.Mod
         public bool Save(out string result)
         {
             Refresh();
-            if (!Editable || action != null) { result = "Save needs the main-menu binding editor with no capture running. The draft was kept."; return false; }
-            bool saved = draft.Save(path, out result); message = result; rows = null; return saved;
+            if (!Editable || action != null) { result = "Save needs the main-menu binding editor with no capture running. The draft was kept."; return saveStatus.Record(false, result); }
+            bool saved = draft.Save(path, out result); message = result; rows = null; return saveStatus.Record(saved, result);
         }
-        public void Discard() { CancelCapture(); draft?.Discard(); rows = null; message = "Unsaved binding edits discarded. Active and saved bindings are unchanged."; }
+        public void Discard() { CancelCapture(); draft?.Discard(); rows = null; saveStatus.Discard(); message = "Unsaved binding edits discarded. Active and saved bindings are unchanged."; }
     }
 }

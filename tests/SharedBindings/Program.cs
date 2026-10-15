@@ -72,7 +72,14 @@ internal static class Program
             Check(Row(host, "confirm").Draft.HasValue && !Row(host, "confirm").Draft.Value.Bound, "Clear has explicit Unbound draft, never null");
             File.AppendAllText(path, "; external change\r\n");
             Check(!host.Save(out message) && host.HasDraft && message.Contains("changed"), "external mutation refuses Save and retains draft");
+            string failedSave = host.SaveFailure;
+            host.BeginCapture("confirm");
+            Check(host.CaptureMessage != failedSave && host.SaveFailure == failedSave && host.HasDraft,
+                "new capture replaces transient text without clearing the failed Save warning or draft");
+            host.CancelCapture();
             host.Discard();
+            Check(host.SaveFailure.Length == 0 && Row(host, "steer").ActiveInverted,
+                "explicit Discard resolves the warning while the active startup binding stays unchanged");
             host.BeginCapture("confirm"); host.CancelCapture();
             Check(!host.HasDraft && host.CapturingAction == null, "Cancel leaves prior binding intact");
             host.BeginCapture("confirm"); allowed = false;
@@ -88,7 +95,11 @@ internal static class Program
             small.BeginCapture("steer"); time = 3; small.ObserveAccepted("Small-range fixture", "owned-small-path", smallMeta, Sample(511));
             time = 3.01; small.ObserveAccepted("Small-range fixture", "owned-small-path", smallMeta, Sample(800));
             Check(small.HasDraft, "metadata range scales shared threshold for a 0..1023 axis");
-            Check(small.Save(out message), message);
+            allowed = false;
+            Check(!small.Save(out message) && small.SaveFailure.Length > 0 && small.HasDraft,
+                "Save access refusal is retained independently without losing its draft");
+            allowed = true;
+            Check(small.Save(out message) && small.SaveFailure.Length == 0, message);
             var savedSmall = new ControlProfileDocument(File.ReadAllText(smallPath)).Bindings["steer"];
             Check(savedSmall.Minimum == 0 && savedSmall.Maximum == 1023 && savedSmall.Rest == 511 && savedSmall.Travel == 1 && savedSmall.Index == 0 &&
                 savedSmall.Device == Wheel && savedSmall.Product == Product, "saved capture preserves exact metadata range, rest, direction, object and identities");
