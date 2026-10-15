@@ -1,0 +1,8 @@
+{
+  "Source": "dbce-wheel-mod-toolkit/shared/support/SupportReport.cs",
+  "Commit": "ab638898f52ee482718e371594457ae493549551",
+  "Sha256": "CA005A794086D66E3F7660EED692FB5583DE87B112BCA748FF60385A5944033A",
+  "License": "MIT",
+  "LicenseSha256": "B09FF3BF1807FA806BBDC69688697CEA82349686A596B3885D5B204354102404",
+  "Scope": "Exact portable source; Art owns only the thin Help UI, known log paths and deliberate URL opening."
+}

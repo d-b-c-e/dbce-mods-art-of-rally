@@ -176,9 +176,21 @@ preexisting unchecked/partial ledger entries remain open outside this scope.
 
 The ArtButtonBinding presenter reuses the Controls row shell for the eight
 channels added by Niru a0131c3. Common horn/lookBack/reset keep one shared
-profile editor; their Art rows appear only without SharedReadersRequired.
+profile editor; shared mode retains read-only Art fallback/source summaries.
 Repair/restart/look directions use the implementation's accepted-copy Art-only
 channels and duplicate-neutral gate. Hold and puncture prerequisites are visible;
 no new input, save or device authority is introduced by the UI. The source-only
 row work does not close native-action qualification or prior partial standards.
 No builds/tests/runtime/install were run during owner UAT162171.
+
+### Shared Help report source adoption (October15 source candidate)
+
+Help uses exact toolkit ab638898 SupportReport.cs with MIT notices/provenance
+and raw SHA CA005A794086D66E3F7660EED692FB5583DE87B112BCA748FF60385A5944033A.
+Three deliberate GitHub actions, optional selected known logs, multiline input,
+scrollable preview and immutable reviewed draft/export follow the common host
+contract. Input/selection changes and preparation failures invalidate old review.
+No collector/auth/network flow or input authority was added. Common fixture is
+scheduled once with Art's combined compile; no build/runtime qualification yet.
+See docs/reviews/2026-10-15-help-report.md. Existing unchecked/partial standards
+remain open outside the changed presentation and Help source scope.

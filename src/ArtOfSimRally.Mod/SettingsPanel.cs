@@ -289,9 +289,14 @@ namespace ArtOfSimRally.Mod
         {
             Heading("Other game actions");
             Help("Release USB buttons before Bind. Game mode and stage conditions still apply.");
-            // The common actions have one binding authority. A shared session edits them in its existing profile rows;
-            // the legacy-only route uses Art bindings. The five game-only channels below borrow the accepted copy.
-            if (!WheelInput.SharedReadersRequired)
+            // Shared mode keeps one editor, but its read-only summaries must still reveal any effective Art fallback.
+            if (WheelInput.SharedReadersRequired)
+            {
+                Axis(c, WheelInput.Channel.Horn, "Horn");
+                Axis(c, WheelInput.Channel.LookBack, "Look back");
+                Axis(c, WheelInput.Channel.RecoverCar, "Recover car (hold)");
+            }
+            else
             {
                 ArtButtonBinding(c, WheelInput.Channel.Horn, "Horn");
                 ArtButtonBinding(c, WheelInput.Channel.LookBack, "Look back");
@@ -308,6 +313,8 @@ namespace ArtOfSimRally.Mod
         {
             bool bound = WheelInput.IsBound(channel), listening = WheelInput.Assigning == channel;
             string button = WheelInput.Describe(channel);
+            if (WheelInput.SharedReadersRequired && Shim.ShimInput.Consumer.Started)
+                button += "\n" + WheelInput.SharedEditorText(channel);
             if (listening) button += "\n" + WheelInput.Status;
             else if (!string.IsNullOrEmpty(note)) button += "\n" + note;
             var buttonRow = BeginBindingRow(label, button);
@@ -497,6 +504,7 @@ namespace ArtOfSimRally.Mod
             Heading("Recovery");
             W.Text("Art of Sim Rally " + Main.ModVersion);
             Help("No FFB: pause, open FFB, check On and the selected wheel, then Refresh. Missing controls: bind them in Controls.");
+            IssueReportHelp();
             Heading("Interface scale");
             int textMode = Segmented(c.SettingsFollowHostScale ? 1 : 0, new[] { "Auto", "Use UMM scale" }, "Settings text size", 240);
             c.SettingsFollowHostScale = textMode == 1;

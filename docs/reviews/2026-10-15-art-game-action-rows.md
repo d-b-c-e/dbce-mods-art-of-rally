@@ -16,17 +16,18 @@ Controls > Other game actions lists:
 
 | Action | Channel | Visibility |
 | --- | --- | --- |
-| Horn | Horn | Legacy only; shared profile keeps its existing row |
-| Look back | LookBack | Legacy only; shared profile keeps its existing row |
-| Recover car (hold) | RecoverCar | Legacy only; shared profile keeps reset |
+| Horn | Horn | Art editor in legacy mode; shared mode shows read-only source |
+| Look back | LookBack | Art editor in legacy mode; shared mode shows read-only source |
+| Recover car (hold) | RecoverCar | Art editor in legacy mode; shared mode shows read-only source |
 | Repair puncture (hold) | RepairPuncture | Art-only in either input mode |
 | Restart stage | QuickRestart | Art-only in either input mode |
 | Look left | LookLeft | Art-only in either input mode |
 | Look right | LookRight | Art-only in either input mode |
 | Look forward | LookForward | Art-only in either input mode |
 
-The first three Art rows are hidden while SharedReadersRequired, so their
-common profile actions never get a second editor. Niru's shared host/consumer
+The first three rows use the existing Axis read-only branch while
+SharedReadersRequired. SharedEditorText reveals the current profile ownership,
+Art saved fallback or duplicate suppression; there is no second editor. Niru's shared host/consumer
 retains their behavior and the original shared IDs horn/lookBack/reset. The
 five Art-only channels use his accepted-copy path and duplicate-neutral rule.
 Select has no UI row. Recover and repair use the game's existing one-second
@@ -51,7 +52,10 @@ existing SharedBindingPresentation/CameraTuning fixtures from the8232 handoff.
 The native action implementation's own WheelInput/ShimInput/SharedBindings/
 ProbeHooks/package/helper/runtime gates remain in Niru's
 2026-10-15-native-actions.md; do not repeat them separately just for the row UI.
-The changed camera/action rows have no rendered or physical acceptance yet.
+Niru163764/root163797 corrected the initial hidden-row policy: a shared profile
+can leave an effective Art fallback unowned, so the read-only source summary must
+remain visible. Art-only rows also show that source/conflict explanation once
+the consumer has started. The changed rows have no rendered/physical acceptance.
 Any private integration merge is review preparation, not canonical integration
 or permission to package/install. Final artifact source and schema-3 helper must
 be qualified together before local delivery.
