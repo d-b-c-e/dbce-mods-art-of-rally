@@ -251,6 +251,8 @@ namespace ArtOfSimRally.Testing
             if (!_active) return;
             _active = false;
             string restore = Restore();
+            // A capture is complete only if everything it changed was put back (kiki 125458).
+            if (restore != "ok" && outcome == "complete") outcome = "incomplete: restore failed";
             Event("ui capture " + (outcome == "complete" ? "complete" : "ended") + ": " + outcome + "; shots " + _shotCount + "; restore " + restore);
             try
             {

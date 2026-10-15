@@ -308,7 +308,7 @@ try {
             if(Test-Path -LiteralPath $uiEnd) {
                 $endText=(Get-Content -LiteralPath $uiEnd -Raw).Trim()
                 # Only an end line that starts with complete counts as a capture; incomplete and failed stay distinct.
-                $outcome=if($endText.StartsWith('complete',[StringComparison]::Ordinal)) { 'ui-captured' } elseif($endText.StartsWith('incomplete',[StringComparison]::Ordinal)) { 'ui-incomplete' } else { 'ui-failed' }
+                $outcome=if($endText.StartsWith('complete',[StringComparison]::Ordinal) -and $endText -match 'restore ok' -and !(Test-Path -LiteralPath (Join-Path $uiDir 'incomplete.txt'))) { 'ui-captured' } elseif($endText.StartsWith('incomplete',[StringComparison]::Ordinal)) { 'ui-incomplete' } else { 'ui-failed' }
                 break
             }
         }
