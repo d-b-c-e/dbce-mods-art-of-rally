@@ -16,6 +16,9 @@ param([Parameter(Mandatory)][string]$GameCopy,
       [Parameter(Mandatory)][string]$Result,
       [string]$PackageZip,
       [string]$ExpectedPackageSha256,
+      # Explicit test-copy substitution only: keep the verified package receipt unchanged, but exercise the known
+      # load-time-muted DD301 native in both private-copy locations. Never qualifies the package's production native.
+      [string]$MutedNative,
       [switch]$AwaitApply,
       # The reviewed private-candidate shim (lib/input-shim/CANDIDATE.json), the same pin the mod and package.ps1 enforce.
       [string]$ExpectedShimSha256 = (Get-Content -LiteralPath (Join-Path $PSScriptRoot '../../lib/input-shim/CANDIDATE.json') -Raw | ConvertFrom-Json).shimSha256,
@@ -45,6 +48,11 @@ function Plain([string]$p) {
 # The natives with the DBCE_FFB_MUTE load-time latch (toolkit 82c40c4); any other needs -ForceFeedbackOff.
 $latchedNatives = @('DD3013147821364AD8795F76B4500FB479F669E6BD89576F83E725A677273414')
 $packageMode = [bool]$PackageZip
+if ($MutedNative -and (-not $packageMode -or -not $ForceFeedbackOff)) { throw '-MutedNative requires -PackageZip and -ForceFeedbackOff.' }
+if ($MutedNative) {
+    $MutedNative = Full $MutedNative; Plain $MutedNative
+    if ((Hash $MutedNative) -cne $latchedNatives[0]) { throw '-MutedNative is not the pinned DD301 load-time-muted native.' }
+}
 if ($packageMode) {
     if ($Shim -or $Native) { throw '-PackageZip stages the package''s own shim and native; omit -Shim and -Native.' }
     if (-not $ExpectedPackageSha256) { throw '-PackageZip needs -ExpectedPackageSha256.' }
@@ -66,6 +74,7 @@ if ($Recorder) { foreach ($p in $recorderSources) { if (-not (Test-Path -Literal
 $ownerSettings = Join-Path $SourceGame 'Mods/ArtOfSimRally/Settings.xml'
 $mod = Join-Path $GameCopy 'Mods/ArtOfSimRally'
 $package = $null
+$nativeSubstitution = $null
 if ($packageMode) {
     $PackageZip = Full $PackageZip; Plain $PackageZip
     if ((Hash $PackageZip) -ne $ExpectedPackageSha256.ToUpperInvariant()) { throw 'Package ZIP is not the pinned release bytes.' }
@@ -112,6 +121,18 @@ if ($packageMode) {
     Copy-Item -LiteralPath (Join-Path $extract 'ArtOfSimRally/UnityForceFeedback.dll') -Destination (Join-Path $GameCopy 'artofrally_Data/Plugins/x86_64/UnityForceFeedback.dll') -Force
     $package = [ordered]@{ zip = $PackageZip; sha256 = (Hash $PackageZip); release = $manifest.release; manifestSha256 = (Hash (Join-Path $extract 'manifest.json'))
         identity = $buildJson.identity; shimSha256 = $candidate.shimSha256; nativeSha256 = $candidate.nativeSha256 }
+    if ($MutedNative) {
+        # Original ZIP, extracted manifest and build.json remain intact. Only the disposable copy's two natives change.
+        if ((Hash $MutedNative) -cne $latchedNatives[0]) { throw '-MutedNative changed before substitution.' }
+        $targets = @((Join-Path $mod 'UnityForceFeedback.dll'), (Join-Path $GameCopy 'artofrally_Data/Plugins/x86_64/UnityForceFeedback.dll'))
+        foreach ($target in $targets) {
+            Copy-Item -LiteralPath $MutedNative -Destination $target -Force
+            if ((Hash $target) -cne $latchedNatives[0]) { throw 'Muted native copy differs from the DD301 pin.' }
+        }
+        $nativeSubstitution = [ordered]@{ kind = 'test-copy-load-time-mute'; packagedPath = (Join-Path $extract 'ArtOfSimRally/UnityForceFeedback.dll')
+            packagedSha256 = $candidate.nativeSha256; exercisedSource = $MutedNative; exercisedSha256 = $latchedNatives[0]; exercisedPaths = $targets }
+        $ExpectedNativeSha256 = $latchedNatives[0]
+    }
 } else {
     foreach ($n in $payload) { Copy-Item -LiteralPath (Join-Path $build $n) -Destination (Join-Path $mod $n) -Force }
     Copy-Item -LiteralPath (Join-Path $repo 'src/ArtOfSimRally.Mod/Info.json') -Destination (Join-Path $mod 'Info.json') -Force # source, not a build output
@@ -161,7 +182,7 @@ $staged = [ordered]@{
     forceFeedbackOff = [bool]$ForceFeedbackOff; nativeSha256 = $ExpectedNativeSha256
     gameCopy = $GameCopy; sourceGame = $SourceGame; ownerSettingsSha256 = Hash $ownerSettings
     settingsSource = $settingsFrom; settingsSourceSha256 = Hash $settingsFrom
-    package = $package; applyPending = [bool]$AwaitApply; removedControls = $removedControls
+    package = $package; nativeSubstitution = $nativeSubstitution; applyPending = [bool]$AwaitApply; removedControls = $removedControls
     files = [ordered]@{}
 }
 $pinned = if ($packageMode) { $payload } else { $payload + @('Info.json', 'UnityForceFeedback.dll', 'dbce_shim.dll') }
