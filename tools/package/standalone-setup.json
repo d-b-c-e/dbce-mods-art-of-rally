@@ -1,8 +1,8 @@
 {
   "note": "Optional private controls setup helper (Wheelkit standalone bundle). package.ps1 -PrivateStandaloneSetup -SharedInputCandidate ships it unmodified in a separate companion ZIP, never inside the UMM mod ZIP, and never installed into the game.",
-  "zip": "StandaloneModSetup-private-44f7adbe5b81-win-x64.zip",
-  "zipSha256": "d188c949b6d96dafaf669d0350382ec9f73704757618e38f6f751a30e6fd982f",
-  "sourceCommit": "44f7adbe5b816f402de1433a1eb6a2db428edcac",
-  "bundleManifestSha256": "B3DD30066BC1C2DA89D51EA4B75ECF3FEA5D0384073A45686062586C427D4009",
+  "zip": "StandaloneModSetup-private-bff4ce86d694-win-x64.zip",
+  "zipSha256": "67dcd71c786a65fe9d0306c272497a9004415e02cb0b3f441bbf3884449ec0e9",
+  "sourceCommit": "bff4ce86d69405b180fa9000e12cb56d4dccf091",
+  "bundleManifestSha256": "64B52B3E352DE47DB3E207FBD5C6F9BA07640F0EA7DC20CF77E93B57AF2A477C",
   "files": 527
 }
