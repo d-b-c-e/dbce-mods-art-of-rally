@@ -175,6 +175,13 @@ namespace ArtOfSimRally.Testing
                     throw new InvalidDataException("request expired at " + expires);
                 request.TryGetValue("tape", out _dir);
                 if (string.IsNullOrEmpty(_dir)) throw new InvalidDataException("tape= is required");
+                // mode=ui: the F6 visual and shared-binding messaging capture (UiCapture), no recording or input hooks.
+                if (string.Equals(mode, "ui", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!_muteOutputs) throw new InvalidDataException("mode=ui requires muteOutputs=1");
+                    UiCapture.Arm(_dir, until, _log);
+                    return;
+                }
                 if (request.TryGetValue("poseThreshold", out var threshold))
                     float.TryParse(threshold, NumberStyles.Float, CultureInfo.InvariantCulture, out _poseThreshold);
                 if (_poseThreshold != 0) throw new InvalidDataException("Assisted physics playback was replaced by trajectory playback.");

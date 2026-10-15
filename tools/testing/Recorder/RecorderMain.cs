@@ -40,7 +40,7 @@ namespace ArtOfSimRally.Testing
                 SessionTape.TryArm(m => entry.Logger.Log(m));
                 RecorderHud.Install(m => entry.Logger.Log(m));
                 ControlsProbe.TryArm(subject.Mod, m => entry.Logger.Log(m));
-                entry.OnUpdate = (mod, delta) => { server?.Pump(Command); SessionTape.Tick(); ControlsProbe.Tick(); };
+                entry.OnUpdate = (mod, delta) => { server?.Pump(Command); SessionTape.Tick(); ControlsProbe.Tick(); UiCapture.Tick(); };
                 entry.OnUnload = Unload;
                 entry.Logger.Log("Developer capture probe ready. Use tools/testing/Record-Drive.ps1; no recording starts automatically.");
                 return true;

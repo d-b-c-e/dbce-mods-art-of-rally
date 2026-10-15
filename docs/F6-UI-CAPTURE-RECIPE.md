@@ -44,7 +44,7 @@ No owner-install overwrite, no second reader, no device discovery, no OS input a
 - **Restart and use:** the saved profile becomes active after a restart, and the car follows it.
 - **Feel and force with the shared profile:** force stays muted here, as in every copy run.
 
-## Source needed before the run (bounded; not written yet, awaiting sana's go)
+## Source (written for sana 124479; not built or run yet)
 
 - **Recorder `mode=ui`** (new `tools/testing/Recorder/UiCapture.cs`, plus a branch in `SessionTape.TryArm`/`Tick`). It is
   a frame-stepped script over the steps above, through reflection on the Art mod (`AccessTools.TypeByName`, as
@@ -86,4 +86,7 @@ No owner-install overwrite, no second reader, no device discovery, no OS input a
    - tabs wrap when narrow;
    - the footer stays visible;
    - the status text is truthful.
-4. Restore receipts and the UMM log go with the shots. The copy's profile file is restored by the runner.
+4. Restore receipts and the UMM log go with the shots. The copy is disposable and single-use (a staging cannot be
+   launched twice). The runner hashes the copy's mod folder before and after (`ui-copy-mod-before.json`,
+   `ui-copy-mod-after.json`), so the Save step's profile write in the copy is visible. Owner files are pinned and never
+   written, as in every run.
