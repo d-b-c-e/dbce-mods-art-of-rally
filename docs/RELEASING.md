@@ -232,6 +232,30 @@ full producer would require separate qualification of those new bytes. The
 consumer companion delivery checks remain pending against the pinned helper;
 the common helper checks above are not an Art release or installed-game test.
 
+Shared-input delivery and the optional research shim probe are separate choices:
+
+```powershell
+# Normal shared-input Mod; still a private RC with pinned shim/native and candidate receipt.
+./tools/package/package.ps1 -Version 0.4.2-rc.N -SharedInputCandidate -SharedInputShim <pinned-shim>
+# Research only; explicitly includes the diagnostic probe types.
+./tools/package/package.ps1 -Version 0.4.2-rc.N -SharedInputCandidate -ResearchShimProbe -SharedInputShim <pinned-shim>
+```
+
+The first produces `-shared-input.zip`, the second `-shared-input-probe.zip`,
+with distinct stage and optional companion names. Both use the same pinned
+payload/receipt checks; the shared candidate's `build.json` records `artShimProbe`
+and the existing assembly metadata checker verifies the selected flavor.
+`-ResearchShimProbe` without `-SharedInputCandidate` refuses before building.
+Historical research recipes must add the explicit switch; old artifacts remain
+immutable. A default package still contains no shared payload or research probe.
+
+Both routes build newly stamped Mod bytes. Qualify and retain their actual
+source/hash identities; neither is the unpackaged F98 DLL merely because its
+runtime source matches. Focused checks use `tools/testing/Test-ShimPackageFlavors.ps1`
+against both extracted packages. The 44E native pin is unchanged and remains
+unlatched; package checks do not authorize an unattended game run or substitute
+managed FFB Off for the DD301 load-time mute used in earlier runtime evidence.
+
 The October 13 source/package notice audit of pinned helper `19a5897` found the
 declared .NET, WPF-UI and CommunityToolkit notice/license files, Art and toolkit
 adapter MIT texts, and Vortice/SharpGen copyright and MIT text in the helper's

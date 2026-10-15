@@ -27,6 +27,8 @@
 param(
     [Parameter(Mandatory)][string]$Version,
     [switch]$SharedInputCandidate,
+    # Research only: compile the optional shim probe. The ordinary shared-input path is present without it.
+    [switch]$ResearchShimProbe,
     [string]$SharedInputShim,
     # Private shared-input candidates only: also build the optional controls setup companion ZIP from the pinned helper
     # bundle (standalone-setup.json). The mod ZIP itself does not change.
@@ -43,12 +45,13 @@ if (($Version -split '-')[0] -ne $modVersion) { throw "Version must match Versio
 $info = Get-Content -LiteralPath (Join-Path $root 'src/ArtOfSimRally.Mod/Info.json') -Raw | ConvertFrom-Json
 if ($info.Version -ne $modVersion) { throw 'Info.json and Version.props disagree' }
 if ($SharedInputCandidate -and $Version -notmatch '-rc\.') { throw 'The shared-input candidate is a private RC only' }
+if ($ResearchShimProbe -and -not $SharedInputCandidate) { throw '-ResearchShimProbe requires -SharedInputCandidate' }
 if ($SharedInputCandidate -and -not $SharedInputShim) { throw 'The shared-input candidate needs -SharedInputShim, a private copy of the pinned dbce_shim.dll' }
 if ($SharedInputShim -and -not $SharedInputCandidate) { throw '-SharedInputShim is only for -SharedInputCandidate' }
 # The helper's art of rally writer needs the candidate's shared-input controls contract; a baseline package gets none.
 if ($PrivateStandaloneSetup -and (-not $SharedInputCandidate -or -not $StandaloneSetupZip)) { throw '-PrivateStandaloneSetup needs -SharedInputCandidate and -StandaloneSetupZip (the pinned helper ZIP)' }
 if ($StandaloneSetupZip -and -not $PrivateStandaloneSetup) { throw '-StandaloneSetupZip is only for -PrivateStandaloneSetup' }
-$flavour = if ($SharedInputCandidate) { '-shared-input' } else { '' }
+$flavour = if ($ResearchShimProbe) { '-shared-input-probe' } elseif ($SharedInputCandidate) { '-shared-input' } else { '' }
 $dist  = Join-Path $root 'dist'
 $stage = Join-Path $dist "stage-$Version$flavour"
 $zip = Join-Path $dist "ArtOfSimRally-$Version$flavour.zip"
@@ -111,8 +114,8 @@ if ($SharedInputCandidate) {
 }
 
 Write-Host "Building managed mod..." -ForegroundColor Cyan
-# The shim probe is compiled only into the private shared-input candidate (sana 47008); every package names its flavour.
-$shimProbe = [bool]$SharedInputCandidate
+# Shared payload delivery and the optional research probe are separate choices; every assembly records its flavour.
+$shimProbe = [bool]$ResearchShimProbe
 & dotnet build (Join-Path $root 'src\ArtOfSimRally.Mod\ArtOfSimRally.Mod.csproj') -c Release -v q --nologo -warnaserror "-p:ReleaseLabel=$Version" "-p:SourceRevisionId=$revision" "-p:BuildSourceState=$sourceState" "-p:ArtShimProbe=$($shimProbe.ToString().ToLowerInvariant())"
 if ($LASTEXITCODE -ne 0) { throw "Managed build failed" }
 . (Join-Path $PSScriptRoot 'ShimProbeFlavour.ps1')
@@ -152,6 +155,7 @@ $build = [ordered]@{ schema=1; release=$Version; modVersion=$modVersion; identit
 # verify.ps1 accepts dbce_shim.dll only with this record, whose pins must match the payload.
 # controls is Wheelkit's contract for this exact assembly (lib/input-shim/CONTROLS.json, romi 33009).
 if ($candidate) {
+    $build['artShimProbe'] = $shimProbe
     $controls = Get-Content -LiteralPath (Join-Path $root 'lib/input-shim/CONTROLS.json') -Raw | ConvertFrom-Json
     if ($controls.schema -ne 2 -or $controls.adapter -ne 'art-shim-ini-controls-2') { throw 'Unsupported shared-input controls contract' }
     $controls | Add-Member -NotePropertyName assemblySha256 -NotePropertyValue (Get-FileHash -LiteralPath (Join-Path $modDir 'ArtOfSimRally.Mod.dll') -Algorithm SHA256).Hash
