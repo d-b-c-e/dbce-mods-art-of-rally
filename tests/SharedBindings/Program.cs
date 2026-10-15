@@ -51,6 +51,13 @@ internal static class Program
             var metadata = Metadata();
             host.ObserveAccepted("Fixture wheel", "owned-fixture-path", metadata, Sample());
             Check(host.Access == SharedBindingAccess.Editable && host.Devices.Count == 1, "only an accepted qualified cache enables capture");
+            // Art actions (sana 162429): select has no row; look back, recover car and horn are ordinary bindable rows.
+            Check(host.Rows.Count == 30 && !host.Rows.Any(r => r.Action == "select"), "select row shown");
+            foreach (string id in new[] { "lookBack", "reset", "horn" }) Check(string.IsNullOrEmpty(Row(host, id).Note), "native action marked unsupported: " + id);
+            Check(Row(host, "reset").Label.Contains("hold"), "recover car hold not explained");
+            host.BeginCapture("select"); Check(host.CapturingAction == null, "hidden select captured");
+            Check(host.TryActiveBinding("steer", out var activeSteer) && activeSteer.Kind == ControlKind.Axis && activeSteer.Inverted && activeSteer.Device == Wheel &&
+                !host.TryActiveBinding("throttle", out _) && !host.TryActiveBinding("select", out _), "active binding accessor");
             var mismatched = new SharedBindingCaptureHost(path, File.ReadAllBytes(path), () => time, () => true, () => sourceNow);
             mismatched.ObserveAccepted("Fixture wheel", "owned-fixture-path", metadata, Sample(), Guid.NewGuid());
             Check(mismatched.Access == SharedBindingAccess.ReadOnly && !mismatched.HasDraft, "slot identity mismatch cannot select a substitute identity");
@@ -63,6 +70,7 @@ internal static class Program
             Check(host.Save(out message), message);
             Check(!host.HasDraft && host.SavedPendingRestart && Row(host, "steer").NextStart.HasValue, "saved next-start distinct from unsaved draft");
             Check(Row(host, "steer").ActiveInverted && Row(host, "steer").NextStartInverted == false, "Save does not apply the new axis live");
+            Check(host.TryActiveBinding("steer", out var frozenSteer) && frozenSteer.Inverted, "active accessor read the saved binding");
             Check(File.ReadAllText(path).Contains("confirm = " + button) && File.ReadAllText(path).Contains("Future = keep\r\n[Other]\r\nOwner = untouched"), "one action leaves unrelated bindings and lines unchanged");
             Check(Directory.GetFiles(root, "*.bindings-backup-*").Length == 1, "Save retains original backup");
             host.SetInverted("steer", true);

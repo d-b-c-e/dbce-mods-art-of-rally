@@ -154,9 +154,7 @@ internal static class Program
         Check(!accepted && !wrongThread.Started, "wrong thread accepted");
         var duplicate = new ShimAxisConsumer(); Check(duplicate.Publish(Frame(), 5, out why), why);
         Check(!duplicate.Publish(Frame(2), 5, out why), "polled twice in one Unity frame");
-        Check(ShimAxisConsumer.UnsupportedActions.Contains("select=") && ShimAxisConsumer.UnsupportedActions.Contains("horn=") &&
-            !ShimAxisConsumer.UnsupportedActions.Contains("camera=") && !ShimAxisConsumer.UnsupportedActions.Contains("clutch=") &&
-            !ShimAxisConsumer.UnsupportedActions.Contains("gear6="), "capability wrong");
+        Check(ShimAxisConsumer.UnsupportedActions == "select=Art has no select action\n", "capability wrong: " + ShimAxisConsumer.UnsupportedActions);
     }
     // Actions beyond the axes: menu buttons, shortcuts, sequential edges and H-pattern gates.
     private static byte[] Actions(ulong seq, ulong down, params (int Action, ShimStatus Status, float Value)[] owned)
@@ -169,10 +167,15 @@ internal static class Program
     private static void SharedActions()
     {
         string why; const ShimStatus L = ShimStatus.Live;
-        int[] unsupported = { 12, 18, 19, 20 };
+        int[] unsupported = { 12 };
         for (int i = 0; i < ShimFrame.Count; i++) Check(ShimAxisConsumer.Supported(i) == Array.IndexOf(unsupported, i) < 0, "supported set " + ShimFrame.Names[i]);
         foreach (int action in unsupported)
         { var s = new ShimAxisConsumer(); Check(!s.Publish(Actions(1, 0, (action, L, 1f)), 1, out why) && s.Terminal, "unsupported action owned " + ShimFrame.Names[action]); }
+        // Look back, reset (Art's recover car) and horn are owned and delivered like the menu buttons.
+        var native = new ShimAxisConsumer();
+        Check(native.Publish(Actions(1, 0, (18, L, 1f), (19, L, 0f), (20, L, 1f)), 1, out why), why);
+        Check(native.Owns(18) && native.Value(18, 1) == 1f && native.Owns(19) && native.Live(19, 1) && native.Value(19, 1) == 0f &&
+            native.Owns(20) && native.Value(20, 1) == 1f, "look back, reset or horn not delivered");
 
         // Menu buttons and shortcuts: current, Live and owned only.
         var sink = new ShimAxisConsumer();
@@ -275,7 +278,8 @@ internal static class Program
         var compact = SharedInputStatus.Lines(new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.Attached, ProfileName = "Moza KS Pro Triple" }, false);
         Check(compact.Length == 1 && compact[0].Contains("Moza KS Pro Triple") && compact[0].Contains("Saved bindings apply after a restart"), "compact active state lost profile/restart meaning");
         Check(attached[0].Contains("Moza KS Pro Triple") && attached[0].Contains("Keyboard stays native") && attached[1].Contains("MOZA R12 Base, DS-8X Shifter"), "attached identity text");
-        Check(Array.IndexOf(attached, SharedInputStatus.Unsupported) > 0 && Array.IndexOf(attached, SharedInputStatus.ArtOnly) > 0, "scope caveats missing");
+        Check(Array.IndexOf(attached, SharedInputStatus.ArtOnly) > 0 && attached[0].Contains("look back, recover car, horn"), "scope caveats missing");
+        Check(!Array.Exists(attached, l => l.Contains("Not available") || l.Contains("select")), "attached text describes the hidden select action");
         Check(attached[attached.Length - 2].Contains("Gears follow the profile (Sequential)") && attached[attached.Length - 1] == SharedInputStatus.Editors, "manual gear/editor text");
         var onAutomatic = Lines(new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.Attached, ProfileName = "p", Transmission = "Sequential", ArtTransmissionMode = "Sequential", CarAutomatic = true });
         Check(onAutomatic[onAutomatic.Length - 2].Contains("automatic now"), "attached text claimed gears on an automatic car");
@@ -773,11 +777,12 @@ internal static class Program
         var unsupported = new System.Collections.Generic.Dictionary<string, string>();
         foreach (var line in ShimAxisConsumer.UnsupportedActions.Split('\n'))
             if (line.Length > 0) unsupported[line.Substring(0, line.IndexOf('='))] = line.Substring(line.IndexOf('=') + 1);
-        Check(contract.Schema == 2 && contract.Adapter == "art-shim-ini-controls-2", "controls contract identity changed");
+        // Schema 3 (sana 162623, Wheelkit zele a8583c5) adds look back, reset and horn to schema 2's delivered set.
+        Check(contract.Schema == 3 && contract.Adapter == "art-shim-ini-controls-3", "controls contract identity changed");
         // Schema 2 (sana 34369) lets a writer write every delivered action, so each one must be labelled exactly once:
-        // shown at runtime in some run, or fixture-only.
+        // shown at runtime in some run, or fixture-only. Schema 3 keeps that rule.
         var q = contract.Qualification;
-        Check(q != null && q.WriterOmits != null && q.WriterOmits.Count == 0, "schema 2 must not omit writer actions");
+        Check(q != null && q.WriterOmits != null && q.WriterOmits.Count == 0, "schema 3 must not omit writer actions");
         var shown = new System.Collections.Generic.HashSet<string>();
         foreach (var run in q.RuntimeShown) foreach (var action in run.Actions) shown.Add(action);
         var fixture = new System.Collections.Generic.HashSet<string>(q.FixtureOnly);

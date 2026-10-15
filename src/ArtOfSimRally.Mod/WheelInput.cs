@@ -45,12 +45,16 @@ namespace ArtOfSimRally.Mod
     {
         public enum Channel { Steer, Throttle, Brake, Clutch, Handbrake, HandbrakeButton, SettingsButton, StopFfbButton,
             CameraUp, CameraDown, CameraForward, CameraBack, CameraLeft, CameraRight, CameraPitchDown, CameraPitchUp, CameraFovUp, CameraFovDown, CameraReset,
-            CameraSwitch, Confirm, Back, Start, NavUp, NavDown, NavLeft, NavRight }
+            CameraSwitch, Confirm, Back, Start, NavUp, NavDown, NavLeft, NavRight,
+            // Native in-stage actions (build 17584229). Horn, LookBack and RecoverCar have shared actions;
+            // the rest are Art-only bindings (GameButtonInput.NativeAction).
+            Horn, LookBack, RecoverCar, RepairPuncture, QuickRestart, LookLeft, LookRight, LookForward }
         public static readonly Channel[] Channels = (Channel[])Enum.GetValues(typeof(Channel));
         public static bool IsCameraButton(Channel c) => c >= Channel.CameraUp && c <= Channel.CameraReset;
         public static Channel CameraChannel(int index) => (Channel)((int)Channel.CameraUp + index);
         public static bool IsShortcut(Channel c) => c == Channel.SettingsButton || c == Channel.StopFfbButton || IsCameraButton(c);
-        public static bool IsGameButton(Channel c) => c >= Channel.CameraSwitch && c <= Channel.NavRight;
+        public static bool IsGameButton(Channel c) => c >= Channel.CameraSwitch && c <= Channel.LookForward;
+        public static bool IsArtOnlyGameButton(Channel c) => c >= Channel.RepairPuncture && c <= Channel.LookForward;
         public static bool IsButtonChannel(Channel c) => c == Channel.HandbrakeButton || IsShortcut(c) || IsGameButton(c);
         public static bool HasShortcutBindings { get { foreach (var c in Channels) if (IsShortcut(c) && IsBound(c)) return true; return false; } }
         private static readonly Dictionary<Channel, bool> ShortcutHeld = new Dictionary<Channel, bool>();
@@ -137,7 +141,7 @@ namespace ArtOfSimRally.Mod
         // While the shared session has pinned the readers' identities, nothing may reopen them.
         internal static bool SharedReadersPinned { get; set; }
         // Channels with no shared action: their Art bindings and editors stay in use beside a shared profile.
-        internal static bool SharedArtOnly(Channel c) => c == Channel.HandbrakeButton || IsCameraButton(c);
+        internal static bool SharedArtOnly(Channel c) => c == Channel.HandbrakeButton || IsCameraButton(c) || IsArtOnlyGameButton(c);
         public static bool Enabled => Main.Enabled && Main.Settings != null && (Main.Settings.WheelInputEnabled || SharedReadersRequired);
         public static bool IsBound(Channel c) => _bindings.ContainsKey(c);
         public static float Value(Channel c) => _values.TryGetValue(c, out float v) ? v : 0f;
@@ -193,6 +197,14 @@ namespace ArtOfSimRally.Mod
                 case Channel.NavDown: return cfg.NavDownBinding;
                 case Channel.NavLeft: return cfg.NavLeftBinding;
                 case Channel.NavRight: return cfg.NavRightBinding;
+                case Channel.Horn: return cfg.HornBinding;
+                case Channel.LookBack: return cfg.LookBackBinding;
+                case Channel.RecoverCar: return cfg.RecoverCarBinding;
+                case Channel.RepairPuncture: return cfg.RepairPunctureBinding;
+                case Channel.QuickRestart: return cfg.QuickRestartBinding;
+                case Channel.LookLeft: return cfg.LookLeftBinding;
+                case Channel.LookRight: return cfg.LookRightBinding;
+                case Channel.LookForward: return cfg.LookForwardBinding;
                 default: return cfg.HandbrakeBinding;
             }
         }
@@ -222,6 +234,14 @@ namespace ArtOfSimRally.Mod
                 case Channel.NavDown: cfg.NavDownBinding = value; break;
                 case Channel.NavLeft: cfg.NavLeftBinding = value; break;
                 case Channel.NavRight: cfg.NavRightBinding = value; break;
+                case Channel.Horn: cfg.HornBinding = value; break;
+                case Channel.LookBack: cfg.LookBackBinding = value; break;
+                case Channel.RecoverCar: cfg.RecoverCarBinding = value; break;
+                case Channel.RepairPuncture: cfg.RepairPunctureBinding = value; break;
+                case Channel.QuickRestart: cfg.QuickRestartBinding = value; break;
+                case Channel.LookLeft: cfg.LookLeftBinding = value; break;
+                case Channel.LookRight: cfg.LookRightBinding = value; break;
+                case Channel.LookForward: cfg.LookForwardBinding = value; break;
                 default: cfg.HandbrakeBinding = value; break;
             }
         }

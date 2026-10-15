@@ -15,9 +15,9 @@ namespace ArtOfSimRally.Mod.Shim
             internal bool Stopped, Retrying, KeyboardRetained;
             internal bool? CarAutomatic { get; set; } // the current car while driving; null otherwise
         }
-        internal const string Unsupported = "Not available in Art: select, look back, reset and horn.";
-        internal const string ArtOnly = "Camera tuning keys and buttons keep Art bindings, and so does the handbrake button while Use assigned controls is On. An Art binding on a control the shared profile maps is not used.";
-        internal const string Editors = "Shared controls are edited under Shared profile (Bind, Clear, Save bindings) and apply after a restart; the handbrake and camera buttons stay editable here. Plugging in or changing devices also needs a restart.";
+        // Select has no Art action, so its shared row is hidden rather than described here.
+        internal const string ArtOnly = "Camera tuning keys and buttons keep Art bindings; so do the handbrake button, repair puncture, quick restart and look left, right and forward while Use assigned controls is On. An Art binding on a control the shared profile maps is not used.";
+        internal const string Editors = "Shared controls are edited under Shared profile (Bind, Clear, Save bindings) and apply after a restart; the handbrake, camera, repair, restart and look-direction buttons stay editable here. Plugging in or changing devices also needs a restart.";
         // After a stop the car gets no driving input at all: the game's combined values cannot separate
         // keyboard from a re-enabled wheel. Menus keep the keyboard.
         internal const string StoppedEffect = ". Driving input, wheel and keyboard alike, stays neutral until the game restarts; menus still take the keyboard.";
@@ -51,9 +51,9 @@ namespace ArtOfSimRally.Mod.Shim
                         lines.Add("Shared profile '" + (string.IsNullOrEmpty(f.ProfileName) ? "unnamed" : f.ProfileName) + "' is active. Saved bindings apply after a restart.");
                         break;
                     }
-                    lines.Add("Shared profile '" + (string.IsNullOrEmpty(f.ProfileName) ? "unnamed" : f.ProfileName) + "' drives the wheel, pedals, menu buttons, shortcuts and gears. Keyboard stays native.");
+                    lines.Add("Shared profile '" + (string.IsNullOrEmpty(f.ProfileName) ? "unnamed" : f.ProfileName) + "' drives the wheel, pedals, menu buttons, look back, recover car, horn, shortcuts and gears. Keyboard stays native.");
                     if (f.Devices != null && f.Devices.Length > 0) lines.Add("Isolated from the game's own input: " + string.Join(", ", f.Devices) + ".");
-                    lines.Add(Unsupported); lines.Add(ArtOnly);
+                    lines.Add(ArtOnly);
                     lines.Add(Gears(f.Transmission, f.ArtTransmissionMode, f.CarAutomatic));
                     lines.Add(Editors);
                     break;

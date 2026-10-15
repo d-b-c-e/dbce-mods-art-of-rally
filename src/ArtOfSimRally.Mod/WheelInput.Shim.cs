@@ -23,13 +23,14 @@ namespace ArtOfSimRally.Mod
         }
         internal static void StopSharedProbe() => StopSharedInput();
 
-        // Art channels with a shared action. Channels without one (camera tuning,
-        // handbrake button) keep Art's own bindings on the same copied read.
+        // Art channels with a shared action. Channels without one (camera tuning, handbrake button, repair
+        // puncture, quick restart, look left/right/forward) keep Art's own bindings on the same copied read.
         private static readonly Dictionary<Channel, int> SharedActions = new Dictionary<Channel, int>
         {
             { Channel.Confirm, 9 }, { Channel.Back, 10 }, { Channel.Start, 11 },
             { Channel.NavUp, 13 }, { Channel.NavDown, 14 }, { Channel.NavLeft, 15 }, { Channel.NavRight, 16 },
-            { Channel.CameraSwitch, 17 }, { Channel.SettingsButton, 21 }, { Channel.StopFfbButton, 22 },
+            { Channel.CameraSwitch, 17 }, { Channel.LookBack, 18 }, { Channel.RecoverCar, 19 }, { Channel.Horn, 20 },
+            { Channel.SettingsButton, 21 }, { Channel.StopFfbButton, 22 },
         };
         internal static bool SharedOwns(Channel channel) => SharedActions.TryGetValue(channel, out int action) && ShimInput.Consumer.Owns(action);
         // True when a started shared session owns the channel's action. Availability and

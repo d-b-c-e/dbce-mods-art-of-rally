@@ -75,6 +75,15 @@ namespace ArtOfSimRally.Mod
         public string NavDownBinding = "";
         public string NavLeftBinding = "";
         public string NavRightBinding = "";
+        // Native in-stage actions. Recover, repair and quick restart keep the game's one-second hold.
+        public string HornBinding = "";
+        public string LookBackBinding = "";
+        public string RecoverCarBinding = "";
+        public string RepairPunctureBinding = "";
+        public string QuickRestartBinding = "";
+        public string LookLeftBinding = "";
+        public string LookRightBinding = "";
+        public string LookForwardBinding = "";
         // Follow game preserves every existing install; explicit profile choice
         // uses the same drivetrain switch as the game's transmission preference.
         public string TransmissionMode = "Follow game";
