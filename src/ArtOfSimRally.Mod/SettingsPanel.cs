@@ -298,7 +298,7 @@ namespace ArtOfSimRally.Mod
                 ArtButtonBinding(c, WheelInput.Channel.RecoverCar, "Recover car (hold)", "Hold for 1 second, as in the game.");
             }
             ArtButtonBinding(c, WheelInput.Channel.RepairPuncture, "Repair puncture (hold)", "Hold for 1 second. Requires a punctured tire and a spare.");
-            ArtButtonBinding(c, WheelInput.Channel.QuickRestart, "Restart stage (hold)", "Hold for 1 second. Game mode restrictions still apply.");
+            ArtButtonBinding(c, WheelInput.Channel.QuickRestart, "Restart stage", "In career, hold for 1 second; other modes restart on press. Not in freeroam, daily or weekly.");
             ArtButtonBinding(c, WheelInput.Channel.LookLeft, "Look left");
             ArtButtonBinding(c, WheelInput.Channel.LookRight, "Look right");
             ArtButtonBinding(c, WheelInput.Channel.LookForward, "Look forward");

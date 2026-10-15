@@ -20,7 +20,7 @@ Controls > Other game actions lists:
 | Look back | LookBack | Legacy only; shared profile keeps its existing row |
 | Recover car (hold) | RecoverCar | Legacy only; shared profile keeps reset |
 | Repair puncture (hold) | RepairPuncture | Art-only in either input mode |
-| Restart stage (hold) | QuickRestart | Art-only in either input mode |
+| Restart stage | QuickRestart | Art-only in either input mode |
 | Look left | LookLeft | Art-only in either input mode |
 | Look right | LookRight | Art-only in either input mode |
 | Look forward | LookForward | Art-only in either input mode |
@@ -29,9 +29,12 @@ The first three Art rows are hidden while SharedReadersRequired, so their
 common profile actions never get a second editor. Niru's shared host/consumer
 retains their behavior and the original shared IDs horn/lookBack/reset. The
 five Art-only channels use his accepted-copy path and duplicate-neutral rule.
-Select has no UI row. The hold is the game's existing one-second hold, not a
-new timer; repair additionally needs a punctured tire and a spare. Game-mode
-restrictions remain native.
+Select has no UI row. Recover and repair use the game's existing one-second
+hold; repair additionally needs a punctured tire and a spare. Restart requires
+a one-second hold in career and restarts on press in other allowed modes; it
+is unavailable in freeroam, daily and weekly. These restrictions remain native.
+The restart wording was corrected from Niru's ShortcutManager read163442;
+no timer, dispatch or input behavior changed.
 
 Per162745, release-before-Bind guidance is once per section. Only the active
 listening row appends transient capture status; normal rows show their current
