@@ -24,8 +24,11 @@ namespace ArtOfSimRally.Mod
         private static int _mount;
         private static readonly ConnectionEdit Connection = new ConnectionEdit();
         private static ISharedBindingHost Bindings => SharedBindingCaptureHost.Current;
-        internal static bool Editing => WheelInput.Assigning.HasValue || CameraKeys.Listening >= 0 ||
-            Panel.BindingActive || Connection.Editing || _settingsKey || Bindings?.CapturingAction != null;
+        /// <summary>Every edit except a shared-binding capture. The shared host's canEdit callback reads this, never
+        /// <see cref="Editing"/>, which itself asks the host for its capture (no recursion).</summary>
+        internal static bool LegacyEditing => WheelInput.Assigning.HasValue || CameraKeys.Listening >= 0 ||
+            Panel.BindingActive || Connection.Editing || _settingsKey;
+        internal static bool Editing => LegacyEditing || Bindings?.CapturingAction != null;
         internal static bool CancelPendingEdit()
         {
             bool editing = Editing;
@@ -242,7 +245,7 @@ namespace ArtOfSimRally.Mod
             else if (!string.IsNullOrEmpty(host.CaptureMessage)) Help(host.CaptureMessage);
             // Mutually exclusive with every other edit (an Art calibration, camera or Settings key capture, a connection edit):
             // shared actions start only when nothing else is being edited (kiki 123770).
-            bool idle = !Editing;
+            bool idle = !LegacyEditing && capturing == null;
             var rows = host.Rows;
             for (int i = 0; rows != null && i < rows.Count; i++) BindingRow(host, rows[i], editable, capturing, idle);
             if (editable && (host.HasDraft || host.SavedPendingRestart))
