@@ -71,7 +71,7 @@ namespace Dbce.Wheel.Input
                 message = "Bindings saved. Restart the game to use them; active bindings are unchanged.";
                 return true;
             }
-            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is ArgumentException)
+            catch (Exception ex) when (ex is IOException || ex is InvalidDataException || ex is UnauthorizedAccessException || ex is ArgumentException)
             { message = "Bindings not saved: " + ex.Message; return false; }
             finally { try { if (File.Exists(temp)) File.Delete(temp); } catch (IOException) { } catch (UnauthorizedAccessException) { } }
         }

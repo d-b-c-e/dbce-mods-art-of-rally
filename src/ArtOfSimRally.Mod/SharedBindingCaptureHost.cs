@@ -50,7 +50,7 @@ namespace ArtOfSimRally.Mod
             this.path = path; this.clock = clock; this.canEdit = canEdit;
             if (active == null) return;
             try { draft = new SharedBindingDraft(active); }
-            catch (Exception ex) when (ex is System.IO.IOException || ex is ArgumentException)
+            catch (Exception ex) when (ex is System.IO.IOException || ex is System.IO.InvalidDataException || ex is ArgumentException)
             { error = ex.Message; }
         }
         private bool Fresh(Device d) => clock() - d.Seen <= .25;
