@@ -62,6 +62,7 @@ namespace ArtOfSimRally.Mod
         [HarmonyPostfix]
         private static void DriveWheel(CarDynamics __instance)
         {
+            HotPathCost.PhysicsStep();
             var cfg = Main.Settings;
             if (!Main.Enabled || cfg == null || !cfg.ForceFeedbackEnabled) return;
             if (!FfbNative.Ready) { Reset(); __instance.forceFeedback = 0f; return; }
@@ -126,7 +127,9 @@ namespace ArtOfSimRally.Mod
             // version attaches it - sees a coherent value.
             __instance.forceFeedback = _smoothed * GameForceFeedbackRange;
 
+            long ffbStart = HotPathCost.Begin();
             FfbNative.SetForce((int)(_smoothed * FfbNative.ForceMax));
+            HotPathCost.End(HotPathCost.Kind.FfbWrite, ffbStart);
             LandingController.Observe(__instance);
             CrashController.Track(__instance);
 

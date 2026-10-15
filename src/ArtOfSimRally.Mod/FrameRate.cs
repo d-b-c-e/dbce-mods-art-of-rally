@@ -20,10 +20,14 @@ namespace ArtOfSimRally.Mod
         {
             double now = Time.unscaledTime;
             Monitor.Tick(now, Time.unscaledDeltaTime);
-            if (Monitor.WindowCompleted && now >= _nextLog)
+            if (!Monitor.WindowCompleted) return;
+            // The hot-path totals cover the same 10 s window as the summary (opt-in, HotPathCost).
+            string hot = HotPathCost.TakeWindow();
+            if (now >= _nextLog)
             {
                 _nextLog = now + 30;
                 ModLog.Info("Frame rate (10 s): " + Monitor.Summary + (Screen.width >= Screen.height * 2.9f ? " (triple-wide window)" : ""));
+                if (hot != null) ModLog.Info("Hot paths (10 s): " + hot);
             }
         }
 

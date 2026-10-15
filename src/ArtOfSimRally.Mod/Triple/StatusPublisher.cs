@@ -53,7 +53,9 @@ internal sealed class StatusPublisher
 
         try
         {
-            WriteAtomic(AdapterConstants.StatusPath, json);
+            long costStart = HotPathCost.Begin();
+            try { WriteAtomic(AdapterConstants.StatusPath, json); }
+            finally { HotPathCost.End(HotPathCost.Kind.StatusWrite, costStart); }
             _lastSemanticState = semanticState;
             _lastWriteUtc = now;
         }

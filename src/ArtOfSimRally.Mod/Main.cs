@@ -91,6 +91,8 @@ namespace ArtOfSimRally.Mod
             }
             WheelInput.LoadBindings();
             FrameHealthPersistence.Initialize();
+            HotPathCost.Enabled = File.Exists(Path.Combine(modEntry.Path, "perf-hotpath.on"));
+            if (HotPathCost.Enabled) ModLog.Info("Hot-path counters on (perf-hotpath.on): a 'Hot paths (10 s)' line follows each frame-rate line.");
 
             modEntry.OnGUI       = OnGUI;
             modEntry.OnSaveGUI   = OnSaveGUI;

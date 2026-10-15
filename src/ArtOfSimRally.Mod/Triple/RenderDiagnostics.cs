@@ -40,7 +40,13 @@ internal sealed class RenderDiagnostics
     {
         var now = Time.realtimeSinceStartup;
         if (!force && _lastSampleTime >= 0 && now - _lastSampleTime < 10f) return;
+        long costStart = HotPathCost.Begin();
+        try { SampleFull(outcome, projection, now); }
+        finally { HotPathCost.End(HotPathCost.Kind.Diagnostics, costStart); }
+    }
 
+    private void SampleFull(ProjectionOutcome outcome, ProjectionController projection, float now)
+    {
         var elapsed = now - _lastSampleTime;
         double? updateFps = _lastSampleTime >= 0 && elapsed > 0
             ? (Time.frameCount - _lastSampleFrame) / (double)elapsed
