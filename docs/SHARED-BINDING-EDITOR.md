@@ -91,7 +91,7 @@ What the two runs show:
   - The runner restored the copy's profile.
 - **Force.** Each run's UMM log shows `ffb=False` and no force-device attempt.
 
-Still open (none of these is claimed):
+Open at that checkpoint (the managed-payload/restart evidence below supersedes the corresponding items):
 - the attended, focused workflow with FFB on: binding while the game is the OS foreground, plus a real moved-control
   capture;
 - force feedback with the shared profile;
@@ -101,3 +101,49 @@ Still open (none of these is claimed):
   new stamp, so it is different code from F98 (Lola 132795; the separation is under review);
 - one shot detail: in the save run, the cleared row's "next start: Unbound" line was half cut by the scroll body, so it
   is shown by the host state and the file, not by that row's pixels.
+
+## Normal managed package Save and next-start consumption, 2026-10-15
+
+Livo ran the coordinator's named two-start batch (sana 134282), after Hera's EXIT
+and an actual-free shared-lease check. Runtime used normal package
+`0.4.2-rc.1001+f13bba18e22e327ae9c3bc708ea579ef575a88ce.clean`, ZIP
+`9B3434299DA319420E43EF652A0D369E78C00E1AD1F9BE699EFE11248DDF5E08`, managed DLL
+`4A1047D117CB9DCEFAEE95CB3DE4A3BC63C2CE03C8528785A472090965D4CD01`.
+The production native remained packaged 44E46799; the exercised private copy used
+the explicit pinned DD301314 load-time-muted substitution. This qualifies the
+normal managed payload's binding workflow, not an unmodified full-package run.
+
+The frozen runner/Recorder source was `a475fac206198db3e6260a67e1966fc4a74fa26f`;
+Recorder SHA-256 `A5BE52211F144B9DA15840D255DD176BFDCC72EDE37D4C26D3C394625BB27575`
+was built once in the preceding offline slot (zero warnings/errors, 18 focused
+staging checks passed) and reused without rebuilding.
+
+- Start 1 (`final`): nine shots, zero unmet expectations, UI restore OK. The
+  validator accepted clearing throttle; Save returned True, with no draft and
+  pending restart. The exact diff changed Revision and removed only throttle.
+  The cleared Accelerator row's entire `next start: Unbound` line and the
+  `Bindings saved for next start` footer are visible in shot 08. Controls setup
+  guidance and Simple/Advanced Cameras samples were also inspected.
+- Start 2 (`nextstart`): four shots, zero unmet expectations, UI restore OK.
+  It staged the exact saved bytes, SHA-256
+  `002347077864493E8429817F0A93F3F21E2875E85A7AD1BACFEB2BF845F5C0C0`.
+  Active source showed saved revision prefix `994070de777c`, steer was bound,
+  throttle was unbound, and no NextStart/Draft value remained. The shim's
+  startup owned-actions list dropped throttle. Shot 03 shows Accelerator
+  `Unbound` and the ordinary `Saved` footer.
+- Both launches: Unity focused True, OS foreground False, copy FFB disabled,
+  `DBCE_FFB_MUTE=1`, no activation/OS input, UMM loaded `ffb=False`, zero force
+  initialization attempts. Each child closed and wrote a restoration receipt
+  before advancing. The original owner profile retained SHA-256 73E78230.
+- Postprocessing assertions finished under the shared lease; release returned
+  True and actual lease absence was verified. No owner installation changed.
+
+Evidence lives in hub `artifacts/art-f6-ui-capture-20261015/final-9B343429-a475fac/`
+(`verdict.json`, both `staged.json`, `force-check.json`, `restored.txt`, UI logs
+and shots). The durable hub result is
+`docs/reviews/2026-10-15-art-final-payload-result-livo.md`.
+
+Still open: real moved-control capture while foreground with FFB on; force
+feedback with the shared profile; actual driving response to the cleared action;
+disconnect/rebind; exact production-native acceptance. These menu shots do not
+qualify triple-view gameplay rendering or a performance comparison.
