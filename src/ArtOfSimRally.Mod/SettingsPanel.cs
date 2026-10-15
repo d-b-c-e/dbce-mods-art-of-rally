@@ -246,11 +246,11 @@ namespace ArtOfSimRally.Mod
             else
             {
                 if (!string.IsNullOrEmpty(host.CaptureMessage)) Help(host.CaptureMessage);
-                // An explicit device for the next Bind, chosen before capture starts (lola 123857): an action whose saved device
+                // An explicit device for the next Bind, chosen before capture starts (lola 123857/123930; shown with one open device too): an action whose saved device
                 // is unavailable can still be bound on another open, qualified device. Only the host's current devices are
                 // offered; nothing is substituted or discovered.
                 var devices = host.Devices;
-                if (editable && devices != null && devices.Count > 1)
+                if (editable && devices != null && devices.Count > 0)
                 {
                     var names = new string[devices.Count + 1]; int selected = 0;
                     names[0] = "Saved device";
