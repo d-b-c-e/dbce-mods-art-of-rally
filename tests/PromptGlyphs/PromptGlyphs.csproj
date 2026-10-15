@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFrameworks>net8.0;net48</TargetFrameworks>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/ArtOfSimRally.Mod/PromptGlyphLabel.cs" Link="Production/PromptGlyphLabel.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/SharedInputStartup.Glyphs.cs" Link="Production/SharedInputStartup.Glyphs.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/OwnedPromptGlyph.cs" Link="Production/OwnedPromptGlyph.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/WheelInput.Glyphs.cs" Link="Production/WheelInput.Glyphs.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/WheelInput.Binding.cs" Link="Production/WheelInput.Binding.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/GlyphFallback.cs" Link="Production/GlyphFallback.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/PromptGlyphFallback.cs" Link="Production/PromptGlyphFallback.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/Toolkit/Input/ControlBinding.cs" Link="Production/ControlBinding.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/Toolkit/Ui/SettingsPresentation.cs" Link="Production/SettingsPresentation.cs" />
+  </ItemGroup>
+</Project>

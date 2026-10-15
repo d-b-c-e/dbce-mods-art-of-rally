@@ -4,8 +4,8 @@ using Rewired;
 namespace ArtOfSimRally.Mod
 {
     /// <summary>
-    /// Replaces the blank glyph boxes on the controls screen with the element's
-    /// name, for controllers the game has no artwork for.
+    /// Shows the consumed shared binding for an owned joystick, or the native
+    /// element name when that joystick's artwork is missing.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -24,16 +24,18 @@ namespace ArtOfSimRally.Mod
     /// uiData.keyboardText.text = aem.keyboardKeyCode.ToString();
     /// </code>
     /// <para>
-    /// So when a joystick glyph comes back empty, this switches that badge on and
-    /// writes the element's own name into it. "B12" beats a black square, and it
-    /// reuses UI the game already lays out and styles correctly.
+    /// A nonnull sprite may also be generic gamepad artwork. An active shared
+    /// binding therefore takes precedence for an exactly owned joystick. Its
+    /// native Rewired map is not the binding consumed by the shared input sink.
+    /// This patch changes only the badge; it never rewrites either mapping.
     /// </para>
     /// </remarks>
     [HarmonyPatch(typeof(ControlsRemapper), "RefreshDisplayedGlyph")]
     internal static class GlyphFallback
     {
         [HarmonyPostfix]
-        private static void ShowNameWhenNoGlyph(ControlsRemapper.UIActionSet uiData, ActionElementMap aem)
+        internal static void ShowNameWhenNoGlyph(ControlsRemapper.UIActionSet uiData, InputAction action,
+            ActionElementMap aem, Controller ___activeController)
         {
             var cfg = Main.Settings;
             if (!Main.Enabled || cfg == null || !cfg.GlyphTextFallback) return;
@@ -41,14 +43,19 @@ namespace ArtOfSimRally.Mod
 
             try
             {
-                // Only step in where the game drew nothing. A controller with real
-                // artwork keeps it.
-                if (uiData.glyphImage == null || uiData.glyphImage.sprite != null) return;
+                // The original method resets activeController to null on its
+                // keyboard path. Use that exact selected object, not a fresh
+                // last-active lookup or the element map's controller index.
+                if (!(___activeController is Joystick) || uiData.glyphImage == null) return;
                 if (uiData.keyboardGlyph == null || uiData.keyboardText == null) return;
+                bool owned = OwnedPromptGlyph.TryLabel(PadManager.GetPlayer(), ___activeController, action,
+                    uiData.isNegativeSplitAxis, out var label);
+                if (!owned && uiData.glyphImage.sprite != null) return;
 
                 uiData.glyphImage.enabled = false;
                 uiData.keyboardGlyph.SetActive(true);
-                uiData.keyboardText.text = Shorten(aem.elementIdentifierName);
+                uiData.keyboardText.text = owned ? label : Shorten(aem.elementIdentifierName);
+                uiData.keyboardText.enabled = true;
             }
             catch
             {
@@ -64,17 +71,6 @@ namespace ArtOfSimRally.Mod
         /// truncated. A wheel can report over a hundred buttons, so the long form
         /// would overflow the badge on most of them.
         /// </remarks>
-        internal static string Shorten(string name)
-        {
-            if (string.IsNullOrEmpty(name)) return "?";
-
-            const string button = "Button ";
-            if (name.StartsWith(button)) return "B" + name.Substring(button.Length).Trim();
-
-            // "X Axis", "Y Rotation", "Slider 1" - the leading token identifies it.
-            int space = name.IndexOf(' ');
-            string head = space > 0 ? name.Substring(0, space) : name;
-            return head.Length <= 4 ? head : head.Substring(0, 4);
-        }
+        internal static string Shorten(string name) => PromptGlyphLabel.Element(name);
     }
 }

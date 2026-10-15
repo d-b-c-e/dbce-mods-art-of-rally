@@ -10,7 +10,7 @@ namespace ArtOfSimRally.Mod
     // same sequence the probe qualified; any refusal before the first accepted frame releases what it
     // took and leaves Art's bindings in charge with a stated reason. After the first accepted frame a
     // fault keeps the wheel neutral until restart (the shared consumer's existing rule).
-    internal static class SharedInputStartup
+    internal static partial class SharedInputStartup
     {
         internal const string ProfileFileName = "dbce-controls.ini", ShimFileName = "dbce_shim.dll";
         // Canonical toolkit shim c6594fa (built from 421bd4b): copied provider, fenced latched bridge,
