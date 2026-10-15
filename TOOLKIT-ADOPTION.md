@@ -29,7 +29,7 @@ Audited 2026-10-04 (read-only standards audit); statuses below are from that aud
 | STD-019 | Menus on the centre screen; side screens only in gameplay | unchecked | added 2026-10-05 |
 | STD-020 | Standard feature checklist per game | adopted | row in dbce-project-mgmt PROJECTS.md feature checklist |
 | STD-021 | art of rally is the FFB reference | adopted | historical v1 retained; owner-requested v2 steering calibration has source/original-input checks below. Independent crash shape/strength unchanged; runtime adoption and feel pending. |
-| STD-022 | One triple-screen selector | adopted | "Off / Single wide display / Three separate displays" (the same three-way choice, older labels) |
+| STD-022 | One triple-screen selector | adopted | F6 Cameras shows "Off / Surround / Separate monitors" on the shared rows (2026-10-15, branch toto/art-f6-triple-rows); stored flags unchanged. docs/triple still uses the older "Single wide display / Three separate displays" names |
 | STD-023 | Frame-rate readout in the settings panel and the log | adopted | 0.4.2 candidate: Cameras page shows avg/1% low/worst of the last 10 s; log line every 30 s (toolkit FrameRateMonitor, vendored) |
 | STD-024 | On-screen frame-rate counter | adopted | 0.4.2 candidate: "Show frame rate on screen", top right of the centre screen, off by default |
 | STD-027 | Independent steering and effect strengths | partial | Existing steering gain and crash/landing/shift amplitudes are separate. October 8 source labels Steering strength, explains independence and always exposes the Advanced tuning/effects link in Simple. No force arithmetic, saved tune or native change. Build checked; packaging and rendered label/link acceptance remain pending. |

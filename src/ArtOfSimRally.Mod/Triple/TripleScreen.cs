@@ -137,20 +137,23 @@ internal static class TripleScreen
         }
     }
 
-    /// <summary>Drawn inside the Cameras page of the wheel settings panel.</summary>
-    internal static void DrawSettings()
+    // STD-022's three-way selector in the owner's wording (toolkit STANDARDS.md); the stored flags are unchanged.
+    private static readonly string[] Modes = { "Off", "Surround", "Separate monitors" };
+
+    /// <summary>Drawn inside the Cameras page of the wheel settings panel, on the panel's shared rows
+    /// (<see cref="Dbce.Wheel.Ui.Unity.F6Widgets"/>). Only the presentation is shared: the mode flags, the field-of-view
+    /// math and the measurements are this mod's own, and nothing is written on a draw without input.</summary>
+    internal static void DrawSettings(Dbce.Wheel.Ui.Unity.F6Widgets w)
     {
         if (_settings == null) return;
         if (_blockedByLegacyMod)
-            GUILayout.Label("The old \"DBCE triple-screen for art of rally\" mod is still installed. Disable or remove it in Unity Mod Manager; this mod now includes triple screens.");
+            w.StatusCard("triple-legacy", "The old triple-screen mod is still installed",
+                "Disable or remove \"DBCE triple-screen for art of rally\" in Unity Mod Manager; this mod now includes triple screens.", true, null);
         if (float.IsNaN(_settings.ViewWidthScale) || float.IsInfinity(_settings.ViewWidthScale))
             _settings.ViewWidthScale = 1f;
         var mode = _settings.EnableSeparateDisplayPrototype ? 2 : _settings.EnableThreeViewPrototype ? 1 : 0;
-        GUILayout.BeginHorizontal();
-        if (GUILayout.Toggle(mode == 0, "Off", GUI.skin.button)) mode = 0;
-        if (GUILayout.Toggle(mode == 1, "Single wide display", GUI.skin.button)) mode = 1;
-        if (GUILayout.Toggle(mode == 2, "Three separate displays", GUI.skin.button)) mode = 2;
-        GUILayout.EndHorizontal();
+        int picked = w.ChoiceRow("triple-mode", "Triple screens", null, Modes, mode, true);
+        if (picked >= 0) mode = picked;
         _settings.EnableThreeViewPrototype = mode == 1;
         _settings.EnableSeparateDisplayPrototype = mode == 2;
         _settings.EnableCenterPanelPreview = false;
@@ -159,13 +162,12 @@ internal static class TripleScreen
         var panel = layout.Document?.Panel;
         var geometry = layout.Document?.Geometry;
         if (mode != 0)
-            _settings.OverrideFieldOfView = GUILayout.Toggle(_settings.OverrideFieldOfView,
-                "Override field of view");
+            _settings.OverrideFieldOfView = w.ToggleRow("triple-override-fov", "Override field of view", null, _settings.OverrideFieldOfView, true);
         if (mode != 0 && !_settings.OverrideFieldOfView)
         {
-            GUILayout.Label("Following the game's camera field of view on all three screens.");
+            w.Help("Following the game's camera field of view on all three screens.");
             if (_lastOutcome != null && Projection.CenterVerticalFovDegrees.HasValue)
-                GUILayout.Label($"Current center field of view: {Projection.CenterVerticalFovDegrees.Value:0}°");
+                w.Help($"Current center field of view: {Projection.CenterVerticalFovDegrees.Value:0}°");
         }
         else if (mode != 0 && panel != null && geometry != null)
         {
@@ -173,65 +175,63 @@ internal static class TripleScreen
             var maximum = FovAtScale(layout, FovPreference.MaximumSliderScale);
             var current = FovAtScale(layout, Mathf.Clamp(_settings.ViewWidthScale,
                 (float)FovPreference.MinimumSliderScale, (float)FovPreference.MaximumSliderScale));
-            GUILayout.Label($"Field of view: {current:0}°");
-            var chosen = GUILayout.HorizontalSlider((float)current, (float)minimum, (float)maximum);
-            _settings.ViewWidthScale = ScaleForFov(layout, chosen);
-            GUILayout.BeginHorizontal();
-            GUILayout.Label("Narrower", GUILayout.Width(80));
-            GUILayout.FlexibleSpace();
-            GUILayout.Label("Wider", GUILayout.Width(80));
-            GUILayout.EndHorizontal();
-            if (GUILayout.Button("Reset field of view")) _settings.ViewWidthScale = 1f;
+            // Default is the unscaled view (ViewWidthScale 1, the former "Reset field of view"). Only an edit writes the
+            // scale; a draw without input leaves the saved value exactly as it is.
+            var standard = FovAtScale(layout, 1);
+            var proposed = w.NumberRow("triple-fov", "Field of view", "Lower is narrower, higher is wider.", current, minimum, maximum,
+                1, "0", "°", true, standard);
+            if (proposed == standard && proposed != current) _settings.ViewWidthScale = 1f;
+            else if (proposed != current && !double.IsNaN(proposed) && !double.IsInfinity(proposed))
+                _settings.ViewWidthScale = ScaleForFov(layout, (float)proposed);
         }
         else if (mode != 0)
-            GUILayout.Label("Set up your screens in Advanced setup to enable field of view.");
+            w.Help("Set up your screens in Advanced setup to enable field of view.");
 
         if (_lastOutcome != null && mode != 0)
-            GUILayout.Label("Status: " + _lastOutcome.Diagnostic.Message);
-        _showAdvanced = GUILayout.Toggle(_showAdvanced, "Advanced setup and diagnostics");
+            w.Help("Status: " + _lastOutcome.Diagnostic.Message);
+        if (w.Command("triple-advanced", (_showAdvanced ? "Hide" : "Show") + " advanced setup and diagnostics")) _showAdvanced = !_showAdvanced;
         if (!_showAdvanced) return;
 
-        GUILayout.Label("Screen measurements");
+        w.Caption("Screen measurements");
         var imported = Layout.Current.IsSuccess;
         if (imported)
         {
-            var local = GUILayout.Toggle(_settings.UseLocalLayout, "Use measurements entered here");
-            _settings.UseLocalLayout = local;
-            if (!_settings.UseLocalLayout) GUILayout.Label("Using imported measurements. The optimizer is optional.");
+            _settings.UseLocalLayout = w.ToggleRow("triple-local-layout", "Use measurements entered here", null, _settings.UseLocalLayout, true);
+            if (!_settings.UseLocalLayout) w.Help("Using imported measurements. The optimizer is optional.");
         }
         else
         {
             _settings.UseLocalLayout = true;
-            GUILayout.Label("No imported measurements found. Enter yours here; no optimizer is required.");
+            w.Help("No imported measurements found. Enter yours here; no optimizer is required.");
         }
         if (_settings.UseLocalLayout)
         {
-            GUILayout.Label("Enter the visible size of one panel and your distance from its center. The example values below are inactive until accepted.");
-            _settings.PanelWidthPx = IntField("Panel width (pixels)", _settings.PanelWidthPx);
-            _settings.PanelHeightPx = IntField("Panel height (pixels)", _settings.PanelHeightPx);
-            _settings.PanelWidthMm = FloatField("Visible panel width (mm)", _settings.PanelWidthMm);
-            _settings.PanelHeightMm = FloatField("Visible panel height (mm)", _settings.PanelHeightMm);
-            _settings.EyeDistanceMm = FloatField("Eye distance (mm)", _settings.EyeDistanceMm);
-            _settings.LeftYawDegrees = FloatField("Left screen angle (degrees)", _settings.LeftYawDegrees);
-            _settings.RightYawDegrees = FloatField("Right screen angle (degrees)", _settings.RightYawDegrees);
-            if (GUILayout.Button("Use these measurements")) _settings.ManualSetupConfirmed = true;
-            GUILayout.Label(_settings.ManualSetupConfirmed ? "Local setup active" : "Local setup not yet active");
+            w.Help("Enter the visible size of one panel and your distance from its center. The example values below are inactive until accepted.");
+            _settings.PanelWidthPx = IntField(w, "triple-panel-width-px", "Panel width (pixels)", _settings.PanelWidthPx);
+            _settings.PanelHeightPx = IntField(w, "triple-panel-height-px", "Panel height (pixels)", _settings.PanelHeightPx);
+            _settings.PanelWidthMm = FloatField(w, "triple-panel-width-mm", "Visible panel width (mm)", _settings.PanelWidthMm);
+            _settings.PanelHeightMm = FloatField(w, "triple-panel-height-mm", "Visible panel height (mm)", _settings.PanelHeightMm);
+            _settings.EyeDistanceMm = FloatField(w, "triple-eye-distance", "Eye distance (mm)", _settings.EyeDistanceMm);
+            _settings.LeftYawDegrees = FloatField(w, "triple-left-yaw", "Left screen angle (degrees)", _settings.LeftYawDegrees);
+            _settings.RightYawDegrees = FloatField(w, "triple-right-yaw", "Right screen angle (degrees)", _settings.RightYawDegrees);
+            if (w.Command("triple-use-measurements", "Use these measurements")) _settings.ManualSetupConfirmed = true;
+            w.Help(_settings.ManualSetupConfirmed ? "Local setup active" : "Local setup not yet active");
         }
         if (mode == 2)
         {
-            GUILayout.Label("Center must be Windows primary. Exit the game after changing display mode; activated displays release on exit.");
+            w.Help("Center must be Windows primary. Exit the game after changing display mode; activated displays release on exit.");
             // The side displays are found automatically (the racing row beside the primary); the saved index fields are
             // no longer used, so they are not shown. Their stored values are left untouched.
-            GUILayout.Label("Side displays are found automatically: the equal-size displays directly left and right of the primary. Other displays, such as a dashboard, are ignored.");
+            w.Help("Side displays are found automatically: the equal-size displays directly left and right of the primary. Other displays, such as a dashboard, are ignored.");
         }
-        _settings.CenterMenusOnMiddleScreen = GUILayout.Toggle(_settings.CenterMenusOnMiddleScreen,
-            "Center title and main menu on middle screen");
-        _settings.AllowOutputResolutionMismatch = GUILayout.Toggle(_settings.AllowOutputResolutionMismatch,
-            "Developer: allow output resolution mismatch");
-        if (GUILayout.Button("Reload imported layout")) LogLayoutRefresh(Layout.Refresh(true));
-        GUILayout.Label(layout.IsSuccess ? "Effective layout: " + layout.Sha256.Substring(0, 12) + "…"
+        _settings.CenterMenusOnMiddleScreen = w.ToggleRow("triple-center-menus", "Center title and main menu on middle screen", null,
+            _settings.CenterMenusOnMiddleScreen, true);
+        _settings.AllowOutputResolutionMismatch = w.ToggleRow("triple-allow-mismatch", "Developer: allow output resolution mismatch", null,
+            _settings.AllowOutputResolutionMismatch, true);
+        if (w.Command("triple-reload-layout", "Reload imported layout")) LogLayoutRefresh(Layout.Refresh(true));
+        w.Help(layout.IsSuccess ? "Effective layout: " + layout.Sha256.Substring(0, 12) + "…"
             : "Setup: " + layout.ErrorMessage);
-        GUILayout.Label(_renderDiagnostics.PresentationSummary);
+        w.Help(_renderDiagnostics.PresentationSummary);
     }
 
     private static double FovAtScale(LayoutLoadResult layout, double scale)
@@ -249,22 +249,32 @@ internal static class TripleScreen
             layout.Document.Geometry.EyeHeightAbovePanelCenterMm, degrees);
     }
 
-    private static int IntField(string label, int value)
+    private static int IntField(Dbce.Wheel.Ui.Unity.F6Widgets w, string id, string label, int value)
     {
-        GUILayout.BeginHorizontal();
-        GUILayout.Label(label, GUILayout.Width(210));
-        var changed = GUILayout.TextField(value.ToString(), GUILayout.Width(80));
-        GUILayout.EndHorizontal();
-        return int.TryParse(changed, out var parsed) ? parsed : value;
+        var shown = value.ToString();
+        var changed = TextRow(w, id, label, shown);
+        return changed != shown && int.TryParse(changed, out var parsed) ? parsed : value;
     }
 
-    private static float FloatField(string label, float value)
+    // Typed in place, as before; a draw without an edit keeps the stored value unrounded (the field shows two decimals).
+    private static float FloatField(Dbce.Wheel.Ui.Unity.F6Widgets w, string id, string label, float value)
     {
-        GUILayout.BeginHorizontal();
-        GUILayout.Label(label, GUILayout.Width(210));
-        var changed = GUILayout.TextField(value.ToString("0.##"), GUILayout.Width(80));
-        GUILayout.EndHorizontal();
-        return float.TryParse(changed, out var parsed) ? parsed : value;
+        var shown = value.ToString("0.##");
+        var changed = TextRow(w, id, label, shown);
+        return changed != shown && float.TryParse(changed, out var parsed) ? parsed : value;
+    }
+
+    // A shared row with the label column and a short text field in the editor column, focusable like the panel's fields.
+    private static string TextRow(Dbce.Wheel.Ui.Unity.F6Widgets w, string id, string label, string shown)
+    {
+        var row = w.BeginRow(label, null, 120);
+        if (!row.Stacked) GUILayout.FlexibleSpace();
+        GUI.SetNextControlName(id);
+        w.Register(id);
+        var changed = GUILayout.TextField(shown, GUILayout.Width(120 * w.Scale));
+        w.Reveal(id);
+        w.EndRow(row);
+        return changed;
     }
 
     internal static void Save()

@@ -426,8 +426,7 @@ namespace ArtOfSimRally.Mod
         private static void Cameras(Settings c)
         {
             Heading("View and screens");
-            W.Caption("Triple screens");
-            Triple.TripleScreen.DrawSettings();
+            Triple.TripleScreen.DrawSettings(W);
             GUILayout.Space(8 * SettingsPresentation.Scale);
             c.ShowFrameRate = Toggle(c.ShowFrameRate, "Show frame rate on screen");
             Help("Frame rate, last 10 s: " + FrameRate.Summary + ". The counter sits at the top right of the center screen.");
