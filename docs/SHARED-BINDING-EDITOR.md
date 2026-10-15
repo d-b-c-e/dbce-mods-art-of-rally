@@ -37,3 +37,11 @@ setup flow. This limited in-game host is not fresh-device discovery, endpoint ca
 Verification is pending the coordinator's next admitted batch. `tests/SharedBindings` covers the pure host/draft under
 net8.0 and net48; `tests/ShimInput` adds Valo's accepted-cache single-read and observer-failure checks. These use fake bytes,
 temporary files and clocks only. A successful source build or fixture run will not establish attended in-game acceptance.
+
+The additive lifecycle extraction vendors toolkit `4425c06a69745c171ed7f025bf96104acf8184d5`,
+`BindingCaptureFlow.cs`. Art retains its 144/232-byte decoder and action/menu/focus admission. The shared flow owns
+freshness, one-second analog rest, deadlines, cancellation and the result callback into the existing draft. Art now
+passes the original native sample sequence at offset 16; duplicate or regressed reads cannot refresh eligibility or
+fabricate a button edge, including after reader removal. Production-host fixtures retain their earlier cases and add
+those exact sequence checks. This extraction is source-only and awaits its coordinated offline batch; it is separate
+from the already-qualified helper ZIP and accepted rc.22 install.

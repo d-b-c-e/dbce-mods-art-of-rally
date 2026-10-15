@@ -8,6 +8,7 @@ using Dbce.Wheel.Input;
 internal static class Program
 {
     private static int checks;
+    private static ulong sequence;
     private static readonly Guid Wheel = new Guid("11111111-1111-1111-1111-111111111111");
     private static readonly Guid Product = new Guid("22222222-2222-2222-2222-222222222222");
     private static void Check(bool value, string why) { checks++; if (!value) throw new Exception(why); }
@@ -20,10 +21,11 @@ internal static class Program
         Put(bytes, 48, 1); Put(bytes, 52, 1); Put(bytes, 56, 1); bytes[64] = 128;
         Put(bytes, 112, maximum); return bytes;
     }
-    private static byte[] Sample(int axis = 32767, bool button7 = false, bool invalid = false, ulong generation = 1)
+    private static byte[] Sample(int axis = 32767, bool button7 = false, bool invalid = false, ulong generation = 1, ulong? readSequence = null)
     {
         var bytes = new byte[232]; Put(bytes, 0, 232); Put(bytes, 4, 1);
         Buffer.BlockCopy(BitConverter.GetBytes(generation), 0, bytes, 8, 8);
+        Buffer.BlockCopy(BitConverter.GetBytes(readSequence ?? ++sequence), 0, bytes, 16, 8);
         bytes[50] = invalid ? (byte)0 : (byte)1; Put(bytes, 52, axis);
         bytes[91] = button7 ? (byte)128 : (byte)0;
         for (int i = 0; i < 4; i++) Put(bytes, 212 + i * 4, -1);
@@ -113,6 +115,16 @@ internal static class Program
             Check(masks.CapturingAction == null && masks.HasDraft, "timeout with fresh unchanged samples preserves an earlier draft");
             var missing = new SharedBindingCaptureHost(path, null, () => time, () => true);
             Check(missing.Access == SharedBindingAccess.Missing && missing.AccessReason.Contains("Controls Setup"), "missing profile gives a no-Wheelkit standalone route");
+            var repeated = new SharedBindingCaptureHost(path, Encoding.UTF8.GetBytes(text), () => time, () => true);
+            repeated.ObserveAccepted("Fixture", "owned-repeat-path", metadata, Sample(readSequence: 1000));
+            repeated.BeginCapture("confirm");
+            repeated.ObserveAccepted("Fixture", "owned-repeat-path", metadata, Sample(readSequence: 1001));
+            time += .1;
+            repeated.ObserveAccepted("Fixture", "owned-repeat-path", metadata, Sample(button7: true, readSequence: 1001));
+            Check(!repeated.HasDraft && repeated.CapturingAction == "confirm", "same native read sequence cannot fabricate a new button edge");
+            time += .2;
+            repeated.ObserveAccepted("Fixture", "owned-repeat-path", metadata, Sample(readSequence: 1000));
+            Check(repeated.CapturingAction == null && repeated.Devices.Count == 0 && !repeated.HasDraft, "duplicate or regressed bridge read cannot renew capture freshness");
             Console.WriteLine("PASS " + checks + " shared binding host checks; no device, game, window or force output.");
             return 0;
         }
