@@ -9,6 +9,7 @@ internal static class Program
 {
     private static int checks;
     private static ulong sequence;
+    private static long sourceNow = 1000000;
     private static readonly Guid Wheel = new Guid("11111111-1111-1111-1111-111111111111");
     private static readonly Guid Product = new Guid("22222222-2222-2222-2222-222222222222");
     private static void Check(bool value, string why) { checks++; if (!value) throw new Exception(why); }
@@ -21,11 +22,13 @@ internal static class Program
         Put(bytes, 48, 1); Put(bytes, 52, 1); Put(bytes, 56, 1); bytes[64] = 128;
         Put(bytes, 112, maximum); return bytes;
     }
-    private static byte[] Sample(int axis = 32767, bool button7 = false, bool invalid = false, ulong generation = 1, ulong? readSequence = null)
+    private static byte[] Sample(int axis = 32767, bool button7 = false, bool invalid = false, ulong generation = 1, ulong? readSequence = null, long? readEndUs = null)
     {
         var bytes = new byte[232]; Put(bytes, 0, 232); Put(bytes, 4, 1);
         Buffer.BlockCopy(BitConverter.GetBytes(generation), 0, bytes, 8, 8);
         Buffer.BlockCopy(BitConverter.GetBytes(readSequence ?? ++sequence), 0, bytes, 16, 8);
+        Buffer.BlockCopy(BitConverter.GetBytes((readEndUs ?? sourceNow) - 100), 0, bytes, 24, 8);
+        Buffer.BlockCopy(BitConverter.GetBytes(readEndUs ?? sourceNow), 0, bytes, 32, 8);
         bytes[50] = invalid ? (byte)0 : (byte)1; Put(bytes, 52, axis);
         bytes[91] = button7 ? (byte)128 : (byte)0;
         for (int i = 0; i < 4; i++) Put(bytes, 212 + i * 4, -1);
@@ -44,11 +47,11 @@ internal static class Program
                 "\r\nconfirm = " + button + "\r\nFuture = keep\r\n[Other]\r\nOwner = untouched\r\n";
             string path = Path.Combine(root, "dbce-controls.ini"); File.WriteAllText(path, text, new UTF8Encoding(false));
             double time = 0; bool allowed = true;
-            var host = new SharedBindingCaptureHost(path, File.ReadAllBytes(path), () => time, () => allowed);
+            var host = new SharedBindingCaptureHost(path, File.ReadAllBytes(path), () => time, () => allowed, () => sourceNow);
             var metadata = Metadata();
             host.ObserveAccepted("Fixture wheel", "owned-fixture-path", metadata, Sample());
             Check(host.Access == SharedBindingAccess.Editable && host.Devices.Count == 1, "only an accepted qualified cache enables capture");
-            var mismatched = new SharedBindingCaptureHost(path, File.ReadAllBytes(path), () => time, () => true);
+            var mismatched = new SharedBindingCaptureHost(path, File.ReadAllBytes(path), () => time, () => true, () => sourceNow);
             mismatched.ObserveAccepted("Fixture wheel", "owned-fixture-path", metadata, Sample(), Guid.NewGuid());
             Check(mismatched.Access == SharedBindingAccess.ReadOnly && !mismatched.HasDraft, "slot identity mismatch cannot select a substitute identity");
             host.BeginCapture("steer"); Check(host.CapturingAction == "steer", "one capture active");
@@ -79,7 +82,7 @@ internal static class Program
             Check(host.CapturingAction == null && !host.HasDraft, "invalid sample cannot become a false axis/button movement");
 
             string smallPath = Path.Combine(root, "small-controls.ini"); File.WriteAllText(smallPath, text, new UTF8Encoding(false));
-            var small = new SharedBindingCaptureHost(smallPath, Encoding.UTF8.GetBytes(text), () => time, () => allowed);
+            var small = new SharedBindingCaptureHost(smallPath, Encoding.UTF8.GetBytes(text), () => time, () => allowed, () => sourceNow);
             var smallMeta = Metadata(maximum: 1023); time = 2;
             small.ObserveAccepted("Small-range fixture", "owned-small-path", smallMeta, Sample(511));
             small.BeginCapture("steer"); time = 3; small.ObserveAccepted("Small-range fixture", "owned-small-path", smallMeta, Sample(511));
@@ -93,12 +96,12 @@ internal static class Program
             time += .01; small.ObserveAccepted("Small-range fixture", "owned-small-path", Metadata(2, 1023), Sample(511, generation: 2));
             Check(small.CapturingAction == null && !small.HasDraft, "generation change cannot retarget a capture");
 
-            var bounds = new SharedBindingCaptureHost(path, Encoding.UTF8.GetBytes(text), () => time, () => true);
+            var bounds = new SharedBindingCaptureHost(path, Encoding.UTF8.GetBytes(text), () => time, () => true, () => sourceNow);
             bounds.ObserveAccepted("Small-range fixture", "owned-small-path", smallMeta, Sample(511));
             bounds.BeginCapture("steer"); time += 1; bounds.ObserveAccepted("Small-range fixture", "owned-small-path", smallMeta, Sample(511));
             time += .01; bounds.ObserveAccepted("Small-range fixture", "owned-small-path", smallMeta, Sample(50000, button7: true));
             Check(!bounds.HasDraft && bounds.CapturingAction == null && Row(bounds, "steer").ActiveInverted, "out-of-range valid-byte frame binds neither axis nor simultaneous button");
-            var masks = new SharedBindingCaptureHost(path, Encoding.UTF8.GetBytes(text), () => time, () => true);
+            var masks = new SharedBindingCaptureHost(path, Encoding.UTF8.GetBytes(text), () => time, () => true, () => sourceNow);
             var maskedMeta = Metadata(); Put(maskedMeta, 48, 0); Put(maskedMeta, 52, 0); Put(maskedMeta, 56, 0); maskedMeta[64] = 0;
             masks.ObserveAccepted("Masked fixture", "owned-mask-path", maskedMeta, Sample()); masks.BeginCapture("steer");
             Check(masks.CapturingAction == null && !masks.HasDraft, "steering refuses absent or unknown range");
@@ -113,9 +116,9 @@ internal static class Program
             masks.ObserveAccepted("Masked fixture", "owned-mask-path", metadata, Sample()); masks.BeginCapture("steer");
             for (int i = 0; i < 120; i++) { time += .1; masks.ObserveAccepted("Masked fixture", "owned-mask-path", metadata, Sample()); }
             Check(masks.CapturingAction == null && masks.HasDraft, "timeout with fresh unchanged samples preserves an earlier draft");
-            var missing = new SharedBindingCaptureHost(path, null, () => time, () => true);
+            var missing = new SharedBindingCaptureHost(path, null, () => time, () => true, () => sourceNow);
             Check(missing.Access == SharedBindingAccess.Missing && missing.AccessReason.Contains("Controls Setup"), "missing profile gives a no-Wheelkit standalone route");
-            var repeated = new SharedBindingCaptureHost(path, Encoding.UTF8.GetBytes(text), () => time, () => true);
+            var repeated = new SharedBindingCaptureHost(path, Encoding.UTF8.GetBytes(text), () => time, () => true, () => sourceNow);
             repeated.ObserveAccepted("Fixture", "owned-repeat-path", metadata, Sample(readSequence: 1000));
             repeated.BeginCapture("confirm");
             repeated.ObserveAccepted("Fixture", "owned-repeat-path", metadata, Sample(readSequence: 1001));
@@ -125,6 +128,18 @@ internal static class Program
             time += .2;
             repeated.ObserveAccepted("Fixture", "owned-repeat-path", metadata, Sample(readSequence: 1000));
             Check(repeated.CapturingAction == null && repeated.Devices.Count == 0 && !repeated.HasDraft, "duplicate or regressed bridge read cannot renew capture freshness");
+            var aged = new SharedBindingCaptureHost(path, Encoding.UTF8.GetBytes(text), () => time, () => true, () => sourceNow);
+            aged.ObserveAccepted("Fixture", "owned-age-path", metadata, Sample()); aged.BeginCapture("confirm");
+            aged.ObserveAccepted("Fixture", "owned-age-path", metadata, Sample());
+            long earlierEnd = sourceNow; sourceNow += 100001;
+            aged.ObserveAccepted("Fixture", "owned-age-path", metadata, Sample(button7: true, readEndUs: earlierEnd));
+            Check(!aged.HasDraft && aged.CapturingAction == null && aged.Devices.Count == 0 && aged.CaptureMessage.Contains("stale"), "valid earlier read made stale by a slow later device cannot bind or refresh Seen");
+            aged.ObserveAccepted("Fixture", "owned-age-path", metadata, Sample(readEndUs: sourceNow + 1));
+            Check(aged.Devices.Count == 0, "future QPC source time cannot fabricate freshness");
+            long validNow = sourceNow; sourceNow = -1;
+            aged.ObserveAccepted("Fixture", "owned-age-path", metadata, Sample(readEndUs: validNow));
+            Check(aged.Devices.Count == 0 && !aged.HasDraft, "missing source clock refuses observation without a device read");
+            sourceNow = validNow;
             Console.WriteLine("PASS " + checks + " shared binding host checks; no device, game, window or force output.");
             return 0;
         }

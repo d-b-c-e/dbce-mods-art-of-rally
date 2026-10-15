@@ -16,6 +16,7 @@ namespace ArtOfSimRally.Mod
 
         private readonly string path;
         private readonly Func<double> clock;
+        private readonly Func<long> sourceClock;
         private readonly Func<bool> canEdit;
         private readonly SharedBindingDraft draft;
         private readonly SharedBindingCaptureFlow flow;
@@ -33,10 +34,16 @@ namespace ArtOfSimRally.Mod
             "Change camera", "Look back", "Reset car", "Horn", "Mod menu", "Mute force feedback",
             "Gear 1", "Gear 2", "Gear 3", "Gear 4", "Gear 5", "Gear 6", "Gear 7", "Gear 8" };
 
-        internal SharedBindingCaptureHost(string path, byte[] active, Func<double> clock, Func<bool> canEdit)
+        internal SharedBindingCaptureHost(string path, byte[] active, Func<double> clock, Func<bool> canEdit, Func<long> sourceClock = null)
         {
             this.path = path; this.clock = clock; this.canEdit = canEdit;
-            flow = new SharedBindingCaptureFlow(clock, (id, binding) => { draft.Set(id, binding.ToString()); rows = null; });
+            this.sourceClock = sourceClock ?? (Func<long>)Shim.BindingSampleClock.Microseconds;
+            flow = new SharedBindingCaptureFlow(clock, (id, binding) => {
+                if (draft == null || !canEdit()) return "The binding editor is no longer editable";
+                string why = ActionReason(id);
+                if (why.Length != 0) return why;
+                draft.Set(id, binding.ToString()); rows = null; return null;
+            });
             if (active == null) return;
             try { draft = new SharedBindingDraft(active); }
             catch (Exception ex) when (ex is System.IO.IOException || ex is System.IO.InvalidDataException || ex is ArgumentException)
@@ -148,6 +155,15 @@ namespace ArtOfSimRally.Mod
             if (sample[50] != 1)
             {
                 flow.Remove(instance, "Capture device has no valid sample. Its prior binding was kept."); rows = null;
+                return;
+            }
+            // Publish accepts a whole frame; an individual valid read may still be Core-Stale.
+            // A QPC check AFTER Publish conservatively bounds age at Core's earlier decision boundary.
+            // The pinned copied provider uses the ordinary 100000-us bound, in this same system-QPC domain.
+            long startUs = BitConverter.ToInt64(sample, 24), endUs = BitConverter.ToInt64(sample, 32), nowUs = sourceClock();
+            if (startUs < 0 || endUs < startUs || nowUs < endUs || nowUs < 0 || nowUs - endUs > 100000)
+            {
+                flow.Remove(instance, "Capture refused a stale or unqualified source timestamp. The prior binding was kept."); rows = null;
                 return;
             }
             int[] axes = new int[8], minimum = new int[8], maximum = new int[8], hats = new int[4]; bool[] buttons = new bool[128];

@@ -9,6 +9,7 @@
   <ItemGroup>
     <Compile Include="../../src/ArtOfSimRally.Mod/SharedBindingCaptureHost.cs" Link="SharedBindingCaptureHost.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/SharedBindingDraft.cs" Link="SharedBindingDraft.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/Shim/BindingSampleClock.cs" Link="BindingSampleClock.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/Toolkit/Input/*.cs" Link="Toolkit/%(Filename)%(Extension)" />
     <Compile Include="../../src/ArtOfSimRally.Mod/Toolkit/Ui/SettingsPresentation.cs" Link="SettingsPresentation.cs" />
   </ItemGroup>

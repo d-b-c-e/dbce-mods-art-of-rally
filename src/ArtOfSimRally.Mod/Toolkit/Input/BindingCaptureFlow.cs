@@ -30,11 +30,13 @@ namespace Dbce.Wheel.Input
     }
 
     /// <summary>Single capture over accepted observations. The host admits actions and applies the canonical
-    /// result to its draft; running input and Save remain outside this flow. Call Refresh before rendering.</summary>
+    /// result to its draft; running input and Save remain outside this flow. Call Refresh before rendering.
+    /// One flow belongs to one qualified reader handle lifetime. Recreating that handle requires a new flow;
+    /// ReaderStopped does not reset per-instance epoch/sequence watermarks within the current lifetime.</summary>
     public sealed class SharedBindingCaptureFlow
     {
         private readonly Func<double> clock;
-        private readonly Action<string, ControlBinding> captured;
+        private readonly Func<string, ControlBinding, string?> captured;
         private readonly Dictionary<Guid, AcceptedBindingObservation> devices = new Dictionary<Guid, AcceptedBindingObservation>();
         // Keep sequence watermarks after Remove/stop so an old cached read cannot regain eligibility.
         private readonly Dictionary<Guid, AcceptedBindingObservation> reads = new Dictionary<Guid, AcceptedBindingObservation>();
@@ -56,7 +58,9 @@ namespace Dbce.Wheel.Input
                 return fresh.AsReadOnly();
             }
         }
-        public SharedBindingCaptureFlow(Func<double> clock, Action<string, ControlBinding> captured)
+        /// <param name="captured">Commit only to the draft. Null means accepted; a refusal reason means the prior draft
+        /// was left unchanged. Validation must precede mutation. The callback is delivered at most once.</param>
+        public SharedBindingCaptureFlow(Func<double> clock, Func<string, ControlBinding, string?> captured)
         { this.clock = clock ?? throw new ArgumentNullException(nameof(clock)); this.captured = captured ?? throw new ArgumentNullException(nameof(captured)); }
         private bool Fresh(AcceptedBindingObservation value)
         {
@@ -142,8 +146,9 @@ namespace Dbce.Wheel.Input
                     kind == ControlKind.Axis ? value.Maximum[detected.Index] : 65535);
                 string action = CapturingAction;
                 Cancel(); // A callback is delivered at most once, including if its host refuses the draft edit.
-                captured(action, binding);
-                Message = "Binding captured into the draft. Review it and Save bindings; restart to use it.";
+                string? refusal = captured(action, binding);
+                Message = refusal == null ? "Binding captured into the draft. Review it and Save bindings; restart to use it."
+                    : "Capture refused: " + (refusal.Length == 0 ? "The draft editor did not accept this binding" : refusal) + ". The prior binding was kept.";
             }
             catch (ArgumentException ex) { Cancel(); Message = "Capture refused: " + ex.Message + ". The prior binding was kept."; }
             return true;

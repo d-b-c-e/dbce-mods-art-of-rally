@@ -8,8 +8,8 @@ Additive shared lifecycle/contract source `ControlProfileDraft.cs` and `BindingE
 The three original parser/capture/document files remain unchanged.
 
 `BindingCaptureFlow.cs` is the additive shared clock-injected lifecycle from toolkit
-`4425c06a69745c171ed7f025bf96104acf8184d5`. Its working-byte SHA-256 is
-`3D9D64A73EED2CEF41780ABD1EEAC8A0A9961E82E74A1C905BDF3C450FEA4773`.
+`bcfb8522b1583fc61b66aa7ecfc48a733f979f38`. Its working-byte SHA-256 is
+`A524F8FFF754CDBC759D151A81ED12FEE1520E3A68924CE3311D8393C4B6E926`.
 
 | File | SHA-256 of the working bytes |
 | --- | --- |
