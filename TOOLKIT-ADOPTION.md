@@ -158,3 +158,14 @@ Source-only during owner UAT162171; compilation, focused fixtures and rendered
 camera-row acceptance are deferred until rig handback. No installed payload or
 owner setting changed. This follows already-adopted shared-row guidance;
 preexisting unchecked/partial ledger entries remain open outside this scope.
+
+### STD-004 / STD-033 / STD-036 - supported native action row presentation (UAT source)
+
+The ArtButtonBinding presenter reuses the Controls row shell for the eight
+channels added by Niru a0131c3. Common horn/lookBack/reset keep one shared
+profile editor; their Art rows appear only without SharedReadersRequired.
+Repair/restart/look directions use the implementation's accepted-copy Art-only
+channels and duplicate-neutral gate. Hold and puncture prerequisites are visible;
+no new input, save or device authority is introduced by the UI. The source-only
+row work does not close native-action qualification or prior partial standards.
+No builds/tests/runtime/install were run during owner UAT162171.

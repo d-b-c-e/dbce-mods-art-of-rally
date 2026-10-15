@@ -50,3 +50,11 @@ roll-forward environment. Do not run the broad Test-Rc or WheelInput baseline
 solely for this presentation delta. If a later authorized rendered check occurs,
 observe the changed camera disclosure at the actual host width and verify Bind,
 listening/Cancel and explicit USB Save visually; source checks do not prove that.
+
+## Follow-up162688 /162745
+
+The camera USB row is now the reusable ArtButtonBinding presenter for camera
+and native-action rows. Release-before-Bind guidance moved from every idle row
+to one section-level helper. Live listening status stays on the active row.
+See2026-10-15-art-game-action-rows.md for the exact dependency and shared versus
+Art-only visibility; original keyboard and explicit USB Save semantics remain.

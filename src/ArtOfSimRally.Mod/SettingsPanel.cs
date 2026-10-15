@@ -195,9 +195,10 @@ namespace ArtOfSimRally.Mod
                 if (!c.ShifterIsHPattern) c.SkipNeutral = Toggle(c.SkipNeutral, "Skip neutral");
             }
             Heading("Driving and menu buttons");
-            Help("The game's binding screen owns Shift up/down, Change camera, held Look behind, Reset car, Pause and menu controls. It preserves keyboard/pad action maps. Settings/Stop FFB buttons below read USB devices directly.");
+            Help("Keyboard and controller bindings remain available in the game's binding screen. Extra USB actions below keep their normal game behavior.");
             if (RightButton("Open game bindings", 180)) GameBindings.Open();
             Help(GameBindings.Status);
+            ArtActionBindings(c);
             _modButtons = Disclosure(_modButtons, "mod buttons and Settings key");
             if (_modButtons)
             {
@@ -281,11 +282,36 @@ namespace ArtOfSimRally.Mod
             GUI.enabled = enabled;
             W.EndRow(keyboardRow);
 
-            var channel = WheelInput.CameraChannel(index);
+            ArtButtonBinding(c, WheelInput.CameraChannel(index), binding.Label + " (USB button)");
+        }
+
+        private static void ArtActionBindings(Settings c)
+        {
+            Heading("Other game actions");
+            Help("Release USB buttons before Bind. Game mode and stage conditions still apply.");
+            // The common actions have one binding authority. A shared session edits them in its existing profile rows;
+            // the legacy-only route uses Art bindings. The five game-only channels below borrow the accepted copy.
+            if (!WheelInput.SharedReadersRequired)
+            {
+                ArtButtonBinding(c, WheelInput.Channel.Horn, "Horn");
+                ArtButtonBinding(c, WheelInput.Channel.LookBack, "Look back");
+                ArtButtonBinding(c, WheelInput.Channel.RecoverCar, "Recover car (hold)", "Hold for 1 second, as in the game.");
+            }
+            ArtButtonBinding(c, WheelInput.Channel.RepairPuncture, "Repair puncture (hold)", "Hold for 1 second. Requires a punctured tire and a spare.");
+            ArtButtonBinding(c, WheelInput.Channel.QuickRestart, "Restart stage (hold)", "Hold for 1 second. Game mode restrictions still apply.");
+            ArtButtonBinding(c, WheelInput.Channel.LookLeft, "Look left");
+            ArtButtonBinding(c, WheelInput.Channel.LookRight, "Look right");
+            ArtButtonBinding(c, WheelInput.Channel.LookForward, "Look forward");
+        }
+
+        private static void ArtButtonBinding(Settings c, WheelInput.Channel channel, string label, string note = null)
+        {
             bool bound = WheelInput.IsBound(channel), listening = WheelInput.Assigning == channel;
             string button = WheelInput.Describe(channel);
-            button += "\n" + (listening ? WheelInput.Status : "Release the button first, then bind.");
-            var buttonRow = BeginBindingRow(binding.Label + " (USB button)", button);
+            if (listening) button += "\n" + WheelInput.Status;
+            else if (!string.IsNullOrEmpty(note)) button += "\n" + note;
+            var buttonRow = BeginBindingRow(label, button);
+            bool enabled = GUI.enabled;
             GUI.enabled = enabled && (listening || (!Editing && !GameState.IsDriving));
             if (W.Command("art-" + channel + "-bind", listening ? "Cancel" : "Bind button"))
             { if (listening) WheelInput.CancelAssign(); else WheelInput.BeginCalibration(channel); }
@@ -294,7 +320,7 @@ namespace ArtOfSimRally.Mod
             GUI.enabled = enabled;
             W.EndRow(buttonRow);
             // The existing USB editor still owns pending digital capture, explicit Save binding and cancellation.
-            if (WheelInput.Assigning == channel) CalibrationEditor(c, binding.Label + " (button)");
+            if (WheelInput.Assigning == channel) CalibrationEditor(c, label);
             else if (WheelInput.IsBound(channel)) Bar(channel, "Device input");
         }
 
@@ -398,7 +424,7 @@ namespace ArtOfSimRally.Mod
             {
                 Heading("Adjustment bindings");
                 c.CameraTuningKeys = Toggle(c.CameraTuningKeys, "Live adjustment shortcuts");
-                Help("Use keyboard keys or separate USB buttons; no numpad required. F8 and the Settings key are reserved. Bind only buttons not already used by the game.");
+                Help("Use keyboard keys or separate USB buttons; no numpad required. F8 and the Settings key are reserved. Release USB buttons before Bind, and use buttons not already assigned in the game.");
                 for (int i = 0; i < CameraKeys.Bindings.Length; i++)
                     CameraAdjustmentBinding(c, i);
                 bool enabled = GUI.enabled; GUI.enabled = enabled && !Editing;
