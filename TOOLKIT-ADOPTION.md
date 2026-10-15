@@ -88,3 +88,18 @@ qualification. See [the evidence and remaining checks](experiments/CustomVehicle
 This is experiment-scoped STD-018 progress, not adoption by the parent release;
 the global STD-018 row remains unchecked. No main-mod settings, native FFB, game
 preferences or installed payloads changed for this candidate.
+
+## Final managed-payload test preparation, 2026-10-15
+
+STD-002/012/028/033/034 remain scoped to their existing status. The explicit
+`Prepare-SharedInputCopy -PackageZip -ForceFeedbackOff -MutedNative` test-copy
+route validates the original package before replacing only the disposable
+copy's two natives with pinned DD301. The original package receipt and extracted
+bytes remain intact; `nativeSubstitution` records packaged and exercised hashes
+and paths, and ordinary staged-file hash checks cover the exercised bytes.
+This prepares muted managed-binding Save/restart evidence; it does not qualify
+the production native or physical controls. Focused temporary-copy checks are in
+`tools/testing/Test-MutedPackageCopy.ps1`; execution is pending a named lease.
+Historical unchecked STD-011/012/013/014/016/017/018/019 rows remain open. The
+toolkit's STD-037 schema-2 endpoint standard is missing from the adoption table;
+this staging change does not enable or change schema-2 controls.
