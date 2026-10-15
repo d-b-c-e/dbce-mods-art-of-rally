@@ -22,7 +22,7 @@ Audited 2026-10-04 (read-only standards audit); statuses below are from that aud
 | STD-012 | Reproduce the route and preserve original signals | unchecked | added 2026-10-05; session playback (v0.4.0) is the likely fit |
 | STD-013 | The installed build launches plainly | unchecked | added 2026-10-05 |
 | STD-014 | Request reciprocal review when progress stalls | unchecked | added 2026-10-05; process standard |
-| STD-015 | Triples on Surround and on separate monitors | partial | added 2026-10-05; both modes exist (wide display and three separate displays). Separate displays use the saved Unity indices; Art spans no desktop window, so the virtual-desktop-height assumption fixed elsewhere does not apply. The shared racing-row selector (toolkit db0383c, exact source in lib/display) feeds read-only diagnostics only (`observedRacingRow`); the Unity-index-to-display mapping is unresolved (docs/triple/KNOWN-ISSUES.md). |
+| STD-015 | Triples on Surround and on separate monitors | partial | added 2026-10-05; both modes exist (wide display and three separate displays). Separate displays take their sides from the shared racing-row selector (see below); Art spans no desktop window, so the virtual-desktop-height assumption fixed elsewhere does not apply. The shared racing-row selector (toolkit db0383c, exact source in lib/display) chooses the sides: Unity's position-sorted display order predicts the side indices, and each side is proven by the window it opens. The saved indices are unused (rc.22; stage proof in hub artifacts/art-separate-display-stage-20261013). |
 | STD-016 | Telemetry: Forza Horizon layout, on by default | unchecked | added 2026-10-05 |
 | STD-017 | Hide settings pages that have nothing to offer | unchecked | added 2026-10-05 |
 | STD-018 | Handling changes never reach online scores | unchecked | added 2026-10-05; DisableSteerAssist is off by default |
@@ -46,7 +46,7 @@ strict native GUID selection. Explicit device overrides and accepted force tunin
 are unchanged. Private candidates now pin the canonical toolkit shim `c6594fa`
 (built at `421bd4b`, hash `BC9B030A`), which carries `5b96ba8`'s inspection plus the
 fenced latched bridge; toolkit native and Art .NET/Unity Mono checks passed (see
-[the shim provenance](lib/input-shim/PROVENANCE.md)). Private rc.21 with that shim is
+[the shim provenance](lib/input-shim/PROVENANCE.md)). Private rc.22 (with that shim since rc.21) is
 installed locally (not launched; see [LOCAL-DEPLOYMENT](docs/LOCAL-DEPLOYMENT.md)). The
 earlier `723E8A38` from `5b96ba8` first passed Core, ABI, bridge, fake-COM and .NET/Unity
 Mono tests. The October 13 disposable startup (with `723E8A38`) resolved the configured target before

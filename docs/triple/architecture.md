@@ -33,9 +33,9 @@ At the finish line, the game disables `CarCameras` and lets `CinemachineBrain` m
 
 ## Configuration and safety
 
-The F6 Cameras page presents Off, Surround, Separate monitors (STD-022; formerly "Single wide display" and "Three separate displays"), and a field-of-view row. Advanced setup accepts a local panel size, eye distance, side angles, and separate-display indices. Example measurements remain inactive until the user accepts them. An imported optimizer layout is optional; the effective layout is validated and hashed without mutating the import.
+The F6 Cameras page presents Off, Surround, Separate monitors (STD-022; formerly "Single wide display" and "Three separate displays"), and a field-of-view row. Advanced setup accepts a local panel size, eye distance and side angles; separate-display sides are found automatically. Example measurements remain inactive until the user accepts them. An imported optimizer layout is optional; the effective layout is validated and hashed without mutating the import.
 
-The wide mode requires exactly three native panel widths and one native height. The separate mode requires the center as Windows primary, a native-size game output, matching secondary displays, and distinct Unity indices. The adapter never calls `Screen.SetResolution` or changes NVIDIA/Windows display topology. It writes runtime status and diagnostic JSON atomically under `%LOCALAPPDATA%\DBCE\TripleScreen\games\art-of-rally\`.
+The wide mode requires exactly three native panel widths and one native height. The separate mode requires the center as Windows primary, a native-size game output filling the primary, and an equal-size display directly on each side; their Unity indices are found automatically. The adapter never calls `Screen.SetResolution` or changes NVIDIA/Windows display topology. It writes runtime status and diagnostic JSON atomically under `%LOCALAPPDATA%\DBCE\TripleScreen\games\art-of-rally\`.
 
 ## Test status and risks
 
