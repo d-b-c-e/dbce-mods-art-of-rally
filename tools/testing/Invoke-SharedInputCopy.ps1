@@ -244,9 +244,10 @@ $artLocal=Join-Path $env:LOCALAPPDATA 'ArtOfSimRally'
 $localLow=Join-Path $env:USERPROFILE 'AppData/LocalLow/Funselektor Labs/Art of Rally'
 $customRally=Join-Path $localLow 'customrally' # read by SessionEnvironment.ps1's Get-SessionFiles
 . (Join-Path $PSScriptRoot 'SessionEnvironment.ps1')
+. (Join-Path $PSScriptRoot 'CopyModResidue.ps1')
 . (Join-Path $ToolkitRepo 'tools/playback/Stage-RigLease.ps1')
 $snapshots=[Collections.Generic.List[object]]::new(); $ownerPins=[Collections.Generic.List[object]]::new()
-$lease=$null; $game=$null; $ready=$false; $environmentSaved=$false; $launchAttempted=$false; $routeApplied=$false; $localBefore=@(); $artBefore=@()
+$lease=$null; $game=$null; $ready=$false; $environmentSaved=$false; $launchAttempted=$false; $routeApplied=$false; $localBefore=@(); $artBefore=@(); $modBackupsBefore=@()
 $capture=Join-Path $Result 'capture'
 $replayOut=Join-Path $Result 'replay'; $replayResult=Join-Path $replayOut 'result.txt'; $ffbBefore=$null
 function Save-File([string]$p) {
@@ -284,8 +285,11 @@ try {
     # its Settings.xml: snapshot both like shared files, so restoration keeps the post-run bytes under after/ as evidence
     # and puts the staged bytes back (kiki 125183).
     if($ui) { Save-File (Join-Path $mod 'dbce-controls.ini'); Save-File (Join-Path $mod 'Settings.xml') }
+    # That Save leaves the replaced profile as a bindings backup in the copy's mod folder (CopyModResidue.ps1): record the
+    # backups already there, so restoration archives and removes only this run's (sana 132976).
+    if($ui) { Plain $mod; $modBackupsBefore=@(Get-BindingBackups $mod) }
     $snapshots | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath "$Result/shared-files.json"
-    @{schema=1;gameDir=$GameDir;owner=$owner;lease=$lease;localBefore=$localBefore;artBefore=$artBefore} | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath "$Result/recovery.json"
+    @{schema=1;gameDir=$GameDir;owner=$owner;lease=$lease;localBefore=$localBefore;artBefore=$artBefore;modBackupsBefore=$modBackupsBefore} | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath "$Result/recovery.json"
     $ready=$true
     Assert-StageRigLease -Path $lease.path -Token $lease.token
     if(!(Test-OwnerGate $ownerInput 'prepared' 300 $ownerRecord)) { throw 'Owner input resumed during preparation; no launch.' }
@@ -475,6 +479,12 @@ try {
             } }
         }
         Attempt { $runs=Join-Path $artLocal 'shared-input'; if((Test-Path -LiteralPath $runs) -and !@(Get-ChildItem -LiteralPath $runs -Recurse -File).Count -and !($artBefore | Where-Object { Within $_ $runs })) { Remove-Item -LiteralPath $runs -Recurse } }
+        # This run's bindings backups in the copy's mod folder: archived under after/copy-mod-new, then removed; earlier
+        # backups must be unchanged (a change fails restoration and keeps the lease).
+        if($ui) { Attempt {
+            $movedBackups=Move-NewBindingBackups $mod $modBackupsBefore (Join-Path $Result 'after/copy-mod-new')
+            if($movedBackups.Count) { $movedBackups | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath "$Result/copy-mod-backups-moved.json" }
+        } }
     }
     if($environmentSaved -and ($launchAttempted -or $routeApplied)) { Attempt { Restore-SessionEnvironment "$Result/shared-environment" } }
     foreach($pin in $ownerPins) { Attempt { if((Hash $pin.path) -ne $pin.sha256) { throw "Owner file differs; retained for review, never overwritten: $($pin.path)" } } }
