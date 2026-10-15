@@ -109,3 +109,17 @@ evidence, not general parity or attended sign-off for new controls.
 Historical unchecked STD-011/012/013/014/016/017/018/019 rows remain open. The
 toolkit's STD-037 schema-2 endpoint standard is missing from the adoption table;
 this staging change does not enable or change schema-2 controls.
+
+## October 15 shared binding presentation policy
+
+Source-only adoption of toolkit `7c51cb8e857026dcbeb6de3c300be18f59e67466`
+`BindingEditorPolicy.cs`, working-byte SHA-256 `66B3FE7634BB690807101C0AA7FB210A13D7FBEC93CACA381FB8123DF8663D9C`.
+Missing explicit selection or host replacement remains visibly unavailable until
+an explicit current-device/Saved choice; reappearance does not confirm it.
+Unavailable-action/profile-mode rows show the host reason and disable Bind,
+Clear and Invert. Initial intentional Saved mode and host/profile/force behavior
+remain unchanged. Working Woden selection is the reference, not a rewrite target.
+F6-SHARED-PENDING-0635 passed 24 source-linked presentation checks
+and the affected plugin compile with zero warnings/errors. No new runtime, physical, package or install claim.
+This addresses the scoped STD-004/030 presentation gap; broader partial STD-033/036
+game-delivery/physical checks remain separate from this source change.

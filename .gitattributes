@@ -6,3 +6,6 @@ lib/display/*.cs text eol=lf
 lib/display/LICENSE text eol=lf
 lib/input-shim/dbce_shim.h text eol=lf
 lib/input-shim/dbce_shim_bridge.h text eol=lf
+
+# Preserve byte-exact vendored binding presentation policy.
+src/ArtOfSimRally.Mod/Toolkit/Input/BindingEditorPolicy.cs text eol=lf
