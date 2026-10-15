@@ -1,7 +1,7 @@
 # Optional Triple Screen Optimizer integration
 
-The mod works on its own. Players can select **Off**, **Single wide display**, or
-**Three separate displays**, enter screen measurements, and adjust field of view
+The mod works on its own. Players can select **Off**, **Surround**, or
+**Separate monitors**, enter screen measurements, and adjust field of view
 in the mod's Unity Mod Manager panel. Triple Screen Optimizer is an optional
 source of those measurements; it does not install or control the mod.
 

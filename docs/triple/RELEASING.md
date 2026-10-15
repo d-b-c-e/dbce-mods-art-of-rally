@@ -17,7 +17,7 @@ The repository can have a private GitHub release before its visibility changes. 
 
 ## Attended game checks
 
-On the intended game build, validate Off, Single wide display, and Three separate displays separately. Confirm the menu loads; a stage renders left/center/right in order; seams, color, vegetation, FOV, finish camera, Alt+Tab, and normal exit behave as expected. Note resolution, refresh, fullscreen mode, frame rate, visual tearing, and any screenshot/log evidence. Do not infer a visual pass from offline tests or Unity VSync values alone.
+On the intended game build, validate Off, Surround, and Separate monitors separately. Confirm the menu loads; a stage renders left/center/right in order; seams, color, vegetation, FOV, finish camera, Alt+Tab, and normal exit behave as expected. Note resolution, refresh, fullscreen mode, frame rate, visual tearing, and any screenshot/log evidence. Do not infer a visual pass from offline tests or Unity VSync values alone.
 
 The current owner's attended checks support the separate-display mode and show much improved Surround visual parity. They do **not** close Surround tearing, other rigs, mixed-resolution monitors, all menus, replay, or photo mode. State these limits in release notes rather than hiding them.
 

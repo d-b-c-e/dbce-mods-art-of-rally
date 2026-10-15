@@ -18,7 +18,7 @@ For separate displays, check that Windows is in extended desktop mode, the cente
 - `SECONDARY_DISPLAY_IDENTITY_MISMATCH`;
 - `SECONDARY_DISPLAY_ACTIVATION_FAILED`. `render-diagnostics.json` records the details under `sideMapping`. Restart the game after changing display mode or arrangement. If a side window did not return after Alt+Tab, bring the game back to the foreground and wait a frame; the mod tries to raise both Unity secondary windows on focus return. Report a repeatable failure with the stage and screenshot.
 
-For Single wide display, check that Windows and the game both report exactly three native panel widths and one panel height. Current bezel-corrected wide resolutions are not supported.
+For Surround, check that Windows and the game both report exactly three native panel widths and one panel height. Current bezel-corrected wide resolutions are not supported.
 
 ## Seams, field of view, or lighting look wrong
 
@@ -26,7 +26,7 @@ Check the physical width/height and left/right angles in Advanced setup. The fie
 
 ## Tearing in Surround
 
-Tearing is [still open](KNOWN-ISSUES.md) even with Unity VSync 1 on the tested wide output. VSync settings and update FPS alone cannot verify display scanout. The tested separate-display drive had no visible tearing. Close the game, return Windows to extended desktop mode, and use **Three separate displays** if you prefer that result. We have not isolated whether stock Surround tears on this rig.
+Tearing is [still open](KNOWN-ISSUES.md) even with Unity VSync 1 on the tested wide output. VSync settings and update FPS alone cannot verify display scanout. The tested separate-display drive had no visible tearing. Close the game, return Windows to extended desktop mode, and use **Separate monitors** if you prefer that result. We have not isolated whether stock Surround tears on this rig.
 
 ## Collecting a useful report
 

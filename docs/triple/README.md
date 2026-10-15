@@ -26,8 +26,8 @@ In **Advanced setup and diagnostics**, enter one panel's pixel width/height and 
 | Mode | Windows setup | What the mod draws |
 |---|---|---|
 | **Off** | Any | The game's normal camera. |
-| **Single wide display** | One display exactly three panels wide, such as NVIDIA Surround | Three camera viewports across the wide output. |
-| **Three separate displays** | Extended desktop, equal native resolutions, center monitor set as Windows primary | A camera on each Unity display. |
+| **Surround** | One display exactly three panels wide, such as NVIDIA Surround | Three camera viewports across the wide output. |
+| **Separate monitors** | Extended desktop, equal native resolutions, center monitor set as Windows primary | A camera on each Unity display. |
 
 The **Field of view** slider changes all three views together. **Reset field of view** returns to the entered measurements. Set or change the Windows display mode while the game is closed. In separate-display mode, Unity keeps the side windows activated until the game exits, so restart after changing modes. The tested display mapping was center `0`, left `1`, right `2`; Unity may number your side displays differently.
 

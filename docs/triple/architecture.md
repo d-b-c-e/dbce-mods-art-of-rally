@@ -23,8 +23,8 @@ CarCameras or Cinemachine on Stage Camera
     one wide output OR three Unity displays
 ```
 
-- **Single wide display:** center camera renders into the middle third of the 3-panel-wide output; side cameras render into the left and right thirds. This replaced the earlier render-texture compositor, which lost vegetation and camera lighting effects. The viewports use the same projections as separate displays.
-- **Three separate displays:** center uses Unity display 0. The side cameras target the racing row's left and right displays. They are predicted from Unity's position-sorted display list and the Windows layout (`SideDisplaySelector`), then proven one at a time by the window each activation opens (`SideActivationWitness`). The saved `LeftDisplayIndex`/`RightDisplayIndex` are not used. Display activation lasts until process exit.
+- **Surround** (one wide display): center camera renders into the middle third of the 3-panel-wide output; side cameras render into the left and right thirds. This replaced the earlier render-texture compositor, which lost vegetation and camera lighting effects. The viewports use the same projections as separate displays.
+- **Separate monitors** (three Windows displays): center uses Unity display 0. The side cameras target the racing row's left and right displays. They are predicted from Unity's position-sorted display list and the Windows layout (`SideDisplaySelector`), then proven one at a time by the window each activation opens (`SideActivationWitness`). The saved `LeftDisplayIndex`/`RightDisplayIndex` are not used. Display activation lasts until process exit.
 - **Off:** the mod releases camera state and leaves stock rendering. An existing Unity secondary window can retain its last image until process exit; restart after changing modes.
 
 Each side camera gets an isolated PostProcessVolume copied from the center's active effects except MotionBlur, plus the center's enabled occlusion and volumetric effects. Copies must keep camera-specific callbacks independent. The game draws vegetation from its source camera; the mod widens that camera's vegetation culling to 360° while three views are active and restores the original mode on release. Per-camera direct vegetation registration caused side vegetation to disappear in the 0.3.7 attended test.
@@ -33,7 +33,7 @@ At the finish line, the game disables `CarCameras` and lets `CinemachineBrain` m
 
 ## Configuration and safety
 
-The UMM panel presents Off, Single wide display, Three separate displays, and a field-of-view slider. Advanced setup accepts a local panel size, eye distance, side angles, and separate-display indices. Example measurements remain inactive until the user accepts them. An imported optimizer layout is optional; the effective layout is validated and hashed without mutating the import.
+The F6 Cameras page presents Off, Surround, Separate monitors (STD-022; formerly "Single wide display" and "Three separate displays"), and a field-of-view row. Advanced setup accepts a local panel size, eye distance, side angles, and separate-display indices. Example measurements remain inactive until the user accepts them. An imported optimizer layout is optional; the effective layout is validated and hashed without mutating the import.
 
 The wide mode requires exactly three native panel widths and one native height. The separate mode requires the center as Windows primary, a native-size game output, matching secondary displays, and distinct Unity indices. The adapter never calls `Screen.SetResolution` or changes NVIDIA/Windows display topology. It writes runtime status and diagnostic JSON atomically under `%LOCALAPPDATA%\DBCE\TripleScreen\games\art-of-rally\`.
 
