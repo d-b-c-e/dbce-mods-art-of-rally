@@ -211,6 +211,27 @@ Keep the companion separate from the UMM mod archive and retain the existing
 exact-package tests. The first-launch requirement for the optional tabs and the
 shared-axis calibration limit are in its packaged README.
 
+October 15 private helper adoption pins Wheelkit
+`44f7adbe5b816f402de1433a1eb6a2db428edcac`, ZIP
+`StandaloneModSetup-private-44f7adbe5b81-win-x64.zip`, SHA-256
+`d188c949b6d96dafaf669d0350382ec9f73704757618e38f6f751a30e6fd982f`,
+bundle manifest
+`B3DD30066BC1C2DA89D51EA4B75ECF3FEA5D0384073A45686062586C427D4009`,
+527 payload files / 528 ZIP entries. Its combined focused Core batch passed
+124/124 tests and its exact-ZIP private GUI/CLI checks include Art's pinned
+candidate Preview/Apply/refusal. Evidence is retained in the portfolio hub under
+`artifacts/shared-helper-44f7adb-20261015/run-01`.
+
+This pin-only change does not rebuild Art. Preserve the qualified Mod SHA-256
+`F98D3BDFC87BF5ED4D92D2CE872FD628B6ED479B9D3621A90D453EC1CCD81D5D`,
+built from `11a7b6b058f8994410dbba9523558c0ca6342e94` (the `2c504af`
+merge has identical `src/` and `tests/`). That DLL's ProductVersion is
+`0.4.2-dev+unpackaged`; it does not identify this helper adoption commit.
+`package.ps1` normally rebuilds and stamps a new Mod identity, so running its
+full producer would require separate qualification of those new bytes. The
+consumer companion delivery checks remain pending against the pinned helper;
+the common helper checks above are not an Art release or installed-game test.
+
 The October 13 source/package notice audit of pinned helper `19a5897` found the
 declared .NET, WPF-UI and CommunityToolkit notice/license files, Art and toolkit
 adapter MIT texts, and Vortice/SharpGen copyright and MIT text in the helper's
