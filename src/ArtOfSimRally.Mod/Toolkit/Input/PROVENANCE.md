@@ -23,3 +23,7 @@ The parser is canonical; Art adds no binding grammar. Capture and document editi
 the accepted-cache byte adapter, menu/focus/action admission and expected-source checked file save. The shared flow
 owns read-sequence freshness, rest/deadline/identity cancellation and the canonical result callback into the draft. Frozen active input is not
 replaced until a new game process. Source and fixtures are pending coordinated verification; nothing is installed.
+
+Additive presentation-only `BindingEditorPolicy.cs` is byte-exact toolkit
+`7c51cb8e857026dcbeb6de3c300be18f59e67466`, SHA-256
+`66B3FE7634BB690807101C0AA7FB210A13D7FBEC93CACA381FB8123DF8663D9C`. No existing parser, capture or contract bytes changed.

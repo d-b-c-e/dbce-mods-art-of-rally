@@ -1,0 +1,78 @@
+using ArtOfSimRally.Mod;
+using Dbce.Wheel.Input;
+
+int checks = 0;
+void Check(bool ok, string why) { checks++; if (!ok) throw new Exception(why); }
+const string a = "11111111-1111-1111-1111-111111111111", b = "22222222-2222-2222-2222-222222222222";
+SharedBindingDeviceView Device(string guid, string name) => new() { InstanceGuid = guid, Name = name, IsDefault = guid == a };
+SharedBindingRowView Row(string action, string note = "") => new() { Action = action, Label = action, IsAxis = true, Active = new(true, "Saved axis"), Note = note };
+var host = new FakeHost(); host.DeviceList.Add(Device(a, "Wheel")); host.DeviceList.Add(Device(b, "Shifter")); host.RowList.Add(Row("steer"));
+SettingsPanel.Reset();
+var initial = SettingsPanel.Draw(host);
+Check(host.Calls.Count == 0 && initial.Buttons["bind-steer"], "drawing an idle Saved-mode panel does not start capture or write a profile");
+SettingsPanel.Draw(host, pick: 1);
+Check(host.Calls.Count == 0, "choosing an explicit device does not begin capture");
+SettingsPanel.Draw(host, click: "bind-steer");
+Check(host.Calls.Last() == "bind steer " + a, "actual production row uses the explicit already-open device");
+host.DeviceList.RemoveAt(0); int before = host.Calls.Count;
+var missing = SettingsPanel.Draw(host, click: "bind-steer");
+Check(!missing.Buttons["bind-steer"] && host.Calls.Count == before && missing.Texts.Contains("The input connection changed. Choose a device again to bind controls."), "removed A stays visibly unavailable while B remains");
+Check(missing.Selected == -1, "missing explicit choice is not displayed as Saved or B");
+host.DeviceList.Insert(0, Device(a, "Wheel")); SettingsPanel.Draw(host, click: "bind-steer");
+Check(host.Calls.Count == before, "reappearing A requires explicit confirmation");
+SettingsPanel.Draw(host, pick: 2); SettingsPanel.Draw(host, click: "bind-steer");
+Check(host.Calls.Last() == "bind steer " + b, "explicit B resolves the unavailable choice");
+var replacement = new FakeHost(); replacement.DeviceList.Add(Device(b, "Shifter")); replacement.RowList.Add(Row("steer"));
+var changed = SettingsPanel.Draw(replacement, click: "bind-steer");
+Check(!changed.Buttons["bind-steer"] && replacement.Calls.Count == 0, "replacement host does not inherit an explicit choice even for the same GUID");
+SettingsPanel.Draw(replacement, pick: 1); SettingsPanel.Draw(replacement, click: "bind-steer");
+Check(replacement.Calls.Last() == "bind steer " + b, "explicit choice confirms replacement host");
+replacement.DeviceList.Clear(); before = replacement.Calls.Count;
+var empty = SettingsPanel.Draw(replacement, click: "bind-steer");
+Check(!empty.Buttons["bind-steer"] && empty.Buttons["clear-steer"] && replacement.Calls.Count == before, "zero devices blocks Bind while preserving supported Clear");
+replacement.DeviceList.Add(Device(b, "Shifter")); SettingsPanel.Draw(replacement, pick: 0); SettingsPanel.Draw(replacement, click: "bind-steer");
+Check(replacement.Calls.Last() == "bind steer", "deliberate Saved mode calls the unchanged host default");
+foreach (string reason in new[] { "This Art candidate does not consume this shared action.", "This profile does not select H-pattern." })
+{
+    replacement.RowList.Add(Row("unavailable", reason));
+    foreach (string command in new[] { "bind-unavailable", "clear-unavailable", "invert-unavailable" })
+    {
+        before = replacement.Calls.Count; var ui = SettingsPanel.Draw(replacement, click: command);
+        Check(!ui.Buttons[command] && replacement.Calls.Count == before && ui.Texts.Any(t => t.Contains(reason)), "actual unavailable row explains and disables " + command);
+    }
+    replacement.RowList.RemoveAt(1);
+}
+replacement.CapturingAction = "steer"; replacement.RowList.Add(Row("throttle"));
+var listening = SettingsPanel.Draw(replacement);
+Check(listening.Buttons["bind-steer"] && listening.Labels["bind-steer"].StartsWith("Cancel") && !listening.Buttons["bind-throttle"] && !listening.Buttons["clear-steer"] && !listening.Buttons["invert-steer"], "capture preserves Cancel and locks other row edits");
+SettingsPanel.Draw(replacement, click: "bind-steer"); Check(replacement.Calls.Last() == "cancel", "actual Cancel reaches only the existing host cancellation");
+SettingsPanel.LegacyEditing = true; var locked = SettingsPanel.Draw(replacement);
+Check(!locked.Buttons["bind-steer"] && !locked.Buttons["clear-steer"] && !locked.Buttons["invert-steer"], "legacy calibration/editor lock remains");
+SettingsPanel.LegacyEditing = false; replacement.Access = SharedBindingAccess.ReadOnly; var readOnly = SettingsPanel.Draw(replacement);
+Check(!readOnly.Buttons["bind-steer"] && !readOnly.Buttons["clear-steer"], "read-only profile still refuses edits");
+Check(!host.Calls.Contains("save") && !replacement.Calls.Contains("save"), "presentation checks never save implicitly");
+Console.WriteLine($"PASS {checks} source-linked Art binding presentation checks; no game, file or device.");
+
+internal sealed class FakeHost : ISharedBindingHost
+{
+    public SharedBindingAccess Access { get; set; } = SharedBindingAccess.Editable;
+    public string AccessReason => "Fixture access";
+    public string ActiveSource => "Fixture profile";
+    public readonly List<SharedBindingDeviceView> DeviceList = new();
+    public readonly List<SharedBindingRowView> RowList = new();
+    public readonly List<string> Calls = new();
+    public IReadOnlyList<SharedBindingDeviceView> Devices => DeviceList;
+    public IReadOnlyList<SharedBindingRowView> Rows => RowList;
+    public string CapturingAction { get; set; }
+    public double CaptureSecondsLeft => 5;
+    public string CaptureMessage => "Fixture capture";
+    public bool HasDraft => false;
+    public bool SavedPendingRestart => false;
+    public void BeginCapture(string action) => Calls.Add("bind " + action);
+    public void BeginCapture(string action, string guid) => Calls.Add("bind " + action + " " + guid);
+    public void CancelCapture() { Calls.Add("cancel"); CapturingAction = null; }
+    public void Clear(string action) => Calls.Add("clear " + action);
+    public void SetInverted(string action, bool inverted) => Calls.Add("invert " + action);
+    public bool Save(out string message) { Calls.Add("save"); message = "Fixture saved"; return true; }
+    public void Discard() => Calls.Add("discard");
+}

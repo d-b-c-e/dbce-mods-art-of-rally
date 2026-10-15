@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings><Nullable>disable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/ArtOfSimRally.Mod/SettingsPanel.SharedBindings.cs" Link="Production/SettingsPanel.SharedBindings.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/Toolkit/Input/BindingEditorContract.cs" Link="Production/BindingEditorContract.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/Toolkit/Input/BindingEditorPolicy.cs" Link="Production/BindingEditorPolicy.cs" />
+  </ItemGroup>
+</Project>
