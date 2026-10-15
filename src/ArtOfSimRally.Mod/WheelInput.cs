@@ -540,8 +540,8 @@ namespace ArtOfSimRally.Mod
             ModLog.Info("Wheel input: " + c + " flipped to " + b);
         }
 
-        internal const string SharedEditsRefused = "The shared Wheelkit profile sets this control. Turn the shared profile off and restart to edit Art's binding.";
-        internal const string SharedDeviceChange = "Device changes need a restart while the shared Wheelkit profile is in use.";
+        internal const string SharedEditsRefused = "The shared profile sets this control. Edit it under Shared profile above; saved changes apply after a restart.";
+        internal const string SharedDeviceChange = "Device changes need a restart while the shared profile is in use.";
         public static bool Clear(Channel c)
         {
             if (SharedReadersRequired && !SharedArtOnly(c)) { Status = SharedEditsRefused; return false; }
