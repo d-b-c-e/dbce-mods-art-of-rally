@@ -7,7 +7,6 @@
     <ImplicitUsings>disable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="../../src/ArtOfSimRally.Mod/SharedBindingHostContract.cs" Link="SharedBindingHostContract.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/SharedBindingCaptureHost.cs" Link="SharedBindingCaptureHost.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/SharedBindingDraft.cs" Link="SharedBindingDraft.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/Toolkit/Input/*.cs" Link="Toolkit/%(Filename)%(Extension)" />

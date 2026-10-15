@@ -116,6 +116,11 @@ internal static class Program
             Console.WriteLine("PASS " + checks + " shared binding host checks; no device, game, window or force output.");
             return 0;
         }
-        finally { Directory.Delete(root, true); }
+        finally
+        {
+            string expectedParent = Path.GetFullPath(Path.GetTempPath()).TrimEnd(Path.DirectorySeparatorChar);
+            if (string.Equals(Path.GetDirectoryName(Path.GetFullPath(root)), expectedParent, StringComparison.OrdinalIgnoreCase) &&
+                Path.GetFileName(root).StartsWith("art-shared-bindings-", StringComparison.Ordinal)) Directory.Delete(root, true);
+        }
     }
 }

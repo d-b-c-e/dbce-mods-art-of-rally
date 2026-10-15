@@ -9,7 +9,8 @@ Read, acquire or enumerate devices. An observer exception detaches that observer
 The host copies the data it retains, uses object masks and known ranges, rejects invalid/out-of-range frames, and cancels
 capture on lost focus, closed settings/main menu, stale data, disconnect, generation change, timeout or explicit Cancel.
 
-`SharedBindingHostContract.cs` is the panel seam agreed with Toto. Values are distinct:
+`Toolkit/Input/BindingEditorContract.cs` (`Dbce.Wheel.Input.ISharedBindingHost`) is the shared panel seam agreed with Toto.
+It is vendored from toolkit `06292c772db459d89f36818114661878772fde35`; no Art-specific interface is maintained. Values are distinct:
 
 - Active is the frozen startup value.
 - NextStart is a saved value waiting for restart; null means the same as Active.
@@ -19,15 +20,17 @@ The panel reads this model and issues commands. It adds no device polling. Its E
 must prevent the settings shortcut from closing a capture and give Escape to Cancel before closing the panel. Toto owns
 the panel layout and copy; those changes are separate from this host checkpoint.
 
-Save changes only explicitly edited action lines and Revision, keeping other bindings and unknown INI content. It verifies
+The shared `ControlProfileDraft` changes only explicitly edited action lines and Revision, keeping other bindings and unknown INI content. It verifies
 the expected source hash, writes and flushes a temporary file, checks the source again, atomically replaces it with a unique
 backup, and reads the result back. Failed Save keeps the draft. An external writer can require a restart/reread. The running
 session keeps its original profile, steering target, backend and force tuning. Saved changes take effect on a new game process.
 The host never hot reloads or requalifies the reader session. Art's stricter 64 KiB full-profile inspection limit is retained.
 
-The shared source is in the toolkit's `dotnet/Dbce.Wheel.Input/{ControlBinding,BindingCapture,ControlProfileDocument}.cs`.
+The shared source is in the toolkit's `dotnet/Dbce.Wheel.Input/`, including `ControlBinding`, `BindingCapture`,
+`ControlProfileDocument`, `ControlProfileDraft` and `BindingEditorContract`.
 The portable setup editor uses the same canonical document/parser and capture detector. Wheelkit.Core is not loaded into
-Unity. Binding is available only for qualified readers already open in this process, within the main-menu settings view.
+Unity. Art's `SharedBindingDraft` is a thin wrapper supplying the 64 KiB host limit. Binding is available only for
+qualified readers already open in this process, within the main-menu settings view.
 New or unavailable devices require a restart or the portable Controls Setup download; transmission changes remain in that
 setup flow. This limited in-game host is not fresh-device discovery, endpoint calibration or runtime acceptance.
 

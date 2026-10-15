@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 
-namespace ArtOfSimRally.Mod
+namespace Dbce.Wheel.Input
 {
-    internal enum SharedBindingAccess { Missing, ReadOnly, Editable }
-    internal enum SharedBindingRowState { Unbound, Bound, Changed, Capturing, Error }
-    internal interface ISharedBindingHost
+    public enum SharedBindingAccess { Missing, ReadOnly, Editable }
+    public enum SharedBindingRowState { Unbound, Bound, Changed, Capturing, Error }
+    public interface ISharedBindingHost
     {
         SharedBindingAccess Access { get; }
         string AccessReason { get; }
@@ -24,7 +24,7 @@ namespace ArtOfSimRally.Mod
         bool Save(out string message);
         void Discard();
     }
-    internal sealed class SharedBindingRowView
+    public sealed class SharedBindingRowView
     {
         public string Action { get; internal set; }
         public string Label { get; internal set; }
@@ -39,13 +39,13 @@ namespace ArtOfSimRally.Mod
         public SharedBindingRowState State { get; internal set; }
         public string Note { get; internal set; }
     }
-    internal struct SharedBindingValue
+    public struct SharedBindingValue
     {
         public bool Bound { get; private set; }
         public string Text { get; private set; }
         public SharedBindingValue(bool bound, string text) { Bound = bound; Text = text; }
     }
-    internal sealed class SharedBindingDeviceView
+    public sealed class SharedBindingDeviceView
     {
         public string InstanceGuid { get; internal set; }
         public string ProductGuid { get; internal set; }
