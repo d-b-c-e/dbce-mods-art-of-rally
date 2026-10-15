@@ -169,3 +169,10 @@ Evidence:
   foreground or force claim)".
 - The run covers bindings with force feedback disabled and renders all changed UI. It makes no claim about an attended
   foreground workflow or about force.
+
+Two runs used this variant on 2026-10-15: `run-d4b7959-ffboff` (the full set) and `run-ae46b06-ffboff-save`
+(`-UiSet save`: the validated Save, the next-start row with its footer, and one plain close). For their results and
+what remains open, see `SHARED-BINDING-EDITOR.md` "Runtime evidence, 2026-10-15".
+- A Save in the copy leaves a `.bindings-backup-*` file.
+- The runner archives and removes only the backups created during the run (`CopyModResidue.ps1`), and it checks that
+  earlier backups are unchanged.
