@@ -64,8 +64,8 @@ namespace ArtOfSimRally.Mod
             {
                 string profilePath = Path.Combine(modDirectory, ProfileFileName);
                 shimPath = Path.Combine(modDirectory, ShimFileName);
-                // Wheelkit 0.6.23 writes this file for Art (sana 35206): point there, as the candidate README does.
-                if (!File.Exists(profilePath)) { Refuse("no shared profile beside the mod. Apply your profile to art of rally in Wheelkit 0.6.23 or later (it writes " + ProfileFileName + " here), then restart."); return; }
+                // The portable Controls Setup download writes this file (Wheelkit 0.6.23 or later also can); Wheelkit is optional.
+                if (!File.Exists(profilePath)) { Refuse("no shared profile beside the mod. Run Set Up Controls.bat from the matching Controls Setup download (or apply a profile in Wheelkit 0.6.23 or later); it writes " + ProfileFileName + " here. Then restart."); return; }
                 if (!File.Exists(shimPath)) { Refuse(ShimFileName + " is missing beside the mod."); return; }
                 if (!String.Equals(ProbeRequest.Hash(shimPath), ExpectedShimSha256, StringComparison.OrdinalIgnoreCase)) { Refuse(ShimFileName + " is not the qualified build."); return; }
                 var info = new FileInfo(profilePath);

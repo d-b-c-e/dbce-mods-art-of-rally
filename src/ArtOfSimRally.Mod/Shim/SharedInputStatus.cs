@@ -17,7 +17,7 @@ namespace ArtOfSimRally.Mod.Shim
         }
         internal const string Unsupported = "Not available in Art: select, look back, reset and horn.";
         internal const string ArtOnly = "Camera tuning keys and buttons keep Art bindings, and so does the handbrake button while Use assigned controls is On. An Art binding on a control the shared profile maps is not used.";
-        internal const string Editors = "Art's editors for shared controls are hidden; the handbrake and camera buttons stay editable. Turn the shared profile off and restart to edit the rest. Plugging in or changing devices also needs a restart.";
+        internal const string Editors = "Shared controls are edited under Shared profile (Bind, Clear, Save bindings) and apply after a restart; the handbrake and camera buttons stay editable here. Plugging in or changing devices also needs a restart.";
         // After a stop the car gets no driving input at all: the game's combined values cannot separate
         // keyboard from a re-enabled wheel. Menus keep the keyboard.
         internal const string StoppedEffect = ". Driving input, wheel and keyboard alike, stays neutral until the game restarts; menus still take the keyboard.";
@@ -30,7 +30,7 @@ namespace ArtOfSimRally.Mod.Shim
             var lines = new List<string>();
             switch (f.Phase)
             {
-                case Phase.Off: lines.Add("Shared Wheelkit profile is off; Art bindings are used."); break;
+                case Phase.Off: lines.Add("Shared profile is off; Art bindings are used."); break;
                 case Phase.Refused: lines.Add("Shared profile not used: " + f.Reason + " Art bindings are used. Restart to try again."); break;
                 case Phase.CleanupFailed:
                     lines.Add("Shared profile not used: " + f.Reason + " The game's own input for the isolated wheel is still off (" + f.RestoreStatus + "); " +
