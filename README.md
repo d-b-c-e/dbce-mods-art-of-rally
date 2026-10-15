@@ -1,5 +1,7 @@
 # art of sim rally
 
+Private development and installed-candidate evidence is tracked in [local deployment](docs/LOCAL-DEPLOYMENT.md); public downloads below remain the published0.4.1 release.
+
 Drive [art of rally](https://store.steampowered.com/app/550320/) with a racing
 wheel, pedals and a shifter. Adds force feedback from the game's tyre forces,
 direct USB controls, bonnet/bumper cameras, telemetry for SimHub, and

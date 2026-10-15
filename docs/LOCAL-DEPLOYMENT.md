@@ -1,12 +1,16 @@
 # Local deployment
 
+## Current installation — 0.4.2-rc.24 (private shared-input candidate)
+
+Closed-game October15 12:51:53 UTC update, source8d4fbd0, modC1CAC9EA/buildCA402E06. Exact ZIP02BCA721 passed release343, installer50 and actual companion helper checks. All nine mod payloads and both native copies verified; four stamped payloads changed. Settings/profiles/tune, nonowned files, saves and raw preferences remain exact. Backup and receipt603AE2D0 are retained privately. No game/force test/public push; public release remains0.4.1. [Full exact delivery evidence](2026-10-15-f6-ui-owner-delivery.md).
+
 The owner gave standing authorization on 2026-09-09 UTC to keep the installed
 copy current. Local deployment is a required checklist item when finishing a
 feature or bug fix. After its candidate or final artifact passes the complete
 local automated gate, deploy it for testing without asking again. Public release
 publication and attended sign-off remain separate.
 
-## Current installation — 0.4.2-rc.23 (private shared-input candidate)
+## Previous installation — 0.4.2-rc.23 (private shared-input candidate)
 
 Installed October15 at09:58:55 UTC (04:58:55 CDT), exact clean package source
 `1ec4c60357d7892e76fb451d33bfbafa837be130`. This is the normal private shared-input
