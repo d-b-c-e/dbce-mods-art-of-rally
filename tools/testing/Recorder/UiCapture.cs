@@ -186,16 +186,21 @@ namespace ArtOfSimRally.Testing
                 () => !Editable ? "not editable" : (bool)HostValue("HasDraft") ? null : "no draft after Clear");
             Add("bindings-discarded", () => { if ((bool)HostValue("HasDraft")) HostCall("Discard"); },
                 () => (bool)HostValue("HasDraft") ? "draft still present" : null);
+            // The saved draft clears a bound action other than steer: a profile without steering is refused by the
+            // document ("A usable steering binding is required", ControlProfileDocument), as run-d4b7959-ffboff showed.
+            string saveTarget = null;
             Add("bindings-saved", () =>
             {
-                if (!Editable || bound == null) return;
-                HostCall("Clear", bound);
+                saveTarget = FirstBound("steer");
+                if (!Editable || saveTarget == null) return;
+                HostCall("Clear", saveTarget);
                 var args = new object[] { null };
                 bool saved = (bool)_host.GetMethod("Save").Invoke(Host, args);
-                Event("save result " + saved + " reason '" + (args[0] as string ?? "") + "'");
-            }, () => !Editable ? "not editable" : (bool)HostValue("SavedPendingRestart") ? null : "save did not leave a pending restart");
+                Event("save result " + saved + " (cleared " + saveTarget + ") reason '" + (args[0] as string ?? "") + "'");
+            }, () => !Editable ? "not editable" : saveTarget == null ? "no bound action besides steer" :
+                  (bool)HostValue("SavedPendingRestart") ? null : "save did not leave a pending restart");
             // A fresh, distinct draft on an action that is still bound, then the close intent twice.
-            Add("close-draft", () => { other = FirstBound(bound); if (Editable && other != null) HostCall("Clear", other); },
+            Add("close-draft", () => { other = FirstBound(saveTarget); if (Editable && other != null) HostCall("Clear", other); },
                 () => !Editable ? "not editable" : other == null ? "no second bound action" : (bool)HostValue("HasDraft") ? null : "no fresh draft");
             Add("close-held", () => Call(_main, "CloseSettings"),
                 () => !(bool)HostValue("HasDraft") ? "no draft to hold the close" : Visible && (bool)Value(_guard, "Warned") ? null : "first close was not held");
