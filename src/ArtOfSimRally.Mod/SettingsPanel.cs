@@ -264,6 +264,40 @@ namespace ArtOfSimRally.Mod
             W.Spacer();
             GUILayout.EndHorizontal();
         }
+        private static void CameraAdjustmentBinding(Settings c, int index)
+        {
+            var binding = CameraKeys.Bindings[index];
+            bool keyboardListening = CameraKeys.Listening == index;
+            string keyboard = CameraKeys.Name(binding.Get(c));
+            if (keyboardListening) keyboard += "\n" + CameraKeys.Status;
+            var keyboardRow = BeginBindingRow(binding.Label + " (keyboard)", keyboard);
+            // Same capture lock and callbacks as the previous keyboard editor; reserved keys and checked saves
+            // stay in CameraKeys.HandleKey/Clear. A second input source must not steal a pending capture.
+            bool enabled = GUI.enabled;
+            GUI.enabled = enabled && (!Editing || keyboardListening);
+            if (W.Command("camkey-bind-" + index, keyboardListening ? "Cancel" : "Bind key"))
+            { if (keyboardListening) CameraKeys.Cancel(); else CameraKeys.Begin(index); }
+            if (W.Command("camkey-clear-" + index, "Clear")) CameraKeys.Clear(c, index);
+            GUI.enabled = enabled;
+            W.EndRow(keyboardRow);
+
+            var channel = WheelInput.CameraChannel(index);
+            bool bound = WheelInput.IsBound(channel), listening = WheelInput.Assigning == channel;
+            string button = WheelInput.Describe(channel);
+            button += "\n" + (listening ? WheelInput.Status : "Release the button first, then bind.");
+            var buttonRow = BeginBindingRow(binding.Label + " (USB button)", button);
+            GUI.enabled = enabled && (listening || (!Editing && !GameState.IsDriving));
+            if (W.Command("art-" + channel + "-bind", listening ? "Cancel" : "Bind button"))
+            { if (listening) WheelInput.CancelAssign(); else WheelInput.BeginCalibration(channel); }
+            GUI.enabled = enabled && !Editing && !GameState.IsDriving && bound;
+            if (W.Command("art-" + channel + "-clear", "Clear")) WheelInput.Clear(channel);
+            GUI.enabled = enabled;
+            W.EndRow(buttonRow);
+            // The existing USB editor still owns pending digital capture, explicit Save binding and cancellation.
+            if (WheelInput.Assigning == channel) CalibrationEditor(c, binding.Label + " (button)");
+            else if (WheelInput.IsBound(channel)) Bar(channel, "Device input");
+        }
+
         private static void CalibrationEditor(Settings c, string label)
         {
             W.Caption("Binding " + label.ToLowerInvariant());
@@ -366,22 +400,7 @@ namespace ArtOfSimRally.Mod
                 c.CameraTuningKeys = Toggle(c.CameraTuningKeys, "Live adjustment shortcuts");
                 Help("Use keyboard keys or separate USB buttons; no numpad required. F8 and the Settings key are reserved. Bind only buttons not already used by the game.");
                 for (int i = 0; i < CameraKeys.Bindings.Length; i++)
-                {
-                    var binding = CameraKeys.Bindings[i];
-                    W.Caption(binding.Label);
-                    GUILayout.BeginHorizontal(GUILayout.Width(SettingsPresentation.BodyWidth));
-                    W.Inline("Keyboard: " + CameraKeys.Name(binding.Get(c)));
-                    W.Spacer();
-                    bool old = GUI.enabled; GUI.enabled = old && (!Editing || CameraKeys.Listening == i);
-                    if (W.Command("camkey-bind-" + i, CameraKeys.Listening == i ? "Cancel" : "Bind key"))
-                    { if (CameraKeys.Listening == i) CameraKeys.Cancel(); else CameraKeys.Begin(i); }
-                    if (W.Command("camkey-clear-" + i, "Clear")) CameraKeys.Clear(c, i);
-                    GUI.enabled = old;
-                    GUILayout.EndHorizontal();
-                    if (CameraKeys.Listening == i) Help(CameraKeys.Status);
-                    Binding(c, WheelInput.CameraChannel(i), binding.Label + " (button)");
-                    GUILayout.Space(8 * SettingsPresentation.Scale);
-                }
+                    CameraAdjustmentBinding(c, i);
                 bool enabled = GUI.enabled; GUI.enabled = enabled && !Editing;
                 if (RightButton("Restore numpad defaults", 180)) CameraKeys.Reset(c);
                 GUI.enabled = enabled; Help(CameraKeys.Status);

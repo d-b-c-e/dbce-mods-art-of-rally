@@ -145,3 +145,16 @@ acceptance in docs/2026-10-15-f6-ui-owner-delivery.md and
 docs/SHARED-BINDING-EDITOR.md, not the muted Art02 run. No broader device claim.
 Source review only; no build, fixture, new runtime, package or install. Existing
 unchecked ledger entries remain open; this does not qualify schema-2 endpoints.
+
+### STD-004 / STD-030 - camera adjustment binding rows (October15 UAT source)
+
+Cameras > Show adjustment bindings now uses the same responsive binding-row
+shell as Controls: action/source label, current keyboard or device/button value,
+Bind/Cancel and Clear. The existing CameraKeys owner retains reserved keys,
+keyboard conflicts, timeout/cancel/clear and checked saves. The existing USB
+calibration editor retains pending capture, explicit Save binding and Cancel.
+Camera defaults, action IDs, stored XML and shared input consumers do not change.
+Source-only during owner UAT162171; compilation, focused fixtures and rendered
+camera-row acceptance are deferred until rig handback. No installed payload or
+owner setting changed. This follows already-adopted shared-row guidance;
+preexisting unchecked/partial ledger entries remain open outside this scope.

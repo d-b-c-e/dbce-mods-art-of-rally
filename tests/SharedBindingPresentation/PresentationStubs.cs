@@ -31,10 +31,9 @@ namespace ArtOfSimRally.Mod
         public bool StatusCard(string id, string title, string detail, bool warning, string action)
         { StatusIds.Add(id); Texts.Add(title); Texts.Add(detail); return false; }
         public void Help(string text) => Texts.Add(text);
-        public Layout BeginRow(string label, string text, int width) { Texts.Add(text); return new Layout(); }
-        public void EndRow(Layout layout) { }
+        public Dbce.Wheel.Ui.F6RowLayout BeginRow(string label, string text, int width) { Texts.Add(text); return new Dbce.Wheel.Ui.F6RowLayout(); }
+        public void EndRow(Dbce.Wheel.Ui.F6RowLayout layout) { }
         public void Spacer() { }
-        internal struct Layout { public bool Stacked => false; }
     }
     internal static class SettingsViewPolicy
     {
@@ -42,7 +41,11 @@ namespace ArtOfSimRally.Mod
         internal static string[] SetupGuidance => new[] { "Fixture setup" };
     }
 }
-namespace Dbce.Wheel.Ui { internal static class SettingsPresentation { internal static float BodyWidth => 800; } }
+namespace Dbce.Wheel.Ui
+{
+    internal struct F6RowLayout { public bool Stacked => false; }
+    internal static class SettingsPresentation { internal static float BodyWidth => 800; }
+}
 namespace UnityEngine
 {
     internal static class GUILayout

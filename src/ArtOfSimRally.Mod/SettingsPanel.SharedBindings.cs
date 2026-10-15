@@ -78,6 +78,15 @@ namespace ArtOfSimRally.Mod
 
         private static string ValueText(SharedBindingValue value) =>
             !string.IsNullOrEmpty(value.Text) ? value.Text : value.Bound ? "Bound" : "Unbound";
+        // Shared visual shell for Controls and camera adjustment bindings. The callers retain their existing
+        // capture/clear/save owners; this only uses the common responsive label/value/actions presentation.
+        private static F6RowLayout BeginBindingRow(string label, string value)
+        {
+            var layout = W.BeginRow(label, value, 300);
+            if (!layout.Stacked) W.Spacer();
+            return layout;
+        }
+
         private static void BindingRow(ISharedBindingHost host, SharedBindingRowView row, SharedBindingAccess access, string capturing, bool idle, bool canListen)
         {
             // The host's own text: "Unbound" for a real clear or missing binding, "Unavailable" when the editor could not read
@@ -86,8 +95,7 @@ namespace ArtOfSimRally.Mod
             if (row.ActiveInverted) value += " · inverted";
             if (row.NextStart.HasValue) value += "  →  next start: " + ValueText(row.NextStart.Value);
             if (row.Draft.HasValue) value += "  ·  unsaved: " + ValueText(row.Draft.Value);
-            var layout = W.BeginRow(row.Label, value + (string.IsNullOrEmpty(row.Note) ? "" : "\n" + row.Note), 300);
-            if (!layout.Stacked) W.Spacer();
+            var layout = BeginBindingRow(row.Label, value + (string.IsNullOrEmpty(row.Note) ? "" : "\n" + row.Note));
             bool listening = capturing == row.Action;
             bool allowed = idle && SharedBindingUiPolicy.CanEditRow(access, capturing, row.Note);
             if (listening)
