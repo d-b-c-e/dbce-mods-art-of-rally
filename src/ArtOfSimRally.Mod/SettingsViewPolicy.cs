@@ -37,6 +37,14 @@ namespace ArtOfSimRally.Mod
             string settings = settingsStatus == "Saved" ? "Settings saved" : settingsStatus;
             return (bindingsUnsaved ? "Bindings unsaved · " : "Bindings saved for next start · ") + settings;
         }
+        // The standalone setup route, shown with the shared profile in every state, not only when it is missing (Lola 129479
+        // item 3; the common wording of sana 129606/129640, as iRacing 151a131). The in-game editor binds only devices this
+        // profile already opened; another device needs the matching standalone Controls Setup, run with the game closed. It
+        // never says this mod package bundles the setup, and the missing-profile card keeps the outside-the-game-folder step.
+        public const string SetupHeading = "Controls setup";
+        public static readonly string[] SetupGuidance = {
+            "To add a device, close the game and run Set Up Controls.bat from the matching standalone Controls Setup, then restart. Wheelkit is optional.",
+            "In-game binding uses devices already opened by this profile." };
     }
 
     internal sealed class ConnectionEdit

@@ -119,6 +119,13 @@ static class Program
         Check(SettingsViewPolicy.FooterStatus("Saved",true,true)=="Bindings unsaved · Settings saved","a new draft over a saved binding not shown as unsaved");
         Check(SettingsViewPolicy.FooterStatus("Write failed",true,false)=="Bindings unsaved · Write failed"&&
               SettingsViewPolicy.FooterStatus("Changes pending",false,true)=="Bindings saved for next start · Changes pending","settings status lost beside a binding state");
+        // Standalone setup route (Lola 129479 item 3, sana 129606/129640): the common wording, with no claim that this
+        // package bundles the setup.
+        var setup=string.Join(" ",SettingsViewPolicy.SetupGuidance);
+        Check(SettingsViewPolicy.SetupHeading=="Controls setup"&&SettingsViewPolicy.SetupGuidance.Length==2,"setup guidance block changed");
+        Check(setup.Contains("close the game and run Set Up Controls.bat from the matching standalone Controls Setup, then restart")&&
+              setup.Contains("Wheelkit is optional")&&setup.Contains("devices already opened by this profile"),"setup guidance wording");
+        Check(!setup.Contains("this mod package")&&!setup.Contains("download"),"setup guidance claims a bundled or available download");
         Host.SuppressHostClose=true;
         var guard=typeof(SettingsCloseGuard).GetMethod("BeforeClose",BindingFlags.Static|BindingFlags.NonPublic);
         Check(!(bool)guard.Invoke(null,new object[]{false})&&!Host.SuppressHostClose,"UMM key-up ignored cancel guard");
