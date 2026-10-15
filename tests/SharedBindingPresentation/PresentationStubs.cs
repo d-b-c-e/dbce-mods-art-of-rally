@@ -20,6 +20,7 @@ namespace ArtOfSimRally.Mod
         internal readonly Dictionary<string, bool> Buttons = new();
         internal readonly Dictionary<string, string> Labels = new();
         internal readonly List<string> Texts = new();
+        internal readonly List<string> StatusIds = new();
         public int ChoiceRow(string id, string label, string help, string[] names, int selected, bool enabled)
         { Selected = selected; return enabled ? Pick : -1; }
         public bool Command(string id, string label, bool enabled = true)
@@ -28,7 +29,7 @@ namespace ArtOfSimRally.Mod
         { Buttons[id] = enabled; Labels[id] = label; return enabled && Click == id; }
         public void Caption(string text) => Texts.Add(text);
         public bool StatusCard(string id, string title, string detail, bool warning, string action)
-        { Texts.Add(title); Texts.Add(detail); return false; }
+        { StatusIds.Add(id); Texts.Add(title); Texts.Add(detail); return false; }
         public void Help(string text) => Texts.Add(text);
         public Layout BeginRow(string label, string text, int width) { Texts.Add(text); return new Layout(); }
         public void EndRow(Layout layout) { }

@@ -50,6 +50,9 @@ SettingsPanel.LegacyEditing = true; var locked = SettingsPanel.Draw(replacement)
 Check(!locked.Buttons["bind-steer"] && !locked.Buttons["clear-steer"] && !locked.Buttons["invert-steer"], "legacy calibration/editor lock remains");
 SettingsPanel.LegacyEditing = false; replacement.Access = SharedBindingAccess.ReadOnly; var readOnly = SettingsPanel.Draw(replacement);
 Check(!readOnly.Buttons["bind-steer"] && !readOnly.Buttons["clear-steer"], "read-only profile still refuses edits");
+Check(readOnly.StatusIds.SequenceEqual(new[] { "bindings-access" }) && readOnly.Texts.Contains("Shared profile is read-only") && readOnly.Texts.Contains(replacement.AccessReason), "actual production read-only status card keeps its title and host reason");
+replacement.Access = SharedBindingAccess.Missing; var missingProfile = SettingsPanel.Draw(replacement);
+Check(missingProfile.StatusIds.SequenceEqual(new[] { "bindings-access" }) && missingProfile.Texts.Contains("No shared profile") && !missingProfile.Buttons["bind-steer"] && !missingProfile.Buttons["clear-steer"], "missing-profile status card and rows remain read-only");
 Check(!host.Calls.Contains("save") && !replacement.Calls.Contains("save"), "presentation checks never save implicitly");
 Console.WriteLine($"PASS {checks} source-linked Art binding presentation checks; no game, file or device.");
 
