@@ -23,9 +23,10 @@ namespace ArtOfSimRally.Mod.Shim
         internal const string StoppedEffect = ". Driving input, wheel and keyboard alike, stays neutral until the game restarts; menus still take the keyboard.";
         // A transport-only stop while the wheel is still verifiably isolated.
         internal const string StoppedKeyboardEffect = ". The wheel stays neutral until the game restarts; while it stays isolated, keyboard driving continues.";
-        internal const string Ffb = "Force feedback together with the shared profile is not qualified yet; treat the first drive as an attended test.";
-
-        internal static string[] Lines(Facts f)
+        // Existing attended force/performance acceptance is retained; see
+        // docs/2026-10-15-f6-ui-owner-delivery.md and docs/SHARED-BINDING-EDITOR.md.
+        // Do not turn muted editor runs or new device cases into broader force assurances.
+        internal static string[] Lines(Facts f, bool details = true)
         {
             var lines = new List<string>();
             switch (f.Phase)
@@ -36,13 +37,18 @@ namespace ArtOfSimRally.Mod.Shim
                     lines.Add("Shared profile not used: " + f.Reason + " The game's own input for the isolated wheel is still off (" + f.RestoreStatus + "); " +
                         (f.Retrying ? "retrying in the menus." : "restart the game to restore it.") + " Art's shifter stays closed until then.");
                     break;
-                case Phase.Waiting: lines.Add("Shared profile: waiting in the menus for " + (string.IsNullOrEmpty(f.WaitingFor) ? "the wheel readers" : f.WaitingFor) + "."); lines.Add(Editors); break;
-                case Phase.Isolating: lines.Add("Shared profile: isolating the wheel from the game's own input."); lines.Add(Editors); break;
+                case Phase.Waiting: lines.Add("Shared profile: waiting in the menus for " + (string.IsNullOrEmpty(f.WaitingFor) ? "the wheel readers" : f.WaitingFor) + "."); if (details) lines.Add(Editors); break;
+                case Phase.Isolating: lines.Add("Shared profile: isolating the wheel from the game's own input."); if (details) lines.Add(Editors); break;
                 case Phase.Attached:
                     if (f.Stopped)
                     {
                         lines.Add("Shared input stopped: " + f.StopReason + (f.KeyboardRetained ? StoppedKeyboardEffect : StoppedEffect));
-                        lines.Add(Editors);
+                        if (details) lines.Add(Editors);
+                        break;
+                    }
+                    if (!details)
+                    {
+                        lines.Add("Shared profile '" + (string.IsNullOrEmpty(f.ProfileName) ? "unnamed" : f.ProfileName) + "' is active. Saved bindings apply after a restart.");
                         break;
                     }
                     lines.Add("Shared profile '" + (string.IsNullOrEmpty(f.ProfileName) ? "unnamed" : f.ProfileName) + "' drives the wheel, pedals, menu buttons, shortcuts and gears. Keyboard stays native.");
@@ -50,7 +56,6 @@ namespace ArtOfSimRally.Mod.Shim
                     lines.Add(Unsupported); lines.Add(ArtOnly);
                     lines.Add(Gears(f.Transmission, f.ArtTransmissionMode, f.CarAutomatic));
                     lines.Add(Editors);
-                    lines.Add(Ffb);
                     break;
             }
             return lines.ToArray();

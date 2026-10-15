@@ -131,6 +131,15 @@ namespace ArtOfSimRally.Mod
         {
             if (GameState.IsDriving)
                 Help("Pause the stage before binding, calibrating or clearing controls. Opening Wheel settings does not pause the game.");
+            // Art02 pixels: the editor was below a viewport of switches and technical prose.
+            // Keep the actual shared host/widgets first; expose configuration and detail afterward.
+            bool shared = c.SharedInput || SharedInputStartup.RequestedAtStartup;
+            if (shared)
+            {
+                foreach (var line in SharedInputStartup.Lines(SharedCarAutomatic(), false)) Help(line);
+                SharedBindings();
+                if (!SettingsViewPolicy.Advanced(c) && LinkButton("Controls setup and details in Advanced >", 310)) Select(c, true, 0);
+            }
             bool active = Toggle(c.WheelInputEnabled, "Use assigned controls");
             if (active != c.WheelInputEnabled) { c.WheelInputEnabled = active; if (!active) WheelInput.CancelAssign(); }
             if (!c.WheelInputEnabled)
@@ -138,8 +147,14 @@ namespace ArtOfSimRally.Mod
             if (!WheelInput.Assigning.HasValue) Help(WheelInput.Status);
             c.SharedInput = Toggle(c.SharedInput, "Use shared profile");
             if (c.SharedInput != SharedInputStartup.RequestedAtStartup) Help("Restart the game to " + (c.SharedInput ? "use" : "stop using") + " the shared profile.");
-            foreach (var line in SharedInputStartup.Lines(SharedCarAutomatic())) Help(line);
-            if (c.SharedInput || SharedInputStartup.RequestedAtStartup) SharedBindings();
+            if (!shared || SettingsViewPolicy.Advanced(c))
+                foreach (var line in SharedInputStartup.Lines(SharedCarAutomatic())) Help(line);
+            if (shared && SettingsViewPolicy.Advanced(c))
+            {
+                Help(Bindings?.ActiveSource);
+                Heading(SettingsViewPolicy.SetupHeading);
+                foreach (var line in SettingsViewPolicy.SetupGuidance) Help(line);
+            }
             Heading("Steering and pedals");
             Axis(c, WheelInput.Channel.Steer, "Steering"); Axis(c, WheelInput.Channel.Throttle, "Throttle");
             Axis(c, WheelInput.Channel.Brake, "Brake"); Axis(c, WheelInput.Channel.Handbrake, "Handbrake (axis)");

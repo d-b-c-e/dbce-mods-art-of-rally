@@ -131,3 +131,17 @@ Warning survives capture/general messages and resolves on successful Save/Discar
 or a new host. Existing F6/capture/writer/ActiveSaved/FFB behavior stays in place.
 Focused host/presentation fixtures are updated but not run; candidate not installed.
 Other preexisting unchecked ledger items remain outside this status-only scope.
+
+### STD-004 / STD-030 - Controls editor before technical detail (October15 source)
+
+Art02's nine production frames preserve the saved-next-start row/footer result,
+but Controls top hid the editor below switches and long prose. This source slice
+places the existing shared editor first with one current-state line. Setup,
+profile revision and detailed input caveats move to Advanced; the Simple view
+retains an Advanced setup/details link. Shared host/widgets, capture admission,
+independent Save warning and active/saved/draft semantics are unchanged.
+The stale blanket unqualified-FFB warning is removed using retained attended
+acceptance in docs/2026-10-15-f6-ui-owner-delivery.md and
+docs/SHARED-BINDING-EDITOR.md, not the muted Art02 run. No broader device claim.
+Source review only; no build, fixture, new runtime, package or install. Existing
+unchecked ledger entries remain open; this does not qualify schema-2 endpoints.

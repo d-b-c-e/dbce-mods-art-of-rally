@@ -273,10 +273,10 @@ internal static class Program
         var attached = Lines(new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.Attached, ProfileName = "Moza KS Pro Triple", Transmission = "Sequential",
             ArtTransmissionMode = "Sequential", Devices = new[] { "MOZA R12 Base", "DS-8X Shifter" } });
         Check(attached[0].Contains("Moza KS Pro Triple") && attached[0].Contains("Keyboard stays native") && attached[1].Contains("MOZA R12 Base, DS-8X Shifter"), "attached identity text");
-        Check(Array.IndexOf(attached, SharedInputStatus.Unsupported) > 0 && Array.IndexOf(attached, SharedInputStatus.ArtOnly) > 0 && attached[attached.Length - 1] == SharedInputStatus.Ffb, "scope/FFB caveats missing");
-        Check(attached[attached.Length - 3].Contains("Gears follow the profile (Sequential)") && attached[attached.Length - 2] == SharedInputStatus.Editors, "manual gear/editor text");
+        Check(Array.IndexOf(attached, SharedInputStatus.Unsupported) > 0 && Array.IndexOf(attached, SharedInputStatus.ArtOnly) > 0, "scope caveats missing");
+        Check(attached[attached.Length - 2].Contains("Gears follow the profile (Sequential)") && attached[attached.Length - 1] == SharedInputStatus.Editors, "manual gear/editor text");
         var onAutomatic = Lines(new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.Attached, ProfileName = "p", Transmission = "Sequential", ArtTransmissionMode = "Sequential", CarAutomatic = true });
-        Check(onAutomatic[onAutomatic.Length - 3].Contains("automatic now"), "attached text claimed gears on an automatic car");
+        Check(onAutomatic[onAutomatic.Length - 2].Contains("automatic now"), "attached text claimed gears on an automatic car");
         var stopped = Lines(new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.Attached, Stopped = true, StopReason = "native input isolation lost" });
         Check(stopped.Length == 2 && stopped[0].Contains("native input isolation lost") && stopped[0].Contains("wheel and keyboard alike") && stopped[1] == SharedInputStatus.Editors, "stopped text");
         var transport = Lines(new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.Attached, Stopped = true, StopReason = "shared provider refused physical batch", KeyboardRetained = true });

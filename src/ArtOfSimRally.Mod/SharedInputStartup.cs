@@ -161,7 +161,7 @@ namespace ArtOfSimRally.Mod
             else if (session != null) session.Close();
         }
 
-        internal static string[] Lines(bool? carAutomatic = null)
+        internal static string[] Lines(bool? carAutomatic = null, bool details = true)
         {
             return SharedInputStatus.Lines(new SharedInputStatus.Facts
             {
@@ -169,7 +169,7 @@ namespace ArtOfSimRally.Mod
                 ArtTransmissionMode = Main.Settings?.TransmissionMode, CarAutomatic = carAutomatic,
                 Stopped = Stopped, StopReason = StopReason, KeyboardRetained = WheelInput.SharedKeyboardRetained,
                 RestoreStatus = session?.IsolationStatus, Retrying = restoreAttempts < RestoreRetries,
-            });
+            }, details);
         }
 
         private static void Refuse(string why)

@@ -22,11 +22,8 @@ namespace ArtOfSimRally.Mod
             Heading("Shared profile");
             var access = host.Access;
             bool editable = access == SharedBindingAccess.Editable;
-            Help(host.ActiveSource);
             if (!editable && !string.IsNullOrEmpty(host.AccessReason)) W.StatusCard("bindings-access", access == SharedBindingAccess.Missing ? "No shared profile" : "Shared profile is read-only",
                 host.AccessReason, false, null);
-            W.Caption(SettingsViewPolicy.SetupHeading);
-            foreach (var line in SettingsViewPolicy.SetupGuidance) Help(line);
             string capturing = host.CapturingAction;
             var currentDevices = host.Devices ?? Array.Empty<SharedBindingDeviceView>();
             SharedDeviceSelection.Reconcile(host, currentDevices);
