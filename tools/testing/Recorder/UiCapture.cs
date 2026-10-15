@@ -65,12 +65,14 @@ namespace ArtOfSimRally.Testing
         internal static bool Active => _active;
 
         /// <param name="set">The request's uiSet: null or "full" for the whole tour; "followup" for the bounded re-check
-        /// after a fix (sana 126101): normal FFB, 640 Advanced Cameras at the larger scale, and the binding steps.</param>
+        /// after a fix (sana 126101): normal FFB, 640 Advanced Cameras at the larger scale, and the binding steps; "save"
+        /// for the short save, next-start and footer follow-up (sana 132306): no page tour, only the real Save.</param>
         internal static void Arm(string dir, DateTime untilUtc, Action<string> log, string set = null)
         {
-            bool followup = string.Equals(set, "followup", StringComparison.OrdinalIgnoreCase);
-            if (!followup && set != null && !string.Equals(set, "full", StringComparison.OrdinalIgnoreCase))
-                throw new InvalidDataException("uiSet must be full or followup, not " + set);
+            string mode = set == null || string.Equals(set, "full", StringComparison.OrdinalIgnoreCase) ? "full"
+                : string.Equals(set, "followup", StringComparison.OrdinalIgnoreCase) ? "followup"
+                : string.Equals(set, "save", StringComparison.OrdinalIgnoreCase) ? "save" : null;
+            if (mode == null) throw new InvalidDataException("uiSet must be full, followup or save, not " + set);
             _log = log; _dir = dir; _until = untilUtc;
             _shots = Path.Combine(dir, "shots");
             Directory.CreateDirectory(_shots);
@@ -84,13 +86,13 @@ namespace ArtOfSimRally.Testing
             _host = Need("Dbce.Wheel.Input.ISharedBindingHost");
             try { _sharedStarted = SharedReadiness.Bind(AccessTools.TypeByName); }
             catch (Exception ex) { Note("shared readiness unavailable: " + ex.Message); }
-            Build(followup);
+            Build(mode);
             _armedAt = Time.realtimeSinceStartup;
             _active = true;
             // An early stop (game closing) still restores and leaves incomplete evidence (kiki 123183); the recorder's
             // Unload calls Abort too.
             Application.quitting += () => Abort("game closing before the capture completed");
-            Event("ui capture armed (" + (followup ? "followup" : "full") + "): " + Steps.Count + " steps, expires " + _until.ToString("o"));
+            Event("ui capture armed (" + mode + "): " + Steps.Count + " steps, expires " + _until.ToString("o"));
         }
 
         internal static void Tick()
@@ -135,15 +137,17 @@ namespace ArtOfSimRally.Testing
 
         // ---- script ----
 
-        private static void Build(bool followup)
+        private static void Build(string mode)
         {
             Steps.Clear();
+            bool followup = mode == "followup", saveOnly = mode == "save";
             string[] views = { "Simple", "Advanced" };
             Add("open", () => { if (!Visible) Call(_main, "ToggleSettings"); Select("Simple", 0); Scroll(0); }, () => Visible ? null : "settings did not open");
             float scaleA = 0, scaleB = 0;
             Func<string> narrow = () => Mathf.Abs(Window.x - 640) < .5f ? null : "UMM width did not take 640";
             Action narrowAtLargerScale = () => { FollowHost(scaleB > scaleA ? !_savedFollowHost : _savedFollowHost); Width(640); };
-            if (followup)
+            if (saveOnly) { }   // the short save follow-up: no page tour, no text-size or width change
+            else if (followup)
             {
                 // Normal FFB at the starting text mode, then both text modes read without shots to find the larger scale.
                 Add("simple-p1-top", () => { Select("Simple", 1); Scroll(0); }, null);
@@ -172,33 +176,50 @@ namespace ArtOfSimRally.Testing
                 // Advanced Cameras lower content: the numeric rows with Default commands, most likely to overflow at 640.
                 Add("narrow-advanced-p2-lower", () => { Select("Advanced", 2); Scroll(100000); }, null);
             }
-            Add("narrow-restored", () => { Width(_savedWindow.x); FollowHost(_savedFollowHost); Select("Simple", 0); Scroll(0); }, null);
+            if (!saveOnly) Add("narrow-restored", () => { Width(_savedWindow.x); FollowHost(_savedFollowHost); Select("Simple", 0); Scroll(0); }, null);
             // Shared-binding messaging through the host (explicit calls only; no moved control).
             Add("bindings-ready", () => { }, () => SharedReady() ? null : "shared session not started; binding steps show the host's actual state", false);
             Add("bindings-state", () => { Select("Simple", 0); Scroll(0); Focus("bind-" + (FirstBound(null) ?? "steer")); Event("binding editor access " + HostValue("Access") + ": " + HostValue("AccessReason")); }, null);
             string bound = null, other = null;
-            Add("bindings-listening", () => { bound = FirstBound(null); if (Editable && bound != null) HostCall("BeginCapture", bound); },
-                () => !Editable ? "not editable: " + HostValue("AccessReason") : bound == null ? "no bound action" :
-                      (string)HostValue("CapturingAction") == bound ? null : "capture did not start: " + HostValue("CaptureMessage"));
-            Add("bindings-canceled", () => { if (HostValue("CapturingAction") != null) HostCall("CancelCapture"); },
-                () => HostValue("CapturingAction") == null ? null : "capture still active");
-            Add("bindings-draft", () => { if (Editable && bound != null) HostCall("Clear", bound); Scroll(100000); },
-                () => !Editable ? "not editable" : (bool)HostValue("HasDraft") ? null : "no draft after Clear");
-            Add("bindings-discarded", () => { if ((bool)HostValue("HasDraft")) HostCall("Discard"); },
-                () => (bool)HostValue("HasDraft") ? "draft still present" : null);
+            if (!saveOnly)
+            {
+                Add("bindings-listening", () => { bound = FirstBound(null); if (Editable && bound != null) HostCall("BeginCapture", bound); },
+                    () => !Editable ? "not editable: " + HostValue("AccessReason") : bound == null ? "no bound action" :
+                          (string)HostValue("CapturingAction") == bound ? null : "capture did not start: " + HostValue("CaptureMessage"));
+                Add("bindings-canceled", () => { if (HostValue("CapturingAction") != null) HostCall("CancelCapture"); },
+                    () => HostValue("CapturingAction") == null ? null : "capture still active");
+                Add("bindings-draft", () => { if (Editable && bound != null) HostCall("Clear", bound); Scroll(100000); },
+                    () => !Editable ? "not editable" : (bool)HostValue("HasDraft") ? null : "no draft after Clear");
+                Add("bindings-discarded", () => { if ((bool)HostValue("HasDraft")) HostCall("Discard"); },
+                    () => (bool)HostValue("HasDraft") ? "draft still present" : null);
+            }
             // The saved draft clears a bound action other than steer: a profile without steering is refused by the
             // document ("A usable steering binding is required", ControlProfileDocument), as run-d4b7959-ffboff showed.
-            string saveTarget = null;
+            // Before anything is cleared, the product's own validator (the Saved.Edit call Save makes) must accept the
+            // draft with that action cleared (sana 132306); if it refuses, nothing is cleared or saved.
+            string saveTarget = null, refusal = null;
             Add("bindings-saved", () =>
             {
                 saveTarget = FirstBound("steer");
                 if (!Editable || saveTarget == null) return;
+                refusal = ProfileRefusal(saveTarget);
+                if (refusal != null) { Event("save skipped: the profile validator refuses clearing " + saveTarget + ": " + refusal); return; }
                 HostCall("Clear", saveTarget);
                 var args = new object[] { null };
                 bool saved = (bool)_host.GetMethod("Save").Invoke(Host, args);
-                Event("save result " + saved + " (cleared " + saveTarget + ") reason '" + (args[0] as string ?? "") + "'");
+                Event("save result " + saved + " (cleared " + saveTarget + ", validator accepted it first) reason '" + (args[0] as string ?? "") + "'");
             }, () => !Editable ? "not editable" : saveTarget == null ? "no bound action besides steer" :
+                  refusal != null ? "the profile validator refuses clearing " + saveTarget + ": " + refusal :
                   (bool)HostValue("SavedPendingRestart") ? null : "save did not leave a pending restart");
+            if (saveOnly)
+            {
+                // The cleared row ("next start: Unbound") with the footer ("Bindings saved for next start"), then one plain
+                // close: with no draft the close is not held.
+                Add("bindings-saved-row", () => Focus("bind-" + saveTarget),
+                    () => (bool)HostValue("SavedPendingRestart") && !(bool)HostValue("HasDraft") ? null : "not saved for the next start with no draft");
+                Add("saved-closed", () => Call(_main, "CloseSettings"), () => Visible ? "close did not close" : null);
+                return;
+            }
             // A fresh, distinct draft on an action that is still bound, then the close intent twice.
             Add("close-draft", () => { other = FirstBound(saveTarget); if (Editable && other != null) HostCall("Clear", other); },
                 () => !Editable ? "not editable" : other == null ? "no second bound action" : (bool)HostValue("HasDraft") ? null : "no fresh draft");
@@ -387,6 +408,23 @@ namespace ArtOfSimRally.Testing
             (_host.GetMethod(method, types) ?? throw new MissingMethodException("ISharedBindingHost." + method)).Invoke(Host, args);
         }
         /// <summary>The first row whose effective value is bound (draft, then next start, then active), other than <paramref name="except"/>.</summary>
+        // The product's own profile check, without writing anything: ControlProfileDraft.Save runs
+        // Saved.Edit(changes, revision) and refuses when it throws; this is the same call on the host's draft, with its current
+        // changes plus this action cleared. Null when accepted, else the validator's reason.
+        private static string ProfileRefusal(string action)
+        {
+            object draft = Field(Host, "draft");
+            object saved = draft == null ? null : Field(draft, "Saved");
+            if (saved == null) return "the host has no saved profile document";
+            var changes = new Dictionary<string, string>(StringComparer.Ordinal);
+            if (Field(draft, "Changes") is IEnumerable<KeyValuePair<string, string>> current) foreach (var c in current) changes[c.Key] = c.Value;
+            changes[action] = null;
+            var edit = saved.GetType().GetMethod("Edit");
+            if (edit == null) return "the profile document has no Edit";
+            try { edit.Invoke(saved, new object[] { changes, "recorder-check" }); return null; }
+            catch (TargetInvocationException ex) { return (ex.InnerException ?? ex).Message; }
+        }
+
         private static string FirstBound(string except)
         {
             if (!(HostValue("Rows") is IEnumerable rows)) return null;

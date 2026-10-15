@@ -34,8 +34,10 @@ param([Parameter(Mandatory)][string]$Result,
       # puts everything back. Explicit host calls only: no moved control, no OS input, no device API, outputs muted.
       [switch]$UiCapture,
       # With -UiCapture: full (every page, both text modes, the narrow pass and the binding steps) or followup (normal FFB,
-      # 640 Advanced Cameras at the larger scale and the binding steps; the bounded re-check after a fix, sana 126101).
-      [ValidateSet('full','followup')][string]$UiSet='full',
+      # 640 Advanced Cameras at the larger scale and the binding steps; the bounded re-check after a fix, sana 126101) or
+      # save (no page tour: the real Save of a validator-accepted non-steering clear, the next-start row and footer, a
+      # plain close; sana 132306).
+      [ValidateSet('full','followup','save')][string]$UiSet='full',
       # With -UiCapture (sana 126190/126330; owner direction 2026-10-14 in the hub AGENTS.md: advance notice first): one
       # bare SetForegroundWindow on the exact child's own visible Unity window, because Art's force connect and its binding
       # editor both need a focused game. No keys, Alt taps or SendInput, one call and no retry; if Windows refuses, that
