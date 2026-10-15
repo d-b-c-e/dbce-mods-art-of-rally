@@ -35,6 +35,12 @@ namespace ArtOfSimRally.Mod.Shim
         private readonly int[] slots;
         private readonly ulong[] generations;
         private readonly byte[][] samples;
+        private readonly byte[][] deviceMetadata;
+        private readonly string[] ownedPaths;
+        // Borrowed buffers, valid only during this callback; observers must neither retain nor mutate them.
+        // UI/capture observers are optional: their failure must not terminate accepted driving input.
+        internal Action<int, byte[], byte[], string> AcceptedSnapshot;
+        internal string ObserverFailure { get; private set; }
         private readonly byte[] batch, frame = new byte[ShimFrame.Size];
         private int lastFrame = -1;
         private readonly int ownerThread = System.Threading.Thread.CurrentThread.ManagedThreadId;
@@ -47,10 +53,12 @@ namespace ArtOfSimRally.Mod.Shim
                 throw new ArgumentException("bridge needs qualified, already open read slots");
             this.source = source; this.native = native; this.consumer = consumer;
             slots = (int[])openSlots.Clone(); generations = new ulong[slots.Length]; samples = new byte[slots.Length][];
+            deviceMetadata = new byte[slots.Length][];
             batch = new byte[slots.Length * SampleSize];
             var metadata = new byte[slots.Length * DeviceSize]; var unique = new HashSet<int>();
             var pathSource = source as IPhysicalSnapshotPathSource;
             var paths = pathSource == null ? null : new string[slots.Length];
+            ownedPaths = paths;
             try
             {
                 for (int i = 0; i < slots.Length; i++)
@@ -60,6 +68,7 @@ namespace ArtOfSimRally.Mod.Shim
                     if (source.Describe(slots[i], device) != 1 || BitConverter.ToUInt32(device, 0) != DeviceSize || BitConverter.ToUInt32(device, 4) != 1 ||
                         (generations[i] = BitConverter.ToUInt64(device, 8)) == 0) throw new InvalidOperationException("unqualified read slot " + slots[i]);
                     Buffer.BlockCopy(device, 0, metadata, i * DeviceSize, DeviceSize);
+                    deviceMetadata[i] = (byte[])device.Clone();
                     if (pathSource != null && !pathSource.TryGetPath(slots[i], generations[i], out paths[i]))
                         throw new InvalidOperationException("qualified owned interface path unavailable for slot " + slots[i]);
                 }
@@ -94,7 +103,12 @@ namespace ArtOfSimRally.Mod.Shim
                 string why;
                 if (!consumer.Publish(frame, gameFrame, out why)) { Stop(why); return false; }
                 // Only after the whole batch and resolved frame were accepted.
-                for (int i = 0; i < slots.Length; i++) cache(slots[i], samples[i]);
+                for (int i = 0; i < slots.Length; i++)
+                {
+                    cache(slots[i], samples[i]);
+                    try { AcceptedSnapshot?.Invoke(slots[i], deviceMetadata[i], samples[i], ownedPaths == null ? null : ownedPaths[i]); }
+                    catch (Exception ex) { ObserverFailure = ex.Message; AcceptedSnapshot = null; }
+                }
                 return true;
             }
             catch (Exception ex) { Stop(ex.Message); return false; }

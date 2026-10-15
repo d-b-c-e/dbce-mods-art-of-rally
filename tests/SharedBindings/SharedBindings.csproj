@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFrameworks>net8.0;net48</TargetFrameworks>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/ArtOfSimRally.Mod/SharedBindingHostContract.cs" Link="SharedBindingHostContract.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/SharedBindingCaptureHost.cs" Link="SharedBindingCaptureHost.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/SharedBindingDraft.cs" Link="SharedBindingDraft.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/Toolkit/Input/*.cs" Link="Toolkit/%(Filename)%(Extension)" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/Toolkit/Ui/SettingsPresentation.cs" Link="SettingsPresentation.cs" />
+  </ItemGroup>
+</Project>

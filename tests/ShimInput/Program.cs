@@ -786,6 +786,115 @@ internal static class Program
         foreach (var pair in unsupported)
             Check(contract.Unsupported.TryGetValue(pair.Key, out var reason) && reason == pair.Value, "CONTROLS.json unsupported reason differs: " + pair.Key);
     }
+    // ShimBridge.AcceptedSnapshot (Hera 122724): the binding-capture host's view of the SAME physical read. The metadata
+    // and owned path are the constructor's pinned copies (no second Describe or path query), and a sample is reported
+    // only after the whole batch was ticked and published. A failed, refused, regressed or stopped frame reports nothing.
+    private sealed class ObservedSource : IPhysicalSnapshotSource
+    {
+        internal int Descriptions, Reads, Result = 1; internal ulong Generation = 7; internal byte Valid = 1; internal int Axis0 = 32768;
+        public int Describe(int slot, byte[] bytes)
+        {
+            Descriptions++; BitConverter.GetBytes(144).CopyTo(bytes, 0); bytes[4] = 1; BitConverter.GetBytes(Generation).CopyTo(bytes, 8);
+            new Guid("0006346e-0000-0000-0000-504944564944").ToByteArray().CopyTo(bytes, 32);
+            bytes[48] = bytes[52] = 1; BitConverter.GetBytes(65535).CopyTo(bytes, 112); bytes[64] = 1; return 1;
+        }
+        public int Read(int slot, byte[] bytes)
+        {
+            Reads++; BitConverter.GetBytes(232).CopyTo(bytes, 0); bytes[4] = 1; BitConverter.GetBytes(Generation).CopyTo(bytes, 8);
+            BitConverter.GetBytes((ulong)Reads).CopyTo(bytes, 16); bytes[50] = Valid; BitConverter.GetBytes(Axis0).CopyTo(bytes, 52);
+            for (int i = 212; i < 228; i++) bytes[i] = 0xff;
+            return Result;
+        }
+    }
+    private sealed class ObservedPathSource : IPhysicalSnapshotSource, IPhysicalSnapshotPathSource
+    {
+        internal readonly ObservedSource Inner = new ObservedSource(); internal int PathQueries;
+        public int Describe(int slot, byte[] bytes) => Inner.Describe(slot, bytes);
+        public int Read(int slot, byte[] bytes) => Inner.Read(slot, bytes);
+        public bool TryGetPath(int slot, ulong generation, out string path)
+        { PathQueries++; path = @"\\?\hid#vid_346e&pid_0006#owned-" + slot; return generation == Inner.Generation; }
+    }
+    private sealed class ObservedNative : IShimBridge, IShimPathBridge
+    {
+        internal int Ticks, Stops; internal bool Accept = true, BadFrame;
+        public bool Devices(byte[] bytes, int count) => true;
+        public bool DevicesWithPaths(byte[] bytes, int count, string[] paths) => true;
+        public bool Tick(byte[] samples, int count, byte[] frame)
+        {
+            Ticks++; if (!Accept) return false;
+            BitConverter.GetBytes(BadFrame ? 295 : 296).CopyTo(frame, 0); frame[4] = 2; BitConverter.GetBytes((ulong)Ticks).CopyTo(frame, 8);
+            BitConverter.GetBytes((long)Ticks).CopyTo(frame, 16);
+            for (int i = 0; i < 31; i++) frame[52 + i * 8] = (byte)(i < 5 ? ShimStatus.Live : ShimStatus.Unsupported);
+            return true;
+        }
+        public void Stop() { Stops++; }
+    }
+    private struct Accepted { internal int Slot; internal byte[] Metadata, Sample; internal string Path; internal int CacheCallsBefore; }
+    private static void AcceptedSnapshots()
+    {
+        // Without a path API: one event per slot per accepted frame, after the cache update, with the pinned metadata.
+        var source = new ObservedSource(); var native = new ObservedNative();
+        var bridge = new ShimBridge(source, native, new ShimAxisConsumer(), new[] { 2, 5 });
+        var seen = new System.Collections.Generic.List<Accepted>(); int cacheCalls = 0;
+        bridge.AcceptedSnapshot = (slot, metadata, sample, path) => seen.Add(new Accepted { Slot = slot, Metadata = (byte[])metadata.Clone(), Sample = (byte[])sample.Clone(), Path = path, CacheCallsBefore = cacheCalls });
+        Check(seen.Count == 0 && source.Reads == 0 && source.Descriptions == 2, "accepted snapshots: construction described each slot once and read nothing");
+        var expected = new byte[144]; source.Describe(0, expected); source.Descriptions--;
+        Check(bridge.ReadFrame(1, (slot, bytes) => cacheCalls++), "accepted snapshots: first frame");
+        Check(seen.Count == 2 && seen[0].Slot == 2 && seen[1].Slot == 5 && source.Reads == 2 && source.Descriptions == 2 && native.Ticks == 1,
+            "accepted snapshots: one event per slot from the same single read, no second Describe");
+        Check(seen[0].CacheCallsBefore == 1 && seen[1].CacheCallsBefore == 2, "accepted snapshots: each event follows that slot's accepted cache update");
+        Check(Convert.ToBase64String(seen[0].Metadata) == Convert.ToBase64String(expected) && seen[0].Path == null,
+            "accepted snapshots: metadata is the constructor's Describe bytes; no path without the path API");
+        Check(BitConverter.ToUInt64(seen[1].Sample, 8) == 7 && seen[1].Sample[50] == 1 && BitConverter.ToUInt64(seen[1].Sample, 16) == 2,
+            "accepted snapshots: the sample is this frame's read (generation, valid, sequence)");
+        Check(bridge.ReadFrame(1, (slot, bytes) => cacheCalls++) && seen.Count == 2 && source.Reads == 2, "accepted snapshots: the same game frame reports nothing new");
+        Check(bridge.ReadFrame(2, (slot, bytes) => cacheCalls++) && seen.Count == 4 && source.Descriptions == 2 &&
+            Convert.ToBase64String(seen[2].Metadata) == Convert.ToBase64String(expected), "accepted snapshots: later frames reuse the pinned metadata");
+        // An invalid observation is reported as exactly that (valid 0), never as a successful sample.
+        source.Valid = 0;
+        Check(bridge.ReadFrame(3, (slot, bytes) => cacheCalls++) && seen.Count == 6 && seen[4].Sample[50] == 0 && seen[5].Sample[50] == 0,
+            "accepted snapshots: an invalid read keeps valid 0 for the host to refuse");
+        source.Valid = 1;
+        // A regressed frame stops the bridge before any read; nothing is reported, then or later.
+        Check(!bridge.ReadFrame(2, (slot, bytes) => cacheCalls++) && bridge.Stopped && seen.Count == 6, "accepted snapshots: a regressed frame reports nothing");
+        Check(!bridge.ReadFrame(4, (slot, bytes) => cacheCalls++) && seen.Count == 6, "accepted snapshots: a stopped bridge reports nothing");
+
+        // A refused tick, an unpublishable frame, a failed read and a changed generation each report nothing.
+        void NothingWhen(string what, Action<ObservedSource, ObservedNative> setup)
+        {
+            var s = new ObservedSource(); var n = new ObservedNative(); var b = new ShimBridge(s, n, new ShimAxisConsumer(), new[] { 0 }); int events = 0, cached = 0;
+            b.AcceptedSnapshot = (slot, metadata, sample, path) => events++;
+            Check(b.ReadFrame(1, (slot, bytes) => cached++) && events == 1, "accepted snapshots: baseline frame before " + what);
+            setup(s, n);
+            Check(!b.ReadFrame(2, (slot, bytes) => cached++) && b.Stopped && events == 1 && cached == 1, "accepted snapshots: " + what + " reported a sample");
+        }
+        NothingWhen("a refused tick", (s, n) => n.Accept = false);
+        NothingWhen("an unpublishable frame", (s, n) => n.BadFrame = true);
+        NothingWhen("a failed read", (s, n) => s.Result = -3);
+        NothingWhen("a changed generation", (s, n) => s.Generation++);
+
+        // An observer that throws is detached and recorded; the accepted driving session keeps running (Hera 122998).
+        source = new ObservedSource(); native = new ObservedNative();
+        bridge = new ShimBridge(source, native, new ShimAxisConsumer(), new[] { 2, 5 });
+        int observerCalls = 0, cachedSlots = 0;
+        bridge.AcceptedSnapshot = (slot, metadata, sample, path) => { observerCalls++; throw new InvalidOperationException("capture host bug"); };
+        Check(bridge.ReadFrame(1, (slot, bytes) => cachedSlots++) && !bridge.Stopped && observerCalls == 1 && cachedSlots == 2 &&
+            bridge.ObserverFailure == "capture host bug" && bridge.AcceptedSnapshot == null,
+            "accepted snapshots: a throwing observer is detached and recorded, every slot is still cached and the session keeps running");
+        Check(bridge.ReadFrame(2, (slot, bytes) => cachedSlots++) && !bridge.Stopped && observerCalls == 1 && cachedSlots == 4 && native.Ticks == 2,
+            "accepted snapshots: later frames run without the failed observer");
+        bridge.Stop("fixture");
+
+        // With the path API: the owned path from the single constructor query rides along with every event.
+        var pathSource = new ObservedPathSource(); var pathNative = new ObservedNative();
+        bridge = new ShimBridge(pathSource, pathNative, new ShimAxisConsumer(), new[] { 3 });
+        string reported = null; int pathEvents = 0;
+        bridge.AcceptedSnapshot = (slot, metadata, sample, path) => { reported = path; pathEvents++; };
+        Check(bridge.ReadFrame(1, (slot, bytes) => { }) && bridge.ReadFrame(2, (slot, bytes) => { }) && pathEvents == 2 &&
+            reported == @"\\?\hid#vid_346e&pid_0006#owned-3" && pathSource.PathQueries == 1 && pathSource.Inner.Descriptions == 1,
+            "accepted snapshots: the constructor's owned path, queried once, with every event");
+        bridge.Stop("fixture");
+    }
     private static int Main(string[] args)
     {
         if (args.Length == 1 && args[0] == "--replace-race")
@@ -796,6 +905,7 @@ internal static class Program
         try
         {
             Decode(); Consumption(); KeyboardSteerRule(); StatusesAndFailures(); SharedActions(); SharedStatus(); TrialSteps(); DriveSteps(); GearSteps(); ProfileControls(); ControlsContractMatches();
+            AcceptedSnapshots();
             assertions += BridgeTests.Fake();
             assertions += IsolationTests.Run();
             assertions += ProbeTests.Run();

@@ -53,6 +53,9 @@ namespace ArtOfSimRally.Mod
         // inspection only; no host, provider, reader or force acquisition here.
         internal static void Prepare(string modDirectory)
         {
+            SharedBindingCaptureHost.Configure(Path.Combine(modDirectory, ProfileFileName), null,
+                () => Time.realtimeSinceStartup, () => Main.Enabled && Main.SettingsVisible && Main.HasFocus() &&
+                    !GameState.IsDriving && ShimInput.Consumer.Started);
             session = null; reason = waitingFor = null; startedLogged = stopLogged = false; restoreAttempts = 0;
             RequestedAtStartup = !ShimStartup.Requested && Main.Settings != null && Main.Settings.SharedInput;
             FfbSelection.PrepareShared(RequestedAtStartup);
@@ -68,6 +71,9 @@ namespace ArtOfSimRally.Mod
                 var info = new FileInfo(profilePath);
                 if (info.Length == 0 || info.Length > 1024 * 1024) { Refuse("the shared profile is empty or larger than 1 MiB."); return; }
                 profile = File.ReadAllBytes(profilePath);
+                SharedBindingCaptureHost.Configure(profilePath, profile,
+                    () => Time.realtimeSinceStartup, () => Main.Enabled && Main.SettingsVisible && Main.HasFocus() &&
+                        !GameState.IsDriving && ShimInput.Consumer.Started);
                 // This byte array also goes to Begin later. Never reread the file after FFB selection,
                 // copy it into legacy SteerBinding, or schedule recovery after the readers attach.
                 string configuredTarget;

@@ -71,6 +71,16 @@ namespace ArtOfSimRally.Mod
             var slots = new int[_devices.Count]; for (int i = 0; i < slots.Length; i++) slots[i] = _devices[i].Slot;
             try { sharedInput = new ShimBridge(source, native, ShimInput.Consumer, slots); }
             catch { if (restore != null) restore(); throw; }
+            sharedInput.AcceptedSnapshot = (slot, metadata, sample, path) =>
+            {
+                if (!Main.SettingsVisible) { SharedBindingCaptureHost.Instance.CancelCapture(); return; }
+                foreach (var device in _devices) if (device.Slot == slot)
+                {
+                    try { SharedBindingCaptureHost.Instance.ObserveAccepted(device.Name, path, metadata, sample, device.InstanceGuid); }
+                    catch (Exception ex) { SharedBindingCaptureHost.Instance.ReaderStopped(); ModLog.Warning("Binding capture stopped: " + ex.Message); }
+                    break;
+                }
+            };
             verifyNativeIsolation = isolation; restoreNativeInput = restore;
             SharedTransmission = ShimTransmission.ParseMode(transmission);
             sharedObjects = ProfileObjects.Parse(profile);
@@ -90,20 +100,21 @@ namespace ArtOfSimRally.Mod
             }
             // Released (a close) or lost once: the game's mixed values can no longer be trusted, so driving
             // stays neutral for good, keyboard included.
-            if (isolationGone) return true;
+            if (isolationGone) { SharedBindingCaptureHost.Instance.ReaderStopped(); return true; }
             bool isolated;
             try { isolated = verifyNativeIsolation(); } catch { isolated = false; }
             if (!isolated)
             {
                 isolationGone = true;
                 try { sharedInput.Stop("native input isolation lost"); } catch { }
+                SharedBindingCaptureHost.Instance.ReaderStopped();
                 return true;
             }
             // Isolation verified this frame: the game's independent (keyboard) input may be used.
             ShimInput.IsolatedFrame = Time.frameCount;
             // A transport-only stop (Core, frame or provider refusal) keeps the wheel neutral and Core
             // untouched, but leaves the verified keyboard path; nothing re-enables the wheel.
-            if (sharedInput.Stopped) return true;
+            if (sharedInput.Stopped) { SharedBindingCaptureHost.Instance.ReaderStopped(); return true; }
             try
             {
                 sharedInput.ReadFrame(Time.frameCount, (slot, bytes) =>
@@ -120,6 +131,8 @@ namespace ArtOfSimRally.Mod
                 });
             }
             catch (Exception ex) { try { sharedInput.Stop(ex.Message); } catch { } }
+            if (sharedInput.Stopped) SharedBindingCaptureHost.Instance.ReaderStopped();
+            if (sharedInput.ObserverFailure != null) SharedBindingCaptureHost.Instance.ReaderStopped();
             return true;
         }
 
