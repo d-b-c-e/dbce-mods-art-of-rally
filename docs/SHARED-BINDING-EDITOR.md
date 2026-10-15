@@ -58,3 +58,46 @@ timestamp, clock failure or read more than 100000 microseconds old is refused an
 conservative check after Publish dominates Core's earlier 100000-microsecond decision-boundary limit, including when a
 slow later device ages an earlier valid sample. It queries only the clock and adds no provider or device read. Fixtures
 inject that clock and cover delayed earlier reads, future timestamps and clock failure alongside the original cases.
+
+## Runtime evidence, 2026-10-15 (FFB-off binding host on a private copy)
+
+Two runs, both labeled "FFB-off binding-host evidence (no attended foreground or force claim)" (sana 131300/132808).
+The setup was the same for both:
+- the private copy, launched once each, at Steam integrity;
+- force feedback off in the copy's Settings.xml only, with `DBCE_FFB_MUTE=1` and the latched DD301314 native;
+- no activation and no OS input.
+
+Pins: Mod F98D3BDF (built at 11a7b6b; src/tests are unchanged on main since), shim BC9B030A (the mod's own pin), owner
+profile 73E78230 (read only). The evidence is in hub `artifacts/art-f6-ui-capture-20261015/RESULT.md`.
+
+What the two runs show:
+- **Attach.** The first live attach on BC9B: "Shared input: attached profile … isolated MOZA R12 Base, DS-8X Shifter",
+  then "first frame accepted".
+- **Editable host.** The host was Editable with Unity `focused True` while the real OS foreground stayed with another
+  process (`osForeground False`) in every state line. The editor's own gate is `Application.isFocused`; the force
+  connect, which needs the OS foreground, was not involved because FFB was off.
+- **Binding steps (run-d4b7959-ffboff, 32 shots):**
+  - Listen, cancel, draft and discard work.
+  - The close guard warns once, then closes without saving.
+  - The footer reads "Bindings unsaved · Settings saved" with a draft and "Saved" without one.
+  - The Controls setup guidance renders as agreed.
+  - That run's save was refused correctly: the recorder had cleared steering, and the profile document requires it.
+- **Save (run-ae46b06-ffboff-save):**
+  - The product validator accepted clearing throttle first; then Save returned True.
+  - The host showed saved-for-next-start with no draft.
+  - The footer read "Bindings saved for next start · Settings saved".
+  - The profile file changed in exactly two lines (Revision; the throttle line removed). Steering and every other line
+    were unchanged.
+  - The runner restored the copy's profile.
+- **Force.** Each run's UMM log shows `ffb=False` and no force-device attempt.
+
+Still open (none of these is claimed):
+- the attended, focused workflow with FFB on: binding while the game is the OS foreground, plus a real moved-control
+  capture;
+- force feedback with the shared profile;
+- restart consumption (the saved profile becomes active at the next start, and the car follows it);
+- rebinding after a disconnect;
+- the final shared-input package bytes. `package.ps1 -SharedInputCandidate` builds with the ArtShimProbe flavour and a
+  new stamp, so it is different code from F98 (Lola 132795; the separation is under review);
+- one shot detail: in the save run, the cleared row's "next start: Unbound" line was half cut by the scroll body, so it
+  is shown by the host state and the file, not by that row's pixels.

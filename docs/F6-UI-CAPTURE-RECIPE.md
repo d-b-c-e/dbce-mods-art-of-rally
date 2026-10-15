@@ -142,3 +142,37 @@ notice (hub AGENTS.md, owner 2026-10-14).
   - `ui-captured-unmet`: complete, but with an unmet step expectation, as in run 1's binding steps;
   - `ui-incomplete`;
   - `ui-failed`.
+
+## FFB-off binding-host variant (sana 131300)
+
+Both earlier runs stopped at the force gate, not at the editor's own gate:
+- Art's force connect needs the OS foreground window to be the game's (`FfbNative.FocusedGameWindow`).
+- Windows refused the runner's one activation (`activation.json`: returned False, another process still in front).
+  Separately, the live foreground-lock timeout read 2147483647 (the registry holds 200000). That reading does not by
+  itself prove why the activation was refused.
+- So the shared session waited on "force feedback to finish connecting", and the editor stayed ReadOnly.
+
+The variant stages the copy with `Prepare-SharedInputCopy.ps1 -Recorder -ForceFeedbackOff`.
+- The copy's `Settings.xml` turns force feedback off. The owner's file is only read, and no tuning value changes.
+- The latched native (DD301314) and `DBCE_FFB_MUTE=1` stay as they are.
+- With force feedback off, the mod never requests a force connect (`Main.cs` checks `ForceFeedbackEnabled` before each
+  request). The shared session then depends only on the readers and on isolation.
+- The mod's own gates are unchanged. The binding editor still needs `Application.isFocused`, the menus, the panel open
+  and a started consumer.
+
+Evidence:
+- Each state line logs Unity's `focused` and the real OS `osForeground`. `osForeground` is True only while the
+  foreground window belongs to the game process. Nothing is activated.
+- The runner checks force-off from the launch's own UMM log even with the latched native: `Loaded - … ffb=False` and
+  no force-device line, in `force-check.json`.
+- `observation.json` carries `forceFeedbackOff: true` and the label "FFB-off binding-host evidence (no attended
+  foreground or force claim)".
+- The run covers bindings with force feedback disabled and renders all changed UI. It makes no claim about an attended
+  foreground workflow or about force.
+
+Two runs used this variant on 2026-10-15: `run-d4b7959-ffboff` (the full set) and `run-ae46b06-ffboff-save`
+(`-UiSet save`: the validated Save, the next-start row with its footer, and one plain close). For their results and
+what remains open, see `SHARED-BINDING-EDITOR.md` "Runtime evidence, 2026-10-15".
+- A Save in the copy leaves a `.bindings-backup-*` file.
+- The runner archives and removes only the backups created during the run (`CopyModResidue.ps1`), and it checks that
+  earlier backups are unchanged.

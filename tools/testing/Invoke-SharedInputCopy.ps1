@@ -34,8 +34,10 @@ param([Parameter(Mandatory)][string]$Result,
       # puts everything back. Explicit host calls only: no moved control, no OS input, no device API, outputs muted.
       [switch]$UiCapture,
       # With -UiCapture: full (every page, both text modes, the narrow pass and the binding steps) or followup (normal FFB,
-      # 640 Advanced Cameras at the larger scale and the binding steps; the bounded re-check after a fix, sana 126101).
-      [ValidateSet('full','followup')][string]$UiSet='full',
+      # 640 Advanced Cameras at the larger scale and the binding steps; the bounded re-check after a fix, sana 126101) or
+      # save (no page tour: the real Save of a validator-accepted non-steering clear, the next-start row and footer, a
+      # plain close; sana 132306).
+      [ValidateSet('full','followup','save')][string]$UiSet='full',
       # With -UiCapture (sana 126190/126330; owner direction 2026-10-14 in the hub AGENTS.md: advance notice first): one
       # bare SetForegroundWindow on the exact child's own visible Unity window, because Art's force connect and its binding
       # editor both need a focused game. No keys, Alt taps or SendInput, one call and no retry; if Windows refuses, that
@@ -44,6 +46,10 @@ param([Parameter(Mandatory)][string]$Result,
       [ValidateRange(30,300)][int]$ObserveSeconds=120,
       [ValidateRange(0,60)][int]$SettleSeconds=10,
       [ValidateRange(10,60)][int]$CaptureSeconds=12,
+      # The exact token of a shared lease the caller already holds (sana 131546), so one held slot covers the caller's
+      # build and staging and this run. It is asserted, never renewed, and never released here: the caller releases it,
+      # and a failed restoration leaves it held as before.
+      [ValidatePattern('^[^\r\n]+$')][string]$HeldLease,
       [string]$ToolkitRepo='E:/Source/toolkits/dbce-wheel-mod-toolkit',
       [string]$HubRepo='E:/Source/dbce-project-mgmt')
 $ErrorActionPreference='Stop'
@@ -200,6 +206,12 @@ if($copySettings.DocumentElement.SharedInput -ne 'true') { throw 'Staged setting
 # with force feedback off in the copy, so the mod never initialises a force device (checked again after the run).
 $latchedNatives=@('DD3013147821364AD8795F76B4500FB479F669E6BD89576F83E725A677273414')
 $forceOff=$staged.files.'Mods/ArtOfSimRally/UnityForceFeedback.dll' -notin $latchedNatives
+# A copy staged with -ForceFeedbackOff is checked the same way even with the latched native (sana 131300): its
+# Settings.xml must say false, and the launch's own UMM log must show ffb=False with no force attempt.
+if($staged.forceFeedbackOff -eq $true) {
+    if($copySettings.DocumentElement.ForceFeedbackEnabled -ne 'false') { throw 'Staged with -ForceFeedbackOff, but the copy''s Settings.xml does not turn force feedback off.' }
+    $forceOff=$true
+}
 if($forceOff -and ($staged.forceFeedbackOff -ne $true -or $copySettings.DocumentElement.ForceFeedbackEnabled -ne 'false')) {
     throw 'This native has no DBCE_FFB_MUTE latch: stage with Prepare-SharedInputCopy -ForceFeedbackOff.'
 }
@@ -232,9 +244,10 @@ $artLocal=Join-Path $env:LOCALAPPDATA 'ArtOfSimRally'
 $localLow=Join-Path $env:USERPROFILE 'AppData/LocalLow/Funselektor Labs/Art of Rally'
 $customRally=Join-Path $localLow 'customrally' # read by SessionEnvironment.ps1's Get-SessionFiles
 . (Join-Path $PSScriptRoot 'SessionEnvironment.ps1')
+. (Join-Path $PSScriptRoot 'CopyModResidue.ps1')
 . (Join-Path $ToolkitRepo 'tools/playback/Stage-RigLease.ps1')
 $snapshots=[Collections.Generic.List[object]]::new(); $ownerPins=[Collections.Generic.List[object]]::new()
-$lease=$null; $game=$null; $ready=$false; $environmentSaved=$false; $launchAttempted=$false; $routeApplied=$false; $localBefore=@(); $artBefore=@()
+$lease=$null; $game=$null; $ready=$false; $environmentSaved=$false; $launchAttempted=$false; $routeApplied=$false; $localBefore=@(); $artBefore=@(); $modBackupsBefore=@()
 $capture=Join-Path $Result 'capture'
 $replayOut=Join-Path $Result 'replay'; $replayResult=Join-Path $replayOut 'result.txt'; $ffbBefore=$null
 function Save-File([string]$p) {
@@ -247,7 +260,9 @@ function Save-File([string]$p) {
 function Files([string]$p,[switch]$Recurse) {
     if(Test-Path -LiteralPath $p) { Get-ChildItem -LiteralPath $p -File -Recurse:$Recurse | ForEach-Object { Plain $_.FullName; $_.FullName } }
 }
-$lease=Enter-StageRigLease -Path (Join-Path $env:LOCALAPPDATA 'dbce/test-slot.txt') -Owner art-shared-input -Purpose $(if($ui) { 'Disposable Art F6 visual and shared-binding messaging capture through the dev recorder (host calls only, no moved control); muted, no force or OS input; restore shared state' } elseif($replay) { 'Disposable Art cold replay of a SharedInput recording with every input and force device off; no OS input; restore shared state' } elseif($SharedCar) { 'Disposable Art SharedInput ordinary shared-car recording at a recorder-reached stage (the shared profile''s devices drive the car); muted, no force or OS input; restore shared state' } elseif($native) { 'Disposable Art SharedInput ordinary native-script coexistence at a recorder-reached stage; muted, no force or OS input; restore shared state' } else { 'Disposable Art SharedInput ordinary startup smoke; muted, no force or input; restore shared state' })
+$leasePath=Join-Path $env:LOCALAPPDATA 'dbce/test-slot.txt'
+if($HeldLease) { Assert-StageRigLease -Path $leasePath -Token $HeldLease; $lease=[pscustomobject]@{path=[IO.Path]::GetFullPath($leasePath);token=$HeldLease;previous=$null;held=$true} }
+else { $lease=Enter-StageRigLease -Path $leasePath -Owner art-shared-input -Purpose $(if($ui) { 'Disposable Art F6 visual and shared-binding messaging capture through the dev recorder (host calls only, no moved control); muted, no force or OS input; restore shared state' } elseif($replay) { 'Disposable Art cold replay of a SharedInput recording with every input and force device off; no OS input; restore shared state' } elseif($SharedCar) { 'Disposable Art SharedInput ordinary shared-car recording at a recorder-reached stage (the shared profile''s devices drive the car); muted, no force or OS input; restore shared state' } elseif($native) { 'Disposable Art SharedInput ordinary native-script coexistence at a recorder-reached stage; muted, no force or OS input; restore shared state' } else { 'Disposable Art SharedInput ordinary startup smoke; muted, no force or input; restore shared state' }) }
 try {
     Assert-GameClosed
     New-Item -ItemType Directory -Path "$Result/shared-files","$Result/after" | Out-Null
@@ -270,8 +285,11 @@ try {
     # its Settings.xml: snapshot both like shared files, so restoration keeps the post-run bytes under after/ as evidence
     # and puts the staged bytes back (kiki 125183).
     if($ui) { Save-File (Join-Path $mod 'dbce-controls.ini'); Save-File (Join-Path $mod 'Settings.xml') }
+    # That Save leaves the replaced profile as a bindings backup in the copy's mod folder (CopyModResidue.ps1): record the
+    # backups already there, so restoration archives and removes only this run's (sana 132976).
+    if($ui) { Plain $mod; $modBackupsBefore=@(Get-BindingBackups $mod) }
     $snapshots | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath "$Result/shared-files.json"
-    @{schema=1;gameDir=$GameDir;owner=$owner;lease=$lease;localBefore=$localBefore;artBefore=$artBefore} | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath "$Result/recovery.json"
+    @{schema=1;gameDir=$GameDir;owner=$owner;lease=$lease;localBefore=$localBefore;artBefore=$artBefore;modBackupsBefore=$modBackupsBefore} | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath "$Result/recovery.json"
     $ready=$true
     Assert-StageRigLease -Path $lease.path -Token $lease.token
     if(!(Test-OwnerGate $ownerInput 'prepared' 300 $ownerRecord)) { throw 'Owner input resumed during preparation; no launch.' }
@@ -398,7 +416,11 @@ try {
         shots=@(Get-ChildItem -LiteralPath (Join-Path $uiDir 'shots') -Filter *.png -ErrorAction SilentlyContinue | ForEach-Object { [pscustomobject]@{name=$_.Name;bytes=$_.Length;sha256=(Hash $_.FullName)} })
         incomplete=(Test-Path -LiteralPath (Join-Path $uiDir 'incomplete.txt')) } } else { $null }
     if($SharedCar) { $sharedCarSummary | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath "$Result/shared-car.json" }
-    @{outcome=$outcome;exited=$game.HasExited;windowTitle=$game.MainWindowTitle;observedUtc=[DateTime]::UtcNow.ToString('o');sharedLines=$lines;nativeVerdict=$nativeVerdict;sharedCar=$sharedCarSummary;ui=$uiSummary;activation=$activation;replayResult=$replayLines} | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath "$Result/observation.json"
+    # A UI capture staged with force feedback off is binding-host evidence with FFB disabled, never an attended
+    # foreground or force result (sana 131300).
+    $evidence=if($ui -and $staged.forceFeedbackOff -eq $true) { 'FFB-off binding-host evidence (no attended foreground or force claim)' } else { $null }
+    @{outcome=$outcome;evidence=$evidence;forceFeedbackOff=($staged.forceFeedbackOff -eq $true);exited=$game.HasExited;windowTitle=$game.MainWindowTitle;observedUtc=[DateTime]::UtcNow.ToString('o');sharedLines=$lines;nativeVerdict=$nativeVerdict;sharedCar=$sharedCarSummary;ui=$uiSummary;activation=$activation;replayResult=$replayLines} | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath "$Result/observation.json"
+    if($evidence) { Write-Output "Evidence label: $evidence" }
     Write-Output "Observation: $outcome$(if($SharedCar) { '; shared car: ' + ($sharedCarSummary | ConvertTo-Json -Compress) } elseif($native) { '; ' + $(if($nativeVerdict) { $nativeVerdict -replace "`n", '; ' } else { 'no native verdict (inspect capture and logs)' }) } elseif($replay) { '; ' + $(if($replayLines.Count) { $replayLines[0] } else { 'no replay result (inspect replay and logs)' }) })"
 } finally {
     if($game -and !$game.HasExited) {
@@ -457,11 +479,17 @@ try {
             } }
         }
         Attempt { $runs=Join-Path $artLocal 'shared-input'; if((Test-Path -LiteralPath $runs) -and !@(Get-ChildItem -LiteralPath $runs -Recurse -File).Count -and !($artBefore | Where-Object { Within $_ $runs })) { Remove-Item -LiteralPath $runs -Recurse } }
+        # This run's bindings backups in the copy's mod folder: archived under after/copy-mod-new, then removed; earlier
+        # backups must be unchanged (a change fails restoration and keeps the lease).
+        if($ui) { Attempt {
+            $movedBackups=Move-NewBindingBackups $mod $modBackupsBefore (Join-Path $Result 'after/copy-mod-new')
+            if($movedBackups.Count) { $movedBackups | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath "$Result/copy-mod-backups-moved.json" }
+        } }
     }
     if($environmentSaved -and ($launchAttempted -or $routeApplied)) { Attempt { Restore-SessionEnvironment "$Result/shared-environment" } }
     foreach($pin in $ownerPins) { Attempt { if((Hash $pin.path) -ne $pin.sha256) { throw "Owner file differs; retained for review, never overwritten: $($pin.path)" } } }
     if($errors.Count) { $errors | Set-Content -LiteralPath "$Result/restore-errors.txt"; throw "Restoration incomplete; backup and lease retained: $Result" }
     [DateTime]::UtcNow.ToString('o') | Set-Content -LiteralPath "$Result/restored.txt"
-    if($lease) { $null=Exit-StageRigLease -Lease $lease }
+    if($lease -and !$HeldLease) { $null=Exit-StageRigLease -Lease $lease }
     if($forceViolation) { throw $forceViolation }
 }
