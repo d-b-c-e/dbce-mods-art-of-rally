@@ -55,6 +55,26 @@ No owner-install overwrite, no second reader, no device discovery, no OS input a
 - **`Invoke-SharedInputCopy.ps1 -UiCapture`** writes `mode=ui`, `tape=<result>/ui`, `muteOutputs=1` and `expiresUtc`,
   waits for the recorder's `ui capture complete` line (bounded at about 120 s), then closes and restores as today.
 
+### Required before the source freeze (kiki 124440)
+
+1. **Assert real outcomes and log them.**
+   - Each binding step asserts the host state it needs: Editable, the draft present or absent, `SavedPendingRestart`.
+   - The Save result and its reason are logged.
+   - After a successful Save, a fresh, distinct draft is made before the close-intent step, on an action that is still
+     bound. Clearing an already-unbound action makes no draft.
+2. **Show more than scroll tops.**
+   - Shots include the lower Controls and Cameras content and a focused binding row.
+   - The 640 pass uses the larger effective text scale, and its shots show the header and footer together.
+3. **Restore everything** the script changed: width, text mode, page, view and scroll. This happens on completion,
+   exception and expiry alike.
+4. **Completion waits for the final screenshot file** to exist and stop growing, not only for three frames or the log
+   marker.
+5. **Pin and map.**
+   - Pin the Mod, Recorder, native and profile hashes in the result.
+   - Map each shot to the host state read in the same frame: access, capturing action, draft and pending restart.
+   - The host-call scenes stay messaging and state evidence. They are not moved-control capture, patched input or
+     post-restart acceptance.
+
 ## Run (after a compiled candidate and a fresh slot)
 
 1. `Prepare-SharedInputCopy.ps1 ... -Recorder`, with the candidate Mod DLL from the composite batch (hash-pinned).
