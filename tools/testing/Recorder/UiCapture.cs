@@ -71,8 +71,10 @@ namespace ArtOfSimRally.Testing
         {
             string mode = set == null || string.Equals(set, "full", StringComparison.OrdinalIgnoreCase) ? "full"
                 : string.Equals(set, "followup", StringComparison.OrdinalIgnoreCase) ? "followup"
-                : string.Equals(set, "save", StringComparison.OrdinalIgnoreCase) ? "save" : null;
-            if (mode == null) throw new InvalidDataException("uiSet must be full, followup or save, not " + set);
+                : string.Equals(set, "save", StringComparison.OrdinalIgnoreCase) ? "save"
+                : string.Equals(set, "final", StringComparison.OrdinalIgnoreCase) ? "final"
+                : string.Equals(set, "nextstart", StringComparison.OrdinalIgnoreCase) ? "nextstart" : null;
+            if (mode == null) throw new InvalidDataException("uiSet must be full, followup, save, final or nextstart, not " + set);
             _log = log; _dir = dir; _until = untilUtc;
             _shots = Path.Combine(dir, "shots");
             Directory.CreateDirectory(_shots);
@@ -140,13 +142,26 @@ namespace ArtOfSimRally.Testing
         private static void Build(string mode)
         {
             Steps.Clear();
-            bool followup = mode == "followup", saveOnly = mode == "save";
+            bool followup = mode == "followup", saveOnly = mode == "save", final = mode == "final", nextStart = mode == "nextstart";
+            bool shortSet = saveOnly || final || nextStart;
             string[] views = { "Simple", "Advanced" };
             Add("open", () => { if (!Visible) Call(_main, "ToggleSettings"); Select("Simple", 0); Scroll(0); }, () => Visible ? null : "settings did not open");
             float scaleA = 0, scaleB = 0;
             Func<string> narrow = () => Mathf.Abs(Window.x - 640) < .5f ? null : "UMM width did not take 640";
             Action narrowAtLargerScale = () => { FollowHost(scaleB > scaleA ? !_savedFollowHost : _savedFollowHost); Width(640); };
-            if (saveOnly) { }   // the short save follow-up: no page tour, no text-size or width change
+            if (shortSet)
+            {
+                // No page tour and no text-size or width change. The final payload's first start (sana 133112) adds only
+                // the render checks its different DLL needs: Controls with the guidance and footer, Cameras (the triple
+                // rows) in both views.
+                if (final)
+                {
+                    Add("final-controls-top", () => { Select("Simple", 0); Scroll(0); }, null);
+                    Add("final-cameras-top", () => { Select("Simple", 2); Scroll(0); }, null);
+                    Add("final-cameras-lower", () => Scroll(100000), null);
+                    Add("final-advanced-cameras-top", () => { Select("Advanced", 2); Scroll(0); }, null);
+                }
+            }
             else if (followup)
             {
                 // Normal FFB at the starting text mode, then both text modes read without shots to find the larger scale.
@@ -176,12 +191,29 @@ namespace ArtOfSimRally.Testing
                 // Advanced Cameras lower content: the numeric rows with Default commands, most likely to overflow at 640.
                 Add("narrow-advanced-p2-lower", () => { Select("Advanced", 2); Scroll(100000); }, null);
             }
-            if (!saveOnly) Add("narrow-restored", () => { Width(_savedWindow.x); FollowHost(_savedFollowHost); Select("Simple", 0); Scroll(0); }, null);
+            if (!shortSet) Add("narrow-restored", () => { Width(_savedWindow.x); FollowHost(_savedFollowHost); Select("Simple", 0); Scroll(0); }, null);
             // Shared-binding messaging through the host (explicit calls only; no moved control).
             Add("bindings-ready", () => { }, () => SharedReady() ? null : "shared session not started; binding steps show the host's actual state", false);
             Add("bindings-state", () => { Select("Simple", 0); Scroll(0); Focus("bind-" + (FirstBound(null) ?? "steer")); Event("binding editor access " + HostValue("Access") + ": " + HostValue("AccessReason")); }, null);
+            if (nextStart)
+            {
+                // The next start after a Save (sana 133112): the saved profile is the active one, with no draft and nothing
+                // waiting for a restart. Every row's state and the active source are logged for the runner's exact check;
+                // the first row whose active binding is unbound is shown whole (focusing the row below it), then one close.
+                string unbound = null;
+                Add("nextstart-rows", () =>
+                {
+                    Event("active source " + HostValue("ActiveSource"));
+                    Event("rows " + RowsSummary());
+                    unbound = FirstUnbound();
+                    if (unbound != null) Focus("bind-" + (RowAfter(unbound) ?? unbound));
+                }, () => (bool)HostValue("HasDraft") ? "a draft exists at the next start" :
+                      (bool)HostValue("SavedPendingRestart") ? "saved bindings still wait for a restart" : unbound == null ? "no active row is unbound" : null);
+                Add("nextstart-closed", () => Call(_main, "CloseSettings"), () => Visible ? "close did not close" : null);
+                return;
+            }
             string bound = null, other = null;
-            if (!saveOnly)
+            if (!shortSet)
             {
                 Add("bindings-listening", () => { bound = FirstBound(null); if (Editable && bound != null) HostCall("BeginCapture", bound); },
                     () => !Editable ? "not editable: " + HostValue("AccessReason") : bound == null ? "no bound action" :
@@ -211,11 +243,12 @@ namespace ArtOfSimRally.Testing
             }, () => !Editable ? "not editable" : saveTarget == null ? "no bound action besides steer" :
                   refusal != null ? "the profile validator refuses clearing " + saveTarget + ": " + refusal :
                   (bool)HostValue("SavedPendingRestart") ? null : "save did not leave a pending restart");
-            if (saveOnly)
+            if (saveOnly || final)
             {
                 // The cleared row ("next start: Unbound") with the footer ("Bindings saved for next start"), then one plain
-                // close: with no draft the close is not held.
-                Add("bindings-saved-row", () => Focus("bind-" + saveTarget),
+                // close: with no draft the close is not held. Focusing the row below the cleared one scrolls the cleared
+                // row fully into view (run-ae46b06-ffboff-save cut its value line in half; sana 132939/133112).
+                Add("bindings-saved-row", () => { Event("rows " + RowsSummary()); Focus("bind-" + (RowAfter(saveTarget) ?? saveTarget)); },
                     () => (bool)HostValue("SavedPendingRestart") && !(bool)HostValue("HasDraft") ? null : "not saved for the next start with no draft");
                 Add("saved-closed", () => Call(_main, "CloseSettings"), () => Visible ? "close did not close" : null);
                 return;
@@ -424,6 +457,33 @@ namespace ArtOfSimRally.Testing
             try { edit.Invoke(saved, new object[] { changes, "recorder-check" }); return null; }
             catch (TargetInvocationException ex) { return (ex.InnerException ?? ex).Message; }
         }
+
+        // The host's rows in panel order, and each value's Bound flag (a missing value is unbound).
+        private static IEnumerable<object> RowList() => HostValue("Rows") is IEnumerable rows ? rows.Cast<object>() : Enumerable.Empty<object>();
+        private static bool BoundOf(object value) => value != null && Prop(value, "Bound") is bool b && b;
+        private static string RowAfter(string action)
+        {
+            bool found = false;
+            foreach (var row in RowList())
+            {
+                string a = Prop(row, "Action") as string;
+                if (found) return a;
+                if (a == action) found = true;
+            }
+            return null;
+        }
+        private static string FirstUnbound()
+        {
+            foreach (var row in RowList()) if (!BoundOf(Prop(row, "Active"))) return Prop(row, "Action") as string;
+            return null;
+        }
+        // "steer=bound throttle=unbound/next:unbound ...": active, then the next-start and draft values when present.
+        private static string RowsSummary() => string.Join(" ", RowList().Select(r =>
+        {
+            object next = Prop(r, "NextStart"), draft = Prop(r, "Draft");
+            return Prop(r, "Action") + "=" + (BoundOf(Prop(r, "Active")) ? "bound" : "unbound") +
+                   (next == null ? "" : "/next:" + (BoundOf(next) ? "bound" : "unbound")) + (draft == null ? "" : "/draft:" + (BoundOf(draft) ? "bound" : "unbound"));
+        }).ToArray());
 
         private static string FirstBound(string except)
         {
