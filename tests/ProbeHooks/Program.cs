@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Xml.Linq;
+using HarmonyLib;
 
 // Runs the actual net48 developer assembly and installed Harmony on the CLR.
 // Resolves local game metadata but never starts Unity or initializes DirectInput.
@@ -28,8 +29,10 @@ internal static class Program
             var probe = Assembly.LoadFrom(probePath);
             if (args.Length > 2 && args[2] == "raw")
             {
-                CheckRawProbe(mod, force, probe);
-                Console.WriteLine("{\"status\":\"passed\",\"assertions\":" + assertions + ",\"runtime\":\"" + (Type.GetType("Mono.Runtime") == null ? "CLR" : "Unity Mono") + "\",\"scope\":\"actual raw-controls attach/guards/unpatch; no input arming or hardware\"}");
+                bool mono = Type.GetType("Mono.Runtime") != null;
+                if (mono) CheckRawProbe(mod, force, probe);
+                else CheckManagedRawObservers(probe);
+                Console.WriteLine("{\"status\":\"passed\",\"assertions\":" + assertions + ",\"runtime\":\"" + (mono ? "Unity Mono" : "CLR") + "\",\"scope\":\"" + (mono ? "actual full raw-controls attach/guards/unpatch" : "actual managed raw observers attach/unpatch; full Attach requires Unity Mono") + "; no input arming or hardware\"}");
                 return 0;
             }
             var recorder = probe.GetType("ArtOfSimRally.Testing.RecorderMain", true);
@@ -156,6 +159,32 @@ internal static class Program
         }
         catch (Exception ex) { Console.Error.WriteLine(ex); return 1; }
     }
+    // Full Attach patches Shifter.PollForBinding, whose Unity Input ECall cannot
+    // be JITed on CLR. Keep that actual full lifecycle check on Unity Mono.
+    // CLR checks the changed managed observer seams with their actual postfixes.
+    static void CheckManagedRawObservers(Assembly probe)
+    {
+        var rawProbe = probe.GetType("ArtOfSimRally.Testing.ControlsProbe", true);
+        var player = Assembly.Load("Rewired_Core").GetType("Rewired.Player", true);
+        var harmony = new Harmony("ArtOfSimRally.RawManagedFixture");
+        var names = new[] { "GetAxis", "GetButton", "GetButtonDown", "GetButtonUp", "GetNegativeButton", "GetNegativeButtonDown" };
+        try
+        {
+            foreach (var name in names)
+            {
+                var original = player.GetMethod(name, new[] { typeof(int) });
+                Check(original != null && original.ReturnType == (name == "GetAxis" ? typeof(float) : typeof(bool)), "managed seam missing: " + name);
+                var observer = rawProbe.GetMethod(name == "GetAxis" ? "ObserveAxis" : "ObserveButton", Static);
+                harmony.Patch(original, postfix: new HarmonyMethod(observer) { priority = Priority.Last });
+            }
+            var patched = harmony.GetPatchedMethods().ToArray();
+            Check(patched.Length == names.Length && names.All(name => patched.Any(m => m.Name == name)), "managed observer attachment incomplete");
+            Check(!(bool)rawProbe.GetField("_armed", Static).GetValue(null) && !(bool)rawProbe.GetField("_requested", Static).GetValue(null), "managed observer fixture armed input");
+        }
+        finally { harmony.GetType().GetMethod("UnpatchAll").Invoke(harmony, new object[] { harmony.Id }); }
+        Check(!harmony.GetPatchedMethods().Any(), "managed observer hooks remain after unpatch");
+    }
+
     static void CheckRawProbe(Assembly mod,Assembly force,Assembly probe)
     {
             var rawProbe = probe.GetType("ArtOfSimRally.Testing.ControlsProbe", true);
