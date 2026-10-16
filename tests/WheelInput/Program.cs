@@ -6,7 +6,7 @@ using Device = Dbce.Wheel.Ffb.WheelFfbNative;
 using Host = ArtOfSimRally.Mod.Main;
 using Clock = ArtOfSimRally.Mod.Time;
 
-static class Program
+static partial class Program
 {
     static int assertions;
     static void Check(bool ok, string message) { assertions++; if (!ok) throw new Exception(message); }
@@ -253,6 +253,10 @@ static class Program
             if (args.Contains("--ordinary-fallback-only"))
             {
                 OrdinaryFallback(); Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
+            }
+            if (args.Contains("--real-core-actions-only"))
+            {
+                RealCoreSupportedActions(); Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
             }
             if (args.Contains("--keyboard-steering-only"))
             {
