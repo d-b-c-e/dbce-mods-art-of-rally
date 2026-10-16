@@ -23,6 +23,9 @@ static partial class Program
     // Art's own bindings on the same copied read: repair puncture 45, quick restart 46, look left 22-, right 22+, forward 63+.
     // There is no RAW injection, no latched session and no native game action, and keyboard results still pass through.
     // The DeviceSource is fixture evidence for the Core-to-consumer path, not for hardware or for the game's reaction.
+    // 30 held frames show GetButton(44) staying true, not the game's 1 s recovery, and the Art-only actions on real
+    // controls remain a physical UAT check. The caller selects the qualified shim in ART_SHIM_DLL. The fallback below is
+    // a developer path on one machine, neither portable nor qualified.
     static void RealCoreSupportedActions()
     {
         string dll = Environment.GetEnvironmentVariable("ART_SHIM_DLL") ?? @"E:\Source\games\.worktrees\art-shim-probe-evidence\apply-20261012-021108\dbce_shim.dll";

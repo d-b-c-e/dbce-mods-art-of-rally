@@ -75,6 +75,10 @@ try {
     $result = Run 'ordinary-fallback' 'dotnet' @('run','--project','tests/WheelInput/WheelInput.csproj','-c','Release','--','--ordinary-fallback-only')
     $ordinaryFallback = $result | Select-Object -Last 1 | ConvertFrom-Json
     Assert ($ordinaryFallback.status -eq 'passed' -and $ordinaryFallback.assertions -gt 0) 'Ordinary fallback runner ran no assertions'
+    # The real ordinary Core loads the shim the caller names in ART_SHIM_DLL; set it to the qualified packaged shim
+    # (for RC27: BC9B030A..., as lib/input-shim/CANDIDATE.json pins). The fixture's built-in fallback is a developer path on
+    # one machine, neither portable nor qualified. A fixture device drives it: 30 held frames are not an in-game 1 s
+    # recovery, and the physical Art-only actions stay UAT checks.
     $result = Run 'real-core-actions' 'dotnet' @('run','--project','tests/WheelInput/WheelInput.csproj','-c','Release','--','--real-core-actions-only')
     $realCoreActions = $result | Select-Object -Last 1 | ConvertFrom-Json
     Assert ($realCoreActions.status -eq 'passed' -and $realCoreActions.assertions -gt 0) 'Real-Core supported actions runner ran no assertions'
