@@ -33,6 +33,9 @@ param([Parameter(Mandatory)][string]$Result,
       # script opens Wheel settings at the title, takes game-only shots of every page and the host's binding states, and
       # puts everything back. Explicit host calls only: no moved control, no OS input, no device API, outputs muted.
       [switch]$UiCapture,
+      # Direct supported UI checks: no Recorder, capture tour, controls probe or
+      # automated binding mutation. The operator closes normally on completion/failure.
+      [switch]$ManualUi,
       # Explicit cold controls request for a bounded same-child tail after final UI.
       [string]$ControlsFollowupRequest,
       [ValidatePattern('^[A-Fa-f0-9]{64}$')][string]$ControlsFollowupSha256,
@@ -81,6 +84,11 @@ function Read-Shared([string]$p) {
     $stream=[IO.File]::Open($p,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete)
     try { $reader=[IO.StreamReader]::new($stream); @($reader.ReadToEnd() -split "`r?`n" | Where-Object { $_ -match '\[ArtOfSimRally\] (\[\w+\] )?(Shared input|Wheel input|Loaded)' }) }
     finally { $stream.Dispose() }
+}
+function Get-ManualUiOutcome([bool]$Exited,[string]$Current){
+    if($Exited){return 'manual-ui-closed'}
+    if($Current -ceq 'manual-ui-open'){return 'manual-ui-timeout'}
+    return $Current
 }
 # The recorder request for a route recording: native scripts Art's Rewired values at the stage; shared leaves the car to
 # the shared profile and holds the route at the title until the shared session has started.
@@ -154,6 +162,8 @@ $native=[bool]$RouteSource
 $replay=[bool]$ReplayTape
 $ui=[bool]$UiCapture
 $controls=[bool]$ControlsFollowupRequest
+if($ManualUi -and ($ui -or $controls -or $native -or $replay -or $SharedCar -or $Activate)){throw '-ManualUi runs alone, without capture/probe/native activation.'}
+if($ManualUi -and !$PSBoundParameters.ContainsKey('ObserveSeconds')){$ObserveSeconds=180}
 if($controls -ne [bool]$ControlsFollowupSha256 -or ($controls -and (!$ui -or $UiSet -ne 'final'))) { throw 'A pinned controls follow-up belongs only to -UiCapture -UiSet final.' }
 if($ui -and ($native -or $replay -or $SharedCar)) { throw '-UiCapture runs alone: not with -RouteSource, -SharedCar or -ReplayTape.' }
 if($ui -and !$PSBoundParameters.ContainsKey('ObserveSeconds')) { $ObserveSeconds=240 }
@@ -316,10 +326,10 @@ try {
     # A UI capture's Save bindings step writes the copy's shared profile, and the panel's page and text-mode steps touch
     # its Settings.xml: snapshot both like shared files, so restoration keeps the post-run bytes under after/ as evidence
     # and puts the staged bytes back (kiki 125183).
-    if($ui) { Save-File (Join-Path $mod 'dbce-controls.ini'); Save-File (Join-Path $mod 'Settings.xml') }
+    if($ui -or $ManualUi) { Save-File (Join-Path $mod 'dbce-controls.ini'); Save-File (Join-Path $mod 'Settings.xml') }
     # That Save leaves the replaced profile as a bindings backup in the copy's mod folder (CopyModResidue.ps1): record the
     # backups already there, so restoration archives and removes only this run's (sana 132976).
-    if($ui) { Plain $mod; $modBackupsBefore=@(Get-BindingBackups $mod) }
+    if($ui -or $ManualUi) { Plain $mod; $modBackupsBefore=@(Get-BindingBackups $mod) }
     if($controls) { Save-File $controlsRequestPath; Save-File $controlsSwitchPath }
     $snapshots | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath "$Result/shared-files.json"
     @{schema=1;gameDir=$GameDir;owner=$owner;lease=$lease;localBefore=$localBefore;artBefore=$artBefore;modBackupsBefore=$modBackupsBefore} | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath "$Result/recovery.json"
@@ -452,6 +462,10 @@ try {
                 $outcome='ui-controls-timeout'
             }
         }
+        elseif($ManualUi) {
+            if($lines -match 'Shared input (not used|stopped)'){$outcome='manual-ui-input-unavailable';break}
+            $outcome='manual-ui-open' # No settle timer or automatic UI work.
+        }
         elseif($lines -match 'Shared input (not used|stopped)') { $outcome='refused-or-stopped'; break }
         elseif($native) { if(Test-Path -LiteralPath (Join-Path $capture 'end.txt')) { $outcome='captured'; break } }
         else {
@@ -460,7 +474,8 @@ try {
         }
         $null=$game.WaitForExit(500); $game.Refresh()
     }
-    if($game.HasExited -and $outcome -eq 'timeout') { $outcome='exited' }
+    if($ManualUi){$outcome=Get-ManualUiOutcome $game.HasExited $outcome}
+    elseif($game.HasExited -and $outcome -eq 'timeout') { $outcome='exited' }
     $lines=Read-Shared $umLog; $lines | Set-Content -LiteralPath "$Result/shared-lines.txt"
     $verdictPath=Join-Path $capture 'native-verdict.txt'
     $nativeVerdict=if(Test-Path -LiteralPath $verdictPath -PathType Leaf) { (Get-Content -LiteralPath $verdictPath -Raw).Trim() } else { $null }
@@ -559,7 +574,7 @@ try {
         Attempt { $runs=Join-Path $artLocal 'shared-input'; if((Test-Path -LiteralPath $runs) -and !@(Get-ChildItem -LiteralPath $runs -Recurse -File).Count -and !($artBefore | Where-Object { Within $_ $runs })) { Remove-Item -LiteralPath $runs -Recurse } }
         # This run's bindings backups in the copy's mod folder: archived under after/copy-mod-new, then removed; earlier
         # backups must be unchanged (a change fails restoration and keeps the lease).
-        if($ui) { Attempt {
+        if($ui -or $ManualUi) { Attempt {
             $movedBackups=Move-NewBindingBackups $mod $modBackupsBefore (Join-Path $Result 'after/copy-mod-new')
             if($movedBackups.Count) { $movedBackups | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath "$Result/copy-mod-backups-moved.json" }
         } }
