@@ -485,7 +485,7 @@ try {
         try {
             $reply=& (Join-Path $PSScriptRoot 'Send-ControlsCommand.ps1') -Command Stop -Nonce $controlsSpec.nonce -GameProcessId $game.Id -ExpectedStartTimeUtc $processStart -GameDir $GameDir
             $reply | Set-Content -LiteralPath (Join-Path $Result 'controls-stop.txt')
-            if($reply -notmatch '^OK controls test stopped') { throw 'Controls Stop refused.' }
+            if($reply -notmatch '^controls test stopped') { throw 'Controls Stop refused.' }
         } catch { $controlsStopError=$_.Exception.Message; $controlsStopError | Set-Content -LiteralPath (Join-Path $Result 'controls-stop-error.txt') }
     }
     if($game -and !$game.HasExited) {

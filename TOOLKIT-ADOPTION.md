@@ -225,8 +225,10 @@ STD-011/012/013/014/016/017/018/019 entries remain unchecked.
 
 The copy-only UI follow-up consumes the existing ControlsPipe return value,
 which has already removed the wire `OK ` prefix. Its status predicate now
-checks `native=`. Four focused cases extract the actual transport/caller
-statements and cover accepted status, server refusal and malformed prefixes
+checks `native=`; its Stop predicate likewise checks `controls test stopped`.
+Eight focused cases extract the actual transport/caller statements and the
+recorder's Stop reply, covering accepted replies, cross-command replies,
+server refusal and malformed prefixes
 without a game, pipe or native module. Physical input/action acceptance and
 the separate elevated-client pipe authentication correction remain unqualified.
 Existing partial/unchecked ledger entries remain open outside this harness fix.
