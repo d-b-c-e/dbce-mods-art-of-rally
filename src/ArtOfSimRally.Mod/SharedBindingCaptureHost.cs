@@ -137,12 +137,25 @@ namespace ArtOfSimRally.Mod
             { message = "That saved device is not available for capture. Its prior binding was kept; restart or use standalone setup for new devices."; return; }
             flow.Begin(id, instance, Editable); rows = null;
         }
-        public void CancelCapture() { flow.Cancel(); rows = null; }
+        public void CancelCapture()
+        {
+            string before = action; double? age = flow.CaptureObservationAge;
+            flow.Cancel(); CaptureChanged(before, age); rows = null;
+        }
+        private void CaptureChanged(string before, double? previousAge)
+        {
+            if (before == action) return;
+            rows = null;
+            if (before != null && action == null)
+                ModLog.Info("Binding capture ended: action=" + before + "; priorAcceptedSampleAgeMs=" +
+                    (previousAge.HasValue ? (previousAge.Value * 1000).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) : "unknown") +
+                    "; reason=" + message);
+        }
         private void Refresh()
         {
-            string before = action;
+            string before = action; double? age = flow.CaptureObservationAge;
             flow.Refresh(canEdit());
-            if (before != action) rows = null;
+            CaptureChanged(before, age);
         }
 
         internal void ObserveAccepted(string name, string ownedPath, byte[] metadata, byte[] sample, Guid? expectedInstance = null)
@@ -185,10 +198,10 @@ namespace ArtOfSimRally.Mod
             }
             for (int i = 0; i < 128; i++) buttons[i] = (metadata[64 + i / 8] & (1 << (i % 8))) != 0 && (sample[84 + i] & 0x80) != 0;
             for (int i = 0; i < 4; i++) { int hat = BitConverter.ToInt32(sample, 212 + i * 4); hats[i] = (hatMask & (1u << i)) != 0 && hat >= 0 && hat < 36000 ? hat : -1; }
-            string before = action;
+            string before = action; double? age = flow.CaptureObservationAge;
             flow.Observe(new AcceptedBindingObservation(instance, product, name, ownedPath, generation, BitConverter.ToUInt64(sample, 16), clock(),
                 new BindingCaptureSnapshot(axes, buttons, hats), minimum, maximum), draft != null && canEdit());
-            if (before != action) rows = null;
+            CaptureChanged(before, age);
         }
         internal void ReaderStopped() { flow.ReaderStopped(); rows = null; }
         public void Clear(string id) { if (Editable && action == null && Shown(id)) { draft.Set(id, null); rows = null; } }

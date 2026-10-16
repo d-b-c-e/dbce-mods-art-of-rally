@@ -7,9 +7,10 @@ Additive shared lifecycle/contract source `ControlProfileDraft.cs` and `BindingE
 `3427ab1dc34ca03f87f3fc905c18a5f76e12314d` (checked-Save error handling and nullable view defaults corrected).
 The three original parser/capture/document files remain unchanged.
 
-`BindingCaptureFlow.cs` is the additive shared clock-injected lifecycle from toolkit
-`bcfb8522b1583fc61b66aa7ecfc48a733f979f38`. Its working-byte SHA-256 is
-`A524F8FFF754CDBC759D151A81ED12FEE1520E3A68924CE3311D8393C4B6E926`.
+`BindingCaptureFlow.cs` is the shared clock-injected lifecycle from toolkit
+`e99e7cc9000c6742c82f86ec63698f3651d39be7`. It distinguishes stale observations from device identity changes
+without changing the freshness rule, and exposes sample age for the host cancellation log.
+Its working-byte SHA-256 is `D01461856BC6142AF55149F1DD5C72EC10ABFF329A64264378B65CE646A5A8EF`.
 
 | File | SHA-256 of the working bytes |
 | --- | --- |

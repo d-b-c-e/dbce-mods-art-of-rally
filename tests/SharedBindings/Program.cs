@@ -49,6 +49,8 @@ internal static class Program
             double time = 0; bool allowed = true;
             var host = new SharedBindingCaptureHost(path, File.ReadAllBytes(path), () => time, () => allowed, () => sourceNow);
             var metadata = Metadata();
+            var captureLogs = new System.Collections.Generic.List<string>();
+            ModLog.Attach(captureLogs.Add, null, null);
             host.ObserveAccepted("Fixture wheel", "owned-fixture-path", metadata, Sample());
             Check(host.Access == SharedBindingAccess.Editable && host.Devices.Count == 1, "only an accepted qualified cache enables capture");
             // Art actions (sana 162429): select has no row; look back, recover car and horn are ordinary bindable rows.
@@ -130,8 +132,12 @@ internal static class Program
             Check(!masks.HasDraft, "axis, range, button and hat masks suppress unavailable objects");
             masks.ReaderStopped(); Check(masks.CapturingAction == null && !masks.HasDraft, "stopped reader cancels capture without a replacement");
             masks.ObserveAccepted("Masked fixture", "owned-mask-path", metadata, Sample()); masks.Clear("confirm");
-            masks.BeginCapture("steer"); time += .3;
+            masks.BeginCapture("steer"); captureLogs.Clear(); time += .3;
             Check(masks.CapturingAction == null && masks.HasDraft, "stale cache cancels capture and preserves an earlier draft");
+            Check(masks.CaptureMessage.Contains("no fresh input sample") && !masks.CaptureMessage.Contains("disconnected"), "stale polling is distinct from a physical identity change");
+            Check(captureLogs.Count == 1 && captureLogs[0].Contains("priorAcceptedSampleAgeMs=300.0") && captureLogs[0].Contains("no fresh input sample"), "cancellation logs one concrete reason and prior accepted-sample age");
+            var ignoredRows = masks.Rows; var ignoredCapture = masks.CapturingAction;
+            Check(captureLogs.Count == 1, "repeated UI reads do not log the same cancellation again");
             masks.ObserveAccepted("Masked fixture", "owned-mask-path", metadata, Sample()); masks.BeginCapture("steer");
             for (int i = 0; i < 120; i++) { time += .1; masks.ObserveAccepted("Masked fixture", "owned-mask-path", metadata, Sample()); }
             Check(masks.CapturingAction == null && masks.HasDraft, "timeout with fresh unchanged samples preserves an earlier draft");

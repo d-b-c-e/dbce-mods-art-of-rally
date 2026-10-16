@@ -47,6 +47,7 @@ namespace Dbce.Wheel.Input
         public Guid CaptureDevice { get; private set; }
         public string Message { get; set; } = "Bind a control, review the draft, then Save bindings. Restart to use saved changes.";
         public double SecondsLeft => CapturingAction == null ? 0 : Math.Max(0, deadline - clock());
+        public double? CaptureObservationAge => devices.TryGetValue(CaptureDevice, out var device) ? clock() - device.Seen : (double?)null;
         public bool HasFreshObservation
         { get { foreach (var value in devices.Values) if (Fresh(value)) return true; return false; } }
         public IReadOnlyList<AcceptedBindingObservation> Observations
@@ -104,8 +105,10 @@ namespace Dbce.Wheel.Input
         {
             if (CapturingAction == null) return;
             if (!canEdit) Cancel("Capture canceled because the settings lost focus or the main menu closed. The prior binding was kept.");
-            else if (!devices.TryGetValue(CaptureDevice, out var device) || !Fresh(device) || device.Generation != generation)
+            else if (!devices.TryGetValue(CaptureDevice, out var device) || device.Generation != generation)
                 Cancel("Capture device disconnected or changed. The prior binding was kept.");
+            else if (!Fresh(device))
+                Cancel("Capture canceled because no fresh input sample arrived. The prior binding was kept.");
             else if (clock() >= deadline) Cancel("Capture timed out. Release other controls and try again; the prior binding was kept.");
         }
         public bool Observe(AcceptedBindingObservation value, bool canEdit)
