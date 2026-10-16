@@ -158,8 +158,8 @@ namespace ArtOfSimRally.Testing
                 {
                     Add("final-controls-top", () => { Select("Simple", 0); Scroll(0); }, null);
                     // Samples of the rc26 native-action rows, using widget focus only (no binding/capture command).
-                    // The row below the first game-only action keeps the common source summaries and hold notes above it.
-                    Add("final-actions-top", () => { Select("Simple", 0); Scroll(0); Focus("art-QuickRestart-bind"); }, null);
+                    // The row after Restart keeps its multi-line eligibility note fully above the focused button.
+                    Add("final-actions-top", () => { Select("Simple", 0); Scroll(0); Focus("art-LookLeft-bind"); }, null);
                     Add("final-actions-lower", () => Focus("art-LookForward-bind"), null);
                     Add("final-cameras-top", () => { Select("Simple", 2); Scroll(0); }, null);
                     Add("final-cameras-lower", () => { SetValue(_panel, "_cameraKeys", true); Scroll(100000); },

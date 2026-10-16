@@ -15,9 +15,9 @@ It cannot show the new native-action rows or the styled camera binding rows.
 This recorder-only follow-up retains the final mode, host Save, one-copy launch,
 expiry/abort and restoration helpers, and adds exactly two action samples:
 
-- final-actions-top uses existing widget Focus on art-QuickRestart-bind, the row
-  after Repair puncture, to reveal the preceding common-action source summaries
-  and hold/eligibility notes without activating a command.
+- final-actions-top uses existing widget Focus on art-LookLeft-bind, the row
+  after Restart, to keep Restart's complete multi-line eligibility note above
+  the focused button and reveal preceding action/source rows without activating a command.
 - final-actions-lower focuses art-LookForward-bind for the later action rows.
 - The existing final-cameras-lower step opens the in-memory adjustment-bindings
   disclosure before scrolling down. The original disclosure value is saved and
@@ -54,3 +54,7 @@ panel images unless separately observed; no automated activation is fabricated.
 After the visual check, prepare exact existing-installer owner update from
 normalCCCD/companionD537, game closed, preserving current configs/profile/saves,
 all nonowned files and rollback. Do not reopen accepted driving/forces/performance.
+
+Valo166575 source review confirmed actual focus IDs, unconditional action rows,
+disclosure restore and12/11count. The first sample follows the saved-row rule:
+focus LookLeft below Restart so its full eligibility note is not cut by reveal.
