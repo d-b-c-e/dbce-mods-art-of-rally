@@ -32,6 +32,6 @@ Assert-Identity
 . (Join-Path $PSScriptRoot 'ControlsPipe.ps1')
 $line='CONTROLS '+$Command.ToUpperInvariant()+' '+$Nonce
 if($Command -eq 'Raw') { $line+=' '+$Raw }
-$reply=Invoke-ControlsPipeCommand -PipeName "ArtOfSimRally.DevRecorder.$GameProcessId" -Line $line
+$reply=Invoke-ControlsPipeCommand -PipeName "ArtOfSimRally.DevRecorder.$GameProcessId" -Line $line -ServerProcessId $GameProcessId -ServerStartUtcTicks $ExpectedStartTimeUtc.UtcTicks -ServerImage $expectedExe
 Assert-Identity
 $reply
