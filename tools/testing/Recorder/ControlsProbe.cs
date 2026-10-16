@@ -129,7 +129,7 @@ namespace ArtOfSimRally.Testing
             _patches.Patch(AccessTools.Method(input, "SaveCalibration"), prefix: new HarmonyMethod(typeof(ControlsProbe), nameof(RefuseAssignmentBool)) { priority = Priority.First });
             _patches.Patch(AccessTools.Method(mod.GetType("ArtOfSimRally.Mod.Shifter", true), "PollForBinding"), prefix: new HarmonyMethod(typeof(ControlsProbe), nameof(RefuseAssignment)) { priority = Priority.First });
             _patches.Patch(read, postfix: new HarmonyMethod(typeof(ControlsProbe), nameof(AfterRead)) { priority = Priority.Last });
-            foreach (var name in new[] { "GetButton", "GetButtonDown", "GetNegativeButton", "GetNegativeButtonDown" })
+            foreach (var name in new[] { "GetButton", "GetButtonDown", "GetButtonUp", "GetNegativeButton", "GetNegativeButtonDown" })
                 _patches.Patch(AccessTools.Method(typeof(Player), name, new[] { typeof(int) }), postfix: new HarmonyMethod(typeof(ControlsProbe), nameof(ObserveButton)) { priority = Priority.Last });
             _patches.Patch(AccessTools.Method(typeof(Player), "GetAxis", new[] { typeof(int) }), postfix: new HarmonyMethod(typeof(ControlsProbe), nameof(ObserveAxis)) { priority = Priority.Last });
             _patches.Patch(AccessTools.Method(typeof(AxisCarController), "GetInput"), postfix: new HarmonyMethod(typeof(ControlsProbe), nameof(ObserveCarInput)) { priority = Priority.Last });
@@ -183,7 +183,8 @@ namespace ArtOfSimRally.Testing
                     if (VerifiedNativeModule() != _nativeModule) { Close("native reader module changed"); return; }
                 }
                 WatchedActions.Clear();
-                foreach (int fixedId in new[] { 14, 17, 19, 61 }) WatchedActions.Add(fixedId);
+                // rc26 native consumers: orbit 22/63, horn 30, recover/repair/restart 44/45/46.
+                foreach (int fixedId in new[] { 14, 17, 19, 22, 30, 44, 45, 46, 61, 63 }) WatchedActions.Add(fixedId);
                 foreach (var field in _menuActions) { int id = (int)field.GetValue(null); if (id >= 0) WatchedActions.Add(id); }
                 Row("binding-values", "focused=" + Application.isFocused + " " + string.Join(" ", _channels.Cast<object>().Select(c => c + "=" + Convert.ToString(_value.Invoke(null, new[] { c }), CultureInfo.InvariantCulture))));
                 Row("native-status", _native.Status);
