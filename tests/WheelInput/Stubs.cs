@@ -163,7 +163,11 @@ namespace ArtOfSimRally.Mod
         public static string Path;
         public static int Saves;
         public static bool SaveSettings() { Saves++; SettingsPersistence.Write(Settings, Path); return true; }
+        internal static bool HasFocus() => Application.isFocused; // as Main.SettingsUi
     }
+    // The UI's legacy-editor lock, read by SharedInputStartup's host editability callback. Of the production
+    // expression only the Art assignment exists in this fixture; camera keys, panels and the settings key are UI.
+    internal static class SettingsPanel { internal static bool LegacyEditing => WheelInput.Assigning.HasValue; }
     internal static class ModLog
     {
         public static Action<string> Observe;

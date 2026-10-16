@@ -3,6 +3,9 @@
     <OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings><Nullable>disable</Nullable>
     <GameDir Condition="'$(GameDir)' == ''">D:\Program Files (x86)\Steam\steamapps\common\artofrally</GameDir>
+    <!-- DriveTrial.Sample's clutch and H-pattern fields are filled only by the mod's ShimDrive postfix, which needs
+         the game's car types and is not linked here. -->
+    <NoWarn>$(NoWarn);CS0649</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../ShimInput/BridgeTests.cs" Link="BridgeTests.cs" />
@@ -21,6 +24,13 @@
     <Compile Include="../../src/ArtOfSimRally.Mod/Settings.cs" Link="Settings.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/SettingsPersistence.cs" Link="SettingsPersistence.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/SettingsCommit.cs" Link="SettingsCommit.cs" />
+    <!-- The real shared binding host that WheelInput.Shim and SharedInputStartup call, with the same closure as
+         tests/SharedBindings (BindingSampleClock comes with Shim/*.cs above). -->
+    <Compile Include="../../src/ArtOfSimRally.Mod/SharedBindingCaptureHost.cs" Link="SharedBindingCaptureHost.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/SharedBindingDraft.cs" Link="SharedBindingDraft.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/Toolkit/Input/*.cs" Link="Toolkit/%(Filename)%(Extension)" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/Toolkit/Ui/SettingsPresentation.cs" Link="SettingsPresentation.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/Toolkit/Ui/BindingSaveStatus.cs" Link="BindingSaveStatus.cs" />
     <Reference Include="UnityEngine.CoreModule"><HintPath>$(GameDir)/artofrally_Data/Managed/UnityEngine.CoreModule.dll</HintPath></Reference>
     <Reference Include="UnityModManager"><HintPath>../../lib/umm/UnityModManager.dll</HintPath></Reference>
   </ItemGroup>
