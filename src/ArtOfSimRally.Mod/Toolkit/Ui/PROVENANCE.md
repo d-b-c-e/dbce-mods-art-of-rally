@@ -21,3 +21,23 @@ Optional ISharedBindingSaveStatus does not change ISharedBindingHost. Failed Sav
 text persists independently of capture/general status; only successful Save,
 explicit Discard, or a new host clears it. No writer/capture/ActiveSaved/force
 policy changes. Source-linked regressions are prepared; build/run pending.
+
+
+## October16 small Help repository links (source only)
+
+F6Style.cs now comes byte-exact from toolkit d06aee8a27572c013489981fc4f4b9ee08d28123,
+shared/ui/F6Style.cs, MIT; SHA256
+FDDD107F1DA5B1511A33FC4ABA1A1C414A464155A2736A5A63AE5FBB544504F8.
+Adds shared22-unit text-link height/1-unit underline; all existing palette and layout rules retained.
+This supersedes the earlier pin for this file only. No build, suite, game,
+report submission, URL change, owner install or rendered acceptance accompanies it.
+
+
+## October16 small Help repository links (source only)
+
+F6Widgets.cs now comes byte-exact from toolkit d06aee8a27572c013489981fc4f4b9ee08d28123,
+shared/ui/unity/F6Widgets.cs, MIT; SHA256
+5CB1C7CA3099441D5976E5CB0A73EC0E273EECECA482DF1D500179FF2CE8F2E1.
+Link uses help-size accent text, transparent states and an underline; existing Press owns focus/input.
+This supersedes the earlier pin for this file only. No build, suite, game,
+report submission, URL change, owner install or rendered acceptance accompanies it.

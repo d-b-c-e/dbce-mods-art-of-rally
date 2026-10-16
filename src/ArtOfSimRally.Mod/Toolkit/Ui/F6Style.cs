@@ -48,8 +48,10 @@ namespace Dbce.Wheel.Ui
         public const float ControlColumn = 340f;
         public const float ButtonPadX = 12f, ButtonPadY = 6f, ButtonMinWidth = 64f, StepButton = 36f, ValueWidth = 80f;
         public const float SegmentMinWidth = 56f, TabPadX = 18f, TabPadY = 10f, TabLine = 2f, FocusLine = 1f;
-        public const float LabelMinWidth = 200f, EditorMinWidth = 220f, StackBelow = 720f;
+        public const float LabelMinWidth = 200f, EditorMinWidth = 220f, StackBelow = 720f, SliderMinWidth = 120f;
         public const int BodySize = 16, HelpSize = 14, HeadingSize = 20, TitleSize = 22;
+        /// <summary>Small repository text links use help text and no command-button surface.</summary>
+        public const float LinkHeight = 22f, LinkUnderline = 1f;
     }
 
     /// <summary>Where a row's label and editor go for a given body width (Wheelkit's two columns, or stacked).</summary>
@@ -76,13 +78,45 @@ namespace Dbce.Wheel.Ui
         }
     }
 
+    /// <summary>
+    /// Where a number editor's parts go inside its editor column, left to right: slider, minus, value, plus, then an
+    /// optional Default command. Offsets are from the editor's left edge, in the same units as its width. Renderers that
+    /// draw with rectangles (stripped IL2CPP hosts) use this instead of their own arithmetic, so every host lines up.
+    /// </summary>
+    public struct F6NumberEditor
+    {
+        public readonly float SliderX, SliderWidth, MinusX, ValueX, PlusX, DefaultX, DefaultWidth;
+        private F6NumberEditor(float sliderWidth, float defaultWidth)
+        {
+            float g = F6Metrics.RowGap;
+            SliderX = 0; SliderWidth = sliderWidth;
+            MinusX = sliderWidth + g;
+            ValueX = MinusX + F6Metrics.StepButton + g;
+            PlusX = ValueX + F6Metrics.ValueWidth + g;
+            DefaultWidth = defaultWidth;
+            DefaultX = defaultWidth > 0 ? PlusX + F6Metrics.StepButton + g : PlusX + F6Metrics.StepButton;
+        }
+        /// <summary>The fixed parts take their metrics; the slider takes the rest (never below SliderMinWidth).</summary>
+        public static F6NumberEditor For(float editorWidth, float defaultWidth = 0)
+        {
+            float g = F6Metrics.RowGap;
+            float fixedParts = 2 * F6Metrics.StepButton + F6Metrics.ValueWidth + 3 * g + (defaultWidth > 0 ? defaultWidth + g : 0);
+            float slider = float.IsNaN(editorWidth) ? F6Metrics.SliderMinWidth : Math.Max(F6Metrics.SliderMinWidth, editorWidth - fixedParts);
+            return new F6NumberEditor(slider, Math.Max(0, defaultWidth));
+        }
+        /// <summary>The editor width that fits every part with a slider of the minimum width.</summary>
+        public static float Needs(float defaultWidth = 0) =>
+            F6Metrics.SliderMinWidth + 2 * F6Metrics.StepButton + F6Metrics.ValueWidth + 3 * F6Metrics.RowGap + (defaultWidth > 0 ? defaultWidth + F6Metrics.RowGap : 0);
+    }
+
     /// <summary>Lays out measured items (segments, commands) left to right, wrapping into more lines when they do not
     /// fit, so nothing is clipped or drawn past the body. Returns the line index for each item.</summary>
     public static class F6Flow
     {
         public static int[] Lines(float[] widths, float available, float gap, out int lineCount)
         {
-            var lines = new int[widths == null ? 0 : widths.Length];
+            if (widths == null) { lineCount = 0; return new int[0]; }
+            var lines = new int[widths.Length];
             lineCount = lines.Length == 0 ? 0 : 1;
             float x = 0;
             for (int i = 0; i < lines.Length; i++)

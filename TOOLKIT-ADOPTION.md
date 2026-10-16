@@ -207,3 +207,16 @@ two action samples and camera-binding disclosure with exact in-memory restore.
 No new reader/mode/force/binding authority; recorder build and one later muted
 copy capture remain pending. See docs/reviews/2026-10-15-rc26-final-ui-followup.md.
 Preexisting partial/unchecked standards stay open outside this source scope.
+
+
+October16 Help link presentation (request176441), source-only successor:
+Shared toolkit d06aee8a supplies LinkHeight/LinkUnderline metrics and the small
+F6Widgets.Link renderer. Mod on GitHub and Wheelkit on GitHub now appear as
+underlined help-size text below the separate unchanged issue/report action.
+Art/DRIVE consume the exact shared widgets; stripped IL2CPP hosts retain their
+existing focus/input/render primitives with the same shared metrics/palette.
+URLs, report preparation/review/submission, persistence and tuning are unchanged.
+Affected compile and rendered qualification remain unrun; no styling suite added.
+Ledger comparison found existing entries missing for STD-025/026/028/029/032;
+those remain unaudited outside this Help slice. Existing unchecked
+STD-011/012/013/014/016/017/018/019 entries remain unchecked.

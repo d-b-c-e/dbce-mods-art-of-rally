@@ -33,8 +33,8 @@ namespace ArtOfSimRally.Mod
         {
             Heading("Help on GitHub");
             if (RightButton("Submit GitHub Issue", 190)) _issueOpen = true;
-            if (RightButton("Mod on GitHub", 160)) OpenIssueUrl(IssueProduct().ModPage);
-            if (RightButton("Wheelkit on GitHub", 180)) OpenIssueUrl(IssueProduct().WheelkitPage);
+            if (W.Link("help-mod-github", "Mod on GitHub")) OpenIssueUrl(IssueProduct().ModPage);
+            if (W.Link("help-wheelkit-github", "Wheelkit on GitHub")) OpenIssueUrl(IssueProduct().WheelkitPage);
             if (!_issueOpen) { Help(_issueStatus); return; }
 
             string title = Field("issue-title", "Issue title", _issueTitle);

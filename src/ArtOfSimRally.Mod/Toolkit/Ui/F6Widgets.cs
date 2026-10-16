@@ -29,7 +29,7 @@ namespace Dbce.Wheel.Ui.Unity
         private string _focusRequest;
         private bool _inBody;
         private GUIStyle _label, _help, _heading, _title, _titleWrap, _subtitle, _text, _button, _buttonWrap, _segment, _segmentOn, _segmentWrap, _segmentOnWrap, _tab, _tabOn, _value,
-            _warningTitle, _slider, _thumb;
+            _warningTitle, _slider, _thumb, _link;
         private GUISkin _builtSkin;
         private float _builtScale = -1f;
         private static readonly Dictionary<int, Texture2D> Textures = new Dictionary<int, Texture2D>();
@@ -157,6 +157,22 @@ namespace Dbce.Wheel.Ui.Unity
                 height = Mathf.Max(height, style.CalcHeight(content, width));
             }
             return Press(id, content, style, enabled, GUILayout.Width(width), GUILayout.Height(height));
+        }
+
+        /// <summary>A small underlined text link; the host owns the destination and opening it.</summary>
+        public bool Link(string id, string label)
+        {
+            var content = new GUIContent(label);
+            float width = Mathf.Max(S(1), Mathf.Min(S(BodyWidth), _link.CalcSize(content).x));
+            float height = Mathf.Max(S(F6Metrics.LinkHeight), _link.CalcHeight(content, width));
+            bool clicked = Press(id, content, _link, true, GUILayout.Width(width), GUILayout.Height(height), false);
+            if (Event.current.type == EventType.Repaint)
+            {
+                Rect r = GUILayoutUtility.GetLastRect();
+                Fill(new Rect(r.x, r.yMax - S(3), r.width, S(F6Metrics.LinkUnderline)),
+                    GUI.GetNameOfFocusedControl() == id ? F6Palette.Text : F6Palette.Accent);
+            }
+            return clicked;
         }
 
         /// <summary>One option of a segmented choice (Off / On, Simple / Advanced, ...).</summary>
@@ -475,6 +491,11 @@ namespace Dbce.Wheel.Ui.Unity
             _label.fontStyle = FontStyle.Bold;
             _text = Style(GUI.skin.label, F6Metrics.BodySize, F6Palette.Text, true);
             _help = Style(GUI.skin.label, F6Metrics.HelpSize, F6Palette.Secondary, true);
+            _link = Style(GUI.skin.label, F6Metrics.HelpSize, F6Palette.Accent, true);
+            _link.padding = _link.margin = _link.border = new RectOffset();
+            _link.alignment = TextAnchor.MiddleLeft;
+            Backgrounds(_link, F6Palette.Window.WithAlpha(0f), F6Palette.Window.WithAlpha(0f), F6Palette.Window.WithAlpha(0f));
+            _link.hover.textColor = _link.active.textColor = _link.focused.textColor = ToColor(F6Palette.Text);
             _heading = Style(GUI.skin.label, F6Metrics.HeadingSize, F6Palette.Text, true);
             _heading.fontStyle = FontStyle.Bold;
             _heading.margin = new RectOffset(0, 0, Mathf.RoundToInt(S(14)), Mathf.RoundToInt(S(4)));
