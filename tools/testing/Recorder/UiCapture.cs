@@ -56,7 +56,7 @@ namespace ArtOfSimRally.Testing
         private static object _widgets;
         private static Func<bool> _sharedStarted;
         // Saved for restoration.
-        private static bool _savedOpen, _savedFollowHost;
+        private static bool _savedOpen, _savedFollowHost, _savedCameraKeys;
         private static int _savedPage;
         private static string _savedView;
         private static Vector2 _savedWindow, _savedScroll;
@@ -157,8 +157,13 @@ namespace ArtOfSimRally.Testing
                 if (final)
                 {
                     Add("final-controls-top", () => { Select("Simple", 0); Scroll(0); }, null);
+                    // Samples of the rc26 native-action rows, using widget focus only (no binding/capture command).
+                    // The row below the first game-only action keeps the common source summaries and hold notes above it.
+                    Add("final-actions-top", () => { Select("Simple", 0); Scroll(0); Focus("art-QuickRestart-bind"); }, null);
+                    Add("final-actions-lower", () => Focus("art-LookForward-bind"), null);
                     Add("final-cameras-top", () => { Select("Simple", 2); Scroll(0); }, null);
-                    Add("final-cameras-lower", () => Scroll(100000), null);
+                    Add("final-cameras-lower", () => { SetValue(_panel, "_cameraKeys", true); Scroll(100000); },
+                        () => (bool)Value(_panel, "_cameraKeys") ? null : "camera adjustment bindings stayed collapsed");
                     Add("final-advanced-cameras-top", () => { Select("Advanced", 2); Scroll(0); }, null);
                 }
             }
@@ -316,7 +321,8 @@ namespace ArtOfSimRally.Testing
             return "visible " + Visible + " page " + page + " view " + view + " scale " + Scale.ToString("0.00", CultureInfo.InvariantCulture) +
                    " width " + Window.x.ToString("0", CultureInfo.InvariantCulture) + " access " + HostValue("Access") + " capturing " + (HostValue("CapturingAction") ?? "-") +
                    " draft " + HostValue("HasDraft") + " savedPendingRestart " + HostValue("SavedPendingRestart") + " closeWarned " + Value(_guard, "Warned") +
-                   " editing " + Value(_panel, "Editing") + " stockUiBlocked " + Value(_stock, "Blocked") + " sharedStarted " + SharedReady() +
+                   " editing " + Value(_panel, "Editing") + " cameraBindings " + Value(_panel, "_cameraKeys") +
+                   " stockUiBlocked " + Value(_stock, "Blocked") + " sharedStarted " + SharedReady() +
                    " focused " + Application.isFocused + " osForeground " + OsForeground() + " body " + Px(_presentation, "BodyHeight") + " estimate " + Px(_presentation, "PageHeight") +
                    " viewport " + Px(_presentation, "_viewport") + " panelTop " + Px(_presentation, "_panelTop") + " fixedRows " + Px(_presentation, "_fixedRows");
         }
@@ -378,6 +384,7 @@ namespace ArtOfSimRally.Testing
             Try("width", () => Width(_savedWindow.x));
             Try("text mode", () => FollowHost(_savedFollowHost));
             Try("page and view", () => Select(_savedView, _savedPage));
+            Try("camera binding disclosure", () => SetValue(_panel, "_cameraKeys", _savedCameraKeys));
             Try("scroll", () => SetValue(_panel, "_scroll", _savedScroll));
             Try("visibility", () => { if (Visible != _savedOpen) { if (_savedOpen) Call(_main, "ToggleSettings"); else Call(_main, "CloseSettings"); } });
             Try("close warning", () => Call(_guard, "Reset"));
@@ -394,9 +401,10 @@ namespace ArtOfSimRally.Testing
             _savedPage = stored >= 1 && stored <= 5 ? stored - 1 : 0;
             _savedWindow = Window;
             _savedScroll = (Vector2)Value(_panel, "_scroll");
+            _savedCameraKeys = (bool)Value(_panel, "_cameraKeys");
             _haveSaved = true;
             Event("saved state: open " + _savedOpen + " view " + _savedView + " page " + _savedPage + " followHost " + _savedFollowHost +
-                  " width " + _savedWindow.x.ToString("0", CultureInfo.InvariantCulture));
+                  " cameraBindings " + _savedCameraKeys + " width " + _savedWindow.x.ToString("0", CultureInfo.InvariantCulture));
         }
 
         // ---- panel and host access (reflection only) ----

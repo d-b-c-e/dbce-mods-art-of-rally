@@ -194,3 +194,16 @@ No collector/auth/network flow or input authority was added. Common fixture is
 scheduled once with Art's combined compile; no build/runtime qualification yet.
 See docs/reviews/2026-10-15-help-report.md. Existing unchecked/partial standards
 remain open outside the changed presentation and Help source scope.
+
+### Rc26 changed offline gates and private visual preparation (October15)
+
+Exact normal e914 compiled0warnings/errors, metadata351, actual package/companion
+installer/helper checks and all affected fixtures pass via retained hub79f7f780
+receipts, including common reporter45 at exactab638898/CA005A79. Production mod
+was not rebuilt for packaging/fixture-only repairs83c2dde/dcee. This does not
+qualify owner installation or rendered/physical actions. The existing final
+UiCapture scenario now has a minimal private recorder-only changed-row follow-up:
+two action samples and camera-binding disclosure with exact in-memory restore.
+No new reader/mode/force/binding authority; recorder build and one later muted
+copy capture remain pending. See docs/reviews/2026-10-15-rc26-final-ui-followup.md.
+Preexisting partial/unchecked standards stay open outside this source scope.
