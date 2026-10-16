@@ -220,3 +220,13 @@ Affected compile and rendered qualification remain unrun; no styling suite added
 Ledger comparison found existing entries missing for STD-025/026/028/029/032;
 those remain unaudited outside this Help slice. Existing unchecked
 STD-011/012/013/014/016/017/018/019 entries remain unchecked.
+
+### STD-033 - developer controls reply contract (2026-10-16)
+
+The copy-only UI follow-up consumes the existing ControlsPipe return value,
+which has already removed the wire `OK ` prefix. Its status predicate now
+checks `native=`. Four focused cases extract the actual transport/caller
+statements and cover accepted status, server refusal and malformed prefixes
+without a game, pipe or native module. Physical input/action acceptance and
+the separate elevated-client pipe authentication correction remain unqualified.
+Existing partial/unchecked ledger entries remain open outside this harness fix.

@@ -443,7 +443,7 @@ try {
                     if(!(Test-Path -LiteralPath (Join-Path $controlsSpec.out 'identity.txt'))) { throw 'Cold controls probe did not arm; no action tail.' }
                     $reply=& (Join-Path $PSScriptRoot 'Send-ControlsCommand.ps1') -Command Status -Nonce $controlsSpec.nonce -GameProcessId $game.Id -ExpectedStartTimeUtc $processStart -GameDir $GameDir
                     $reply | Set-Content -LiteralPath (Join-Path $Result 'controls-status.txt')
-                    if($reply -notmatch '^OK native=') { throw 'Controls probe status refused; no action tail.' }
+                    if($reply -notmatch '^native=') { throw 'Controls probe status refused; no action tail.' }
                     $controlsAdmitted=$true
                     @{nonce=$controlsSpec.nonce;pid=$game.Id;createdUtc=$processStart.ToString('o');game=$GameDir;out=$controlsSpec.out;deadlineUtc=$deadline.ToString('o');inputVerdict='unclassified';automaticRawCommands=0;nativeStageQualified=$false;nativeGlyphQualified=$false} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $Result 'controls-context.json')
                 }
