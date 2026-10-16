@@ -33,6 +33,9 @@ param([Parameter(Mandatory)][string]$Result,
       # script opens Wheel settings at the title, takes game-only shots of every page and the host's binding states, and
       # puts everything back. Explicit host calls only: no moved control, no OS input, no device API, outputs muted.
       [switch]$UiCapture,
+      # Explicit cold controls request for a bounded same-child tail after final UI.
+      [string]$ControlsFollowupRequest,
+      [ValidatePattern('^[A-Fa-f0-9]{64}$')][string]$ControlsFollowupSha256,
       # With -UiCapture: full (every page, both text modes, the narrow pass and the binding steps) or followup (normal FFB,
       # 640 Advanced Cameras at the larger scale and the binding steps; the bounded re-check after a fix, sana 126101) or
       # save (no page tour: the real Save of a validator-accepted non-steering clear, the next-start row and footer, a
@@ -150,6 +153,8 @@ $Result=Full $Result; Plain $Result
 $native=[bool]$RouteSource
 $replay=[bool]$ReplayTape
 $ui=[bool]$UiCapture
+$controls=[bool]$ControlsFollowupRequest
+if($controls -ne [bool]$ControlsFollowupSha256 -or ($controls -and (!$ui -or $UiSet -ne 'final'))) { throw 'A pinned controls follow-up belongs only to -UiCapture -UiSet final.' }
 if($ui -and ($native -or $replay -or $SharedCar)) { throw '-UiCapture runs alone: not with -RouteSource, -SharedCar or -ReplayTape.' }
 if($ui -and !$PSBoundParameters.ContainsKey('ObserveSeconds')) { $ObserveSeconds=240 }
 if(($Activate -or $PSBoundParameters.ContainsKey('UiSet')) -and !$ui) { throw '-Activate and -UiSet belong to -UiCapture.' }
@@ -229,6 +234,32 @@ $sessionRequest=Join-Path $env:LOCALAPPDATA 'ArtOfSimRally/session-request.txt'
 foreach($p in @('ArtOfSimRally/controls-request.txt','ArtOfSimRally/session-request.txt','dbce/art-of-rally/inject.on')) {
     if(Test-Path -LiteralPath (Join-Path $env:LOCALAPPDATA $p)) { throw "Existing developer marker refused: $p" }
 }
+$controlsRequestPath=Join-Path $env:LOCALAPPDATA 'ArtOfSimRally/controls-request.txt'
+$controlsSwitchPath=Join-Path $env:LOCALAPPDATA 'dbce/art-of-rally/inject.on'
+$controlsSpec=$null; $controlsStopSent=$false; $controlsAdmitted=$false; $controlsStopError=$null
+function Assert-ControlsFollowupFields($v,$expected,[DateTimeOffset]$now) {
+    if($v.Count -ne 7 -or $v.expiresUtc -notmatch '(Z|\+00:00)$' -or $v.uiSet -cne 'final' -or $v.nonce -cnotmatch '^[0-9a-f]{32}$' -or $v.nonce -eq ('0'*32)) { throw 'Invalid explicit controls-tail request.' }
+    $expires=[DateTimeOffset]::Parse($v.expiresUtc,[Globalization.CultureInfo]::InvariantCulture)
+    if($expires -le $now -or $expires -gt $now.AddMinutes(5)) { throw 'Controls request expired or exceeds the existing five-minute bound.' }
+    foreach($key in $expected.Keys) { if($v[$key] -cne $expected[$key]) { throw ('Controls request differs: '+$key) } }
+}
+function Read-ControlsFollowup {
+    Plain $ControlsFollowupRequest
+    if((Hash $ControlsFollowupRequest) -ine $ControlsFollowupSha256 -or (Get-Item $ControlsFollowupRequest).Length -gt 16384) { throw 'Pinned controls request changed or is oversized.' }
+    $v=@{}
+    foreach($line in Get-Content -LiteralPath $ControlsFollowupRequest) { $pair=$line.Split('=',2); if($pair.Count -ne 2 -or $v.ContainsKey($pair[0])) { throw 'Malformed/duplicate controls request field.' }; $v.Add($pair[0],$pair[1]) }
+    $expected=@{modSha256=(Hash (Join-Path $mod 'ArtOfSimRally.Mod.dll'));settingsSha256=(Hash (Join-Path $mod 'Settings.xml'));nativeSha256=$latchedNatives[0];out=(Join-Path $Result 'controls')}
+    Assert-ControlsFollowupFields $v $expected ([DateTimeOffset]::UtcNow)
+    Plain $v.out
+    if(Test-Path -LiteralPath $v.out) { throw 'Fresh controls output required.' }
+    if((Hash $ControlsFollowupRequest) -ine $ControlsFollowupSha256) { throw 'Controls request changed during readback.' }
+    return $v
+}
+if($controls) {
+    if(!$forceOff -or $staged.files.'Mods/ArtOfSimRally/UnityForceFeedback.dll' -cne $latchedNatives[0]) { throw 'Controls tail requires the qualified load-time-muted native and staged FFB off.' }
+    $ControlsFollowupRequest=Full $ControlsFollowupRequest
+    $controlsSpec=Read-ControlsFollowup
+}
 Assert-GameClosed
 . (Join-Path $PSScriptRoot 'SteamLaunchContext.ps1')
 # SteamAPI_Init needs a running Steam client at the game's access level; refuse before any lease or snapshot.
@@ -289,6 +320,7 @@ try {
     # That Save leaves the replaced profile as a bindings backup in the copy's mod folder (CopyModResidue.ps1): record the
     # backups already there, so restoration archives and removes only this run's (sana 132976).
     if($ui) { Plain $mod; $modBackupsBefore=@(Get-BindingBackups $mod) }
+    if($controls) { Save-File $controlsRequestPath; Save-File $controlsSwitchPath }
     $snapshots | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath "$Result/shared-files.json"
     @{schema=1;gameDir=$GameDir;owner=$owner;lease=$lease;localBefore=$localBefore;artBefore=$artBefore;modBackupsBefore=$modBackupsBefore} | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath "$Result/recovery.json"
     $ready=$true
@@ -328,6 +360,15 @@ try {
     }
     # The copy's previous UMM log goes aside as evidence before launch, so every line observed belongs to this launch
     # (diag-02 read the previous launch's refusal line before Unity rewrote the log, and closed Art during startup).
+    if($controls) {
+        $controlsSpec=Read-ControlsFollowup
+        foreach($marker in @($controlsRequestPath,$controlsSwitchPath)) { Plain $marker; if(Test-Path -LiteralPath $marker) { throw 'Controls marker appeared; preserve and refuse.' } }
+        if(!(Test-Path -LiteralPath (Split-Path -Parent $controlsSwitchPath) -PathType Container)) { throw 'Existing shared controls directory required.' }
+        [IO.File]::WriteAllText($controlsSwitchPath,$controlsSpec.nonce)
+        Copy-Item -LiteralPath $ControlsFollowupRequest -Destination $controlsRequestPath
+        if((Hash $controlsRequestPath) -ine $ControlsFollowupSha256) { throw 'Cold controls request copy differs.' }
+        Copy-Item -LiteralPath $ControlsFollowupRequest -Destination (Join-Path $Result 'controls-request.txt')
+    }
     Set-UmmLogAside $umLog (Join-Path $Result 'umm-log-before-launch.txt')
     $exe=Join-Path $GameDir 'artofrally.exe'
     $childEnvironment=[ordered]@{
@@ -379,6 +420,7 @@ try {
     # Ends on a terminal shared line; after "first frame accepted" it keeps watching SettleSeconds for a stop.
     # A native-script run instead ends when the recorder has closed its capture.
     $deadline=[DateTime]::UtcNow.AddSeconds($ObserveSeconds); $outcome='timeout'; $settleUntil=$null
+    if($controls) { $expiry=([DateTimeOffset]::Parse($controlsSpec.expiresUtc)).UtcDateTime; if($expiry -lt $deadline) { $deadline=$expiry } }
     while(!$game.HasExited -and [DateTime]::UtcNow -lt $deadline) {
         Assert-StageRigLease -Path $lease.path -Token $lease.token
         if(@(Get-Process artofrally -ErrorAction SilentlyContinue | Where-Object Id -NE $game.Id).Count) { throw 'Another Art process appeared; do not answer Steam session dialogs.' }
@@ -396,7 +438,18 @@ try {
                 $complete=$endText.StartsWith('complete',[StringComparison]::Ordinal) -and $endText -match 'restore ok' -and !(Test-Path -LiteralPath (Join-Path $uiDir 'incomplete.txt'))
                 $unmet=if($endText -match 'unmet (\d+)') { [int]$Matches[1] } else { 0 }
                 $outcome=if($complete -and $unmet -eq 0) { 'ui-captured' } elseif($complete) { 'ui-captured-unmet' } elseif($endText.StartsWith('incomplete',[StringComparison]::Ordinal)) { 'ui-incomplete' } else { 'ui-failed' }
-                break
+                if(!$controls -or !$complete -or $unmet -ne 0) { break }
+                if(!$controlsAdmitted) {
+                    if(!(Test-Path -LiteralPath (Join-Path $controlsSpec.out 'identity.txt'))) { throw 'Cold controls probe did not arm; no action tail.' }
+                    $reply=& (Join-Path $PSScriptRoot 'Send-ControlsCommand.ps1') -Command Status -Nonce $controlsSpec.nonce -GameProcessId $game.Id -ExpectedStartTimeUtc $processStart -GameDir $GameDir
+                    $reply | Set-Content -LiteralPath (Join-Path $Result 'controls-status.txt')
+                    if($reply -notmatch '^OK native=') { throw 'Controls probe status refused; no action tail.' }
+                    $controlsAdmitted=$true
+                    @{nonce=$controlsSpec.nonce;pid=$game.Id;createdUtc=$processStart.ToString('o');game=$GameDir;out=$controlsSpec.out;deadlineUtc=$deadline.ToString('o');inputVerdict='unclassified';automaticRawCommands=0;nativeStageQualified=$false;nativeGlyphQualified=$false} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $Result 'controls-context.json')
+                }
+                $terminal=Join-Path $controlsSpec.out 'result.txt'
+                if(Test-Path -LiteralPath $terminal) { $why=Get-Content -LiteralPath $terminal -TotalCount 1; $outcome=if($why -ceq 'stopped by command') { 'ui-controls-observed-unclassified' } else { 'ui-controls-incomplete' }; break }
+                $outcome='ui-controls-timeout'
             }
         }
         elseif($lines -match 'Shared input (not used|stopped)') { $outcome='refused-or-stopped'; break }
@@ -424,6 +477,15 @@ try {
     if($evidence) { Write-Output "Evidence label: $evidence" }
     Write-Output "Observation: $outcome$(if($SharedCar) { '; shared car: ' + ($sharedCarSummary | ConvertTo-Json -Compress) } elseif($native) { '; ' + $(if($nativeVerdict) { $nativeVerdict -replace "`n", '; ' } else { 'no native verdict (inspect capture and logs)' }) } elseif($replay) { '; ' + $(if($replayLines.Count) { $replayLines[0] } else { 'no replay result (inspect replay and logs)' }) })"
 } finally {
+    if($controls -and $game -and !$game.HasExited -and !$controlsStopSent -and !(Test-Path -LiteralPath (Join-Path $controlsSpec.out 'result.txt'))) {
+        # One existing request-bound Stop; an unknown outcome cannot skip normal close/restoration.
+        $controlsStopSent=$true
+        try {
+            $reply=& (Join-Path $PSScriptRoot 'Send-ControlsCommand.ps1') -Command Stop -Nonce $controlsSpec.nonce -GameProcessId $game.Id -ExpectedStartTimeUtc $processStart -GameDir $GameDir
+            $reply | Set-Content -LiteralPath (Join-Path $Result 'controls-stop.txt')
+            if($reply -notmatch '^OK controls test stopped') { throw 'Controls Stop refused.' }
+        } catch { $controlsStopError=$_.Exception.Message; $controlsStopError | Set-Content -LiteralPath (Join-Path $Result 'controls-stop-error.txt') }
+    }
     if($game -and !$game.HasExited) {
         $game.Refresh()
         # Close only this exact child identity. Never command a Steam replacement.
@@ -434,6 +496,7 @@ try {
     if(Test-Path -LiteralPath $umLog) { Copy-Item -LiteralPath $umLog -Destination (Join-Path $Result 'umm-log.txt') }
     if($ui -and $launchAttempted) { @(Get-ChildItem -LiteralPath $mod -File | ForEach-Object { [pscustomobject]@{name=$_.Name;sha256=(Hash $_.FullName)} }) | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath "$Result/ui-copy-mod-after.json" }
     $errors=[Collections.Generic.List[string]]::new()
+    if($controlsStopError) { $errors.Add('Controls Stop: '+$controlsStopError) }
     $forceViolation=$null
     if($forceOff -and $launchAttempted) {
         # The launch's own UMM log: the mod loaded with ffb=False and never tried to initialise a force device.
@@ -455,6 +518,18 @@ try {
         if($opens.Count) { $forceViolation='Replay opened an input or force device; see device-check.json.' }
     }
     function Attempt([scriptblock]$work) { try { & $work } catch { $errors.Add($_.Exception.Message); Write-Warning $_.Exception.Message } }
+    if($ready -and $controls) {
+        # A foreign marker stops restoration and retains the lease after exact child closure.
+        & {
+            $markers=@($controlsRequestPath,$controlsSwitchPath)+@(Get-ChildItem -LiteralPath $artLocal -Filter 'controls-request.txt.*.taken' -File | Where-Object { (Get-Content -LiteralPath $_.FullName) -ccontains ('nonce='+$controlsSpec.nonce) } | ForEach-Object FullName)
+            foreach($marker in $markers) { Plain $marker; if(Test-Path -LiteralPath $marker) {
+                $text=Get-Content -LiteralPath $marker -Raw
+                if($text.Trim() -cne $controlsSpec.nonce -and !($text -split '\r?\n' -ccontains ('nonce='+$controlsSpec.nonce))) { throw 'Foreign controls marker; preserve and refuse restoration.' }
+                Copy-Item -LiteralPath $marker -Destination (Join-Path $Result ('after/'+[IO.Path]::GetFileName($marker)))
+                Remove-Item -LiteralPath $marker
+            } }
+        }
+    }
     if($ready -and $recorded) {
         # The recorder's request marker never outlives the run, launched or not.
         Attempt { if(Test-Path -LiteralPath $sessionRequest) { Remove-Item -LiteralPath $sessionRequest } }
