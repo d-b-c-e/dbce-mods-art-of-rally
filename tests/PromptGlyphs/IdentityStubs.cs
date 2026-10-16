@@ -29,7 +29,7 @@ namespace ArtOfSimRally.Mod.Shim
     internal sealed class Consumer
     {
         internal bool Started = true;
-        internal bool Terminal;
+        internal bool Terminal = false;
         internal readonly HashSet<int> Owned = new HashSet<int>();
         internal bool Owns(int index) => Owned.Contains(index);
         internal bool LatchedDelivery(int frame) => false;
@@ -52,7 +52,7 @@ namespace ArtOfSimRally.Mod.Shim
         internal Guid[] RewiredInstances;
         internal Isolation Isolation = new Isolation();
         internal Inventory Inventory = new Inventory();
-        internal long EpochBefore;
+        internal long EpochBefore = 0;
     }
 }
 namespace ArtOfSimRally.Mod
