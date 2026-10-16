@@ -402,6 +402,8 @@ static class Program
     {
         try
         {
+            if (args.Length == 2 && args[0] == "--ui-final-plan")
+            { UiFinalCapturePlanTests.Run(Path.GetFullPath(args[1])); return 0; }
             string root = Path.GetFullPath(args[0]);
             Check(!Directory.Exists(root), "use a fresh test evidence directory");
             string capture = Capture(root); Pipe(); Quit(Path.Combine(root, "quit-cases")); Policy(); Diagnostics(); Native(); assertions += SharedEvidenceTests.Run(Path.Combine(root, "shared-evidence"), (ok, why) => { if (!ok) throw new Exception(why); });

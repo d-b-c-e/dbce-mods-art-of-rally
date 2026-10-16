@@ -151,20 +151,22 @@ namespace ArtOfSimRally.Testing
             Action narrowAtLargerScale = () => { FollowHost(scaleB > scaleA ? !_savedFollowHost : _savedFollowHost); Width(640); };
             if (shortSet)
             {
-                // No page tour and no text-size or width change. The final payload's first start (sana 133112) adds only
-                // the render checks its different DLL needs: Controls with the guidance and footer, Cameras (the triple
-                // rows) in both views.
+                // Keep the existing width and text size. Final capture adds targeted render navigation;
+                // the binding save/close route below remains shared with the other short modes.
                 if (final)
                 {
-                    Add("final-controls-top", () => { Select("Simple", 0); Scroll(0); }, null);
-                    // Samples of the rc26 native-action rows, using widget focus only (no binding/capture command).
-                    // The row after Restart keeps its multi-line eligibility note fully above the focused button.
-                    Add("final-actions-top", () => { Select("Simple", 0); Scroll(0); Focus("art-LookLeft-bind"); }, null);
-                    Add("final-actions-lower", () => Focus("art-LookForward-bind"), null);
-                    Add("final-cameras-top", () => { Select("Simple", 2); Scroll(0); }, null);
-                    Add("final-cameras-lower", () => { SetValue(_panel, "_cameraKeys", true); Scroll(100000); },
-                        () => (bool)Value(_panel, "_cameraKeys") ? null : "camera adjustment bindings stayed collapsed");
-                    Add("final-advanced-cameras-top", () => { Select("Advanced", 2); Scroll(0); }, null);
+                    foreach (var capture in UiFinalCapturePlan.Create())
+                    {
+                        var target = capture;
+                        Add(target.Name, () =>
+                        {
+                            Select(target.View, target.Page);
+                            if (target.ExpandCameraBindings) SetValue(_panel, "_cameraKeys", true);
+                            if (target.Scroll.HasValue) Scroll(target.Scroll.Value);
+                            if (target.Focus != null) Focus(target.Focus);
+                        }, () => target.ExpandCameraBindings && !(bool)Value(_panel, "_cameraKeys")
+                            ? "camera adjustment bindings stayed collapsed" : null);
+                    }
                 }
             }
             else if (followup)
