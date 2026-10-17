@@ -44,7 +44,8 @@ param([Parameter(Mandatory)][string]$Result,
       # save (no page tour: the real Save of a validator-accepted non-steering clear, the next-start row and footer, a
       # plain close; sana 132306), final (save plus the Controls and Cameras render shots a new package DLL needs) or nextstart
       # (the start after a Save: active rows and source logged, the cleared row in full, a plain close; sana 133112).
-      [ValidateSet('full','followup','save','final','nextstart')][string]$UiSet='full',
+      # binding-status: real Cancel, invalid-steering Save/error persistence and editable Discard; no successful Save.
+      [ValidateSet('full','followup','save','final','nextstart','binding-status')][string]$UiSet='full',
       # With -UiCapture (sana 126190/126330; owner direction 2026-10-14 in the hub AGENTS.md: advance notice first): one
       # bare SetForegroundWindow on the exact child's own visible Unity window, because Art's force connect and its binding
       # editor both need a focused game. No keys, Alt taps or SendInput, one call and no retry; if Windows refuses, that

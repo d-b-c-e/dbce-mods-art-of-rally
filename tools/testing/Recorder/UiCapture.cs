@@ -48,7 +48,7 @@ namespace ArtOfSimRally.Testing
         private static float _armedAt, _stepAt, _sharedWaitUntil;
         private static string _pendingShot;
         private static long _lastSize = -1;
-        private static bool _active, _restored, _waitShared, _cleanStart;
+        private static bool _active, _restored, _waitShared, _cleanStart, _bindingStatusSet;
         private static readonly List<string> Notes = new List<string>();
 
         // Reflection targets (resolved once at arm).
@@ -73,8 +73,10 @@ namespace ArtOfSimRally.Testing
                 : string.Equals(set, "followup", StringComparison.OrdinalIgnoreCase) ? "followup"
                 : string.Equals(set, "save", StringComparison.OrdinalIgnoreCase) ? "save"
                 : string.Equals(set, "final", StringComparison.OrdinalIgnoreCase) ? "final"
+                : string.Equals(set, "binding-status", StringComparison.OrdinalIgnoreCase) ? "binding-status"
                 : string.Equals(set, "nextstart", StringComparison.OrdinalIgnoreCase) ? "nextstart" : null;
-            if (mode == null) throw new InvalidDataException("uiSet must be full, followup, save, final or nextstart, not " + set);
+            if (mode == null) throw new InvalidDataException("uiSet must be full, followup, save, final, nextstart or binding-status, not " + set);
+            _bindingStatusSet = mode == "binding-status";
             _log = log; _dir = dir; _until = untilUtc;
             _shots = Path.Combine(dir, "shots");
             Directory.CreateDirectory(_shots);
@@ -142,6 +144,7 @@ namespace ArtOfSimRally.Testing
         private static void Build(string mode)
         {
             Steps.Clear();
+            if (mode == "binding-status") { BuildBindingStatus(); return; }
             bool followup = mode == "followup", saveOnly = mode == "save", final = mode == "final", nextStart = mode == "nextstart";
             bool shortSet = saveOnly || final || nextStart;
             string[] views = { "Simple", "Advanced" };
@@ -266,6 +269,74 @@ namespace ArtOfSimRally.Testing
             Add("close-closed", () => Call(_main, "CloseSettings"), () => Visible ? "second close did not close" : null);
         }
 
+        // rc28 status-only follow-up through real host calls. Device/focus guards remain; GUI input dispatch is untested.
+        private static void BuildBindingStatus()
+        {
+            string action = null, beforeRows = null, beforeSource = null, profile = null, failure = null;
+            byte[] beforeBytes = null;
+            bool canceledWhileListening = false, saveResult = true;
+            string unchanged()
+            {
+                if (RowsSummary() != beforeRows || (string)HostValue("ActiveSource") != beforeSource) return "active/saved rows or source changed";
+                return File.ReadAllBytes(profile).SequenceEqual(beforeBytes) ? null : "profile bytes changed";
+            }
+            void editableIdle()
+            {
+                if (!Editable || HostValue("CapturingAction") != null)
+                    throw new InvalidOperationException("binding-status requires the real editable idle host: " + HostValue("AccessReason"));
+            }
+            Add("status-open", () => { if (!Visible) Call(_main, "ToggleSettings"); Select("Simple", 0); Scroll(0); },
+                () => Visible ? null : "settings did not open", false);
+            Add("bindings-ready", () => { }, () => SharedReady() ? null : "shared session not started", false);
+            Add("status-controls", () =>
+            {
+                editableIdle();
+                if (BindingFailure().Length != 0) throw new InvalidOperationException("binding-status requires no preexisting Save failure");
+                action = RowList().Where(r => (Prop(r, "Note") as string) == "" && BoundOf(Prop(r, "Active")) &&
+                    Prop(r, "IsAxis") is bool axis && !axis).Select(r => Prop(r, "Action") as string).FirstOrDefault();
+                if (action == null || !RowList().Any(r => (string)Prop(r, "Action") == "steer" && BoundOf(Prop(r, "Active"))))
+                    throw new InvalidOperationException("binding-status needs bound steering and one eligible digital action");
+                profile = Field(Host, "path") as string;
+                if (string.IsNullOrEmpty(profile)) throw new InvalidOperationException("binding host profile path unavailable");
+                beforeBytes = File.ReadAllBytes(profile); beforeRows = RowsSummary(); beforeSource = (string)HostValue("ActiveSource");
+                Event("binding-status baseline action " + action + " rows " + beforeRows + " source " + beforeSource);
+                Focus("bind-" + action);
+            }, () => Editable ? null : "host became read-only");
+            Add("status-listening", () => { editableIdle(); HostCall("BeginCapture", action); },
+                () => (string)HostValue("CapturingAction") == action ? null : "capture did not start");
+            Add("status-canceled", () =>
+            {
+                canceledWhileListening = (string)HostValue("CapturingAction") == action && Convert.ToDouble(HostValue("CaptureSecondsLeft")) > 0;
+                if (canceledWhileListening) HostCall("CancelCapture");
+                Event("binding-status Cancel while listening " + canceledWhileListening);
+            }, () => !canceledWhileListening ? "Cancel was not invoked before timeout" : HostValue("CapturingAction") != null ? "capture still active" :
+                (bool)HostValue("HasDraft") ? "Cancel left a draft" : unchanged());
+            Add("status-save-refused", () =>
+            {
+                editableIdle();
+                if (unchanged() != null) throw new InvalidOperationException("binding-status baseline changed before refusal");
+                HostCall("Clear", "steer");
+                var args = new object[] { null };
+                saveResult = (bool)_host.GetMethod("Save").Invoke(Host, args); failure = BindingFailure();
+                Event("binding-status Save result " + saveResult + " reason '" + (args[0] as string ?? "") + "' failure '" + failure + "'");
+                Scroll(100000);
+            }, () => saveResult || failure == null || !failure.Contains("A usable steering binding is required. Nothing was saved.") ? "real steering validator did not refuse Save" :
+                !(bool)HostValue("HasDraft") || (bool)HostValue("SavedPendingRestart") ? "refusal did not retain only the draft" :
+                (string)HostValue("ActiveSource") != beforeSource || !File.ReadAllBytes(profile).SequenceEqual(beforeBytes) ? "refusal changed active source or profile bytes" : null);
+            Add("status-error-other-page", () => { Select("Simple", 1); Scroll(0); },
+                () => failure == null || BindingFailure() != failure ? "binding failure did not persist across pages" :
+                    !(bool)HostValue("HasDraft") || (bool)HostValue("SavedPendingRestart") ? "page switch changed draft/next-start state" : null);
+            Add("status-discarded", () =>
+            {
+                Select("Simple", 0); editableIdle(); HostCall("Discard"); Scroll(100000);
+            }, () => (bool)HostValue("HasDraft") || (bool)HostValue("SavedPendingRestart") || BindingFailure().Length != 0 ?
+                "Discard left a draft, false next-start state or binding failure" : unchanged());
+            Add("status-closed", () => Call(_main, "CloseSettings"), () => Visible ? "plain close did not close" : null, false);
+        }
+
+        private static string BindingFailure() => (string)Need("Dbce.Wheel.Ui.ISharedBindingSaveStatus")
+            .GetProperty("SaveFailure").GetValue(Host, null) ?? "";
+
         private static void Add(string name, Action act, Func<string> expect, bool shot = true) =>
             Steps.Add(new Step { Name = name, Act = act, Expect = expect, Shot = shot });
 
@@ -324,7 +395,8 @@ namespace ArtOfSimRally.Testing
                    " editing " + Value(_panel, "Editing") + " cameraBindings " + Value(_panel, "_cameraKeys") +
                    " stockUiBlocked " + Value(_stock, "Blocked") + " sharedStarted " + SharedReady() +
                    " focused " + Application.isFocused + " osForeground " + OsForeground() + " body " + Px(_presentation, "BodyHeight") + " estimate " + Px(_presentation, "PageHeight") +
-                   " viewport " + Px(_presentation, "_viewport") + " panelTop " + Px(_presentation, "_panelTop") + " fixedRows " + Px(_presentation, "_fixedRows");
+                   " viewport " + Px(_presentation, "_viewport") + " panelTop " + Px(_presentation, "_panelTop") + " fixedRows " + Px(_presentation, "_fixedRows") +
+                   (_bindingStatusSet ? " bindingSaveFailure '" + BindingFailure() + "'" : "");
         }
         [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
         [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr window, out uint process);

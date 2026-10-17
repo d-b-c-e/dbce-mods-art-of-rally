@@ -1,5 +1,17 @@
 # Toolkit standards adoption
 
+## October17 binding-status capture source
+
+Kobe232575 reuses the qualified game-owned UiCapture/production binding-host
+route for STD-004/033/034. The new `binding-status` set calls the real guarded
+host to cancel an active listen, refuse an invalid steering Save, retain its
+error across pages, and discard the editable draft. It captures six actual
+game frames with same-frame status and unchanged profile-byte checks. No
+product, shared renderer, focus/device guard or writer change is made.
+This source is unbuilt and runtime-unverified; prior product35/UI169 and
+delivery64 results remain retained. Oct15 Save/restart evidence stays scoped
+to its exact tuple. See `docs/reviews/2026-10-17-binding-status-capture.md`.
+
 ## October17 Art closeout manual route
 
 Source branch `samo/art-closeout-20261017` carries the existing Beni manual
