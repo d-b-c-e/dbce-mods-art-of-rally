@@ -463,8 +463,9 @@ try {
             }
         }
         elseif($ManualUi) {
-            if($lines -match 'Shared input (not used|stopped)'){$outcome='manual-ui-input-unavailable';break}
-            $outcome='manual-ui-open' # No settle timer or automatic UI work.
+            # Keep the bounded manual session available to inspect read-only guidance and Discard after reader loss.
+            # The operator still closes normally; shared-lines.txt retains the unavailable/stopped reason.
+            $outcome=if($lines -match 'Shared input (not used|stopped)'){'manual-ui-input-unavailable'}else{'manual-ui-open'}
         }
         elseif($lines -match 'Shared input (not used|stopped)') { $outcome='refused-or-stopped'; break }
         elseif($native) { if(Test-Path -LiteralPath (Join-Path $capture 'end.txt')) { $outcome='captured'; break } }

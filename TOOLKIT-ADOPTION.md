@@ -1,5 +1,22 @@
 # Toolkit standards adoption
 
+## October17 Art closeout manual route
+
+Source branch `samo/art-closeout-20261017` carries the existing Beni manual
+private-copy route without a Recorder tour. It keeps the bounded manual session
+available after reader stop so the operator can inspect the STD-004/033/036
+read-only editor/Discard behavior. Existing force-off, strict child identity,
+shared-state restoration and held-lease behavior remain in the same caller.
+Parser and extracted game-less branch/outcome checks passed; no rendered,
+physical, product-package or installed-byte claim is added. See
+`docs/reviews/2026-10-17-art-closeout-samo.md` for the exact rc28 route.
+
+Session ledger comparison still finds missing explicit STD-026/028/029/032
+entries and historical unchecked STD-011/012/013/014/016/017/018/019 rows.
+Existing partial rows and schema-endpoint qualification limits below remain
+open. The operator route explicitly retains STD-028 raw registry preservation;
+this source-only change does not reclassify the broader historical ledger.
+
 ## October 15 owned prompt labels - source candidate
 
 Scoped STD-020 GLY / STD-033/036 presentation follow-up: native controls/menu
