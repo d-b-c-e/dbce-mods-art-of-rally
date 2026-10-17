@@ -46,7 +46,9 @@ report submission, URL change, owner install or rendered acceptance accompanies 
 
 SettingsPresentation.cs is byte-exact from toolkit
 0dae6b38d841ebe29beca8a6f0fc01048d9ad126, shared/ui/SettingsPresentation.cs,
-MIT; SHA256 A11B9B9582AEE4307C813CCE437B40BA086459CEFC156D34C931BC0E2788E83E.
+MIT; SHA256 8C58220305E09C1825FFD86F17394EC2AEBBD0744DA17EA0AF5971DF58EC9F4A.
+Exact Git blob 7e9c740a6281ad45f275dc1c6d910200ae74f720 is preserved; the
+toolkit worktree's CRLF checkout representation is not the vendored byte pin.
 This supersedes the old pin for this file only. BindingPresentation adds common
 labels, capability-dependent guidance and retained binding Save/draft/next-start
 footer text. Art uses its Footer/SaveBindings/BindFrom surface; the existing
