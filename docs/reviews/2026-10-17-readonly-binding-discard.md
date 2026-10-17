@@ -84,3 +84,29 @@ Next: retain these passing affected checks. Package/delivery, actual rendered
 read-only Discard and every-page error visibility need their own assigned scope;
 do not repeat accepted driving/force/performance or the unchanged UI tour.
 The current installed rc27 and its owner acceptance gaps remain unchanged.
+
+## Final private package preparation
+
+Maze221029 assigned packaging, with no owner installation. Ready request221154
+is a six-minute total using the existing rc27 `tools/package/package.ps1` route.
+It always builds and requires ProductVersion to equal the source-stamped receipt;
+the source-only `0.4.2-rc.28+clean` output therefore cannot be relabeled into a
+package. One mandatory normal packager build will stamp exact tested source
+`eb2316d`, plus its required metadata verifier. Consumer35/UI169 remain retained;
+there is no new product test suite, native/helper build or raw-hook repeat.
+
+The ignored `artifacts/art-ui-20261017/Invoke-FinalPackage.ps1` is parser/plan
+checked only. After a fresh grant it detaches exact sourceeb2316d under fresh
+ignored output, reuses qualified rc27 UMM references and pinned normal force/shim,
+creates normal rc28 shared-input and companion archives, verifies exact extracted
+membership/hashes/identity pairing, runs existing Test-Installer including
+rollback to the retained rc27 package, and checks the companion with Windows
+PowerShell5.1 PlanOnly against an inert game/receipt fixture. No helper GUI,
+game, device, owner state, installation or public distribution is involved.
+
+Haru221081 located/reverified the unchanged schema3 helper at
+`E:/Source/dbce-project-mgmt/artifacts/art-helper-successor-20261015/run-01/helper/StandaloneModSetup-private-a8583c59feef-win-x64.zip`
+with its `.sha256` sidecar. ZIP SHA256
+`F3CF1345402CD31562B8A6112F440419DC79C6D28DDD276B4DBEDFEA084FC331`,
+bundle manifestE9D54FFF,527files. Keep it unchanged; no shared admission update
+is needed. Packaging has not entered and no archive is qualified yet.
