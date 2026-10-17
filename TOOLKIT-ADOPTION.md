@@ -249,3 +249,11 @@ continuation using Lena's existing repair is prepared, unrun. All46 owned child
 identities quiescent and lease released before handback. Exact ZIP/manifest/mod
 hashes and original failure are in the same review note. No owner installation,
 helper build, game, device, rendered or physical acceptance is claimed.
+
+October17 final continuation221436 PASS: the same immutable rc28 companion
+passed Windows PowerShell5.1 PlanOnly with the existing child-only module-path
+repair. No source/package/helper rebuild or repeated archive/installer checks.
+Both owned identities quiescent/query-safe, exact release and literal absence
+passed06:38:27Z; direct handback preceded documentation. The private offline tuple
+is complete; rendered/physical gates and installed rc27 remain unchanged. See the
+same review note for exact continuation evidence and preserved original failure.

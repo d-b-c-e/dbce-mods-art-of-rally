@@ -160,3 +160,27 @@ rig next; no continuation has entered and no final overall PASS is claimed yet.
 
 Supported desktop/rendered Discard and persistent error checks, and prior owner
 physical acceptance gaps, remain open. Installed rc27 stays unchanged.
+
+## Completed unchanged-output continuation
+
+Fresh grant221436 ran the one remaining Windows PowerShell5.1 PlanOnly from
+06:38:24.056Z through verified release06:38:27.345Z, before the original
+06:40:23Z deadline. Lena's child-only environment repair succeeded; the unchanged
+companion verified itself and printed the exact Art-only helper command against
+the inert fixture. No helper executable or game was launched. No source, ZIP,
+helper, installer, configuration or owner installation was changed or rebuilt.
+
+Evidence: `artifacts/art-ui-20261017/package-01/ps51-continuation/result.json`,
+SHA256 `1C6C28EFBBC8A879BC32E9B2E84AD7FCADBE3559980BFA8D455E0433A3854B6D`,
+with companion-plan.stdout.log/stderr.log beside it. Both owned process identities
+are query-safe and quiescent, no scoped children remain, exact own-token release
+and literal lease absence passed. Direct actual result/release went to Maze
+before this documentation. The original package-01 failure remains untouched.
+
+The exact private rc28 offline package tuple above now passes: required build
+and metadata, archive/pair integrity, disposable installer/rc27 rollback, and
+Windows PowerShell5.1 companion PlanOnly. Earlier affected35/169 passes are
+retained. Rendered Discard and persistent error visibility plus the previously
+documented owner physical acceptance gaps remain open; installed rc27 and accepted
+driving/force/performance stay unchanged. This is private candidate readiness,
+not public distribution or rendered/physical acceptance.
