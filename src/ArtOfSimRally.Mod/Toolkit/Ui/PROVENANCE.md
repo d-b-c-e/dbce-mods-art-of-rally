@@ -53,4 +53,6 @@ This supersedes the old pin for this file only. BindingPresentation adds common
 labels, capability-dependent guidance and retained binding Save/draft/next-start
 footer text. Art uses its Footer/SaveBindings/BindFrom surface; the existing
 BindingSaveStatus lifetime and reader/writer/access policies remain unchanged.
-The shared source and Art adoption are source-only pending affected checks.
+The shared source's F6Style28 and Art's affected plugin/presentation35/SettingsUi169
+checks passed220993; see docs/reviews/2026-10-17-readonly-binding-discard.md.
+Source/build evidence does not establish rendered, package or physical acceptance.

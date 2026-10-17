@@ -233,3 +233,10 @@ the retained binding SaveFailure alongside draft/next-start facts and separate
 ordinary settings status. Bind from and Save bindings labels reuse that source.
 No Save, discovery, capture, profile or force semantics change. Affected build
 and existing presentation/SettingsUi cases remain pending; no rendered claim.
+
+October17 affected check220993 PASS on product sourceeb2316d: actual Release
+plugin0warnings/errors,35source-linked binding presentation checks and169
+SettingsUi assertions. Shared formatterF6Style28 retained from Haru's qualified
+result. No package, install, game or rendered acceptance; installed rc27 retained.
+Exact logs, source-only artifact identity/hash and release are recorded in
+docs/reviews/2026-10-17-readonly-binding-discard.md.

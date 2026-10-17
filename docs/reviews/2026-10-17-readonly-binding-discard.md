@@ -55,3 +55,32 @@ lease/owned-process helpers, qualified rc27 UMM reference assemblies and serial
 build-server-disabled commands; plan/parser only has run. Preserve its outputs
 and original failures. Installed rc27, packaging, runtime and physical acceptance
 remain unchanged. The shared formatter's own fixture is Haru's separate check.
+
+## Actual affected qualification
+
+Fresh grant220993 ran once on clean source
+`eb2316dc5bc951557c9bf1f9c2abbe0c6b2118ab` from06:27:16.570Z through verified
+release06:27:34.557Z, before the original06:31:16Z deadline. Release plugin build
+passed with zero warnings/errors, SharedBindingPresentation passed35 checks and
+SettingsUi passed169 assertions. No failures or retries occurred. Haru's shared
+F6Style28 qualification is retained rather than repeated.
+
+Actual logs/result are under this worktree's ignored
+`artifacts/art-ui-20261017/run-01/`; result SHA256
+`99FAE6BCB2D6664E373C6986B8B5CF9047845DDC648570875BA5EBCD82DC99E9`.
+The source-only mod output SHA256 is
+`82C448DA82FD3031DD60BE630EB52E366C27DCFC3112A53B441C5A06B808C13C`.
+Its informational identity is `0.4.2-rc.28+clean`; the exact source is established
+by this batch receipt, not by a commit embedded in that identity. This is not a
+qualified release package or installable helper tuple.
+
+Standard qualified trackerA28B713D reports16owned child identities, query-safe
+quiescence and no remaining scoped children. Exact own-token lease release
+passed and literal absence was checked before direct handback221020, prior to
+documentation. Only private reference/output files were written; no game,
+device, force, package, installation or owner configuration action occurred.
+
+Next: retain these passing affected checks. Package/delivery, actual rendered
+read-only Discard and every-page error visibility need their own assigned scope;
+do not repeat accepted driving/force/performance or the unchanged UI tour.
+The current installed rc27 and its owner acceptance gaps remain unchanged.
