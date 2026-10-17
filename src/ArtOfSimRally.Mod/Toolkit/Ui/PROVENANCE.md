@@ -56,3 +56,18 @@ BindingSaveStatus lifetime and reader/writer/access policies remain unchanged.
 The shared source's F6Style28 and Art's affected plugin/presentation35/SettingsUi169
 checks passed220993; see docs/reviews/2026-10-17-readonly-binding-discard.md.
 Source/build evidence does not establish rendered, package or physical acceptance.
+
+## October17 tab-focus outline adoption (source only)
+
+Applied exactly the one-line shared change from dbce-wheel-mod-toolkit
+8151e79cd9be0d4412ed27c67180d2f89e8624be (integrated f9abfcf9): focused Tab
+uses the existing Outline(r, F6Palette.Accent) instead of a post-label Fill.
+The selected-tab underline and all other local widget lines remain unchanged.
+This is a scoped adoption onto the previously vendored source, not a claim that
+the complete file matches current toolkit bytes. Retained MIT license and prior
+provenance apply. F6Widgets.cs SHA256: C45BECA6503A52CF31753E908D7FB5F6D127439012C7D4838E3FE30D30C0DB3E.
+
+Optional parity polish under maze228306/228349. Existing shared source review
+is reused; no new build/test/package cycle, owner install or rendered acceptance.
+Frozen/installed candidates remain unchanged; include this source in a later
+coherent candidate with its normal qualification.

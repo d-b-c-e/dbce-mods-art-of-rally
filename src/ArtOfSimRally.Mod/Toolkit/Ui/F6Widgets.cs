@@ -203,7 +203,7 @@ namespace Dbce.Wheel.Ui.Unity
             {
                 Rect r = GUILayoutUtility.GetLastRect();
                 if (selected) Fill(new Rect(r.x + S(6), r.yMax - S(F6Metrics.TabLine), r.width - S(12), S(F6Metrics.TabLine)), F6Palette.Accent);
-                if (GUI.GetNameOfFocusedControl() == id) Fill(new Rect(r.x, r.y, r.width, r.height - S(F6Metrics.TabLine)), F6Palette.TabFocus.WithAlpha(.6f));
+                if (GUI.GetNameOfFocusedControl() == id) Outline(r, F6Palette.Accent);
             }
             return clicked;
         }
