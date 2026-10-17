@@ -63,15 +63,16 @@ namespace ArtOfSimRally.Mod
             bool idle = !LegacyEditing && capturing == null;
             var rows = host.Rows;
             for (int i = 0; rows != null && i < rows.Count; i++) BindingRow(host, rows[i], access, capturing, idle, currentDevices.Count > 0);
-            if (editable && (host.HasDraft || host.SavedPendingRestart))
+            if (host.HasDraft || host.SavedPendingRestart)
             {
                 GUILayout.BeginHorizontal(GUILayout.Width(SettingsPresentation.BodyWidth));
-                if (W.Command("bindings-save", "Save bindings", host.HasDraft && idle) && !host.Save(out string message) && !(host is ISharedBindingSaveStatus)) Help(message);
+                if (W.Command("bindings-save", "Save bindings", editable && host.HasDraft && idle) && !host.Save(out string message) && !(host is ISharedBindingSaveStatus)) Help(message);
+                // Match shared SharedBindingPanel: discarding an idle draft needs no live reader.
                 if (W.Command("bindings-discard", "Discard", host.HasDraft && idle)) host.Discard();
                 W.Spacer();
                 GUILayout.EndHorizontal();
-                W.Help(host.HasDraft ? "Unsaved changes. Save bindings writes the profile; the game uses it from the next start."
-                    : "Saved. Restart the game to use these bindings.");
+                if (host.HasDraft) W.Help("Unsaved changes. Save bindings writes the profile; the game uses it from the next start.");
+                else if (host.SavedPendingRestart) W.Help("Saved. Restart the game to use these bindings.");
             }
             if (host is ISharedBindingSaveStatus saveStatus && !string.IsNullOrEmpty(saveStatus.SaveFailure)) Help(saveStatus.SaveFailure);
         }

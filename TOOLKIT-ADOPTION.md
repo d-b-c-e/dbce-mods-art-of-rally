@@ -220,3 +220,9 @@ Affected compile and rendered qualification remain unrun; no styling suite added
 Ledger comparison found existing entries missing for STD-025/026/028/029/032;
 those remain unaudited outside this Help slice. Existing unchecked
 STD-011/012/013/014/016/017/018/019 entries remain unchecked.
+
+October17 read-only draft recovery: the Art binding toolbar adopts canonical
+SharedBindingPanel's idle + HasDraft Discard policy independently of edit
+access. Save remains Editable-only; capture and reader gates stay unchanged.
+Source-linked presentation cases are extended; build/rendered checks pending.
+See docs/reviews/2026-10-17-readonly-binding-discard.md. No other ledger status changes.

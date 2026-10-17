@@ -65,20 +65,39 @@ var afterCapture = SettingsPanel.Draw(warningHost);
 Check(afterCapture.Texts.Contains(failure) && afterCapture.Texts.Contains(warningHost.CaptureText), "warning remains rendered alongside new transient capture text");
 warningHost.CapturingAction = null; warningHost.Access = SharedBindingAccess.ReadOnly;
 Check(SettingsPanel.Draw(warningHost).Texts.Contains(failure), "later read-only access does not hide unresolved Save failure");
-warningHost.Access = SharedBindingAccess.Editable;
 Check(!SettingsPanel.Draw(warningHost, click: "bindings-discard").Texts.Contains(failure) && warningHost.SaveFailure.Length == 0,
-    "explicit Discard removes the warning from the production panel");
+    "explicit read-only Discard removes the warning from the production panel");
+warningHost.Access = SharedBindingAccess.Editable;
 warningHost.Draft = true; SettingsPanel.Draw(warningHost, click: "bindings-save"); warningHost.SaveSucceeds = true;
 Check(!SettingsPanel.Draw(warningHost, click: "bindings-save").Texts.Contains(failure) && warningHost.SaveFailure.Length == 0,
     "successful checked Save resolves its earlier warning");
 Check(new FakeHost().SaveFailure.Length == 0, "new host begins with no inherited Save failure");
+var lostReader = new FakeHost { Access = SharedBindingAccess.ReadOnly, Draft = true, NextStartPending = true };
+lostReader.RowList.Add(Row("steer"));
+SettingsPanel.Reset();
+var recovery = SettingsPanel.Draw(lostReader, click: "bindings-save");
+Check(recovery.Buttons["bindings-discard"] && !recovery.Buttons["bindings-save"] && lostReader.Calls.Count == 0,
+    "lost reader retains Discard while checked Save stays disabled");
+lostReader.CapturingAction = "steer";
+Check(!SettingsPanel.Draw(lostReader).Buttons["bindings-discard"], "capture still locks Discard");
+lostReader.CapturingAction = null; SettingsPanel.LegacyEditing = true;
+Check(!SettingsPanel.Draw(lostReader).Buttons["bindings-discard"], "legacy editing still locks Discard");
+SettingsPanel.LegacyEditing = false;
+var discarded = SettingsPanel.Draw(lostReader, click: "bindings-discard");
+Check(lostReader.Calls.SequenceEqual(new[] { "discard" }) && !lostReader.HasDraft && lostReader.SavedPendingRestart &&
+    discarded.Texts.Contains("Saved. Restart the game to use these bindings."),
+    "read-only Discard clears only the draft and retains the saved next-start state");
+var unsavedOnly = new FakeHost { Access = SharedBindingAccess.ReadOnly, Draft = true };
+SettingsPanel.Reset();
+Check(!SettingsPanel.Draw(unsavedOnly, click: "bindings-discard").Texts.Contains("Saved. Restart the game to use these bindings."),
+    "discarding a draft without saved changes never claims a restart is needed");
 Console.WriteLine($"PASS {checks} source-linked Art binding presentation checks; no game, file or device.");
 
 internal sealed class FakeHost : ISharedBindingHost, Dbce.Wheel.Ui.ISharedBindingSaveStatus
 {
     private readonly Dbce.Wheel.Ui.BindingSaveStatus saveStatus = new();
     public string SaveFailure => saveStatus.SaveFailure;
-    public bool Draft, SaveSucceeds = true;
+    public bool Draft, NextStartPending, SaveSucceeds = true;
     public string CaptureText = "Fixture capture";
     public SharedBindingAccess Access { get; set; } = SharedBindingAccess.Editable;
     public string AccessReason => "Fixture access";
@@ -92,7 +111,7 @@ internal sealed class FakeHost : ISharedBindingHost, Dbce.Wheel.Ui.ISharedBindin
     public double CaptureSecondsLeft => 5;
     public string CaptureMessage => CaptureText;
     public bool HasDraft => Draft;
-    public bool SavedPendingRestart => false;
+    public bool SavedPendingRestart => NextStartPending;
     public void BeginCapture(string action) => Calls.Add("bind " + action);
     public void BeginCapture(string action, string guid) => Calls.Add("bind " + action + " " + guid);
     public void CancelCapture() { Calls.Add("cancel"); CapturingAction = null; }
