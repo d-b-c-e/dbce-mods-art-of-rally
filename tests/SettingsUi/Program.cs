@@ -123,6 +123,8 @@ static class Program
             "binding failure hidden behind settings Saved or pending next-start state");
         Check(SettingsViewPolicy.FooterStatus("Write failed",false,false,"Profile is read-only")=="Bindings not saved — Profile is read-only · Write failed",
             "ordinary settings failure hidden by binding failure");
+        Check(SettingsViewPolicy.FooterStatus("Saved",true,false,"Bindings not saved: Profile is read-only")=="Bindings not saved — Profile is read-only · Settings saved",
+            "the existing draft writer failure duplicates the shared binding failure label");
         // Standalone setup route (Lola 129479 item 3, sana 129606/129640): the common wording, with no claim that this
         // package bundles the setup.
         var setup=string.Join(" ",SettingsViewPolicy.SetupGuidance);

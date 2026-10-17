@@ -33,7 +33,7 @@ recorded separately in the portfolio hub; HCT remains clean at `3489460`.
 ## Coherent shared status adoption
 
 Maze220395 extends this same private successor with Haru's shared presentation
-source `9ae7bbe`. Its `SettingsPresentation.cs` is copied byte-exact (pin/hash in
+source `0dae6b3`. Its `SettingsPresentation.cs` is copied byte-exact (pin/hash in
 Toolkit/Ui/PROVENANCE.md). Art's persistent footer passes the existing retained
 SaveFailure to BindingPresentation together with draft/next-start state, then
 appends the ordinary settings save status. Binding errors therefore remain

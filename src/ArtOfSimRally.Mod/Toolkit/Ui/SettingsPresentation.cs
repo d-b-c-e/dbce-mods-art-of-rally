@@ -18,7 +18,24 @@ namespace Dbce.Wheel.Ui
         // precedence over the previous saved revision; ordinary settings status stays separate.
         public static string Footer(bool hasDraft, bool savedPendingRestart, string saveFailure)
         {
-            if (!Blank(saveFailure)) return "Bindings not saved — " + saveFailure.Trim();
+            if (!Blank(saveFailure))
+            {
+                string reason = saveFailure.Trim();
+                const string label = "Bindings not saved";
+                // Existing writers may already label their failure. Keep the retained reason,
+                // but give every consumer one presentation prefix without changing host state.
+                if (reason.StartsWith(label, StringComparison.OrdinalIgnoreCase))
+                {
+                    string suffix = reason.Substring(label.Length).TrimStart();
+                    if (suffix.Length == 0) return label;
+                    if (suffix[0] == ':' || suffix[0] == '—' || suffix[0] == '-')
+                    {
+                        reason = suffix.Substring(1).TrimStart();
+                        if (reason.Length == 0) return label;
+                    }
+                }
+                return label + " — " + reason;
+            }
             if (hasDraft) return Unsaved;
             return savedPendingRestart ? SavedForNextStart : "";
         }

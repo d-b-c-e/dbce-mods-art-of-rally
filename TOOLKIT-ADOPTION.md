@@ -228,7 +228,7 @@ Source-linked presentation cases are extended; build/rendered checks pending.
 See docs/reviews/2026-10-17-readonly-binding-discard.md. No other ledger status changes.
 
 October17 persistent binding status: byte-exact shared SettingsPresentation.cs
-from 9ae7bbe supplies BindingPresentation. Every Art page's footer now receives
+from 0dae6b3 supplies BindingPresentation. Every Art page's footer now receives
 the retained binding SaveFailure alongside draft/next-start facts and separate
 ordinary settings status. Bind from and Save bindings labels reuse that source.
 No Save, discovery, capture, profile or force semantics change. Affected build

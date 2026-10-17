@@ -45,8 +45,8 @@ report submission, URL change, owner install or rendered acceptance accompanies 
 ## October17 shared binding presentation
 
 SettingsPresentation.cs is byte-exact from toolkit
-9ae7bbe9e9be9732f9207d5aeca76d50264dc902, shared/ui/SettingsPresentation.cs,
-MIT; SHA256 EEBCEE5D17293FD9D218CA4DAD087046D1960E0937E92429E78C840EA751FDFC.
+0dae6b38d841ebe29beca8a6f0fc01048d9ad126, shared/ui/SettingsPresentation.cs,
+MIT; SHA256 A11B9B9582AEE4307C813CCE437B40BA086459CEFC156D34C931BC0E2788E83E.
 This supersedes the old pin for this file only. BindingPresentation adds common
 labels, capability-dependent guidance and retained binding Save/draft/next-start
 footer text. Art uses its Footer/SaveBindings/BindFrom surface; the existing
