@@ -29,3 +29,29 @@ Owned files: `SettingsPanel.SharedBindings.cs`, the existing presentation
 fixture, this note and the corresponding TOOLKIT-ADOPTION entry. No other Art
 source or canonical checkout is changed. Broader F6 UX recommendations are
 recorded separately in the portfolio hub; HCT remains clean at `3489460`.
+
+## Coherent shared status adoption
+
+Maze220395 extends this same private successor with Haru's shared presentation
+source `9ae7bbe`. Its `SettingsPresentation.cs` is copied byte-exact (pin/hash in
+Toolkit/Ui/PROVENANCE.md). Art's persistent footer passes the existing retained
+SaveFailure to BindingPresentation together with draft/next-start state, then
+appends the ordinary settings save status. Binding errors therefore remain
+visible when changing pages. Bind from/Save bindings labels use shared constants.
+The previous game-specific two-paragraph setup guidance remains accurate for
+already-open profile devices; this consumer does not advertise Find devices.
+
+Additional claims are the footer in SettingsPanel.cs, SettingsViewPolicy's thin
+formatter adapter, the exact shared SettingsPresentation vendor/provenance and
+existing SettingsUi fixture/project references. The existing panel fixture now
+links the same shared presentation file. Focused status cases retain ordinary
+settings errors beside a binding error and prefer binding failure over draft or
+next-start text. No reader/writer or automatic Save is added.
+
+One affected check should build the production plugin and run existing
+SharedBindingPresentation plus SettingsUi after final source is committed.
+The ignored artifacts/art-ui-20261017/Invoke-Affected.ps1 reuses the standard
+lease/owned-process helpers, qualified rc27 UMM reference assemblies and serial
+build-server-disabled commands; plan/parser only has run. Preserve its outputs
+and original failures. Installed rc27, packaging, runtime and physical acceptance
+remain unchanged. The shared formatter's own fixture is Haru's separate check.

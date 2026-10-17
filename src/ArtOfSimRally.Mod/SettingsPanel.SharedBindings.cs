@@ -52,7 +52,7 @@ namespace ArtOfSimRally.Mod
                     names[0] = "Saved device";
                     for (int i = 0; i < devices.Count; i++) names[i + 1] = devices[i].Name;
                     selected = SharedDeviceSelection.Mode == SharedBindingSelectionMode.Saved ? 0 : SharedDeviceSelection.SelectedIndex < 0 ? -1 : SharedDeviceSelection.SelectedIndex + 1;
-                    int pick = W.ChoiceRow("binding-device-next", "Bind from", "Which open device the next Bind listens to.", names, selected, !LegacyEditing);
+                    int pick = W.ChoiceRow("binding-device-next", BindingPresentation.BindFrom, "Which open device the next Bind listens to.", names, selected, !LegacyEditing);
                     if (pick == 0) SharedDeviceSelection.SelectSaved();
                     else if (pick > 0 && pick <= devices.Count) SharedDeviceSelection.SelectDevice(devices[pick - 1].InstanceGuid, devices);
                 }
@@ -66,7 +66,7 @@ namespace ArtOfSimRally.Mod
             if (host.HasDraft || host.SavedPendingRestart)
             {
                 GUILayout.BeginHorizontal(GUILayout.Width(SettingsPresentation.BodyWidth));
-                if (W.Command("bindings-save", "Save bindings", editable && host.HasDraft && idle) && !host.Save(out string message) && !(host is ISharedBindingSaveStatus)) Help(message);
+                if (W.Command("bindings-save", BindingPresentation.SaveBindings, editable && host.HasDraft && idle) && !host.Save(out string message) && !(host is ISharedBindingSaveStatus)) Help(message);
                 // Match shared SharedBindingPanel: discarding an idle draft needs no live reader.
                 if (W.Command("bindings-discard", "Discard", host.HasDraft && idle)) host.Discard();
                 W.Spacer();

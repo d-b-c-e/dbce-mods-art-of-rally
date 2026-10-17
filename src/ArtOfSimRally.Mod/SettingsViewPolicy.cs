@@ -1,4 +1,5 @@
 using System;
+using Dbce.Wheel.Ui;
 
 namespace ArtOfSimRally.Mod
 {
@@ -31,11 +32,12 @@ namespace ArtOfSimRally.Mod
         // an unsaved draft or a binding saved for the next start is said first (Lola 129455; Woden's footer wording). The
         // settings status itself (pending, saved or an error) always stays visible; a plain "Saved" is named "Settings
         // saved" only beside a binding state, so it never reads as if the bindings were saved.
-        public static string FooterStatus(string settingsStatus, bool bindingsUnsaved, bool bindingsSavedForNextStart)
+        public static string FooterStatus(string settingsStatus, bool bindingsUnsaved, bool bindingsSavedForNextStart, string bindingSaveFailure = null)
         {
-            if (!bindingsUnsaved && !bindingsSavedForNextStart) return settingsStatus;
+            string bindings = BindingPresentation.Footer(bindingsUnsaved, bindingsSavedForNextStart, bindingSaveFailure);
+            if (bindings.Length == 0) return settingsStatus;
             string settings = settingsStatus == "Saved" ? "Settings saved" : settingsStatus;
-            return (bindingsUnsaved ? "Bindings unsaved · " : "Bindings saved for next start · ") + settings;
+            return bindings + " · " + settings;
         }
         // The standalone setup route, shown with the shared profile in every state, not only when it is missing (Lola 129479
         // item 3; the common wording of sana 129606/129640, as iRacing 151a131). The in-game editor binds only devices this

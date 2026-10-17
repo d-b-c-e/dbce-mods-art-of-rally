@@ -4,6 +4,41 @@ using System.Globalization;
 
 namespace Dbce.Wheel.Ui
 {
+    /// <summary>Binding presentation only. Hosts supply facts from their existing draft/save lifecycle;
+    /// this does not save, discover devices, change access or clear a persistent Save failure.</summary>
+    public static class BindingPresentation
+    {
+        public const string SaveModSettings = "Save mod settings";
+        public const string SaveBindings = "Save bindings";
+        public const string BindFrom = "Bind from";
+        public const string Unsaved = "Binding edits unsaved";
+        public const string SavedForNextStart = "Bindings saved for next start";
+
+        // Save failures survive capture/general messages via BindingSaveStatus. A new draft takes
+        // precedence over the previous saved revision; ordinary settings status stays separate.
+        public static string Footer(bool hasDraft, bool savedPendingRestart, string saveFailure)
+        {
+            if (!Blank(saveFailure)) return "Bindings not saved — " + saveFailure.Trim();
+            if (hasDraft) return Unsaved;
+            return savedPendingRestart ? SavedForNextStart : "";
+        }
+
+        public static string SetupGuidance(bool canFindDevices)
+        {
+            return (canFindDevices
+                ? "Choose a device under Bind from. Use Find devices if it is missing. "
+                : "Choose an available device under Bind from. To add a device, close the game and run Set Up Controls.bat. Wheelkit is optional. ") +
+                "Select Bind, release the control, then move it. Review the draft, select Save bindings, and restart to use the saved controls.";
+        }
+
+        private static bool Blank(string value)
+        {
+            if (value == null) return true;
+            foreach (char c in value) if (!char.IsWhiteSpace(c)) return false;
+            return true;
+        }
+    }
+
     /// <summary>Shared player-facing control names. Stored hardware indices remain zero based.</summary>
     public static class ControlNames
     {

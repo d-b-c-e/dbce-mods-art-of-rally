@@ -114,11 +114,15 @@ static class Program
         // bare "Saved" while a binding draft is unsaved, keeps the saved-for-next-start state distinct, and keeps errors.
         Check(SettingsViewPolicy.FooterStatus("Saved",false,false)=="Saved"&&SettingsViewPolicy.FooterStatus("Changes pending",false,false)=="Changes pending",
             "footer without binding state changed");
-        Check(SettingsViewPolicy.FooterStatus("Saved",true,false)=="Bindings unsaved · Settings saved","unsaved binding draft hidden behind Saved");
+        Check(SettingsViewPolicy.FooterStatus("Saved",true,false)=="Binding edits unsaved · Settings saved","unsaved binding draft hidden behind Saved");
         Check(SettingsViewPolicy.FooterStatus("Saved",false,true)=="Bindings saved for next start · Settings saved","saved-for-next-start state hidden");
-        Check(SettingsViewPolicy.FooterStatus("Saved",true,true)=="Bindings unsaved · Settings saved","a new draft over a saved binding not shown as unsaved");
-        Check(SettingsViewPolicy.FooterStatus("Write failed",true,false)=="Bindings unsaved · Write failed"&&
+        Check(SettingsViewPolicy.FooterStatus("Saved",true,true)=="Binding edits unsaved · Settings saved","a new draft over a saved binding not shown as unsaved");
+        Check(SettingsViewPolicy.FooterStatus("Write failed",true,false)=="Binding edits unsaved · Write failed"&&
               SettingsViewPolicy.FooterStatus("Changes pending",false,true)=="Bindings saved for next start · Changes pending","settings status lost beside a binding state");
+        Check(SettingsViewPolicy.FooterStatus("Saved",true,true,"Profile is read-only")=="Bindings not saved — Profile is read-only · Settings saved",
+            "binding failure hidden behind settings Saved or pending next-start state");
+        Check(SettingsViewPolicy.FooterStatus("Write failed",false,false,"Profile is read-only")=="Bindings not saved — Profile is read-only · Write failed",
+            "ordinary settings failure hidden by binding failure");
         // Standalone setup route (Lola 129479 item 3, sana 129606/129640): the common wording, with no claim that this
         // package bundles the setup.
         var setup=string.Join(" ",SettingsViewPolicy.SetupGuidance);

@@ -92,7 +92,8 @@ namespace ArtOfSimRally.Mod
             GUILayout.EndHorizontal();
             var bindings = Bindings;
             W.Help(SettingsViewPolicy.FooterStatus(Main.SettingsSaveStatus, bindings != null && bindings.HasDraft,
-                bindings != null && bindings.SavedPendingRestart) + " · F8 stops FFB · " + CameraKeys.Name(c.SettingsKey) + " opens and closes settings");
+                bindings != null && bindings.SavedPendingRestart, (bindings as ISharedBindingSaveStatus)?.SaveFailure) +
+                " · F8 stops FFB · " + CameraKeys.Name(c.SettingsKey) + " opens and closes settings");
         }
         private static void Select(Settings c, bool advanced, int page)
         {
