@@ -1,6 +1,34 @@
 # Local deployment
 
-## Current installation — 0.4.2-rc.25 (private shared-input candidate)
+## Current installation — 0.4.2-rc.28 (private shared-input candidate)
+
+Closed-game grant223552 installed exact clean product source
+`eb2316dc5bc951557c9bf1f9c2abbe0c6b2118ab` on October17. Normal ZIP
+`B7818C8DF90310D3B4C9BE7E67E0459EB22176B31FE670C40F7B0FF2D5981A2F`,
+manifest2FD01BB9 and mod296C8EFA were reused without rebuilding. Installed identity
+is `0.4.2-rc.28+eb2316dc5bc951557c9bf1f9c2abbe0c6b2118ab.clean`.
+All nine payloads and both native copies match; exactly Mod/Core/Protocol/build.json
+changed from rc.27. Current SettingsCF315E67, profile73E78230, triples13F0FD93,
+layoutA9F0C6B7, other89 files/18directories and58 typed Art preferences remained
+unchanged. Normal force44E46799/shimBC9B030A and accepted driving/force/performance
+are retained. Fresh rc.27 rollback/before-images remain private.
+
+Original install/readback resultB53E4AC4 preserves the shared-hub supplemental
+process-scope refusal. Separate cleanup11323D1E proves both actual owned identities
+Absent and three pre-existing foreign Sonic search processes untouched; exact
+lease release07:55:23.211Z was within the original07:57:15Z deadline. Full records:
+`E:/Source/dbce-project-mgmt/artifacts/art-rc28-owner-upgrade-zori-20261017/RESULT.md`
+and its linked original/cleanup receipts. No game, build, repeated suite, helper,
+manager or profile Apply occurred. Rendered and physical gaps remain open as
+recorded in `docs/reviews/2026-10-17-readonly-binding-discard.md`.
+
+Local source closure is prepared on `zori/art-source-closure-20261017`: clean
+isolated fast-forward from canonical main643bbd0 to qualified docs4d78aa6, with
+only deployment/source-status documentation added afterward. Canonical main and
+the owner's dirty `experiments/CustomVehicles/SESSION.md` remain untouched.
+The installed product remains eb2316d; no newly built artifact is implied.
+
+## Previous installation — 0.4.2-rc.25 (private shared-input candidate)
 
 Closed-game October15 22:26 UTC update from clean package source
 `ac5f3c8490b07211fc35f13806bf23dbc801dc85`; mod C955FC1B/build81C8D4A6,

@@ -1,13 +1,29 @@
 # Release readiness — 2026-09-30
 
-**Current state (reconciled 2026-10-14):**
+**Current state (reconciled 2026-10-17 from retained delivery evidence):**
 
-- **Published:** the latest public stable release is **0.4.1**, GitHub
+- **Last recorded public release:** **0.4.1**, GitHub
   [`v0.4.1`](https://github.com/d-b-c-e/dbce-mods-art-of-rally/releases/tag/v0.4.1),
   published 2026-10-07 01:08:38 UTC from `7c3de40`. The README download points there.
-- **Installed:** the installed copy is the **private local candidate 0.4.2-rc.22**
-  (shared input), installed 2026-10-14 02:35:45 UTC. It is not a public release and
-  has no physical acceptance.
+- **Installed:** **private local candidate 0.4.2-rc.28**, exact product source
+  `eb2316dc5bc951557c9bf1f9c2abbe0c6b2118ab`, mod296C8EFA, installed grant223552
+  with verified release2026-10-17 07:55:23Z. Current settings, profiles, triples,
+  layout, normal force/shim and rollback were preserved. Prior accepted driving,
+  force and performance remain accepted; new UI and physical facts stay open.
+- **Source/artifact status:** the candidate is fast-forwarded in the clean
+  isolated `zori/art-source-closure-20261017` branch. Owner main643bbd0 remains
+  checked out with dirty CustomVehicles SESSION.md and is not moved. The exact
+  normal ZIPB7818C8D and separate companion78C27DB0/helperF3CF1345 remain private;
+  no public source/tag/assets promotion was performed or authorized here.
+  The concrete binary distribution hold is the pinned shimBC9B030A, built from
+  toolkit421bd4b/c6594fa: `lib/input-shim/CANDIDATE.json` says its bytes are not
+  kept in this public repository and must be supplied privately; PROVENANCE.md
+  explicitly leaves publishing it to a separate owner decision. The default
+  no-shim flavor is a different artifact, not this qualified ZIP. No additional
+  known helper notice/license defect was identified by its owner224753. This is
+  an exact artifact/designation hold, not a claimed legal violation or new audit.
+  Canonical-source promotion and public artifact designation remain distinct
+  from completed private installation and physical acceptance.
 
 `docs/LOCAL-DEPLOYMENT.md` (its "Current installation" section) is authoritative for
 what is installed, and the GitHub releases page is authoritative for what is

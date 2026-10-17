@@ -184,3 +184,33 @@ retained. Rendered Discard and persistent error visibility plus the previously
 documented owner physical acceptance gaps remain open; installed rc27 and accepted
 driving/force/performance stay unchanged. This is private candidate readiness,
 not public distribution or rendered/physical acceptance.
+
+## October 17 local source closure
+
+Maze224635 requested ordinary local source reconciliation without rebuilding,
+retesting, pushing or changing installed bytes. Canonical main643bbd0 is an exact
+ancestor of qualified docs4d78aa6 (0left/29right), but its owner checkout has a
+21-line addition in `experiments/CustomVehicles/SESSION.md`, SHA256
+`42EBDD696A75F695D2655292C180E5E9B7F87F86FCF5A948A8CFF91711F4823F`.
+That file has no candidate overlap. To honor the clean-checkout condition, a
+clean isolated `E:/Source/games/.worktrees/zori-art-source-closure-20261017` was
+created from main and ordinarily fast-forwarded to exact4d78aa6. Canonical main,
+its index and dirty owner note were preserved; main promotion remains deferred.
+
+The only changes since qualified producteb2316d before this documentation are
+Markdown handoff/provenance files. Deployment/readiness docs now point to the
+actual installed rc.28 and original owner upgrade receipts. No source rebuild,
+test, package, owner write, runtime or public push occurred for this closure.
+
+Concrete unresolved source/distribution status: canonical main is still643bbd0
+because its owner checkout is dirty; prepared integration is in the named clean
+branch. Normal rc.28 ZIPB7818C8D and companion78C27DB0 remain private artifacts,
+with the companion explicitly pinning private helperF3CF1345/sourcea8583c59.
+The exact shimBC9B030A/source421bd4b-c6594fa is the concrete binary distribution
+hold: CANDIDATE.json requires a private external copy, and PROVENANCE.md expressly
+leaves public binary publication to a separate owner decision. No-shim default
+packaging is a different artifact. Haru224753 identifies no additional known
+helper notice/license defect. No public promotion or legal violation is inferred,
+and no generic license audit is added. Current installed mod296C8EFA
+and all prior acceptance/remaining rendered or physical limits are unchanged.
+The later shared tab-focus outline is optional, outside this frozen candidate.
