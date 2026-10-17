@@ -240,3 +240,12 @@ SettingsUi assertions. Shared formatterF6Style28 retained from Haru's qualified
 result. No package, install, game or rendered acceptance; installed rc27 retained.
 Exact logs, source-only artifact identity/hash and release are recorded in
 docs/reviews/2026-10-17-readonly-binding-discard.md.
+
+October17 final private packaging221208: exact eb2316d source-stamped rc28 build,
+required metadata353, normal/unchanged-helper companion integrity/pairing and
+disposable installer/rc27 rollback64 passed. Final PS5.1 companion PlanOnly hit
+the retained child module-path environment failure; a single unchanged-output
+continuation using Lena's existing repair is prepared, unrun. All46 owned child
+identities quiescent and lease released before handback. Exact ZIP/manifest/mod
+hashes and original failure are in the same review note. No owner installation,
+helper build, game, device, rendered or physical acceptance is claimed.

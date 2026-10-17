@@ -110,3 +110,53 @@ with its `.sha256` sidecar. ZIP SHA256
 `F3CF1345402CD31562B8A6112F440419DC79C6D28DDD276B4DBEDFEA084FC331`,
 bundle manifestE9D54FFF,527files. Keep it unchanged; no shared admission update
 is needed. Packaging has not entered and no archive is qualified yet.
+
+## Actual final packaging and remaining environment check
+
+Grant221208 entered06:32:46.705Z and released06:33:18.459Z, before its original
+06:38:46Z deadline. The exact clean product source remains `eb2316d`. The stock
+packager's required source-stamped build passed with zero warnings/errors and
+its required metadata verifier passed353 assertions. Both archives were created;
+extracted membership, every payload hash, clean identity and companion pairing
+passed. Existing disposable installer/rc27 rollback checks passed64 assertions.
+No earlier consumer, driving, force or performance check was repeated.
+
+The final Windows PowerShell5.1 companion PlanOnly failed because Get-FileHash
+was not recognized. Preserve this original failure, not a product or archive
+failure: `artifacts/art-ui-20261017/package-01/result.json`, SHA256
+`942C5EDAAFEF18C6B06CD997AC08BDDD00A59A9B0204130405D6E46C2A54618A`.
+Logs are in that directory; installer details are under its detached source's
+`results/installer-613b449bf8d1424e9522a265868db965`.
+
+Exact private output tuple, all under `package-01`:
+
+- Source-stamped identity:
+  `0.4.2-rc.28+eb2316dc5bc951557c9bf1f9c2abbe0c6b2118ab.clean`.
+- Normal ZIP: `source/dist/ArtOfSimRally-0.4.2-rc.28-shared-input.zip`;
+  SHA256 `B7818C8DF90310D3B4C9BE7E67E0459EB22176B31FE670C40F7B0FF2D5981A2F`.
+- Companion ZIP: `source/dist/ArtOfSimRally-0.4.2-rc.28-shared-input-controls-setup.zip`;
+  SHA256 `78C27DB09A539FCBF0149CA71895F1E6238C8A68A54B41EFB6E929B41FF97070`.
+- Normal manifest SHA256:
+  `2FD01BB9CD870A27DE800105579A4574706D022CB886E785BD5A6373BE4DB2F0`.
+- Packaged mod SHA256:
+  `296C8EFA49A718AF47F22292B3346BFE5260BEB677969B9B24238556FDF6712A`.
+- Normal force44E46799, shared shimBC9B030A and schema3 helperF3CF1345 remain
+  unchanged. `artShimProbe=false`; the helper was not rebuilt.
+
+The standard tracker recorded46 owned child identities, query-safe quiescence,
+no remaining scoped children and exact lease release. Literal lease absence was
+verified06:34:17Z and reported directly to Maze before documentation. No game,
+device, helper GUI, owner installation or owner configuration action occurred.
+
+Maze221304 and Lena221360 identify the existing DRIVE environment-only repair:
+inside the Windows PowerShell child, prepend its own `$PSHOME/Modules` plus the
+machine PSModulePath, then explicitly import Microsoft.PowerShell.Utility before
+invoking the unchanged Art Setup-Controls.ps1 with PlanOnly. No global setting or
+package byte changes. The ignored `Invoke-ArtPS51Plan.ps1` reuses those exact two
+lines. `Resume-CompanionPlan.ps1` is parser/plan checked only, pins the original
+failure and archive hashes, and requests a fresh two-minute maximum continuation
+for that single remaining invocation plus owned-process cleanup. Revo has the
+rig next; no continuation has entered and no final overall PASS is claimed yet.
+
+Supported desktop/rendered Discard and persistent error checks, and prior owner
+physical acceptance gaps, remain open. Installed rc27 stays unchanged.
