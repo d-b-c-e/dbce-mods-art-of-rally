@@ -112,6 +112,7 @@ namespace ArtOfSimRally.Mod
                 _harmony = new Harmony(modEntry.Info.Id);
                 _harmony.PatchAll(Assembly.GetExecutingAssembly());
                 ModLog.Info("Patches applied.");
+                CourseRouteDump.Initialize(modEntry.Path, _harmony); // off unless a one-launch request file is claimed
             }
             catch (Exception ex)
             {
@@ -185,6 +186,7 @@ namespace ArtOfSimRally.Mod
             GameBindings.CancelPending();
             ModWatchdog.Shutdown(unloading: true);
             WheelInput.Close();
+            CourseRouteDump.Stop();
             _harmony?.UnpatchAll(modEntry.Info.Id);
             return true;
         }
