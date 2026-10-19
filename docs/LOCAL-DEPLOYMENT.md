@@ -1,6 +1,64 @@
 # Local deployment
 
-## Current installation — 0.4.2-rc.25 (private shared-input candidate)
+## Current installation — 0.4.2-rc.28 (owner-accepted private candidate)
+
+Installed October17 07:54 UTC from clean package source
+`eb2316dc5bc951557c9bf1f9c2abbe0c6b2118ab`. The owner's October18 acceptance
+applies to this currently used installation: done and ready for release preparation.
+Accepted gameplay, force and performance are retained; publication is separate.
+
+- **Identity:** `0.4.2-rc.28+eb2316dc5bc951557c9bf1f9c2abbe0c6b2118ab.clean`.
+- **Mod ZIP:** `ArtOfSimRally-0.4.2-rc.28-shared-input.zip`, 789,191 bytes,
+  SHA-256 `B7818C8DF90310D3B4C9BE7E67E0459EB22176B31FE670C40F7B0FF2D5981A2F`.
+- **Manifest:** `2FD01BB9CD870A27DE800105579A4574706D022CB886E785BD5A6373BE4DB2F0`.
+- **Plugin:** `296C8EFA49A718AF47F22292B3346BFE5260BEB677969B9B24238556FDF6712A`;
+  **build.json:** `8E1498FCB00EF363ECF0C3E790C66B2E59D438C3B999F3F38BC85482A60448F9`.
+- **Native/shim:** both normal native copies `44E46799`, shim `BC9B030A`;
+  `artShimProbe=false`. The developer Recorder remains separate from the package.
+- **Source/package location:** private worktree
+  `E:/Source/games/.worktrees/zori-art-readonly-discard-20261017/artifacts/art-ui-20261017/package-01/source`;
+  archive and checksum in its `dist/`. October18 read-only verification matched
+  all 15 manifest-listed entries, all nine installed mod payloads and the second
+  native copy to that ZIP. No build, install or runtime check was repeated.
+- **Retained qualification:** production build zero warnings/errors and release
+  verifier's 353 assertions and the exact-package isolated installer/rollback's
+  64 assertions passed. The original package parent remains FAIL at companion
+  PlanOnly because its direct
+  PowerShell invocation inherited an unsuitable module path. The unchanged
+  companion then passed through the intended stock PS5.1 environment:
+  sibling `ps51-continuation/result.json`, SHA-256
+  `1C6C28EFBBC8A879BC32E9B2E84AD7FCADBE3559980BFA8D455E0433A3854B6D`.
+  This is not a new hardware or helper GUI acceptance claim.
+- **Owner install:** hub
+  `artifacts/art-rc28-owner-upgrade-zori-20261017/owner-r1/result.json`, SHA-256
+  `B53E4AC42E4FD521FCAAA748BADF29A9BD368FEC8D9E4797115EE7225ACC7209`.
+  Exactly four stamped payloads changed from rc27; 89 other files, 18 protected
+  directories and 58 raw preference values were preserved. The original receipt's
+  pending lease closure is settled by sibling `cleanup-release.json`, SHA-256
+  `11323D1E20D0D3B14862B25BEB560D45FD98C31F895D88308DD66629DB428ADD`:
+  owned processes absent, foreign processes untouched, exact lease released and
+  actually absent at 07:55:23Z October17.
+- **Rollback:** retained private payload/state backup under that owner-r1's
+  `art/before/files`, with `raw-preferences.json` and sibling tree-before/tree-after
+  records. Preserve newer owner settings when reverting binaries. For a public
+  older-release downgrade, follow [the current uninstaller-first instructions](SETUP.md#updates-removal-and-settings).
+  The 64-case fixture used rc27 as its second package, not public 0.4.1.
+- **Optional companion:** separate, not installed in the game;
+  `ArtOfSimRally-0.4.2-rc.28-shared-input-controls-setup.zip`, SHA-256
+  `78C27DB09A539FCBF0149CA71895F1E6238C8A68A54B41EFB6E929B41FF97070`,
+  pinned helper a8583c59. Public helper distribution is not decided here.
+- **Narrow later evidence:** hub
+  `artifacts/art-rc28-binding-status-samo-20261017/RUN01-RESULT.md` retains visible
+  Bind listening/Cancel, Save refusal, readable error persistence and Discard.
+  Its failed outer monitor and successful cleanup-only recovery remain separate.
+  Moved-control/new-device successful Bind/Save/restart, action response, glyphs
+  and device loss on hardware remain untested extras, not newly claimed passes.
+
+Public stable remains 0.4.1. The [0.4.2 release draft](releases/0.4.2.md) records
+the exact pending distribution decision and stable producer restrictions.
+No accepted archive, payload or installation was changed for this documentation.
+
+## Previous installation — 0.4.2-rc.25 (private shared-input candidate)
 
 Closed-game October15 22:26 UTC update from clean package source
 `ac5f3c8490b07211fc35f13806bf23dbc801dc85`; mod C955FC1B/build81C8D4A6,

@@ -2,7 +2,8 @@ SHARED WHEELKIT PROFILE (PRIVATE CANDIDATE)
 -------------------------------------------
 This package can also drive the wheel, pedals, menu buttons, shortcuts and gears
 from one shared Wheelkit profile instead of Art's own bindings. It is off unless
-you turn it on, and is a candidate for an attended owner test, not a release.
+you turn it on. This shared-input package is a private candidate; public
+distribution of it and the optional setup download is a separate decision.
 
 What is extra in this package:
 * dbce_shim.dll beside the mod: the shared profile reader.
@@ -13,7 +14,7 @@ What is extra in this package:
 To try it, with the game closed:
 1. In Wheelkit 0.6.23 or later, select art of rally, review the preview and
    Apply your profile. Wheelkit writes Mods\ArtOfSimRally\dbce-controls.ini, turns
-   on "Use shared Wheelkit profile (candidate)" and sets the mod's gearbox to match
+   on "Use shared profile" and sets the mod's gearbox to match
    the profile. Your Art bindings are kept, and the preview lists any control it
    leaves out, with the reason.
    Without Wheelkit: the optional private controls setup download (its own ZIP,
@@ -33,9 +34,25 @@ To try it, with the game closed:
      wheel is still isolated; otherwise all driving input stays neutral, while the
      menus still take the keyboard.
 
-While it is on, Art's editors for controls the profile sets are locked, and device
-changes need a restart. A control the profile does not map keeps Art's binding,
-unless the profile already uses that physical control for something else.
+EDIT SHARED BINDINGS
+In the main menu, press F6, open Controls, then find Shared profile:
+1. Choose Bind from: Saved device, or an available device already open to the mod.
+2. Click Bind on the action, move only the intended control, then release it.
+   Cancel or the countdown timeout ends listening without changing the saved file.
+3. Review the unsaved draft. Clear removes a binding; Invert reverses an axis.
+4. Choose Save bindings. The current session keeps its active bindings; the row
+   shows saved next-start values separately. Restart to use the saved changes.
+   Discard removes an unsaved draft; it does not undo a successful Save.
+
+If Save fails, nothing is saved: the active bindings stay in use and the draft
+remains available to correct or discard. A missing/read-only profile or unavailable
+reader explains why editing is unavailable. A new device may need a restart or
+the matching standalone Controls Setup download; Wheelkit is optional.
+
+Art's separate editors for controls owned by the shared profile stay locked;
+edit those bindings in Shared profile instead. A control the profile does not map
+keeps Art's binding, unless the profile already uses that physical control for
+something else. Device and saved binding changes take effect after a restart.
 
 To stop using it: turn the option off and restart, or remove dbce-controls.ini.
 To go back to your previous release: first run THIS package's Uninstall.bat (your
@@ -48,6 +65,8 @@ those bytes. A copy you changed or placed by hand is left as it is: the uninstal
 keeps it, and installing this package over it stops with a message unless the copy
 is byte-identical to this package's. Move such a file aside first.
 
-Not yet tested by a person: driving with the physical wheel, pedals (clutch
-included), H-pattern shifter and keyboard through the shared profile, and force
-feedback together with it.
+The owner accepted the currently used rc28 installation on October 18, including
+its driving, force and performance. Separately untested extras are moved-control/
+new-device Bind, successful Save and restart, action response, glyphs and device
+loss on hardware. The observed status/Cancel/Discard checks do not cover those
+physical workflows.

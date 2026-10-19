@@ -27,7 +27,12 @@ synchronized. Vortex installation has not been validated.
 
 Remove with the game closed: double-click Uninstall.bat. Settings, other mods and
 UMM stay. A custom path also works: .\Uninstall.bat -GameDir "D:\Games\artofrally"
-Before comparing candidates, back up Mods\ArtOfSimRally\Settings.xml separately.
+Before updating, keep the previous ZIP and back up Settings.xml, TripleScreen.xml,
+desired-layout.json and dbce-controls.ini from Mods\ArtOfSimRally if present.
+The installer preserves settings but does not create a backup or automatically
+undo a failed copy. If copying fails, keep the game closed until the full install
+succeeds or you restore your previous package. Shared-profile downgrade steps
+are in the shared-input section when that flavor is included.
 
 FIRST DRIVE
 -----------
@@ -72,10 +77,13 @@ Simple is the first view; Advanced adds tuning to the same saved values.
 
 * Landing vibration: Advanced > FFB, on by default at 5 (range 0-40).
   Crash kick: experimental, off by default at 50 (range 0-100). It uses a finite
-  120ms constant-force push/release; landing stays a 25Hz sine. One impact owns
+  120ms constant-force push/release plus a 25Hz rattle at half the crash strength
+  for 250ms, fading over the last 150ms. If the wheel rejects the rattle, the push
+  still works. Landing stays a 25Hz sine. One impact owns
   the output at a time. Strengths are percentages of nominal wheel force and
   independent of steering Strength. Saved values are retained: select 50 manually
-  to compare the crash default. Stronger physical crash response is unaccepted.
+  to compare the crash default. The accepted force behavior is retained; effect
+  support and feel still vary by wheel.
   These controls do not scale telemetry or the ButtKicker; tune that in SimHub.
   Shift vibration (experimental) is off by default at 5 (range 0-20). It adds
   a short wheel rumble when the player's gear engages, without changing the
@@ -88,7 +96,7 @@ CAMERAS
 -------
 Bonnet/Bumper On includes those views in the game's Change camera cycle.
 Adjustment bindings in Simple support keyboard keys and USB buttons:
-8/2 up/down, 9/7 forward/back, 4/6 left/right, 1/3 tilt, +/- FOV, 0 reset.
+8/2 forward/back, 9/3 up/down, 4/6 left/right, 7/1 tilt down/up, +/- FOV, 5 reset.
 Defaults use the numpad. Bind/Clear work without a numpad. Close settings and
 release captured/held controls before adjusting a view. F8/F10 and the Settings
 key are reserved; Reset defaults refuses a conflict rather than overwriting it.
