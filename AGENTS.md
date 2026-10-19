@@ -8,12 +8,12 @@
 
 ## Repository Purpose
 
-**Current state (reconciled 2026-10-15):**
+**Current state (reconciled 2026-10-18):**
 
 - **Published:** the latest public stable release is **0.4.1**, GitHub
   [`v0.4.1`](https://github.com/d-b-c-e/dbce-mods-art-of-rally/releases/tag/v0.4.1),
   published 2026-10-07 01:08:38 UTC from `7c3de40`. The README download points there.
-- **Installed:** private local **0.4.2-rc.25**, clean package source `ac5f3c8490b07211fc35f13806bf23dbc801dc85`, installed October15 22:26 UTC. All nine owned payloads and both normal native copies verify; four stamped payloads changed. Current configs/profile/tune, saves, nonowned files and raw preferences are unchanged. One private muted Controls-first view passed rendered review with exact restoration; physical interaction/binding acceptance remains separate. See `docs/LOCAL-DEPLOYMENT.md` and `docs/reviews/2026-10-15-controls-editor-first.md`.
+- **Installed:** owner-accepted private **0.4.2-rc.28**, clean package source `eb2316dc5bc951557c9bf1f9c2abbe0c6b2118ab`, installed October17 07:54 UTC. Read-only October18 verification matched all nine owned payloads and the second native copy to ZIP `B7818C8D`; plugin `296C8EFA`, build `8E1498FC`. The owner declares the currently used installation done and release-ready; preserve accepted gameplay, force and performance. Moved-control Bind/Save/restart, action response, glyphs and device loss on hardware remain separate untested extras. See `docs/LOCAL-DEPLOYMENT.md` and the unpublished release draft `docs/releases/0.4.2.md`. Public shim/helper distribution and stable packaging policy remain unresolved; no publication or new runtime check is implied.
 
 `docs/LOCAL-DEPLOYMENT.md` (its "Current installation" section) is authoritative for
 what is installed, and the GitHub releases page is authoritative for what is

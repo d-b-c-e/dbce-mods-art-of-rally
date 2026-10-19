@@ -103,8 +103,10 @@ The standalone README.txt is generated from `tools/installer/README.txt`, with
 `@RELEASE@` replaced at packaging time. Keep it aligned with README.md and SETUP.md;
 use web links for details that are not included in the ZIP. Published archives
 are immutable; updated installer/docs payloads go into the next package.
-The mod folder contains only Info.json, build.json, ArtOfSimRally.Mod.dll,
-Dbce.Wheel.Ffb.dll, Dbce.Wheel.Telemetry.dll and UnityForceFeedback.dll. No game
+The baseline mod folder contains Info.json, build.json, ArtOfSimRally.Mod.dll,
+Dbce.Wheel.Ffb.dll, Dbce.Wheel.Telemetry.dll, UnityForceFeedback.dll,
+Dbce.TripleScreen.Core.dll and Dbce.TripleScreen.Protocol.dll. The shared-input
+flavor adds dbce_shim.dll: nine owned mod payloads in the installed rc28 package. No game
 or UMM assemblies or user Settings.xml are packaged. The development recorder
 is a separate optional installation; packaging rejects its types/dependencies
 in the production assembly as well as unexpected payload files.
@@ -117,6 +119,20 @@ with the tested package. If multiple copies differ, close the game and reinstall
 the complete candidate; do not delete a correct plugin copy merely for its path.
 
 ## Cutting a release
+
+The owner accepted the currently installed rc28 on October18. Its exact source,
+ZIP, installation and retained qualification are in [Local deployment](LOCAL-DEPLOYMENT.md);
+the [0.4.2 release draft](releases/0.4.2.md) separates the remaining publication
+decision from untested hardware extras. This documentation update changes no
+runtime files or accepted artifact.
+
+**Current stable producer restrictions remain in force:** `package.ps1` rejects
+a stable version with `-SharedInputCandidate`, and also rejects a final package
+using the current `local+c8ec2ee` toolkit pin. Public distribution of the pinned
+shim binary/source and the optional helper remains an explicit owner decision.
+Do not remove either guard, fake an official pin, replace the accepted native,
+or build a different baseline flavor just to obtain a stable label. Resolve
+the public packaging/provenance scope in an assigned implementation first.
 
 The owner has standing authorization to keep the local test installation current.
 As a checklist item when finishing a feature or bug fix, deploy its artifact after
@@ -211,7 +227,15 @@ Keep the companion separate from the UMM mod archive and retain the existing
 exact-package tests. The first-launch requirement for the optional tabs and the
 shared-axis calibration limit are in its packaged README.
 
-October 15 private helper adoption pins Wheelkit
+The exact rc28 companion instead pins Wheelkit helper
+`a8583c59feef9f5db318d316756f64043b40fa91`, helper archive SHA-256
+`F3CF1345402CD31562B8A6112F440419DC79C6D28DDD276B4DBEDFEA084FC331`,
+bundle manifest `E9D54FFF4597DE943A2D2449071DC5DE8600416B7C3DEB7D573A66801D94A702`.
+The separate rc28 companion ZIP is `78C27DB0`; its complete hash and retained
+PS5.1 PlanOnly continuation are in Local deployment. This is an immutable private
+artifact; the following older pin and tests are historical, not rc28 qualification.
+
+Historical October15 private helper adoption pinned Wheelkit
 `44f7adbe5b816f402de1433a1eb6a2db428edcac`, ZIP
 `StandaloneModSetup-private-44f7adbe5b81-win-x64.zip`, SHA-256
 `d188c949b6d96dafaf669d0350382ec9f73704757618e38f6f751a30e6fd982f`,

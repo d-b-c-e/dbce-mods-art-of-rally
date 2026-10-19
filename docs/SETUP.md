@@ -1,7 +1,8 @@
 # Setup guide
 
 Start with the [four install steps](../README.md#install). This guide covers
-custom folders, controls and optional rig setup for **0.2.7**. The settings have
+custom folders, controls and optional rig setup. Public stable is **0.4.1**;
+the owner-accepted private installation is **0.4.2-rc.28**. The settings have
 Simple and Advanced views, with Controls, FFB, Cameras, Telemetry and Help pages.
 Pause before changing devices or bindings. [Local deployment](LOCAL-DEPLOYMENT.md)
 identifies the owner's exact installed build.
@@ -9,7 +10,9 @@ identifies the owner's exact installed build.
 ## Check the installation
 
 Launch through Steam, press **F6** for Wheel settings or **Ctrl+F10** for UMM,
-and find **art of sim rally 0.2.7**. If the entry is absent or red, follow
+and find **art of sim rally**. UMM shows the numeric version (**0.4.2** for rc28);
+use the support identity or `Mods/ArtOfSimRally/build.json` to identify the full
+candidate. If the entry is absent or red, follow
 [installation troubleshooting](TROUBLESHOOTING.md#installation-or-settings-panel-missing).
 
 The game folder contains `artofrally.exe`. Our mod goes in
@@ -52,8 +55,47 @@ updates so both copies stay in sync. Vortex installation has not been validated.
   UMM is left installed. The revised installer can also remove our mod after UMM
   has already been removed; the original 0.2.5 installer requires UMM present.
 - **Back up settings:** with the game closed, copy
-  `Mods/ArtOfSimRally/Settings.xml` somewhere outside the game folder. Restore it
-  with the game closed. Game-menu bindings are stored separately by the game.
+  `Settings.xml`, `TripleScreen.xml`, `desired-layout.json` and `dbce-controls.ini`
+  from `Mods/ArtOfSimRally` if present, and keep the previous ZIP. Game-menu
+  bindings are stored separately by the game. The installer preserves settings
+  but does not create a backup or automatically roll back a partial copy failure.
+- **Return from a shared-input candidate to an older release:** close the game,
+  run the shared candidate's `Uninstall.bat`, then install the older ZIP. Older
+  installers do not know about `dbce_shim.dll`. The candidate removes it only if
+  its bytes match its installed build record; a changed or manually placed shim
+  is retained. Keep that candidate download for its uninstaller. Settings and
+  profiles remain in place; restoring earlier settings is a separate choice and
+  must not overwrite newer values by accident.
+
+## Shared-profile controls (private rc28)
+
+This route is present in the shared-input candidate, not public stable 0.4.1.
+Use a matching Wheelkit or the separate Controls Setup download to create a
+missing profile while the game is closed. Extract the setup download outside
+the game folder; Wheelkit is optional. Restart after enabling **Use shared
+profile**. Keep the keyboard/mouse available; opening settings does not pause
+the game simulation automatically.
+
+To edit an existing profile, stay in the main menu and open **F6 → Controls →
+Shared profile**. Choose **Bind from** (the saved device or an available device
+already open to the mod), then **Bind** beside the action. Move only that control
+and release it. **Cancel** or the countdown timeout stops listening. Review the
+unsaved draft; **Clear** and axis **Invert** edit that draft. Choose **Save
+bindings**, then restart the game to use the saved next-start values. The active
+bindings keep running until that restart. **Discard** clears an unsaved draft;
+it does not undo a successful Save.
+
+A failed Save keeps the existing saved/active bindings and the draft, with an
+error to correct or discard. A missing or read-only profile and an unavailable
+reader explain why editing is unavailable. New devices may need a restart or
+the matching standalone setup download. Art's legacy editors stay locked for
+controls the shared profile owns; use the shared editor for those controls.
+Calibration of Art's own bindings below is separate from the shared profile.
+
+The owner accepted the currently used rc28 installation. Successful moved-control
+Bind/Save/restart, action response, glyphs and device loss on hardware remain
+separately untested; do not infer them from the observed status/error/Cancel/
+Discard checks. See the [release draft](releases/0.4.2.md) for the exact scope.
 
 ## Wheel and pedals
 
@@ -119,9 +161,11 @@ trigger it. [Details and limitations](LANDING-EFFECTS.md).
 
 **Crash kick (experimental):** [How it works](CRASH-EFFECTS.md). It
 is off by default, with independent strength **50** and range **0–100**. Enable
-while paused for testing. It requests a short constant-force push, then releases;
-hardware-specific feel still needs feedback. Landing and crash effects do not stack.
-A wheel that rejects constant crash effects can still use landing vibration.
+while paused. It requests a 120 ms constant-force push plus a 25 Hz rattle at half
+the crash strength for 250 ms, fading over the last 150 ms. A wheel that rejects
+the rattle keeps the push alone. This is the retained 0.4.1 effect, not new force
+tuning; hardware-specific support and feel vary. Landing and crash effects do
+not stack. A wheel that rejects constant crash effects can still use landing vibration.
 
 Landing remains strength **5**, range **0–40**. Both controls are percentages of
 nominal wheel force: saved values are preserved, so select 50 manually to compare
