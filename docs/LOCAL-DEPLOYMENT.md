@@ -1,5 +1,35 @@
 # Local deployment
 
+## Prepared candidate — 0.4.2-rc.29 (private, not installed)
+
+Packaged October 19 (kobe 291994) from clean source `3f31b6fb1d70cc81cd3206563d275666402f9fa9`: the accepted rc28
+product source `eb2316d` plus only the default-off course route capture (`3f31b6f`, docs/COURSE-ROUTE-CAPTURE.md).
+It used the existing rc28 route: `tools/package/package.ps1 -Version 0.4.2-rc.29 -SharedInputCandidate`, with the
+same qualified UMM references, pinned normal shim `BC9B030A` and unchanged helper `a8583c59` (`F3CF1345`). It is not
+installed, launched or accepted. The installed accepted rc28 below is unchanged.
+
+- **Identity:** `0.4.2-rc.29+3f31b6fb1d70cc81cd3206563d275666402f9fa9.clean`; `artShimProbe=false`.
+- **Mod ZIP:** `ArtOfSimRally-0.4.2-rc.29-shared-input.zip`, 797,933 bytes,
+  SHA-256 `DC0056F46829A55508A7F5D582B7600B942E3ED6E7CBE21B77C68D6D218207A6`.
+- **Manifest:** `E517BD95CDF26F3E10E9CE9D94B0A3916F0F3C637DC36F87DC8ADB3FEE47FEF4`.
+- **Plugin:** `D201C44624FB…`, 515,072 bytes; **build.json** `D4FA2F7D5F9C6C92AD8C2A373F3E711D20770564B328422CB69D5968308A34C6`.
+- **Companion:** `ArtOfSimRally-0.4.2-rc.29-shared-input-controls-setup.zip`, SHA-256
+  `F5CB2F5BD4883EA29EBC5F4301D18A35E541390B527B012A904AC851704434AE`.
+- **Difference from installed rc28:** only `ArtOfSimRally.Mod.dll` (the capture and its identity), the two
+  `Dbce.TripleScreen` assemblies (same size, source-revision stamp only), `build.json` and `README.txt` (the 0.4.2 draft
+  text). No file added or removed; native copies, shim and force payloads are unchanged, so the accepted tuning stays.
+- **Checks (hub `artifacts/art-rc29-candidate-zara-20261019/`):**
+  - packaging build: zero warnings and errors;
+  - release verifier: 363 assertions;
+  - exact-package installer and rollback to the installed rc28 package: 64 assertions;
+  - companion PlanOnly under stock Windows PowerShell 5.1 (`ps51-continuation-02`), with the art-of-rally-only command.
+- **Retained failures, not product defects:**
+  - The first companion step failed on the inherited PowerShell 7 module path, as rc28 recorded.
+  - The first continuation passed a zero timeout. Its two processes had exited, and the lease was released (`cleanup-release.json`).
+- **Course capture disposition:** packaged here, default off. The capture's own route identity, geometry and progress
+  check needs this package installed and one opt-in launch. That gate is the existing course runtime task, not
+  something the package proves.
+
 ## Current installation — 0.4.2-rc.28 (owner-accepted private candidate)
 
 Installed October17 07:54 UTC from clean package source
