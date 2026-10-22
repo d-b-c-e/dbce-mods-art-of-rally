@@ -46,6 +46,38 @@ static class Program
             BoundOnlyHandbrake(expected);
         }
     }
+    static void Clutch()
+    {
+        foreach (var endpoints in new[] { (1000, 61000), (61000, 1000) })
+        {
+            Setup("");
+            Host.Settings.ClutchBinding = $"TSS fixture|0|axis:3|{endpoints.Item1}|{endpoints.Item2}";
+            WheelInput.LoadBindings();
+            foreach (float travel in new[] { 0f, .01f, .03f, .5f, 1f })
+            {
+                Device.Axes[3] = endpoints.Item1 + (int)((endpoints.Item2 - endpoints.Item1) * travel);
+                WheelInput.Update();
+                foreach (var status in new[] { EventStatusEnums.EventStatus.UNDERWAY, EventStatusEnums.EventStatus.WAITING_TO_BEGIN })
+                foreach (float stock in new[] { 0f, .7f, 1f })
+                {
+                    GameEntryPoint.EventManager.status = status;
+                    object[] input = { new AxisCarController(), .21f, .32f, -.43f, .54f, stock, true };
+                    typeof(WheelInputPatch).GetMethod("Override", BindingFlags.Static | BindingFlags.NonPublic).Invoke(null, input);
+                    float expected = Math.Max(stock, travel <= .03f ? 0f : travel);
+                    Check((float)input[5] == expected, $"local clutch {status} stock={stock} travel={travel}: {input[5]}");
+                    Check((float)input[1] == .21f && (float)input[2] == .32f && (float)input[3] == -.43f &&
+                        (float)input[4] == .54f && (bool)input[6], "clutch changed other channels");
+                }
+            }
+            GameEntryPoint.EventManager.status = EventStatusEnums.EventStatus.FINISHING_STAGE_ANIMATION;
+            Check((float)CarInput()[5] == .65f, "local clutch changed finishing input");
+            Host.SettingsVisible = true;
+            Check((float)CarInput()[5] == 0f, "local clutch leaked while panel open");
+            Host.SettingsVisible = false; Application.isFocused = false;
+            Check((float)CarInput()[5] == 0f, "local clutch leaked without focus");
+            Application.isFocused = true;
+        }
+    }
     static void Lifecycle()
     {
         Setup("TSS fixture|0|axis:2|0|65535");
@@ -273,6 +305,7 @@ static class Program
             else if (args.Contains("--flip-only")) FlipPersistence();
             else if (args.Contains("--assign-only")) AssignmentReadFailure();
             else { Travel(0, 65535); Travel(65535, 0); RangesAndAssignment(); Lifecycle(); FlipPersistence(); AssignmentReadFailure(); DeviceIdentity(); DeviceRecovery(); ReadHealth(); AssignmentResume(); BindingSaves(); assertions+=ShifterIdentityTests.Run(); assertions+=CalibrationTests.Run(); }
+            Clutch();
             ProbeDoesNotLearnOrAssign();
             assertions += GameButtonTests.Run();
             assertions += IsolationBoundaryTests.Run();
@@ -829,11 +862,11 @@ static class Program
             (18, L, 0f), (19, L, 0f), (20, L, horn) } };
         WheelInput.AttachSharedInput(source, native, () => true, () => true, "Sequential", profile);
         var patch = typeof(WheelInputPatch).GetMethod("Override", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
-        ArtOfSimRally.Mod.Shim.DrivingValues Car()
+        ArtOfSimRally.Mod.Shim.DrivingValues Car(float gameClutch = .1f)
         {
             // The game's own (keyboard) values, then the production GetInput postfix.
             var car = new AxisCarController { SteeringOutOfAlignmentEffect = .02f };
-            object[] a = { car, .3f, .1f, .9f, .2f, .1f, true };
+            object[] a = { car, .3f, .1f, .9f, .2f, gameClutch, true };
             patch.Invoke(null, a);
             return new ArtOfSimRally.Mod.Shim.DrivingValues { Throttle = (float)a[1], Brake = (float)a[2], Steer = (float)a[3], Handbrake = (float)a[4], Clutch = (float)a[5], StartEngine = (bool)a[6] };
         }
@@ -869,6 +902,33 @@ static class Program
             WheelInput.SharedEditorText(WheelInput.Channel.Clutch).Contains("Art's saved binding applies") && WheelInput.SharedEditorText(WheelInput.Channel.Steer) == "Set by the shared profile." &&
             WheelInput.SharedEditorText(WheelInput.Channel.NavLeft).Contains("maps to navDown") && WheelInput.SharedEditorText(WheelInput.Channel.NavUp).Contains("Art's saved binding applies"),
             "panel text: " + WheelInput.SharedEditorText(WheelInput.Channel.Handbrake) + " | " + WheelInput.SharedEditorText(WheelInput.Channel.Clutch));
+        foreach (var endpoints in new[] { (1000, 61000), (61000, 1000) })
+        {
+            cfg.ClutchBinding = Bind("axis:3", endpoints.Item1, endpoints.Item2);
+            WheelInput.LoadBindings();
+            foreach (float travel in new[] { 0f, .01f, .03f, .5f, 1f })
+            {
+                int raw = endpoints.Item1 + (int)((endpoints.Item2 - endpoints.Item1) * travel);
+                source.Axis = axis => axis == 3 ? raw : 0;
+                Frame();
+                foreach (var status in new[] { EventStatusEnums.EventStatus.UNDERWAY, EventStatusEnums.EventStatus.WAITING_TO_BEGIN })
+                foreach (float stock in new[] { 0f, .7f, 1f })
+                {
+                    GameEntryPoint.EventManager.status = status;
+                    Check(Car(stock).Clutch == Math.Max(stock, travel <= .03f ? 0f : travel),
+                        $"fallback clutch {status} stock={stock} travel={travel}");
+                }
+            }
+        }
+        GameEntryPoint.EventManager.status = EventStatusEnums.EventStatus.FINISHING_STAGE_ANIMATION;
+        Check(Car(.4f).Clutch == .4f, "fallback clutch changed finishing input");
+        Host.SettingsVisible = true;
+        Check(Car(1f).Clutch == 0f, "fallback clutch leaked while panel open");
+        Host.SettingsVisible = false; Application.isFocused = false;
+        Check(Car(1f).Clutch == 0f, "fallback clutch leaked without focus");
+        Application.isFocused = true;
+        GameEntryPoint.EventManager.status = EventStatusEnums.EventStatus.UNDERWAY;
+        horn = 0f; Frame(); horn = 1f; Frame(); // Reloading local bindings reset the button edge above.
         // A transport-only stop keeps the verified keyboard path but nothing falls back to the wheel.
         // The horn is still held: the stop owes the game its GetButtonUp, once.
         native.Refuse = true; Frame();

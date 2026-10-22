@@ -211,6 +211,16 @@ the steering-alignment effect, so direct steering, steer assist and telemetry
 all see what they would from a wheel Rewired understood. Unbound channels
 are untouched; menus still use keyboard or pad.
 
+For an Art-local clutch binding, zero means released and one means fully
+pressed. A local axis value through 3% after saved calibration is treated as
+exactly zero to tolerate rest jitter; values above that keep their travel,
+including a full press of one. The delivered clutch is the greater of the
+game's value and the local pedal value, on both direct reads and the local
+fallback beside a shared profile. This preserves the game's start-line clutch
+hold and its auto-clutch behavior at rest. A clutch owned by the shared profile
+keeps that profile's processing. These corrections have source/fixture coverage;
+they have not yet been observed at the rig (KI-49/KI-50).
+
 Verified 2026-09-03 on the MOZA rig: all three controllers open, the base
 reads through the FFB handle (steering centred at 32669), pedals on the base
 at rest. Driven on the owner's rig 2026-09-03: steering, throttle and brake through

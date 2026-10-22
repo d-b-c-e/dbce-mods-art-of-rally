@@ -118,7 +118,7 @@ namespace Rewired.ControllerExtensions
     public sealed class DualShock4Extension : IHIDControllerExtension { ushort IHIDControllerExtension.vendorId => 0; ushort IHIDControllerExtension.productId => 0; }
 }
 public static class PadManager { public static readonly Rewired.Player Player = new(); public static Rewired.Player GetPlayer() => Player; }
-public static class EventStatusEnums { public enum EventStatus { UNDERWAY, FINISHING_STAGE_ANIMATION } }
+public static class EventStatusEnums { public enum EventStatus { UNDERWAY, FINISHING_STAGE_ANIMATION, WAITING_TO_BEGIN } }
 public sealed class EventManager { public EventStatusEnums.EventStatus status = EventStatusEnums.EventStatus.UNDERWAY; }
 public static class GameEntryPoint { public static EventManager EventManager = new(); }
 public class AxisCarController

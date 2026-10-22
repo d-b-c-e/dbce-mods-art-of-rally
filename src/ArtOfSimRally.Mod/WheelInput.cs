@@ -411,6 +411,8 @@ namespace ArtOfSimRally.Mod
                     b.Far = raw; span = b.Far - b.Rest; extended = true;
                 }
                 _values[c] = b.Normalize(raw, c == Channel.Steer);
+                // Stock auto-clutch requires exact zero; ignore local pedal rest jitter.
+                if (c == Channel.Clutch && _values[c] <= .03f) _values[c] = 0f;
             }
 
             if (extended)
@@ -690,7 +692,7 @@ namespace ArtOfSimRally.Mod
             if (WheelInput.IsBound(WheelInput.Channel.Brake))
                 brakeInput = AxisCarController.ProcessDeadzoneForInput(WheelInput.Value(WheelInput.Channel.Brake), SettingsManager.GetBrakingDeadzone());
             if (WheelInput.IsBound(WheelInput.Channel.Clutch))
-                clutchInput = WheelInput.Value(WheelInput.Channel.Clutch);
+                clutchInput = Mathf.Max(clutchInput, WheelInput.Value(WheelInput.Channel.Clutch));
             if (WheelInput.IsBound(WheelInput.Channel.Handbrake) || WheelInput.IsBound(WheelInput.Channel.HandbrakeButton))
                 handbrakeInput = Mathf.Max(handbrakeInput, Mathf.Max(WheelInput.Value(WheelInput.Channel.Handbrake), WheelInput.Value(WheelInput.Channel.HandbrakeButton)));
         }

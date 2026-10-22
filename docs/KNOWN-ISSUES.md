@@ -21,6 +21,36 @@ Severity is about the effect on driving, not on how annoying it looks:
 
 ## Open
 
+### KI-50 — Local clutch rest jitter can bypass stock auto-clutch
+
+**Source finding, 2026-10-22; not yet observed at the rig.** Decompiled
+`CarController.Update` writes `1f - clutchInput` to the clutch whenever the input
+is nonzero (or auto-clutch is off). `Drivetrain` only auto-engages with
+`carController.clutchInput == 0f`. Art's local axis normalization previously
+passed even tiny positive rest jitter through, potentially overriding that
+stock behavior. This is separate from the start-line hold below.
+
+The source candidate sets normalized local clutch axis values through 3% to
+exactly zero, keeping the remaining travel and full press unchanged. It applies
+to direct reads and Art's unowned-axis fallback on the shared snapshot; the
+shared profile's owned clutch processing is unchanged. Focused fixture tests
+cover rest, jitter, midpoint and full press in both directions on both paths.
+Game, hardware and physical clutch behavior remain unverified; no physics,
+assist, drivetrain or game-default change is included.
+
+### KI-49 — Local clutch overrides the game's start-line hold
+
+**Source finding, 2026-10-22; not yet observed at the rig.** Decompiled
+`AxisCarController.GetInput` forces `clutchInput = 1f` during
+`WAITING_TO_BEGIN`. Both Art-local clutch paths previously replaced it with
+the pedal value, including zero at rest, before `CarController.Update` consumed
+it. This could release the stock clutch hold prematurely.
+
+The source candidate composes `max(game, local pedal)` in both the direct
+postfix and shared-snapshot local fallback, matching the existing shared-profile
+consumer. Fixture tests preserve stock values, including the start-line 1,
+across pedal travel. Rig reproduction and runtime confirmation remain pending.
+
 ### KI-48 — Wheelkit profile buttons were stored but not applied
 
 After the owner accepted rc.4's fresh-launch axes, camera and menu bindings

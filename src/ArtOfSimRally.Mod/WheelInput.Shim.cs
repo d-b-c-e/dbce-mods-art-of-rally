@@ -178,7 +178,7 @@ namespace ArtOfSimRally.Mod
                     case Channel.Steer: steer = AxisCarController.ProcessDeadzoneForInput(value, SettingsManager.GetSteeringDeadzone()) + car.SteeringOutOfAlignmentEffect; break;
                     case Channel.Throttle: throttle = AxisCarController.ProcessDeadzoneForInput(value, SettingsManager.GetThrottleDeadzone()); startEngine = throttle > 0f; break;
                     case Channel.Brake: brake = AxisCarController.ProcessDeadzoneForInput(value, SettingsManager.GetBrakingDeadzone()); break;
-                    case Channel.Clutch: clutch = value; break;
+                    case Channel.Clutch: clutch = Mathf.Max(clutch, value); break;
                     case Channel.Handbrake: handbrake = Mathf.Max(handbrake, value); break;
                 }
             }

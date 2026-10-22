@@ -32,6 +32,13 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Art-local clutch bindings preserve the game's start-line clutch hold and
+  deliver exactly zero for axis rest jitter through 3% of normalized travel,
+  leaving stock auto-clutch available. Covers direct input and the local
+  fallback beside shared input; shared-profile clutch processing is unchanged.
+  Found from decompiled code and covered by fixtures; rig confirmation pending
+  (KI-49/KI-50).
+
 - Private F6 candidate: an unavailable explicitly chosen input device requires a fresh choice; unsupported rows stay disabled. Saved bindings, calibration and force tuning are preserved.
 
 - Menu button prompts (e.g. "next weather") with a wheel no longer draw a keyboard badge and a gamepad symbol on top of each other: where the game has no artwork for the wheel, the prompt shows the bound wheel button ("B12") in its keyboard badge, as the controls screen already does (KI-46). Follows the existing "text fallback for unknown controller glyphs" setting.
