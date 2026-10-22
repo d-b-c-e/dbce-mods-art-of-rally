@@ -38,6 +38,15 @@ cover rest, jitter, midpoint and full press in both directions on both paths.
 Game, hardware and physical clutch behavior remain unverified; no physics,
 assist, drivetrain or game-default change is included.
 
+**Main-tree verification, 2026-10-22 (KI-49/50):** source commit
+`aeae6c9828c1a3cc254dd2b7540b75755bf03e19` is on `main`; no clutch side
+branch or worktree remains. The focused runner
+`dotnet run --project tests/WheelInput/WheelInput.csproj -c Release --no-restore`
+passed 620 assertions. Its separate `--no-build -- --ordinary-fallback-only`
+run passed 87 assertions, including the shared-snapshot local clutch fallback.
+This is offline source evidence only; no release, package publication or
+game-install write was performed. Runtime and physical acceptance remain open.
+
 ### KI-49 — Local clutch overrides the game's start-line hold
 
 **Source finding, 2026-10-22; not yet observed at the rig.** Decompiled
