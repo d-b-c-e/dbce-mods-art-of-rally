@@ -278,7 +278,8 @@ namespace ArtOfSimRally.Mod
 
         // ---- Telemetry ------------------------------------------------------
 
-        public bool TelemetryEnabled = false;
+        // On by default (STD-016). A saved <TelemetryEnabled>false</TelemetryEnabled> still turns it off.
+        public bool TelemetryEnabled = true;
 
         public string TelemetryHost = "127.0.0.1";
 

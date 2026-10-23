@@ -223,12 +223,13 @@ not resolve every camera compatibility case; see [known issues](KNOWN-ISSUES.md)
 
 ## SimHub and ButtKicker
 
-Skip this section if you only use wheel FFB. Telemetry is off by default and
-does not change the wheel force settings.
+Telemetry is on by default for new settings (127.0.0.1:8000) and does not change
+the wheel force settings. Turn it off on the **Telemetry** page if you do not use
+SimHub; a saved choice is kept across updates.
 
 1. Open SimHub and select **Forza Horizon 5** as the receiving game. Use its
    game/UDP settings to check the listening port is **8000**.
-2. In art of rally, pause and open **Telemetry**. Choose **On**. For the same PC,
+2. In art of rally, pause and open **Telemetry**. Check that it is **On**. For the same PC,
    select **Use local preset** (127.0.0.1:8000). For another PC, use
    **Advanced → Edit connection** and enter that PC's local network address and
    matching port; **Apply connection** saves host and port together.

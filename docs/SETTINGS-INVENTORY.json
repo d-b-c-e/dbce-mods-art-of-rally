@@ -1975,7 +1975,7 @@
       "min": null,
       "max": null,
       "step": null,
-      "default": false,
+      "default": true,
       "classification": "editable",
       "visibility": "Simple and Advanced",
       "reason": "Ordinary player choice."
