@@ -219,8 +219,9 @@ namespace ArtOfSimRally.Mod
         internal const float HudSpeedScale = 0.6f;
 
         /// <summary>Forza gear for a Drivetrain gear index. The HUD (RPMDisplay.UpdateGearDisplay) shows R below the
-        /// car's neutral index (the zero ratio), N at it, and gear - neutral above it. Forza draws 0 as R and has no
-        /// neutral, so neutral sends 1 (toolkit TELEMETRY-FORZA.md).</summary>
+        /// car's neutral index (the zero ratio) and gear - neutral above it; at neutral it shows N only when that index
+        /// is 1, otherwise "0". Forza draws 0 as R and has no neutral, so neutral sends 1 at any index: a shared
+        /// protocol normalization (toolkit TELEMETRY-FORZA.md), not literal HUD equality.</summary>
         internal static byte ForzaGear(int gear, int neutral) =>
             gear < neutral ? (byte)0 : gear == neutral ? (byte)1 : (byte)Math.Min(gear - neutral, 255);
 
