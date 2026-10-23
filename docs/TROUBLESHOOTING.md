@@ -7,6 +7,15 @@ For initial setup, use the [setup guide](SETUP.md). If the mod loads, pause and
 collect a support file: **F6 → Help → Create support file**. Attach it when
 reporting a problem.
 
+You can also use **F6 > Help > Submit GitHub Issue** while paused. Enter a
+title and description and optionally select logs; only selected logs are read
+when you choose **Review report**. Review the preview for private information
+(redaction is best effort), tick **I reviewed this report**, then choose
+**Open reviewed GitHub draft**. Check and submit the issue on GitHub. If asked,
+manually attach the reviewed `support-report.txt` saved in a report folder on
+your Desktop; attaching uploads it immediately. **Create support file** remains
+available for the separate Desktop diagnostic file.
+
 ## Installation or settings panel missing
 
 - **Missing Install.bat:** download `ArtOfSimRally-0.2.7.zip` from release

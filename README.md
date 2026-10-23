@@ -92,8 +92,16 @@ pause, then use **Help → Create support file**. Turn detail off afterward. Ord
 errors/settings can be collected without detailed logging.
 
 Attach the Desktop `art-of-sim-rally-support-*.txt` to a
-[GitHub issue](https://github.com/d-b-c-e/art-of-sim-rally/issues), with your wheel,
+[GitHub issue](https://github.com/d-b-c-e/dbce-mods-art-of-rally/issues), with your wheel,
 driver, stage/car and what happened. See [troubleshooting](docs/TROUBLESHOOTING.md).
+
+You can also use **F6 > Help > Submit GitHub Issue** while paused. Enter a
+title and description, optionally select logs, then choose **Review report**.
+Review the preview for private information (redaction is best effort), tick
+**I reviewed this report**, and choose **Open reviewed GitHub draft**. Check and
+submit the issue on GitHub. If asked, manually attach the reviewed
+`support-report.txt` saved in a report folder on your Desktop; attaching uploads
+it immediately.
 
 Tested on the owner's **MOZA R12**, with positive reports from **MOZA R5** and
 **Thrustmaster T300 RS GT** users. Fanatec/TSS-specific behavior and the full

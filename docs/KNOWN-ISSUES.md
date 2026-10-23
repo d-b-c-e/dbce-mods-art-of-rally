@@ -3,7 +3,7 @@
 The register of what is broken, what is unverified, and what was deliberately
 abandoned. One entry per problem, newest first within each section.
 
-**Reporting something new:** open an [issue](https://github.com/d-b-c-e/art-of-sim-rally/issues) with a support file
+**Reporting something new:** open an [issue](https://github.com/d-b-c-e/dbce-mods-art-of-rally/issues) with a support file
 (F6 → *Help* → **Create support file on Desktop**).
 User-facing fixes by symptom live in [TROUBLESHOOTING.md](TROUBLESHOOTING.md);
 this file is the engineering view, including things a user cannot act on.

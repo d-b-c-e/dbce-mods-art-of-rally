@@ -126,7 +126,14 @@ turn detail off. Ordinary errors/settings can be collected with detail off.
 Attach the Desktop support TXT to an issue with wheel/driver, car/stage and
 what happened. Check Saved/error status: failed binding writes keep old values.
 
-Source, docs and license: https://github.com/d-b-c-e/art-of-sim-rally
-Issues: https://github.com/d-b-c-e/art-of-sim-rally/issues
+You can also use F6 > Help > Submit GitHub Issue while paused. Enter a title
+and description, optionally select logs, then choose Review report. Review the
+preview for private information (redaction is best effort), tick I reviewed this
+report, then choose Open reviewed GitHub draft. Check and submit on GitHub.
+If asked, manually attach the reviewed support-report.txt saved in a report
+folder on your Desktop; attaching uploads it immediately.
+
+Source, docs and license: https://github.com/d-b-c-e/dbce-mods-art-of-rally
+Issues: https://github.com/d-b-c-e/dbce-mods-art-of-rally/issues
 Tested hardware history: MOZA R12; positive R5/T300 reports. The full hardware
 transition matrix, Fanatec/TSS travel and stronger crash feel need more reports.
