@@ -53,6 +53,14 @@ static class Program
             Check(!string.IsNullOrWhiteSpace(row.GetProperty("reason").GetString()), "Inventory classification needs a reason");
         }
     }
+    // STD-016: telemetry is on for new settings; a saved Off survives load and save (UMM's XmlSerializer persists it).
+    static void TelemetryDefault()
+    {
+        Check(new Settings().TelemetryEnabled, "new settings do not send telemetry by default");
+        Check(Read("<Settings><Strength>50</Strength></Settings>").TelemetryEnabled, "settings saved without the field did not get telemetry on");
+        var off = Read("<Settings><TelemetryEnabled>false</TelemetryEnabled></Settings>");
+        Check(!off.TelemetryEnabled && !Read(Xml(off)).TelemetryEnabled, "a saved telemetry Off was not kept through load and save");
+    }
     static void Views()
     {
         Check(new Settings().FyReference == Settings.DefaultFyReference && !SettingsViewPolicy.CustomFfb(new Settings()), "new standard reference not used by defaults/presentation");
@@ -192,7 +200,7 @@ static class Program
     }
     static int Main()
     {
-        try{Inventory();Views();SelectionAndMigration();Runtime();MenuIsolation();Display();Console.WriteLine(JsonSerializer.Serialize(new{status="passed",assertions,hardwareOutput=false,visualInspection=false}));return 0;}
+        try{Inventory();TelemetryDefault();Views();SelectionAndMigration();Runtime();MenuIsolation();Display();Console.WriteLine(JsonSerializer.Serialize(new{status="passed",assertions,hardwareOutput=false,visualInspection=false}));return 0;}
         catch(Exception e){Console.Error.WriteLine(e);return 1;}
     }
     static void MenuIsolation()
