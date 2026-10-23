@@ -104,7 +104,7 @@ metres) and `ForzaPacket` encodes it. Sources, from
 | `WheelInPuddleDepth` | `Wheel.isOnPuddle` | |
 | `TireTemp` | not modelled | leave zero |
 | `Power` / `Torque` | torque × RPM × π/30; `Drivetrain.torque` | watts, Nm |
-| `Gear` | `Drivetrain.gear` against the car's `neutral` index, as the HUD's `RPMDisplay` shows it | 0 = reverse (R), neutral = 1 (Forza has no neutral), otherwise `gear - neutral` |
+| `Gear` | `Drivetrain.gear` against the car's `neutral` index, as the HUD's `RPMDisplay` shows it | 0 = reverse (R), neutral = 11 (SimHub decodes 11 as N), otherwise `gear - neutral` capped at 10 |
 | `Accel`/`Brake`/`Clutch`/`HandBrake` | `CarController.*Input` | via `TelemetryFrame.ToPedal` |
 | `Steer` | `CarController.steerInput` | via `TelemetryFrame.ToSteer` |
 | `DrivetrainType` | fixed 2 placeholder | not a measured drivetrain classification |

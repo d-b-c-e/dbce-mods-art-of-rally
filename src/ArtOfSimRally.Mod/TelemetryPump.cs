@@ -220,10 +220,11 @@ namespace ArtOfSimRally.Mod
 
         /// <summary>Forza gear for a Drivetrain gear index. The HUD (RPMDisplay.UpdateGearDisplay) shows R below the
         /// car's neutral index (the zero ratio) and gear - neutral above it; at neutral it shows N only when that index
-        /// is 1, otherwise "0". Forza draws 0 as R and has no neutral, so neutral sends 1 at any index: a shared
-        /// protocol normalization (toolkit TELEMETRY-FORZA.md), not literal HUD equality.</summary>
+        /// is 1, otherwise "0". The packet follows SimHub's Forza decoder (GSIReader ForzaManager.GD_Gear: 0 = R, 11 = N,
+        /// anything else its number), so neutral sends 11 at any index and forward caps at 10 so it never reads N: the
+        /// receiver's contract, not literal HUD equality.</summary>
         internal static byte ForzaGear(int gear, int neutral) =>
-            gear < neutral ? (byte)0 : gear == neutral ? (byte)1 : (byte)Math.Min(gear - neutral, 255);
+            gear < neutral ? (byte)0 : gear == neutral ? (byte)11 : (byte)Math.Min(gear - neutral, 10);
 
         private static void FillWheels(ref TelemetryFrame frame, Axles axles, float speed)
         {

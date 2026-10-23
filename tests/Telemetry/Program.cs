@@ -116,11 +116,12 @@ internal static class Program
             var pump = mod.GetType("ArtOfSimRally.Mod.TelemetryPump", true);
             var settingsType = mod.GetType("ArtOfSimRally.Mod.Settings", true); var cfg = Activator.CreateInstance(settingsType);
             DrivingConnection(mod, pump, cfg);
-            // Gear follows the HUD (RPMDisplay): R below neutral, gear - neutral above; neutral normalizes to 1 (Forza has no neutral).
+            // Gear follows the HUD (RPMDisplay): R below neutral, gear - neutral above; neutral sends 11, SimHub's N.
             var gear = pump.GetMethod("ForzaGear", Static);
             byte G(int g, int n) => (byte)gear.Invoke(null, new object[] { g, n });
-            Check(G(0, 1) == 0 && G(1, 1) == 1 && G(2, 1) == 1 && G(6, 1) == 5, "gear: reverse 0, neutral 1, forward = HUD number");
-            Check(G(1, 2) == 0 && G(2, 2) == 1 && G(3, 2) == 1, "gear: neutral at another index still drives the mapping");
+            Check(G(0, 1) == 0 && G(1, 1) == 11 && G(2, 1) == 1 && G(6, 1) == 5, "gear: reverse 0 (R), neutral 11 (N), forward = HUD number");
+            Check(G(1, 2) == 0 && G(2, 2) == 11 && G(3, 2) == 1, "gear: neutral at another index still drives the mapping");
+            Check(G(13, 1) == 10, "gear: forward caps at 10 so it never reads N");
             var connect = pump.GetMethod("EnsureSender", Static);
             var park = pump.GetMethod("Park", Static); var shutdown = pump.GetMethod("Shutdown", Static);
             int errors = 0;
