@@ -21,6 +21,30 @@ Severity is about the effect on driving, not on how annoying it looks:
 
 ## Open
 
+### KI-51 — Private rc29 companion CLI cannot qualify the Settings first-launch refusal
+
+**Offline companion gap, 2026-10-22; Wheelkit helper ownership.** The exact
+rc29 controls-setup ZIP (`F5CB2F5B`, hub
+`artifacts/art-rc29-candidate-zara-20261019/RESULT.md`) rejects both
+`preview ... --settings <request>` and `apply ... --settings <request>` with
+usage text and exit 2. Its usage advertises only profile, screens and current.
+This does not provide README step 4's actionable first-launch message. The
+Settings tab's GUI behavior is unverified by this CLI test; this is not evidence
+that the GUI creates defaults or corrupts settings.
+
+The extended existing `Test-ControlsSetupCompanion.ps1` retains the failure in
+`results/controls-setup-06d64dd38cfb4cf69727e1f656587669/checks.json`
+(Windows PowerShell 5.1.26100.9711: 65 passing checks, two Settings failures,
+overall FAIL). All prior cases pass. On a freshly installed fake target with
+no saved files, Screens Preview/Apply correctly requests first launch and
+preserves every file. Controls Preview writes nothing; Apply creates only
+`dbce-controls.ini` and well-formed `<Settings>` XML with `SharedInput=true`
+and `TransmissionMode=Automatic`. Uninstall preserves those user files.
+
+No game, Steam, device, owner install, PlayerPrefs or LocalLow was accessed.
+Wheelkit must supply a supported Settings qualification route in the pinned
+companion before this gate can pass; no Wheelkit changes are made here.
+
 ### KI-50 — Local clutch rest jitter can bypass stock auto-clutch
 
 **Source finding, 2026-10-22; not yet observed at the rig.** Decompiled

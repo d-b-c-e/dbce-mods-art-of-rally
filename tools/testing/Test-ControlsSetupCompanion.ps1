@@ -16,6 +16,7 @@ $game = Join-Path $run 'game [USB] with spaces'
 $mod = Join-Path $game 'Mods/ArtOfSimRally'
 $checks = 0
 $passed = [Collections.Generic.List[string]]::new()
+$cleanFailures = [Collections.Generic.List[string]]::new()
 New-Item -ItemType Directory -Path $game -Force | Out-Null
 Set-Content -LiteralPath (Join-Path $game 'artofrally.exe') -Value 'fixture; never executed'
 New-Item -ItemType Directory -Path (Join-Path $game 'artofrally_Data/Managed/UnityModManager') -Force | Out-Null
@@ -23,6 +24,11 @@ Set-Content -LiteralPath (Join-Path $game 'artofrally_Data/Managed/UnityModManag
 
 function Assert([bool]$Condition, [string]$Message) { if (-not $Condition) { throw $Message }; $script:checks++ }
 function Pass([string]$Name) { $passed.Add($Name); Write-Host "PASS $Name" }
+function File-Snapshot([string]$Directory) {
+    return (@(Get-ChildItem -LiteralPath $Directory -Recurse -File | Sort-Object FullName | ForEach-Object {
+        $_.FullName.Substring($Directory.Length) + ':' + (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash
+    }) -join "`n")
+}
 function Invoke-Batch([string]$Name, [string]$Batch, [string]$Arguments, [bool]$Fails = $false) {
     # Quoted paths exercise %* forwarding; redirected stdin makes pause nonblocking.
     $start = New-Object Diagnostics.ProcessStartInfo
@@ -110,6 +116,65 @@ $profilePath = Join-Path $run 'controls-setup-profile.json'
 $binding = @{ InstanceGuid='11111111-1111-1111-1111-111111111111'; ProductGuid='22222222-2222-2222-2222-222222222222'; DeviceName='Fixture wheel'; Kind='Axis'; Index=0; Direction=-1; Rest=32767; Minimum=0; Maximum=65535; Calibrated=$true }
 $profile = @{ Schema=2; ActiveId='fixture'; Profiles=@(@{ Id='fixture'; Profile=@{ Schema=1; Name='Companion fixture'; Transmission='Automatic'; Bindings=@{ steer=$binding } } }) }
 [IO.File]::WriteAllText($profilePath, ($profile | ConvertTo-Json -Depth 12))
+
+# A separate real install has never run: optional scopes must refuse before controls can create Settings.xml.
+$clean = Join-Path $run 'never launched game'
+New-Item -ItemType Directory -Path (Join-Path $clean 'artofrally_Data/Managed/UnityModManager') -Force | Out-Null
+Set-Content -LiteralPath (Join-Path $clean 'artofrally.exe') -Value 'fixture; never executed'
+Set-Content -LiteralPath (Join-Path $clean 'artofrally_Data/Managed/UnityModManager/UnityModManager.dll') -Value 'fixture; never loaded'
+$null = Invoke-Batch 'clean-install' (Join-Path $package 'Install.bat') ('-GameDir "' + $clean + '"')
+$cleanMod = Join-Path $clean 'Mods/ArtOfSimRally'
+foreach ($file in @('Settings.xml', 'TripleScreen.xml', 'dbce-controls.ini')) {
+    Assert (-not (Test-Path -LiteralPath (Join-Path $cleanMod $file))) "Fresh install unexpectedly contains $file"
+}
+$cleanBefore = File-Snapshot $clean
+$cleanScreens = Join-Path $run 'clean-screens.json'
+$cleanSettings = Join-Path $run 'clean-settings.json'
+[IO.File]::WriteAllText($cleanScreens, '{"schema":1,"values":{"RightYawDegrees":48}}')
+[IO.File]::WriteAllText($cleanSettings, '{"schema":1,"settings":[{"section":"","key":"Strength","value":"15"}]}')
+foreach ($scope in @('screens', 'settings')) {
+    $failuresBefore = $cleanFailures.Count
+    $request = if ($scope -eq 'screens') { $cleanScreens } else { $cleanSettings }
+    foreach ($action in @('preview', 'apply')) {
+        $result = Invoke-Cli ("clean-$scope-$action") @($action, '--game', 'art-of-rally', '--game-dir', $clean, "--$scope", $request) 'APPLY'
+        if ($result.code -eq 0 -or $result.text -notmatch 'Start .+ once with the mod installed') {
+            $cleanFailures.Add("Clean $scope $action did not ask for first launch; see cli-clean-$scope-$action")
+        } else { $checks++ }
+        Assert ((File-Snapshot $clean) -ceq $cleanBefore) "Clean $scope $action changed the target"
+    }
+    if ($cleanFailures.Count -eq $failuresBefore) { Pass "clean $scope Preview/Apply asks for first launch and leaves every target file unchanged" }
+}
+$cleanPreview = Invoke-Cli 'clean-controls-preview' @('preview', '--game', 'art-of-rally', '--game-dir', $clean, '--profile', $profilePath)
+Assert ((File-Snapshot $clean) -ceq $cleanBefore) 'Clean controls Preview changed the target'
+$cleanApply = Invoke-Cli 'clean-controls-apply' @('apply', '--game', 'art-of-rally', '--game-dir', $clean, '--profile', $profilePath) 'APPLY'
+if ($cleanApply.code -eq 0) {
+    Assert ($cleanPreview.code -eq 0 -and $cleanPreview.text.Contains('dbce-controls.ini')) "Clean controls Preview failed: $($cleanPreview.text)"
+    $cleanXml = [xml](Get-Content -LiteralPath (Join-Path $cleanMod 'Settings.xml') -Raw)
+    Assert ($cleanXml.DocumentElement.Name -ceq 'Settings' -and $cleanXml.DocumentElement.NamespaceURI -eq '') 'Clean Apply wrote an XML root the mod cannot load'
+    Assert ($cleanXml.Settings.SharedInput -eq 'true' -and $cleanXml.Settings.TransmissionMode -eq 'Automatic') 'Clean Apply omitted the shared-input/profile gearbox settings'
+    Assert ((Get-Content -LiteralPath (Join-Path $cleanMod 'dbce-controls.ini') -Raw).Contains('steer =')) 'Clean Apply omitted the controls binding'
+    $allowed = @((Join-Path $cleanMod 'Settings.xml'), (Join-Path $cleanMod 'dbce-controls.ini'))
+    $unchanged = @(Get-ChildItem -LiteralPath $clean -Recurse -File | Where-Object { $_.FullName -notin $allowed } | Sort-Object FullName | ForEach-Object {
+        $_.FullName.Substring($clean.Length) + ':' + (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash
+    }) -join "`n"
+    Assert ($unchanged -ceq $cleanBefore) 'Clean Apply changed files beyond Settings.xml and dbce-controls.ini'
+    Pass 'controls Preview/Apply on the never-launched install creates only the shared controls and loadable Settings XML with the profile gearbox'
+} else {
+    Assert ($cleanApply.text -match 'Start .+ once with the mod installed') "Clean controls Apply failed without actionable first-launch guidance: $($cleanApply.text)"
+    Assert ((File-Snapshot $clean) -ceq $cleanBefore) 'Refused clean controls Apply partially wrote the target'
+    Pass 'controls Apply refuses the never-launched install with first-launch guidance and leaves every target file unchanged'
+}
+$cleanUserFiles = @{}
+foreach ($file in @('Settings.xml', 'TripleScreen.xml', 'dbce-controls.ini')) {
+    $path = Join-Path $cleanMod $file
+    if (Test-Path -LiteralPath $path) { $cleanUserFiles[$file] = (Get-FileHash -LiteralPath $path).Hash }
+}
+$null = Invoke-Batch 'clean-uninstall' (Join-Path $package 'Uninstall.bat') ('-GameDir "' + $clean + '"')
+foreach ($file in $cleanUserFiles.Keys) {
+    Assert ((Get-FileHash -LiteralPath (Join-Path $cleanMod $file)).Hash -eq $cleanUserFiles[$file]) "Clean uninstall changed $file"
+}
+Pass 'uninstall preserves user files from the never-launched target'
+
 $preview = Invoke-Cli 'preview' @('preview', '--game', 'art-of-rally', '--game-dir', $game, '--profile', $profilePath)
 Assert ($preview.code -eq 0 -and $preview.text.Contains('dbce-controls.ini')) "Preview failed: $($preview.text)"
 Assert (-not (Test-Path -LiteralPath (Join-Path $mod 'dbce-controls.ini'))) 'Preview wrote the controls profile'
@@ -148,7 +213,9 @@ Assert (-not $helperInGame.Count) "Helper files reached the game folder: $($help
 Pass 'uninstall keeps the written controls and settings, and no helper file ever reached the game folder'
 
 [ordered]@{ powerShell=$PSVersionTable.PSVersion.ToString(); package=$package; companion=$companion; release=$manifest.release
-    companionManifestSha256=(Get-FileHash -LiteralPath (Join-Path $companion 'companion-manifest.json')).Hash; checks=$checks; cases=$passed.ToArray()
+    status=$(if ($cleanFailures.Count) { 'FAIL' } else { 'PASS' })
+    companionManifestSha256=(Get-FileHash -LiteralPath (Join-Path $companion 'companion-manifest.json')).Hash; checks=$checks; cases=$passed.ToArray(); failures=$cleanFailures.ToArray()
     evidence='Disposable folders and the real Install.bat, Uninstall.bat and Set Up Controls.bat; no game, loader, device or owner install' } |
     ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $run 'checks.json') -Encoding UTF8
-Write-Host "$($passed.Count) controls setup companion cases ($checks checks) passed. Evidence: $run"
+Write-Host "$($passed.Count) controls setup companion cases ($checks checks) passed; $($cleanFailures.Count) failures. Evidence: $run"
+if ($cleanFailures.Count) { throw ($cleanFailures -join '; ') }
