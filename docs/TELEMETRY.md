@@ -90,7 +90,7 @@ metres) and `ForzaPacket` encodes it. Sources, from
 | `IsRaceOn` | driving **or held on the start line** | true from `WAITING_TO_BEGIN` so a shaker follows the engine while revving before the lights; must go false in menus and cutscenes, or dashboards never park |
 | `CurrentEngineRpm` | `Drivetrain` RPM | |
 | `EngineMaxRpm` / `EngineIdleRpm` | `Drivetrain.maxRPM` / `.minRPM` | |
-| `Speed` | `CarDynamics.velo` | m/s |
+| `Speed` | `CarDynamics.velo` × 0.6 | m/s as the HUD shows it. `HudManager.HandleSpeedometer` displays `drivetrain.velo` (the same forward body speed) × 2.237 (mph) or 3.6 (km/h) × 0.6; dashboards apply their own unit, so both match. The HUD's other type, wheel speed, is a private unset field that this build never selects |
 | `Velocity` X/Y/Z | Rigidbody world velocity projected by inverse car rotation | vehicle-local m/s; corrected in 0.2.4 |
 | `AngularVelocity` | Rigidbody world angular velocity projected by inverse car rotation | vehicle-local rad/s; corrected in 0.2.4 |
 | `Acceleration` | differentiate world velocity, then inverse-rotate | local m/s²; reset on discontinuity, not stored by the game |
