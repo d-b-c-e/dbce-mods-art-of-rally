@@ -14,8 +14,9 @@ namespace ArtOfSimRally.Mod
         internal const int MaxBytes = 8192;
         private readonly string _path, _identity, _session = Guid.NewGuid().ToString("N");
         private readonly DateTime _started;
-        private readonly XElement _previous;
-        private readonly string _previousStatus;
+        private XElement _previous;
+        private string _previousStatus;
+        private bool _previousRead;
         private long _savedRevision = -1;
         private double _nextAttempt;
         private bool _shutdownAttempted;
@@ -27,6 +28,13 @@ namespace ArtOfSimRally.Mod
             _path = Path.GetFullPath(path); _identity = identity; _started = startedUtc;
             if (string.IsNullOrEmpty(identity) || identity.Length > 256 || startedUtc.Kind != DateTimeKind.Utc)
                 throw new ArgumentException("Expected bounded build identity and UTC session time");
+        }
+
+        // Read on Help or before the first write, never on ordinary mod startup.
+        private void ReadPrevious()
+        {
+            if (_previousRead) return;
+            _previousRead = true;
             try
             {
                 if (!File.Exists(_path)) { _previousStatus = "No previous diagnostic snapshot."; return; }
@@ -37,7 +45,7 @@ namespace ArtOfSimRally.Mod
                         DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null, MaxCharactersInDocument = MaxBytes }))
                         _previous = XElement.Load(reader);
                 }
-                Validate(_previous, startedUtc);
+                Validate(_previous, _started);
                 _previousStatus = "Previous session; captured at the recorded idle/exit boundary, not a crash trace.";
             }
             catch (Exception ex)
@@ -57,6 +65,7 @@ namespace ArtOfSimRally.Mod
             try
             {
                 if (utc.Kind != DateTimeKind.Utc || utc < _started) throw new InvalidDataException("Session clock moved backwards");
+                ReadPrevious();
                 var xml = new XElement("frameHealth", new XAttribute("schema", 2),
                     new XAttribute("session", _session), new XAttribute("build", _identity),
                     new XAttribute("startedUtc", _started.ToString("o")), new XAttribute("capturedUtc", utc.ToString("o")),
@@ -132,6 +141,7 @@ namespace ArtOfSimRally.Mod
 
         internal void AppendPrevious(StringBuilder output)
         {
+            ReadPrevious();
             output.AppendLine("--- previous session frame health ---");
             output.AppendLine(_previousStatus);
             if (_previous != null)

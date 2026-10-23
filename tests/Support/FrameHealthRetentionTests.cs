@@ -32,6 +32,17 @@ static class FrameHealthRetentionTests
         Check(!store.Flush(health,false,true,16,start.AddSeconds(16)) && store.Writes==3,"duplicate shutdown rewrote summary");
         string valid=File.ReadAllText(path);
         Check(XElement.Parse(valid).Attribute("boundary").Value=="exit","snapshot not labelled exit");
+        FrameHealthStore deferred;
+        using (File.Open(path,FileMode.Open,FileAccess.ReadWrite,FileShare.None))
+        {
+            deferred=new FrameHealthStore(path,"deferred-build",start.AddHours(1));
+            Check(!deferred.Flush(empty,false,true,1,start.AddHours(1)),"empty diagnostics attempted a snapshot");
+            Check(!deferred.Flush(health,true,false,2,start.AddHours(1)),"driving attempted a snapshot");
+        }
+        Check(Summary(deferred).Contains("0.2.5-test+fixture"),"startup or an ineligible flush read the locked prior snapshot");
+        File.WriteAllText(path,"changed after first Help read");
+        Check(Summary(deferred).Contains("0.2.5-test+fixture"),"Help reread a previously captured snapshot");
+        File.WriteAllText(path,valid);
         var next=new FrameHealthStore(path,"new-build",start.AddHours(1));
         string previous=Summary(next);
         Check(previous.Contains("previous session") && previous.Contains("0.2.5-test+fixture") && previous.Contains("capturedUtc"),"previous-session evidence mislabelled");
