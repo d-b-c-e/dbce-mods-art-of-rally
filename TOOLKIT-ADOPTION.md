@@ -195,6 +195,16 @@ scheduled once with Art's combined compile; no build/runtime qualification yet.
 See docs/reviews/2026-10-15-help-report.md. Existing unchecked/partial standards
 remain open outside the changed presentation and Help source scope.
 
+October22 source resync: exact toolkit SupportReport.cs pin
+320020208b19643d65067da904a9dcb17a85b80c, raw SHA-256
+134F12121DA709C31596501B4E47F17026E2B67309A025EB22AB7E4961D3B4FA.
+Token-label redaction now covers generic token fields and prefixed token labels,
+including refresh_token and id_token, in ordinary fields, JSON and headers.
+Toolkit MIT license and the preserved vendored license bytes are unchanged.
+Art remains net48 with DBCE_SUPPORT_NET35 undefined; the Help adapter is
+unchanged. This is a source refresh with no runtime or rendered acceptance
+claim. Existing partial and unchecked standards remain open.
+
 ### Rc26 changed offline gates and private visual preparation (October15)
 
 Exact normal e914 compiled0warnings/errors, metadata351, actual package/companion

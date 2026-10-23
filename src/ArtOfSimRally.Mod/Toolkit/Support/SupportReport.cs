@@ -6,6 +6,13 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
+#if DBCE_SUPPORT_NET35
+// Unity Mono2 ships a stripped System.dll without InvalidDataException.
+using InvalidDataException = System.IO.IOException;
+using ReportLogPaths = System.Collections.Generic.IList<string>;
+#else
+using ReportLogPaths = System.Collections.Generic.IReadOnlyList<string>;
+#endif
 
 namespace Dbce.Wheel.Support
 {
@@ -96,7 +103,7 @@ namespace Dbce.Wheel.Support
         private static readonly string[] TextExtensions = { ".log", ".txt", ".json", ".jsonl", ".csv", ".tsv", ".xml" };
 
         public static PreparedReport Prepare(ReportProduct product, string title, string description,
-            IReadOnlyList<string> selectedLogPaths = null, string home = null)
+            ReportLogPaths selectedLogPaths = null, string home = null)
         {
             if (product == null) throw new ArgumentNullException("product");
             title = Required(Redact(Required(title, 200, "title"), home), 200, "redacted title");
@@ -113,21 +120,46 @@ namespace Dbce.Wheel.Support
         public static string Redact(string text, string home = null)
         {
             if (text == null) throw new ArgumentNullException("text");
+            #if DBCE_SUPPORT_NET35
+            if (home == null) home = Environment.GetEnvironmentVariable("USERPROFILE");
+#else
             if (home == null) home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+#endif
             if (home != null) home = home.TrimEnd('\\', '/');
             if (!string.IsNullOrEmpty(home))
-                text = Regex.Replace(text, Regex.Escape(home), "%USERPROFILE%",
-                    RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
+                text = Replace(text, Regex.Escape(home), "%USERPROFILE%",
+                    RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
             text = Replace(text, @"(?i)[a-z]:[\\/]Users[\\/][^\\/\s""<>]+", "%USERPROFILE%");
             text = Replace(text, @"(?i)(?:gh[pousr]_[a-z0-9]{15,}|github_pat_[a-z0-9_]+)", "[redacted token]");
             // Accept ordinary key=value, quoted JSON keys and HTTP headers. Redact the rest of that line.
-            text = Replace(text, @"(?im)((?:authorization|password|passwd|access[_-]?token|api[_-]?key|secret)[""']?\s*[:=]\s*)[^\r\n]+", "$1[redacted]");
+            text = Replace(text, @"(?im)((?:authorization|password|passwd|token|api[_-]?key|secret)[""']?\s*[:=]\s*)[^\r\n]+", "$1[redacted]");
             text = Replace(text, @"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", "[redacted email]");
             return text;
         }
 
-        private static string Replace(string text, string pattern, string replacement)
-        { return Regex.Replace(text, pattern, replacement, RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1)); }
+        private static string Replace(string text, string pattern, string replacement,
+            RegexOptions options = RegexOptions.CultureInvariant)
+        {
+#if DBCE_SUPPORT_NET35
+            // CLR 2 has no regex timeout API. All patterns are fixed by this helper;
+            // keep the same report-size bound before its legacy regex work, too.
+            if (text.Length > 50000) throw new InvalidDataException("The report is too long. Shorten the description or select fewer logs.");
+            return Regex.Replace(text, pattern, replacement, options);
+#else
+            return Regex.Replace(text, pattern, replacement, options, TimeSpan.FromSeconds(1));
+#endif
+        }
+
+        private static bool Blank(string value)
+        {
+#if DBCE_SUPPORT_NET35
+            if (value == null) return true;
+            foreach (char c in value) if (!char.IsWhiteSpace(c)) return false;
+            return true;
+#else
+            return string.IsNullOrWhiteSpace(value);
+#endif
+        }
 
         public static bool ValidRepository(string repository)
         {
@@ -153,7 +185,7 @@ namespace Dbce.Wheel.Support
         }
 
         /// <summary>Only explicit host-known/user-selected text log paths; no directory or settings discovery.</summary>
-        public static string SelectedLogs(IReadOnlyList<string> paths)
+        public static string SelectedLogs(ReportLogPaths paths)
         {
             if (paths == null || paths.Count < 1 || paths.Count > MaxLogs)
                 throw new InvalidDataException("Choose between one and five text logs.");
@@ -163,7 +195,7 @@ namespace Dbce.Wheel.Support
             for (int i = 0; i < paths.Count; i++)
             {
                 string path = paths[i];
-                if (string.IsNullOrWhiteSpace(path)) throw new InvalidDataException("Choose a known text log.");
+                if (Blank(path)) throw new InvalidDataException("Choose a known text log.");
                 bool allowed = false;
                 foreach (string extension in TextExtensions)
                     if (string.Equals(extension, Path.GetExtension(path), StringComparison.OrdinalIgnoreCase)) allowed = true;
@@ -232,7 +264,7 @@ namespace Dbce.Wheel.Support
 
         internal static string Required(string value, int limit, string field)
         {
-            if (string.IsNullOrWhiteSpace(value) || value.Length > limit)
+            if (Blank(value) || value.Length > limit)
                 throw new ArgumentException("Enter a " + field + " (up to " + limit + " characters).");
             return value.Trim();
         }
