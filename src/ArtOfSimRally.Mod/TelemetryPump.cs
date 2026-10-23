@@ -193,11 +193,8 @@ namespace ArtOfSimRally.Mod
             TelemetrySampling.FillMotion(ref frame, velocity, accel,
                 _body != null ? _body.angularVelocity : Vector3.zero, rotation);
 
-            // gearRatios is [reverse, neutral, 1st, 2nd, ...], so Drivetrain.gear
-            // is an index, not a gear number. Forza reports 0 for both reverse and
-            // neutral, so anything below first collapses to 0.
             if (_drivetrain != null)
-                frame.Gear = (byte)Mathf.Max(0, _drivetrain.gear - 1);
+                frame.Gear = ForzaGear(_drivetrain.gear, _drivetrain.neutral);
 
             var cc = cd.carController;
             if (cc != null)
@@ -220,6 +217,12 @@ namespace ArtOfSimRally.Mod
         // rather than trusting allWheels ordering.
         /// <summary>The game's on-screen speedometer scale; see HudManager.HandleSpeedometer.</summary>
         internal const float HudSpeedScale = 0.6f;
+
+        /// <summary>Forza gear for a Drivetrain gear index. The HUD (RPMDisplay.UpdateGearDisplay) shows R below the
+        /// car's neutral index (the zero ratio), N at it, and gear - neutral above it. Forza draws 0 as R and has no
+        /// neutral, so neutral sends 1 (toolkit TELEMETRY-FORZA.md).</summary>
+        internal static byte ForzaGear(int gear, int neutral) =>
+            gear < neutral ? (byte)0 : gear == neutral ? (byte)1 : (byte)Math.Min(gear - neutral, 255);
 
         private static void FillWheels(ref TelemetryFrame frame, Axles axles, float speed)
         {
