@@ -30,6 +30,9 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   [the 0.4.2 release draft](docs/releases/0.4.2.md) lists the exact pending decision
   and the untested hardware extras.
 
+- Forza telemetry is on by default for new settings (127.0.0.1:8000, for SimHub);
+  a saved Off is kept, and existing installs keep their saved choice.
+
 ### Fixed
 
 - Art-local clutch bindings preserve the game's start-line clutch hold and
