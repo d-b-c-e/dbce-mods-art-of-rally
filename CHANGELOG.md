@@ -39,6 +39,10 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   Found from decompiled code and covered by fixtures; rig confirmation pending
   (KI-49/KI-50).
 
+- Forza telemetry gear: neutral now reads N (gear 11, as SimHub's Forza decoder
+  shows it) instead of R, and forward gears cap at 10 so they never read N.
+  Reverse still reads R. Applies only with telemetry enabled.
+
 - Private F6 candidate: an unavailable explicitly chosen input device requires a fresh choice; unsupported rows stay disabled. Saved bindings, calibration and force tuning are preserved.
 
 - Menu button prompts (e.g. "next weather") with a wheel no longer draw a keyboard badge and a gamepad symbol on top of each other: where the game has no artwork for the wheel, the prompt shows the bound wheel button ("B12") in its keyboard badge, as the controls screen already does (KI-46). Follows the existing "text fallback for unknown controller glyphs" setting.
