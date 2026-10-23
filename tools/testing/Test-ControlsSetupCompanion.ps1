@@ -1,9 +1,12 @@
 <# Tests the optional controls setup companion (package.ps1 -PrivateStandaloneSetup) with a shared-input candidate
    installed by its real Install.bat into an isolated fake game folder, using the same batch entry points players run.
-   No game, hardware or owner install is used. Keeps logs and fixtures in results/controls-setup-* for inspection. #>
+   No game, hardware or owner install is used. SettingsOnly retains integrity refusals and checks only first-launch Settings.
+   Logs/fixtures use fresh EvidenceDirectory, or results/controls-setup-* by default. #>
 [CmdletBinding()]
 param([Parameter(Mandatory)][string]$PackageDirectory,
-      [Parameter(Mandatory)][string]$CompanionDirectory)
+      [Parameter(Mandatory)][string]$CompanionDirectory,
+      [switch]$SettingsOnly,
+      [string]$EvidenceDirectory)
 $ErrorActionPreference = 'Stop'
 $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 $package = [IO.Path]::GetFullPath($PackageDirectory)
@@ -11,7 +14,9 @@ $companion = [IO.Path]::GetFullPath($CompanionDirectory).TrimEnd('\')
 . (Join-Path $root 'tools/installer/verify.ps1')
 $manifest = Assert-Payload $package
 if (-not $manifest.files.'ArtOfSimRally/dbce_shim.dll') { throw 'Use an extracted shared-input candidate package.' }
-$run = Join-Path $root ('results/controls-setup-' + [Guid]::NewGuid().ToString('N'))
+if ($SettingsOnly -and -not $EvidenceDirectory) { throw '-SettingsOnly requires a fresh -EvidenceDirectory' }
+$run = if ($EvidenceDirectory) { [IO.Path]::GetFullPath($EvidenceDirectory) } else { Join-Path $root ('results/controls-setup-' + [Guid]::NewGuid().ToString('N')) }
+if (Test-Path -LiteralPath $run) { throw 'Evidence directory already exists; preserve its results' }
 $game = Join-Path $run 'game [USB] with spaces'
 $mod = Join-Path $game 'Mods/ArtOfSimRally'
 $checks = 0
@@ -105,6 +110,35 @@ Set-Content -LiteralPath (Join-Path $extra 'ModSetup/unlisted.dll') -Value 'not 
 $log = Invoke-Setup 'unlisted' $extra $game -Fails $true
 Assert ($log -match 'missing or unexpected files') 'Unlisted companion file was accepted'
 Pass 'Set Up Controls refuses a changed managed helper DLL beside an unchanged executable, with or without a rehashed manifest, and an unlisted file'
+
+if ($SettingsOnly) {
+    $wrongSource = Copy-Companion 'wrong helper source'
+    $wrongPath = Join-Path $wrongSource 'companion-manifest.json'
+    $wrongRecord = Get-Content -LiteralPath $wrongPath -Raw | ConvertFrom-Json
+    $wrongRecord.standaloneSetup.sourceCommit = '0000000000000000000000000000000000000000'
+    $wrongRecord | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $wrongPath -Encoding UTF8
+    $log = Invoke-Setup 'wrong-source' $wrongSource $game -Fails $true
+    Assert ($log -match 'Unexpected helper identity' -and $log -notmatch 'PLAN ONLY') 'Wrong helper source was accepted'
+    Pass 'Set Up Controls refuses a helper source mismatch'
+    $before = File-Snapshot $game
+    $request = Join-Path $run 'first-launch-settings.json'
+    [IO.File]::WriteAllText($request, '{"schema":1,"settings":[{"section":"","key":"ShowFrameRate","value":"true"}]}')
+    foreach ($action in @('preview', 'apply')) {
+        $result = Invoke-Cli ("settings-only-$action") @($action, '--game', 'art-of-rally', '--game-dir', $game, '--settings', $request) 'APPLY'
+        Assert ($result.code -eq 1 -and $result.text -match 'Start .+ once with the mod installed' -and $result.text -match 'Nothing was written') "Settings $action lacks actionable first-launch refusal: $($result.text)"
+        Assert (-not (Test-Path -LiteralPath (Join-Path $mod 'Settings.xml'))) "Settings $action created Settings.xml"
+        Assert ((File-Snapshot $game) -ceq $before) "Settings $action changed the target inventory"
+    }
+    $before | Set-Content -LiteralPath (Join-Path $run 'target-before.txt') -Encoding UTF8
+    (File-Snapshot $game) | Set-Content -LiteralPath (Join-Path $run 'target-after.txt') -Encoding UTF8
+    Pass 'Settings Preview/Apply gives actionable first-launch refusal and preserves the full target inventory'
+    [ordered]@{ mode='settings-only'; status='PASS'; package=$package; companion=$companion; checks=$checks; cases=$passed.ToArray()
+        companionManifestSha256=(Get-FileHash -LiteralPath (Join-Path $companion 'companion-manifest.json')).Hash
+        gameLaunched=$false; guiLaunched=$false; hardwareOpened=$false } |
+        ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $run 'checks.json') -Encoding UTF8
+    Write-Host "$checks focused checks passed; evidence: $run"
+    return
+}
 
 # Controls only: the helper may write the controls profile and the shared-input opt-in; nothing else changes.
 $settings = Join-Path $mod 'Settings.xml'

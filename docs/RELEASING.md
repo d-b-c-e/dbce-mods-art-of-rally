@@ -227,6 +227,57 @@ Keep the companion separate from the UMM mod archive and retain the existing
 exact-package tests. The first-launch requirement for the optional tabs and the
 shared-axis calibration limit are in its packaged README.
 
+### Private b12 companion for the frozen rc29 mod (2026-10-22)
+
+The optional helper pin now names the separately qualified bundle
+`b12ab83fba5bda975ebf4e6356b67b66348711e3`, ZIP
+`StandaloneModSetup-private-b12ab83fba5b-win-x64.zip`, SHA-256
+`A798CE2A711AF78FE6BC7BC9AA7374E8C1FFA25732B82CBA67056915F22886D3`.
+Its bundle manifest is
+`262166C22F2E046A4A5B34DEAA65A6ED7D399A391F5AC8204420062D3C424C13`
+(529 payload files, 530 ZIP entries). Helper QA `01M5K1FBHY8JV77RQHWV2TRDZQ`
+is typed PASS, roundsUsed 0; retained focused receipt SHA-256
+`2D3536E7AE8343534909CA1D2CCBE4FAE319ADDA34982B8F551378F713FA322E`.
+This reuses exact qualified helper bytes; no helper or game build is involved.
+
+`controls-setup.ps1` factors the existing companion block out of `package.ps1`.
+It accepts an extracted, hash-verified private shared-input RC, checks its expected
+manifest hash and every payload, then packages the pinned helper separately.
+Existing stage, ZIP or sidecar paths refuse; keep outputs separate from inputs.
+The normal package producer calls the same block after its ordinary mod build.
+For a frozen mod, use only the companion producer:
+
+```powershell
+./tools/package/controls-setup.ps1 -PackageDirectory <frozen-extracted-mod> `
+  -ExpectedManifestSha256 E517BD95CDF26F3E10E9CE9D94B0A3916F0F3C637DC36F87DC8ADB3FEE47FEF4 `
+  -StandaloneSetupZip <exact-qualified-b12-zip> `
+  -CompanionStage <fresh-private-stage> -CompanionZip <fresh-private-zip>
+```
+
+The new private output, under ignored `artifacts/private-helper-b12ab83-20261022`, is
+`ArtOfSimRally-0.4.2-rc.29-shared-input-controls-setup-b12ab83fba5b.zip`,
+80,792,354 bytes, SHA-256
+`5FF9F66CC0EC295BD5C73B9FE2EF56177B85AFBE47B21AAEB92452B44C303D82`.
+Its companion manifest is
+`965AD091F715783D8AB6B947C3E6CB35A3C44EB8AE85685BB3AA564244D21961`
+(535 listed files, 536 ZIP entries). The helper is unmodified under `ModSetup`.
+It pairs with unchanged frozen Art source
+`3f31b6fb1d70cc81cd3206563d275666402f9fa9`, rc29 mod ZIP SHA-256
+`DC0056F46829A55508A7F5D582B7600B942E3ED6E7CBE21B77C68D6D218207A6`.
+`result.json`, `producer-refusals.json`, `settings-checks/checks.json`, full member
+hashes in `verified-companion/companion-manifest.json`, and cleanup receipts retain
+executed evidence. The first run's wrapper-only splatting failure is retained in
+`run.log`; `continue.log` verifies the already-produced ZIP without rebuilding it.
+
+Rollback is selection of the retained old rc29 companion
+`F5CB2F5BD4883EA29EBC5F4301D18A35E541390B527B012A904AC851704434AE`
+with the same frozen mod. Its original Settings failure remains historical
+([KI-51](KNOWN-ISSUES.md#ki-51--private-rc29-companion-cli-cannot-qualify-the-settings-first-launch-refusal)).
+No owner installation changed. Source rollback is an ordinary revert of this
+consumer delivery commit; do not replace or delete either candidate's evidence.
+This is a private optional companion, with no public distribution-policy change,
+publication, installed acceptance, GUI, game, device or physical qualification.
+
 The exact rc28 companion instead pins Wheelkit helper
 `a8583c59feef9f5db318d316756f64043b40fa91`, helper archive SHA-256
 `F3CF1345402CD31562B8A6112F440419DC79C6D28DDD276B4DBEDFEA084FC331`,

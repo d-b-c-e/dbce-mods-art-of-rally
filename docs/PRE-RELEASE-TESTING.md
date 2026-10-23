@@ -76,6 +76,27 @@ is retained in `results/controls-setup-f5a88672a035409e8aa65cdcd3455287`.
 No game, GUI, hardware, Steam, owner install, PlayerPrefs or LocalLow check is
 implied. Runtime and physical acceptance remain separate.
 
+**Separate b12 private companion, 2026-10-22:**
+`Test-ControlsSetupCompanion.ps1 -PackageDirectory <frozen-rc29> -CompanionDirectory <new-b12-companion> -SettingsOnly -EvidenceDirectory <fresh-ignored-path>`
+runs the existing disposable installer and companion integrity refusals, then
+only the missing Settings first-launch seam. It leaves the full suite unchanged.
+Stock Windows PowerShell 5.1 passed 21 focused assertions: valid PlanOnly,
+baseline refusal, modified DLL with/without rehashed manifest, unexpected member,
+source-commit mismatch, and Settings Preview/Apply exit 1 with first-launch and
+Nothing-was-written guidance, no Settings.xml, and identical full file inventory.
+The helper's qualified existing-settings Preview/Apply PASS is retained from
+its exact helper receipt; it was not rerun as unrelated consumer work.
+
+New evidence: `artifacts/private-helper-b12ab83-20261022/result.json`,
+`settings-checks/checks.json`, `target-before.txt`/`target-after.txt` beneath that
+checks folder, and `producer-refusals.json`. ZIP/sidecar and all 535 companion
+member hashes pass; all 529 helper payloads match the pinned bundle. Producer
+refuses the wrong frozen manifest, existing outputs, wrong helper ZIP hash and
+wrong sidecar before output writes. Ten existing pure checksum assertions pass.
+All owned synchronous processes returned and each owned shared lease was released.
+No Art/helper rebuild or broad 65-case repeat; the old rc29 FAIL remains intact.
+See [exact hashes and rollback](RELEASING.md#private-b12-companion-for-the-frozen-rc29-mod-2026-10-22).
+
 Landing detector/delivery/game-boundary tests run within the lifecycle checkpoint;
 the known Norway corpus case also checks the actual production detector against
 its unchanged contact/motion samples. Native finite-effect lifetime is verified

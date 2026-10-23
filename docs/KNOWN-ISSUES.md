@@ -45,6 +45,17 @@ No game, Steam, device, owner install, PlayerPrefs or LocalLow was accessed.
 Wheelkit must supply a supported Settings qualification route in the pinned
 companion before this gate can pass; no Wheelkit changes are made here.
 
+**New private companion, 2026-10-22:** qualified helper
+`b12ab83fba5bda975ebf4e6356b67b66348711e3` is now pinned separately.
+The new rc29/b12 companion (`5FF9F66C`) preserves the frozen mod and passes
+21 focused consumer checks, including executed Settings Preview/Apply first-launch
+refusal and full file-inventory preservation. Evidence is in
+`artifacts/private-helper-b12ab83-20261022/settings-checks/checks.json`;
+exact artifact hashes and reversible selection are in [Releasing](RELEASING.md#private-b12-companion-for-the-frozen-rc29-mod-2026-10-22).
+This qualifies the new private CLI delivery seam only. The older `F5CB2F5B`
+65-pass/two-Settings-fail result above remains FAIL; no installed, GUI, runtime
+or physical acceptance is inferred.
+
 ### KI-50 — Local clutch rest jitter can bypass stock auto-clutch
 
 **Source finding, 2026-10-22; not yet observed at the rig.** Decompiled
