@@ -12,7 +12,8 @@ game, change the Windows display mode or send wheel forces. If you use Wheelkit,
 3. Double-click "Set Up Controls.bat". It finds art of rally the same way the mod installer does and opens the
    helper for art of rally only. If it cannot find the game, run:
    Set Up Controls.bat -GameDir "D:\Games\artofrally"
-4. Bind your wheel, pedals and buttons, choose Preview, then Apply.
+4. On the Controls tab, choose "Read installed controls" before editing to keep existing bindings.
+   Bind your wheel, pedals and buttons, choose "Save bindings", then "Preview game changes" and "Apply to game".
    Before using the optional Screens or Settings tabs below, start the game once with the mod installed, then close
    it. Those tabs need the mod's saved settings files; if a file is missing, the helper asks you to start the game
    instead of creating it with defaults.
