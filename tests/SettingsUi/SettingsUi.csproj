@@ -5,6 +5,9 @@
     <GameDir Condition="'$(GameDir)' == ''">D:\Program Files (x86)\Steam\steamapps\common\artofrally</GameDir>
   </PropertyGroup>
   <ItemGroup>
+    <None Include="../../docs/SETTINGS-INVENTORY.json" Link="SETTINGS-INVENTORY.json" CopyToOutputDirectory="PreserveNewest" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/Triple/Settings.cs" Link="Triple/Settings.cs" />
+    <Compile Remove="Stubs.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/Toolkit/Ui/SettingsPresentation.cs" Link="Shared/SettingsPresentation.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/Settings.cs" Link="Settings.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/SettingsPersistence.cs" Link="SettingsPersistence.cs" />
@@ -20,4 +23,14 @@
     <Compile Include="../../src/ArtOfSimRally.Mod/WheelInput.Binding.cs" Link="WheelInput.Binding.cs" />
     <Reference Include="UnityEngine.CoreModule"><HintPath>$(GameDir)/artofrally_Data/Managed/UnityEngine.CoreModule.dll</HintPath></Reference>
   </ItemGroup>
+  <!-- Triple.Settings overrides GetPath; adapt the existing loader fixture without changing production source. -->
+  <Target Name="InventoryLoaderFixture" BeforeTargets="CoreCompile">
+    <PropertyGroup>
+      <InventoryStubs>$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)/Stubs.cs').Replace('public static string GetPath', 'public virtual string GetPath').Replace('public ModInfo Info=new();', 'public string Path = &quot;fixture&quot;; public ModInfo Info=new();'))</InventoryStubs>
+    </PropertyGroup>
+    <WriteLinesToFile File="$(IntermediateOutputPath)InventoryStubs.cs" Lines="$([MSBuild]::Escape($(InventoryStubs)))" Overwrite="true" WriteOnlyWhenDifferent="true" />
+    <ItemGroup>
+      <Compile Include="$(IntermediateOutputPath)InventoryStubs.cs" />
+    </ItemGroup>
+  </Target>
 </Project>

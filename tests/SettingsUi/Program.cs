@@ -14,6 +14,45 @@ static class Program
     static string Xml(Settings c){using var w=new StringWriter();new XmlSerializer(typeof(Settings)).Serialize(w,c);return w.ToString();}
     static Settings Read(string xml)=> (Settings)new XmlSerializer(typeof(Settings)).Deserialize(new StringReader(xml));
     static readonly string Wheel="a5444f71-6773-43d7-b43f-3b83492d6f55";
+    static void Inventory()
+    {
+        using var inventory = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "SETTINGS-INVENTORY.json")));
+        var options = new JsonSerializerOptions();
+        options.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+        var records = inventory.RootElement.GetProperty("fields").EnumerateArray().ToArray();
+        var classes = new[] { "editable", "runtime-only", "F6 presentation state", "developer/diagnostic", "excluded/unused" };
+        var settings = new (object Value, string File)[] {
+            (new Settings(), "Mods/ArtOfSimRally/Settings.xml"),
+            (new ArtOfSimRally.Mod.Triple.Settings(), "Mods/ArtOfSimRally/TripleScreen.xml")
+        };
+        int fields = 0;
+        foreach (var (value, file) in settings)
+        {
+            var type = value.GetType();
+            foreach (var field in type.GetFields(BindingFlags.Public | BindingFlags.Instance))
+            {
+                if (field.IsDefined(typeof(XmlIgnoreAttribute))) continue;
+                fields++;
+                var matches = records.Where(r => r.GetProperty("settingsType").GetString() == type.FullName &&
+                    r.GetProperty("key").GetString() == field.Name).ToArray();
+                Check(matches.Length == 1, $"Inventory needs exactly one {type.FullName}.{field.Name} entry");
+                var row = matches[0];
+                Check(row.GetProperty("file").GetString() == file, $"Inventory file differs for {field.Name}");
+                var recorded = JsonSerializer.Deserialize(row.GetProperty("default").GetRawText(), field.FieldType, options);
+                Check(JsonSerializer.Serialize(recorded, field.FieldType, options) ==
+                    JsonSerializer.Serialize(field.GetValue(value), field.FieldType, options),
+                    $"Inventory default differs for {type.FullName}.{field.Name}");
+            }
+        }
+        Check(records.Length == fields, "Inventory has unknown or duplicate persisted fields");
+        foreach (var row in records.Concat(inventory.RootElement.GetProperty("actions").EnumerateArray()))
+        {
+            foreach (var key in new[] { "file", "key", "page", "label", "type", "displayUnit", "scale", "min", "max", "step", "default" })
+                Check(row.TryGetProperty(key, out _), "Inventory metadata missing: " + key);
+            Check(classes.Contains(row.GetProperty("classification").GetString()), "Unknown inventory classification");
+            Check(!string.IsNullOrWhiteSpace(row.GetProperty("reason").GetString()), "Inventory classification needs a reason");
+        }
+    }
     static void Views()
     {
         Check(new Settings().FyReference == Settings.DefaultFyReference && !SettingsViewPolicy.CustomFfb(new Settings()), "new standard reference not used by defaults/presentation");
@@ -153,7 +192,7 @@ static class Program
     }
     static int Main()
     {
-        try{Views();SelectionAndMigration();Runtime();MenuIsolation();Display();Console.WriteLine(JsonSerializer.Serialize(new{status="passed",assertions,hardwareOutput=false,visualInspection=false}));return 0;}
+        try{Inventory();Views();SelectionAndMigration();Runtime();MenuIsolation();Display();Console.WriteLine(JsonSerializer.Serialize(new{status="passed",assertions,hardwareOutput=false,visualInspection=false}));return 0;}
         catch(Exception e){Console.Error.WriteLine(e);return 1;}
     }
     static void MenuIsolation()
