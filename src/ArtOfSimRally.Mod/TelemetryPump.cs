@@ -184,7 +184,7 @@ namespace ArtOfSimRally.Mod
 
                 DistanceTraveled = _distanceTravelled,
                 CurrentRaceTime  = Time.timeSinceLevelLoad,
-                CurrentLap       = Time.timeSinceLevelLoad,
+                CurrentLap       = GameState.ExistingManager?.stageTimerManager?.GetStageTimeMS() ?? 0f,
                 LapNumber        = 1,
                 RacePosition     = 1,
                 DrivetrainType   = 2,   // rally default; refine from powered axles later

@@ -108,7 +108,8 @@ metres) and `ForzaPacket` encodes it. Sources, from
 | `Accel`/`Brake`/`Clutch`/`HandBrake` | `CarController.*Input` | via `TelemetryFrame.ToPedal` |
 | `Steer` | `CarController.steerInput` | via `TelemetryFrame.ToSteer` |
 | `DrivetrainType` | fixed 2 placeholder | not a measured drivetrain classification |
-| `CurrentRaceTime` / `CurrentLap` | `Time.timeSinceLevelLoad` | scene time, not an authoritative race timer |
+| `CurrentLap` | `EventManager.stageTimerManager.GetStageTimeMS()` | the game's stage clock in seconds; zero until it is available and underway |
+| `CurrentRaceTime` | `Time.timeSinceLevelLoad` | scene time, not an authoritative race timer |
 | `RacePosition`, `LapNumber` | 1 | no wheel-to-wheel racing |
 
 0.2.4 corrects sampling units/axes (KI-16), leaving the toolkit packet layout
