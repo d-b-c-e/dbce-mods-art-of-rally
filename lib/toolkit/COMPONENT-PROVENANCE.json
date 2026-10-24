@@ -1,11 +1,14 @@
 {
   "schemaVersion": 1,
   "managedRelease": "v0.15.0",
-  "nativeSourceRevision": "c8ec2ee7fc389b2b3a20be849bc39f1203628f26",
-  "nativeSourceTag": "native-0.9.1-fleet-candidate",
+  "toolkitRelease": "v0.16.0",
+  "nativeSourceRevision": "bbbf6e3f0cbbcd207383647a8a18fe1d724408e2",
+  "nativeSourceTag": "v0.16.0",
   "nativeVersion": 901,
-  "nativeExportCount": 48,
+  "nativeExportCount": 51,
   "nativeArchitecture": "x64",
-  "nativeSha256": "F8361A08BBE08EAAB936B37800D308CF1FC7EDAB34E2839DB16A447FE34178C5",
-  "scope": "Native-only candidate. Managed FFB and telemetry remain byte-identical to v0.15.0. No force-model or saved-tune change."
+  "nativeSha256": "44E46799945438BC07DF738472602DB1E3ECC04C3F77CAD5B12FCACF49C69272",
+  "shimSha256": "BC9B030A25834D8CCE562F22588EC5E0D3F5C1FA026AD7AD984776D60CD6254B",
+  "shimSourceRevision": "421bd4b234c5e0869f082f3dc26ed08845cc7bff",
+  "scope": "Official toolkit v0.16.0 component release: the native (0.9.1 plus read-snapshot and interface-path exports) and shared-input shim the owner accepted in rc30. Managed FFB and telemetry remain byte-identical to v0.15.0. No force-model or saved-tune change."
 }

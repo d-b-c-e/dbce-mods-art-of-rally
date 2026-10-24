@@ -13,7 +13,10 @@ $root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 if ((Get-FileHash -LiteralPath (Join-Path $PackageDirectory 'manifest.json') -Algorithm SHA256).Hash -ne $ExpectedManifestSha256) { throw 'Frozen mod manifest differs from its expected hash' }
 $manifest = Assert-Payload $PackageDirectory
 $build = Get-Content -LiteralPath (Join-Path $PackageDirectory 'ArtOfSimRally/build.json') -Raw | ConvertFrom-Json
-if (-not $build.sharedInputCandidate -or $manifest.release -notmatch '-rc\.') { throw 'Controls setup companion requires a private shared-input RC' }
+# A final release qualifies only when package.ps1 built it from the official toolkit pin (vX.Y.Z), which carries the shim.
+if (-not $build.sharedInputCandidate -or ($manifest.release -notmatch '-rc\.' -and $build.toolkitPin -notmatch '^v\d+\.\d+\.\d+$')) {
+    throw 'Controls setup companion requires a shared-input RC or a shared-input release from an official toolkit pin'
+}
 $Version = $manifest.release
 $identity = $build.identity
 foreach ($path in @($CompanionStage, $CompanionZip, "$CompanionZip.sha256")) {

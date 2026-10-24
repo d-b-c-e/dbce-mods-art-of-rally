@@ -7,6 +7,21 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-10-24
+
+### Fixed
+
+- Surround span on the wheel: when NVIDIA Surround is on and the game kept a
+  single-screen resolution (for example 2560x1440 saved while using separate
+  monitors), the mod now switches the game output to the full span size itself,
+  so all three views draw. Separate monitors get the reverse correction. The
+  game's own saved resolution setting is not changed.
+
+### Changed
+
+- Shared-input controls ship in the stable package: the shim and native come from
+  the official toolkit v0.16.0 pin (the exact builds accepted in rc30).
+
 ### Added
 
 - Private rc28 shared-profile controls: F6 → Controls shows active, saved next-start

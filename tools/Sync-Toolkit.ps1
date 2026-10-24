@@ -9,7 +9,7 @@ param([string]$Version, [string]$LocalRepo, [string]$Destination,
       [string]$Repo = 'd-b-c-e/dbce-wheel-mod-toolkit')
 $ErrorActionPreference = 'Stop'
 $Parts = @($Parts | ForEach-Object { $_ -split ',' } | Where-Object { $_ } | Select-Object -Unique)
-$valid = @('native','native-x86','include','profiles','powershell','dotnet','tools','knowledge')
+$valid = @('native','native-x86','include','profiles','powershell','dotnet','tools','knowledge','shim')
 if ($Parts.Count -eq 0 -or @($Parts | Where-Object { $_ -notin $valid }).Count) { throw 'Unknown or empty Parts selection' }
 if ([bool]$Version -eq [bool]$LocalRepo) { throw 'Specify exactly one of -Version or -LocalRepo' }
 $root = Split-Path -Parent $PSScriptRoot

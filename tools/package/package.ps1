@@ -44,9 +44,15 @@ $modVersion = [string]$props.Project.PropertyGroup.ModVersion
 if (($Version -split '-')[0] -ne $modVersion) { throw "Version must match Version.props ($modVersion)" }
 $info = Get-Content -LiteralPath (Join-Path $root 'src/ArtOfSimRally.Mod/Info.json') -Raw | ConvertFrom-Json
 if ($info.Version -ne $modVersion) { throw 'Info.json and Version.props disagree' }
-if ($SharedInputCandidate -and $Version -notmatch '-rc\.') { throw 'The shared-input candidate is a private RC only' }
 if ($ResearchShimProbe -and -not $SharedInputCandidate) { throw '-ResearchShimProbe requires -SharedInputCandidate' }
+# A final shared-input release takes the shim from the official toolkit pin (lib/toolkit/shim, toolkit v0.16.0+);
+# release candidates may still pass a private copy of the same pinned build.
+$toolkitShim = Join-Path $root 'lib/toolkit/shim/dbce_shim.dll'
+if ($SharedInputCandidate -and -not $SharedInputShim -and (Test-Path -LiteralPath $toolkitShim)) { $SharedInputShim = $toolkitShim }
 if ($SharedInputCandidate -and -not $SharedInputShim) { throw 'The shared-input candidate needs -SharedInputShim, a private copy of the pinned dbce_shim.dll' }
+if ($SharedInputCandidate -and $Version -notmatch '-rc\.' -and ([IO.Path]::GetFullPath($SharedInputShim) -ne [IO.Path]::GetFullPath($toolkitShim) -or $ResearchShimProbe)) {
+    throw 'A final shared-input release takes dbce_shim.dll from the official toolkit pin (lib/toolkit/shim) and has no research probe'
+}
 if ($SharedInputShim -and -not $SharedInputCandidate) { throw '-SharedInputShim is only for -SharedInputCandidate' }
 # The helper's art of rally writer needs the candidate's shared-input controls contract; a baseline package gets none.
 if ($PrivateStandaloneSetup -and (-not $SharedInputCandidate -or -not $StandaloneSetupZip)) { throw '-PrivateStandaloneSetup needs -SharedInputCandidate and -StandaloneSetupZip (the pinned helper ZIP)' }

@@ -1,0 +1,15 @@
+{
+  "dll": "dbce_shim.dll",
+  "sha256": "BC9B030A25834D8CCE562F22588EC5E0D3F5C1FA026AD7AD984776D60CD6254B",
+  "crt": "MT",
+  "dependents": [
+    "DINPUT8.dll",
+    "bcrypt.dll",
+    "KERNEL32.dll"
+  ],
+  "compiler": "clang version 19.1.5",
+  "toolkitCommit": "421bd4b234c5e0869f082f3dc26ed08845cc7bff",
+  "sources": "native/shim, native/controls, native/session",
+  "sourceChanged": false,
+  "changedFiles": []
+}
