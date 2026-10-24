@@ -8,12 +8,12 @@
 
 ## Repository Purpose
 
-**Current state (reconciled 2026-10-18):**
+**Current state (reconciled 2026-10-23):**
 
 - **Published:** the latest public stable release is **0.4.1**, GitHub
   [`v0.4.1`](https://github.com/d-b-c-e/dbce-mods-art-of-rally/releases/tag/v0.4.1),
   published 2026-10-07 01:08:38 UTC from `7c3de40`. The README download points there.
-- **Installed:** owner-accepted private **0.4.2-rc.28**, clean package source `eb2316dc5bc951557c9bf1f9c2abbe0c6b2118ab`, installed October17 07:54 UTC. Read-only October18 verification matched all nine owned payloads and the second native copy to ZIP `B7818C8D`; plugin `296C8EFA`, build `8E1498FC`. The owner declares the currently used installation done and release-ready; preserve accepted gameplay, force and performance. Moved-control Bind/Save/restart, action response, glyphs and device loss on hardware remain separate untested extras. See `docs/LOCAL-DEPLOYMENT.md` and the unpublished release draft `docs/releases/0.4.2.md`. Public shim/helper distribution and stable packaging policy remain unresolved; no publication or new runtime check is implied.
+- **Installed:** owner-accepted private **0.4.2-rc.30**, clean package source `89ca2180af9199ca678095009e5c09e0ea79b27c`, installed October23. Its nine installed mod payloads match the validated ZIP `7F243455`; the owner tested and fully signed off on Art of Rally on October23. Preserve accepted driving, force and performance. The keyboard concern from that session was withdrawn as unconfirmed. Moved-control Bind/Save/restart, action response, glyphs and device loss on hardware remain separately untested extras. See `docs/LOCAL-DEPLOYMENT.md` and the unpublished release draft `docs/releases/0.4.2.md`. Public shim/helper distribution and stable packaging policy remain unresolved until release preparation is complete.
 
 `docs/LOCAL-DEPLOYMENT.md` (its "Current installation" section) is authoritative for
 what is installed, and the GitHub releases page is authoritative for what is

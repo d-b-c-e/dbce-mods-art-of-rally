@@ -1,5 +1,28 @@
 # Local deployment
 
+## Current installation — 0.4.2-rc.30 (owner-accepted private candidate)
+
+Installed October 23 from clean source `89ca2180af9199ca678095009e5c09e0ea79b27c`.
+The owner tested it in Art of Rally and fully signed off on October 23. The earlier
+keyboard concern was withdrawn as unconfirmed. Preserve this accepted driving,
+force and performance behavior for the release.
+
+- **Identity:** `0.4.2-rc.30+89ca2180af9199ca678095009e5c09e0ea79b27c.clean`.
+- **Package:** `ArtOfSimRally-0.4.2-rc.30-shared-input.zip`, SHA-256
+  `7F243455854449A3BE8A1EEF1A6FDC4CCD782FBBD7D9EEC6FC5E3A996C999045`.
+  The nine installed mod payloads matched its manifest on October 23 after the
+  owner's test. The six package-root files are installer and documentation files,
+  not installed mod payloads.
+- **Package checks:** [rc30 build, verifier, installer and companion PlanOnly](../../../dbce-project-mgmt/artifacts/doli-art-rc30-package-20261023/package-01/result.json);
+  [67-check disposable clean install](../../../dbce-project-mgmt/artifacts/doli-art-rc30-clean-install-20261023/install-01/result.json).
+  These do not add hardware acceptance beyond the owner's sign-off.
+- **Owner install:** [receipt](../../../dbce-project-mgmt/.local/art-rc30-owner-install-miho-20261023/run-01/result.json)
+  records four changed owned files, eleven protected mod-folder files retained,
+  no game launch during installation and released custody.
+- **Public release:** still separate from this private install. The current
+  package labels itself private, and stable packaging is blocked by the shared
+  shim and local toolkit pin rules in `tools/package/package.ps1`.
+
 ## Prepared candidate — 0.4.2-rc.29 (private, not installed)
 
 Packaged October 19 (kobe 291994) from clean source `3f31b6fb1d70cc81cd3206563d275666402f9fa9`: the accepted rc28
