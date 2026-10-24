@@ -1,5 +1,31 @@
 # Local deployment
 
+## Current installation and public stable release — 0.4.2 (October 24)
+
+[Public stable 0.4.2](https://github.com/d-b-c-e/dbce-mods-art-of-rally/releases/tag/v0.4.2)
+is the latest release, tag `v0.4.2` at clean `77ddd30276cfefe59f99fe211d3c561b2969cb70`,
+built against official toolkit v0.16.0 (the rc30 native and shim bytes, promoted
+unchanged). Mod ZIP SHA-256
+`2E7ABBE4EF5B0EA202D1778116FF60E7027F3783DF5C0C995E684FB375F221B9`; Controls Setup
+ZIP `AEB9278602EBB828618105D61C1DD7A9DA3189255E0F2F6D08FBAE746965CC37`. Both were
+downloaded after publication and matched. Package verifier 364, installer 50 and
+rc32→0.4.2 upgrade 64, and companion clean-install 67 checks passed (PS 5.1).
+
+The same package is installed in the owner's Steam game (identity
+`0.4.2+77ddd30276cfefe59f99fe211d3c561b2969cb70.clean`; settings, profiles and other
+mods kept; rc30 files backed up under hub `.local/art-rc32-owner-install-claude-20261024`).
+A plain Steam launch on the 7680x1440 Surround desktop logged the switch from
+2560x1440 to 7680x1440 and three-view `active`, no exceptions, normal close.
+
+Owner sign-off: driving, force, performance (rc30, Oct 23); telemetry, H-pattern and
+separate-monitor triples (Oct 24). Surround is launch-verified, not yet driven by the owner.
+
+Known behavior: if a controller Rewired cannot identify appears while the game starts
+(for example a Steam Controller presented by Steam Input as "Controller (XBOX 360 For
+Windows)"), shared input is not used for that session and Art's own bindings stay
+active, because the mod cannot rule out a Steam-wrapped duplicate of the wheel.
+Start without that controller, or disable Steam Input for Art, then restart.
+
 ## Public release candidate — 0.4.2-rc.31
 
 [Public prerelease](https://github.com/d-b-c-e/dbce-mods-art-of-rally/releases/tag/v0.4.2-rc.31)
