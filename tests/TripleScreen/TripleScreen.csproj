@@ -19,6 +19,7 @@
     <Compile Include="..\..\src\ArtOfSimRally.Mod\Triple\DisplayIdentityEvidence.cs" Link="DisplayIdentityEvidence.cs" />
     <Compile Include="..\..\src\ArtOfSimRally.Mod\Triple\SideDisplaySelector.cs" Link="SideDisplaySelector.cs" />
     <Compile Include="..\..\src\ArtOfSimRally.Mod\Triple\SideActivationWitness.cs" Link="SideActivationWitness.cs" />
+    <Compile Include="..\..\src\ArtOfSimRally.Mod\Triple\OutputResolution.cs" Link="OutputResolution.cs" />
     <Compile Include="..\..\lib\display\RacingRow.cs" Link="RacingRow.cs" />
     <Compile Include="..\..\lib\display\WindowsMonitors.cs" Link="WindowsMonitors.cs" />
   </ItemGroup>

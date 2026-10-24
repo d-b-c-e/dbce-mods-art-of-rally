@@ -14,6 +14,7 @@ internal sealed class ProjectionController
     private Camera _camera;
     private CenterProjectionDriver _centerDriver;
     private SeparateDisplayRenderDriver _separateDriver;
+    private readonly OutputResolution _outputResolution = new OutputResolution();
     // Side displays for this process (sana 81386). Activation cannot be undone, so the proof and any failure last
     // until exit: no other monitor is tried after a mismatch.
     private static SideActivationWitness s_sideWitness;
@@ -106,14 +107,18 @@ internal sealed class ProjectionController
             return ProjectionOutcome.Degraded(layoutResult, "OUTPUT_WIDTH_UNSUPPORTED", "The combined output must provide at least one native-width viewport per panel.");
         }
 
+        var switching = settings.AllowOutputResolutionMismatch ? null
+            : RequestOutputSize(layoutResult, output.CombinedWidthPx.Value, output.CombinedHeightPx.Value, "the Surround span");
         if (!settings.AllowOutputResolutionMismatch &&
             (Screen.width != output.CombinedWidthPx.Value || Screen.height != output.CombinedHeightPx.Value))
         {
             Release();
-            return ProjectionOutcome.Degraded(
+            return switching ?? ProjectionOutcome.Degraded(
                 layoutResult,
                 "OUTPUT_RESOLUTION_MISMATCH",
-                $"Game output is {Screen.width}x{Screen.height}; optimizer requested {output.CombinedWidthPx.Value}x{output.CombinedHeightPx.Value}.");
+                Display.main.systemWidth != output.CombinedWidthPx.Value
+                    ? $"Game output is {Screen.width}x{Screen.height}; the span needs {output.CombinedWidthPx.Value}x{output.CombinedHeightPx.Value}. Turn on NVIDIA Surround, or choose separate monitors."
+                    : $"Game output is {Screen.width}x{Screen.height}; the span needs {output.CombinedWidthPx.Value}x{output.CombinedHeightPx.Value}. Choose that resolution in the game's display options.");
         }
 
         var camera = Camera.main;
@@ -224,6 +229,18 @@ internal sealed class ProjectionController
         }
     }
 
+    /// <summary>The switching outcome when this frame asked Unity for the mode's output size, otherwise null.</summary>
+    private ProjectionOutcome RequestOutputSize(LayoutLoadResult layoutResult, int width, int height, string purpose)
+    {
+        if (!_outputResolution.ShouldRequest(Display.main.systemWidth, Display.main.systemHeight, Screen.width, Screen.height,
+                width, height, Time.realtimeSinceStartup))
+            return null;
+        var from = $"{Screen.width}x{Screen.height}";
+        Screen.SetResolution(width, height, Screen.fullScreenMode);
+        return ProjectionOutcome.Starting(layoutResult, "OUTPUT_RESOLUTION_SWITCHING",
+            $"Switching the game output from {from} to {width}x{height} for {purpose}.");
+    }
+
     private ProjectionOutcome UpdateSeparateDisplays(LayoutLoadResult layoutResult, Settings settings)
     {
         var panel = layoutResult.Document.Panel;
@@ -242,10 +259,11 @@ internal sealed class ProjectionController
                 "Turn off the Surround three-view and center-preview options before using independent displays.");
         }
 
+        var switching = RequestOutputSize(layoutResult, panel.NativeWidthPx, panel.NativeHeightPx, "the center monitor");
         if (Screen.width != panel.NativeWidthPx || Screen.height != panel.NativeHeightPx)
         {
             Release();
-            return ProjectionOutcome.Degraded(layoutResult, "PRIMARY_DISPLAY_MISMATCH",
+            return switching ?? ProjectionOutcome.Degraded(layoutResult, "PRIMARY_DISPLAY_MISMATCH",
                 $"Primary game output is {Screen.width}x{Screen.height}; independent displays require the center monitor at {panel.NativeWidthPx}x{panel.NativeHeightPx}.");
         }
 

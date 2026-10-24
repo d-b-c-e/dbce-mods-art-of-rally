@@ -33,6 +33,7 @@ internal static class Program
             DisplayIdentityEvidenceIsHypothesisOnly();
             SideDisplaysComeFromTheRacingRow();
             SideDisplaysAreProvenOnActivation();
+            OutputResolutionSwitchesOnlyToTheDesktopSize();
             InvalidLayoutsAreRejected();
             StagedLayoutFallbackAndReload();
             RuntimeStatusMatchesCanonicalShape();
@@ -217,6 +218,26 @@ internal static class Program
         Check(result.Document?.Geometry?.LeftYawDegrees == 55d, "left yaw lost during parse");
         Check(result.Document?.Geometry?.RightYawDegrees == 60d, "right yaw lost during parse");
         Check(result.Sha256?.Length == 64, "layout SHA-256 missing");
+    }
+
+    private static void OutputResolutionSwitchesOnlyToTheDesktopSize()
+    {
+        // Owner 2026-10-24: Surround on (7680x1440 desktop) but the game kept its saved 2560x1440, so only the center drew.
+        var span = new OutputResolution();
+        Check(span.ShouldRequest(7680, 1440, 2560, 1440, 7680, 1440, 10f), "Surround desktop must switch a 2560 output to the span");
+        Check(!span.ShouldRequest(7680, 1440, 2560, 1440, 7680, 1440, 11f), "a second request must wait for the retry interval");
+        Check(span.ShouldRequest(7680, 1440, 2560, 1440, 7680, 1440, 13.5f), "a failed switch is retried after the interval");
+        Check(span.ShouldRequest(7680, 1440, 2560, 1440, 7680, 1440, 17f), "third attempt");
+        Check(!span.ShouldRequest(7680, 1440, 2560, 1440, 7680, 1440, 30f) && span.GaveUp, "the mod stops after three attempts");
+        Check(!span.ShouldRequest(7680, 1440, 7680, 1440, 7680, 1440, 31f) && !span.GaveUp, "a matching output resets the attempts");
+        Check(span.ShouldRequest(7680, 1440, 2560, 1440, 7680, 1440, 40f), "the game re-applying 2560 later is corrected again");
+
+        var surroundOff = new OutputResolution();
+        Check(!surroundOff.ShouldRequest(2560, 1440, 2560, 1440, 7680, 1440, 10f), "no span request while the desktop is a single monitor");
+
+        var separate = new OutputResolution();
+        Check(separate.ShouldRequest(2560, 1440, 7680, 1440, 2560, 1440, 10f), "a stale span size is returned to the center monitor");
+        Check(!separate.ShouldRequest(2560, 1440, 2560, 1440, 2560, 1440, 11f), "a matching center output needs nothing");
     }
 
     private static void InvalidLayoutsAreRejected()
