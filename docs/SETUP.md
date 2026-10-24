@@ -2,7 +2,9 @@
 
 Start with the [four install steps](../README.md#install). This guide covers
 custom folders, controls and optional rig setup. Public stable is **0.4.1**;
-the owner-accepted private installation is **0.4.2-rc.30**. The settings have
+[public RC31](https://github.com/d-b-c-e/dbce-mods-art-of-rally/releases/tag/v0.4.2-rc.31)
+has the owner-accepted RC30 gameplay source and separate Controls Setup download.
+The owner's installed version remains **0.4.2-rc.30**. The settings have
 Simple and Advanced views, with Controls, FFB, Cameras, Telemetry and Help pages.
 Pause before changing devices or bindings. [Local deployment](LOCAL-DEPLOYMENT.md)
 identifies the owner's exact installed build.
@@ -67,9 +69,9 @@ updates so both copies stay in sync. Vortex installation has not been validated.
   profiles remain in place; restoring earlier settings is a separate choice and
   must not overwrite newer values by accident.
 
-## Shared-profile controls (private rc30)
+## Shared-profile controls (public RC31)
 
-This route is present in the shared-input candidate, not public stable 0.4.1.
+This route is present in public RC31, not stable 0.4.1.
 Use a matching Wheelkit or the separate Controls Setup download to create a
 missing profile while the game is closed. Extract the setup download outside
 the game folder; Wheelkit is optional. Restart after enabling **Use shared
@@ -95,7 +97,7 @@ Calibration of Art's own bindings below is separate from the shared profile.
 The owner accepted the currently used rc30 installation. Successful moved-control
 Bind/Save/restart, action response, glyphs and device loss on hardware remain
 separately untested; do not infer them from the observed status/error/Cancel/
-Discard checks. See the [release draft](releases/0.4.2.md) for the exact scope.
+Discard checks. See the [release record](releases/0.4.2.md) for the exact scope.
 
 ## Wheel and pedals
 

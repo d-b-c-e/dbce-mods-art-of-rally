@@ -1,5 +1,19 @@
 # Local deployment
 
+## Public release candidate — 0.4.2-rc.31
+
+[Public prerelease](https://github.com/d-b-c-e/dbce-mods-art-of-rally/releases/tag/v0.4.2-rc.31)
+was published October 23 from clean `57d1e14605913093df9e764f577f02ba31e93d20`.
+It retains the owner-accepted RC30 gameplay source and changes packaged player
+instructions and the build identity. The mod ZIP is SHA-256
+`CC43BF77D3D1A6B7D1A261F11A25DCB57EB9070B60C2BD6FFF1E5DD278684ADE`;
+the separate optional Controls Setup ZIP is SHA-256
+`A6803A2C47CB578131F700FF45260E0A884AE985D8BB98F7763D4FEDB207F794`.
+Both public downloads and sidecars were retrieved and hash-checked. Package
+verification passed 363 assertions, isolated installer 64 assertions, and
+companion clean install 67 checks. RC31 has not replaced the owner's RC30 install
+or received its own game/hardware run. Stable public remains 0.4.1.
+
 ## Current installation — 0.4.2-rc.30 (owner-accepted private candidate)
 
 Installed October 23 from clean source `89ca2180af9199ca678095009e5c09e0ea79b27c`.
@@ -19,9 +33,9 @@ force and performance behavior for the release.
 - **Owner install:** [receipt](../../../dbce-project-mgmt/.local/art-rc30-owner-install-miho-20261023/run-01/result.json)
   records four changed owned files, eleven protected mod-folder files retained,
   no game launch during installation and released custody.
-- **Public release:** still separate from this private install. The current
-  package labels itself private, and stable packaging is blocked by the shared
-  shim and local toolkit pin rules in `tools/package/package.ps1`.
+- **Public release:** RC31 above is separate from this private install. RC30
+  labels itself private; stable packaging remains blocked by the shared shim
+  and local toolkit pin rules in `tools/package/package.ps1`.
 
 ## Prepared candidate — 0.4.2-rc.29 (private, not installed)
 
