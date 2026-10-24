@@ -1,9 +1,8 @@
-SHARED WHEELKIT PROFILE (PRIVATE CANDIDATE)
--------------------------------------------
+SHARED WHEELKIT PROFILE
+-----------------------
 This package can also drive the wheel, pedals, menu buttons, shortcuts and gears
 from one shared Wheelkit profile instead of Art's own bindings. It is off unless
-you turn it on. This shared-input package is a private candidate; public
-distribution of it and the optional setup download is a separate decision.
+you turn it on.
 
 What is extra in this package:
 * dbce_shim.dll beside the mod: the shared profile reader.
@@ -17,7 +16,7 @@ To try it, with the game closed:
    on "Use shared profile" and sets the mod's gearbox to match
    the profile. Your Art bindings are kept, and the preview lists any control it
    leaves out, with the reason.
-   Without Wheelkit: the optional private controls setup download (its own ZIP,
+   Without Wheelkit: the optional controls setup download (its own ZIP,
    ArtOfSimRally-<version>-shared-input-controls-setup.zip) does the same for this
    package. Extract it outside the game folder and follow its README.
 2. Launch the game; the choice applies at startup. To turn the option on or off
@@ -64,9 +63,3 @@ This installer replaces or removes dbce_shim.dll only when it installed exactly
 those bytes. A copy you changed or placed by hand is left as it is: the uninstall
 keeps it, and installing this package over it stops with a message unless the copy
 is byte-identical to this package's. Move such a file aside first.
-
-The owner accepted the currently used rc28 installation on October 18, including
-its driving, force and performance. Separately untested extras are moved-control/
-new-device Bind, successful Save and restart, action response, glyphs and device
-loss on hardware. The observed status/Cancel/Discard checks do not cover those
-physical workflows.

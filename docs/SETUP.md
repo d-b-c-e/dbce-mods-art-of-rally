@@ -2,7 +2,7 @@
 
 Start with the [four install steps](../README.md#install). This guide covers
 custom folders, controls and optional rig setup. Public stable is **0.4.1**;
-the owner-accepted private installation is **0.4.2-rc.28**. The settings have
+the owner-accepted private installation is **0.4.2-rc.30**. The settings have
 Simple and Advanced views, with Controls, FFB, Cameras, Telemetry and Help pages.
 Pause before changing devices or bindings. [Local deployment](LOCAL-DEPLOYMENT.md)
 identifies the owner's exact installed build.
@@ -10,7 +10,7 @@ identifies the owner's exact installed build.
 ## Check the installation
 
 Launch through Steam, press **F6** for Wheel settings or **Ctrl+F10** for UMM,
-and find **art of sim rally**. UMM shows the numeric version (**0.4.2** for rc28);
+and find **art of sim rally**. UMM shows the numeric version (**0.4.2** for rc30);
 use the support identity or `Mods/ArtOfSimRally/build.json` to identify the full
 candidate. If the entry is absent or red, follow
 [installation troubleshooting](TROUBLESHOOTING.md#installation-or-settings-panel-missing).
@@ -67,7 +67,7 @@ updates so both copies stay in sync. Vortex installation has not been validated.
   profiles remain in place; restoring earlier settings is a separate choice and
   must not overwrite newer values by accident.
 
-## Shared-profile controls (private rc28)
+## Shared-profile controls (private rc30)
 
 This route is present in the shared-input candidate, not public stable 0.4.1.
 Use a matching Wheelkit or the separate Controls Setup download to create a
@@ -92,7 +92,7 @@ the matching standalone setup download. Art's legacy editors stay locked for
 controls the shared profile owns; use the shared editor for those controls.
 Calibration of Art's own bindings below is separate from the shared profile.
 
-The owner accepted the currently used rc28 installation. Successful moved-control
+The owner accepted the currently used rc30 installation. Successful moved-control
 Bind/Save/restart, action response, glyphs and device loss on hardware remain
 separately untested; do not infer them from the observed status/error/Cancel/
 Discard checks. See the [release draft](releases/0.4.2.md) for the exact scope.

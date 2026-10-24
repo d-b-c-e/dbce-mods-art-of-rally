@@ -1,7 +1,7 @@
-art of sim rally - optional controls setup (private helper)
+art of sim rally - optional controls setup
 ===========================================================
 
-This optional, private download sets up your wheel controls for the shared-input package of art of sim rally
+This optional download sets up your wheel controls for the shared-input package of art of rally
 without Wheelkit, and, if you want, your triple-screen measurements and the mod's own settings. For controls it changes
 the controls profile and the shared-input switch. It writes only what you preview and apply. It does not launch the
 game, change the Windows display mode or send wheel forces. If you use Wheelkit, you do not need it.
