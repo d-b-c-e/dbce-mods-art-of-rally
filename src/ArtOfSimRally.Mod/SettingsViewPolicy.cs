@@ -45,7 +45,7 @@ namespace ArtOfSimRally.Mod
         // never says this mod package bundles the setup, and the missing-profile card keeps the outside-the-game-folder step.
         public const string SetupHeading = "Controls setup";
         public static readonly string[] SetupGuidance = {
-            "To add a device, close the game and run Set Up Controls.bat from the matching standalone Controls Setup, then restart. Wheelkit is optional.",
+            "To add a device, close the game, update the shared profile in Wheelkit, then restart.",
             "In-game binding uses devices already opened by this profile." };
     }
 

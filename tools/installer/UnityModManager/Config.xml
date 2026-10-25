@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Config xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Name="Art of Rally">
+  <Folder>artofrally</Folder>
+  <ModsDirectory>Mods</ModsDirectory>
+  <ModInfo>Info.json</ModInfo>
+  <GameExe>artofrally.exe</GameExe>
+  <EntryPoint>[UnityEngine.UIModule.dll]UnityEngine.Canvas.cctor:Before</EntryPoint>
+  <StartingPoint>[Assembly-CSharp.dll]GameEntryPoint.Start:After</StartingPoint>
+  <MinimalManagerVersion>0.23.4</MinimalManagerVersion>
+</Config>

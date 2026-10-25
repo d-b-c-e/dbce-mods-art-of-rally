@@ -54,9 +54,9 @@ namespace ArtOfSimRally.Mod
         private bool Editable => draft != null && canEdit() && flow.HasFreshObservation;
         public SharedBindingAccess Access { get { Refresh(); return draft == null ? (error == null ? SharedBindingAccess.Missing : SharedBindingAccess.ReadOnly) : Editable ? SharedBindingAccess.Editable : SharedBindingAccess.ReadOnly; } }
         public string AccessReason => draft == null
-            ? error ?? "No shared profile is available. Close the game, extract the matching Controls Setup download outside the game folder, run Set Up Controls.bat, then restart. Wheelkit is optional."
+            ? error ?? "No shared profile is available. Turn off Use shared profile, restart, and bind your controls on this page."
             : Editable ? "Shared binding edits are a draft. Save bindings, then restart the game to use them."
-            : "Shared binding capture needs the mod settings open in the main menu and a qualified, connected reader. New or unavailable devices need a restart or the standalone Controls Setup download.";
+            : "Shared binding capture needs the mod settings open in the main menu and a qualified, connected reader. New or unavailable devices need a restart.";
         public string ActiveSource => draft == null ? (error == null ? "No active shared profile" : "Startup profile unavailable to this editor") : draft.Active.Name + " · " +
             (draft.Active.Revision.Length > 12 ? draft.Active.Revision.Substring(0, 12) : draft.Active.Revision);
         public bool HasDraft => draft != null && draft.HasDraft;

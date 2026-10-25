@@ -57,7 +57,8 @@ if ($SharedInputShim -and -not $SharedInputCandidate) { throw '-SharedInputShim 
 # The helper's art of rally writer needs the candidate's shared-input controls contract; a baseline package gets none.
 if ($PrivateStandaloneSetup -and (-not $SharedInputCandidate -or -not $StandaloneSetupZip)) { throw '-PrivateStandaloneSetup needs -SharedInputCandidate and -StandaloneSetupZip (the pinned helper ZIP)' }
 if ($StandaloneSetupZip -and -not $PrivateStandaloneSetup) { throw '-StandaloneSetupZip is only for -PrivateStandaloneSetup' }
-$flavour = if ($ResearchShimProbe) { '-shared-input-probe' } elseif ($SharedInputCandidate) { '-shared-input' } else { '' }
+# A stable release is one plainly named download (STD-040); candidates keep their flavour in the name.
+$flavour = if ($ResearchShimProbe) { '-shared-input-probe' } elseif ($SharedInputCandidate -and $Version -match '-rc\.') { '-shared-input' } else { '' }
 $dist  = Join-Path $root 'dist'
 $stage = Join-Path $dist "stage-$Version$flavour"
 $zip = Join-Path $dist "ArtOfSimRally-$Version$flavour.zip"
@@ -153,6 +154,12 @@ Copy-Item (Join-Path $root 'tools\installer\Install.bat')   $stage
 Copy-Item (Join-Path $root 'tools\installer\Uninstall.bat') $stage
 Copy-Item (Join-Path $root 'tools\installer\install.ps1')   $stage
 Copy-Item (Join-Path $root 'tools\installer\verify.ps1')   $stage
+# The bundled Unity Mod Manager (verify.ps1 lists it; the installer places it only when the game lacks one).
+foreach ($relative in $PayloadFiles | Where-Object { $_.StartsWith('UnityModManager/') }) {
+    $to = Join-Path $stage $relative
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $to) | Out-Null
+    Copy-Item -LiteralPath (Join-Path $root ('tools/installer/' + $relative)) -Destination $to
+}
 $build = [ordered]@{ schema=1; release=$Version; modVersion=$modVersion; identity=$identity; sourceRevision=$revision; sourceState=$sourceState; toolkitPin=$toolkitPin; builtUtc=[DateTime]::UtcNow.ToString('o') }
   $build['toolkitComponents'] = $toolkitComponents
   # Data-only capability used by Wheelkit; older packages do not receive fields

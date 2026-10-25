@@ -176,8 +176,7 @@ static class Program
         // package bundles the setup.
         var setup=string.Join(" ",SettingsViewPolicy.SetupGuidance);
         Check(SettingsViewPolicy.SetupHeading=="Controls setup"&&SettingsViewPolicy.SetupGuidance.Length==2,"setup guidance block changed");
-        Check(setup.Contains("close the game and run Set Up Controls.bat from the matching standalone Controls Setup, then restart")&&
-              setup.Contains("Wheelkit is optional")&&setup.Contains("devices already opened by this profile"),"setup guidance wording");
+        Check(setup.Contains("To add a device, close the game, update the shared profile in Wheelkit, then restart.")&&!setup.Contains("Set Up Controls")&&setup.Contains("devices already opened by this profile"),"setup guidance wording");
         Check(!setup.Contains("this mod package")&&!setup.Contains("download"),"setup guidance claims a bundled or available download");
         Host.SuppressHostClose=true;
         var guard=typeof(SettingsCloseGuard).GetMethod("BeforeClose",BindingFlags.Static|BindingFlags.NonPublic);

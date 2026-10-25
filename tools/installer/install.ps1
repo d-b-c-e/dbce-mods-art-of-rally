@@ -78,25 +78,12 @@ if (Get-Process artofrally -ErrorAction SilentlyContinue) {
 }
 
 # Checked per-game, not globally: Unity Mod Manager is installed into each game
-# separately, so having it for another title does not help here.
-$ummInstalled = (Test-Path -LiteralPath (Join-Path $GameDir 'artofrally_Data\Managed\UnityModManager\UnityModManager.dll') -PathType Leaf)
-if (-not $ummInstalled -and -not $Uninstall) {
-    Fail "Unity Mod Manager is not installed for art of rally."
-    Say ""
-    Say "  This mod runs on top of Unity Mod Manager, so that has to go on first." Yellow
-    Say "  It is a one-time setup and takes about a minute:"
-    Say ""
-    Say "    1. Download Unity Mod Manager:"
-    Say "         https://www.nexusmods.com/site/mods/21" DarkGray
-    Say "    2. Run UnityModManager.exe"
-    Say "    3. In the Game dropdown pick 'Art of Rally'"
-    Say "       (it should find your install automatically)"
-    Say "    4. Click Install, then close it"
-    Say "    5. Double-click Install.bat again - this installer"
-    Say ""
-    exit 1
-}
-if ($ummInstalled) { Ok "Unity Mod Manager present" }
+# separately, so having it for another title does not help here. When it is
+# missing, this package's bundled copy goes in with the mod (STD-040).
+$ummDir = Join-Path $GameDir 'artofrally_Data\Managed\UnityModManager'
+$ummRecord = Join-Path $ummDir 'installed-by-art-of-sim-rally.json'
+$ummInstalled = (Test-Path -LiteralPath (Join-Path $ummDir 'UnityModManager.dll') -PathType Leaf)
+if ($ummInstalled -and -not $Uninstall) { Ok "Unity Mod Manager present" }
 
 $modDir    = Join-Path $GameDir 'Mods\ArtOfSimRally'
 $nativeDir = Join-Path $GameDir 'artofrally_Data\Plugins\x86_64'
@@ -117,7 +104,7 @@ function Get-ShimOwnership {
 }
 
 # Do not follow a junction/symlink while replacing or removing installed files.
-foreach ($target in @($modDir, $nativeDir)) {
+foreach ($target in @($modDir, $nativeDir, $ummDir)) {
     $path = [IO.Path]::GetFullPath($target)
     if (-not $path.StartsWith($GameDir + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'Target is outside the game directory' }
     while ($path.Length -ge $GameDir.Length) {
@@ -153,6 +140,28 @@ if ($Uninstall) {
     $native = Join-Path $nativeDir 'UnityForceFeedback.dll'
     if (Test-Path -LiteralPath $native) { Remove-Item -LiteralPath $native -Force; Ok "Removed $native" }
     Ok 'Kept settings and user files in place'
+
+    # Unity Mod Manager goes too when this mod installed it and no other mod uses it.
+    if (Test-Path -LiteralPath $ummRecord -PathType Leaf) {
+        $others = @(Get-ChildItem -LiteralPath (Join-Path $GameDir 'Mods') -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -ne 'ArtOfSimRally' })
+        if ($others.Count) { Ok 'Kept Unity Mod Manager: other mods use it' }
+        else {
+            $record = Get-Content -LiteralPath $ummRecord -Raw | ConvertFrom-Json
+            $kept = @()
+            foreach ($entry in $record.files.PSObject.Properties) {
+                $file = Join-Path $GameDir $entry.Name
+                if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { continue }
+                # The manager rewrites its own settings; every other file goes only while it is still ours.
+                if ($entry.Name -like '*\Params.xml' -or (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash -eq $entry.Value) { Remove-Item -LiteralPath $file -Force }
+                else { $kept += $entry.Name }
+            }
+            $log = Join-Path $ummDir 'Log.txt'
+            if (Test-Path -LiteralPath $log) { Remove-Item -LiteralPath $log -Force }
+            Remove-Item -LiteralPath $ummRecord -Force
+            if (-not @(Get-ChildItem -LiteralPath $ummDir -Force).Count) { Remove-Item -LiteralPath $ummDir }
+            if ($kept.Count) { Warn "Kept changed Unity Mod Manager files: $($kept -join ', ')" } else { Ok 'Removed Unity Mod Manager (it came with this mod)' }
+        }
+    }
 
     Say ""
     Say "Done. Your key bindings are untouched - they live in the game's own" Green
@@ -192,8 +201,30 @@ if ($packageShim -and $shim.State -eq 'foreign' -and $shim.Hash -ne $packageShim
     Say "  mod folder (keep it if you placed it on purpose), then run Install.bat again."
     exit 1
 }
+# Another loader (for example BepInEx) uses the same winhttp.dll entry: never replace it.
+$foreignLoader = @(if (-not $ummInstalled) { $UmmGameFiles | Where-Object { Test-Path -LiteralPath (Join-Path $GameDir $_) } })
+if ($foreignLoader.Count) {
+    Fail "Another mod loader is already in the game folder ($($foreignLoader -join ', '))."
+    Say "  No game files were changed. This mod needs Unity Mod Manager, which it"
+    Say "  includes, but it will not replace another loader. Remove that loader,"
+    Say "  then run Install.bat again."
+    exit 1
+}
 
 try {
+    if (-not $ummInstalled) {
+        # Where Unity Mod Manager's own installer puts them (DoorstopProxy mode); the record lets Uninstall remove them.
+        New-Item -ItemType Directory -Force -Path $ummDir | Out-Null
+        $placed = [ordered]@{}
+        foreach ($name in @($UmmGameFiles) + @($UmmManagerFiles)) {
+            $target = if ($UmmGameFiles -contains $name) { $GameDir } else { $ummDir }
+            Copy-Item -LiteralPath (Join-Path $here "UnityModManager\$name") -Destination $target -Force
+            $placed[(Join-Path $target $name).Substring($GameDir.Length + 1)] = $manifest.files."UnityModManager/$name"
+        }
+        [ordered]@{ installedBy = 'art of sim rally'; release = $manifest.release; files = $placed } | ConvertTo-Json |
+            Set-Content -LiteralPath $ummRecord -Encoding UTF8
+        Ok "Unity Mod Manager installed (included with this mod)"
+    }
     New-Item -ItemType Directory -Force -Path $modDir | Out-Null
     foreach ($name in $installFiles) { Copy-Item -LiteralPath (Join-Path $source $name) -Destination $modDir -Force }
     if (-not $packageShim) {
@@ -265,13 +296,21 @@ foreach ($name in $installFiles) {
 if ((Get-FileHash -LiteralPath (Join-Path $nativeDir 'UnityForceFeedback.dll') -Algorithm SHA256).Hash -ne $manifest.files.'ArtOfSimRally/UnityForceFeedback.dll') {
     throw 'Installed plugin copy does not match package'
 }
+if (-not $ummInstalled) {
+    foreach ($name in @($UmmGameFiles) + @($UmmManagerFiles)) {
+        $target = if ($UmmGameFiles -contains $name) { $GameDir } else { $ummDir }
+        if ((Get-FileHash -LiteralPath (Join-Path $target $name) -Algorithm SHA256).Hash -ne $manifest.files."UnityModManager/$name") {
+            throw "Installed Unity Mod Manager file does not match package: $name"
+        }
+    }
+}
 Ok "All installed files match release $($manifest.release)"
 
 Say ""
 Say "Done." Green
 Say ""
 Say "  1. Launch art of rally through Steam"
-Say "  2. Press F6 for Wheel settings (Ctrl+F10 also opens Unity Mod Manager)."
+Say "  2. Press F6 for Wheel settings."
 Say "  3. While paused, select your wheel on the FFB page."
 Say "     Keep the game focused while setup completes. Strength defaults to 50;"
 Say "     lower it if too heavy. Test while moving: force fades in at 3-12 km/h."

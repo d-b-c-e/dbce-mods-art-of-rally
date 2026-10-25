@@ -58,15 +58,24 @@ function Invoke-Installer([string]$Name, [string]$Action = 'Install', [string]$F
 }
 
 try {
-    # Absent loader must fail through the actual Install.bat, before any payload.
-    $log = Invoke-Installer 'missing-umm' -Fails $true
-    Assert ($log -match 'Unity Mod Manager is not installed') 'Missing loader guidance absent'
-    Assert (-not (Test-Path -LiteralPath $mod)) 'Missing-loader install wrote a mod'
-    New-Item -ItemType Directory -Path $umm -Force | Out-Null
-    Set-Content -LiteralPath (Join-Path $umm 'UnityModManager.dll') -Value 'fixture; never loaded'
+    # Another loader's winhttp.dll is never replaced: refuse through the actual Install.bat, before any payload.
+    $loader = Join-Path $game 'winhttp.dll'
+    Set-Content -LiteralPath $loader -Value 'another loader; never loaded'
+    $log = Invoke-Installer 'foreign-loader' -Fails $true
+    Assert ($log -match 'Another mod loader is already in the game folder') 'Foreign-loader refusal absent'
+    Assert (-not (Test-Path -LiteralPath $mod) -and -not (Test-Path -LiteralPath $umm)) 'Foreign-loader refusal wrote files'
+    Assert ((Get-Content -LiteralPath $loader -Raw).Trim() -eq 'another loader; never loaded') 'Foreign loader changed'
+    Remove-Item -LiteralPath $loader
 
+    # No Unity Mod Manager: the bundled copy goes in with the mod (STD-040), recorded for Uninstall.
     $log = Invoke-Installer 'fresh-install'
     Assert ($log.Contains("All installed files match release $($manifest.release)")) 'Installed release was not reported'
+    Assert ($log -match 'Unity Mod Manager installed') 'Bundled loader install not reported'
+    foreach ($name in $UmmGameFiles + $UmmManagerFiles) {
+        $file = if ($UmmGameFiles -contains $name) { Join-Path $game $name } else { Join-Path $umm $name }
+        Assert ((Get-FileHash -LiteralPath $file).Hash -eq $manifest.files."UnityModManager/$name") "Bundled loader mismatch: $name"
+    }
+    Assert (Test-Path -LiteralPath (Join-Path $umm 'installed-by-art-of-sim-rally.json')) 'Bundled loader record absent'
     foreach ($relative in $modPayload) {
         $file = Join-Path $game ('Mods/' + $relative)
         Assert ((Get-FileHash -LiteralPath $file).Hash -eq $manifest.files.$relative) "Payload mismatch: $relative"
@@ -116,9 +125,10 @@ try {
     Assert ((Get-FileHash -LiteralPath $settings).Hash -eq $settingsHash) 'Failed upgrade changed settings'
     $null = Invoke-Installer 'retry-after-lock'
 
-    # Uninstall must not depend on UMM remaining installed.
+    # Uninstall must not depend on UMM remaining installed, and keeps a bundled loader another mod uses.
     Remove-Item -LiteralPath (Join-Path $umm 'UnityModManager.dll')
     $log = Invoke-Installer 'uninstall-without-umm' -Action 'Uninstall'
+    Assert ($log -match 'Kept Unity Mod Manager: other mods use it' -and (Test-Path -LiteralPath (Join-Path $game 'winhttp.dll'))) 'Uninstall removed a loader another mod uses'
     Assert ((Get-FileHash -LiteralPath $settings).Hash -eq $settingsHash) 'Uninstall changed settings'
     Assert (Test-Path -LiteralPath (Join-Path $mod 'user-notes.txt')) 'Uninstall removed user notes'
     Assert (Test-Path -LiteralPath (Join-Path $other 'Info.json')) 'Uninstall removed another mod'
@@ -175,6 +185,29 @@ try {
             Remove-Item -LiteralPath $shimFile
         }
     }
+
+    # A clean game: the bundled loader comes out again with the mod when no other mod uses it.
+    $game = Join-Path $run 'clean game'; $umm = Join-Path $game 'artofrally_Data/Managed/UnityModManager'
+    New-Item -ItemType Directory -Path $game -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $game 'artofrally.exe') -Value 'fixture; never executed'
+    $null = Invoke-Installer 'clean-install'
+    Set-Content -LiteralPath (Join-Path $umm 'Log.txt') -Value 'written by the manager'
+    $log = Invoke-Installer 'clean-uninstall' -Action 'Uninstall'
+    Assert ($log -match 'Removed Unity Mod Manager') 'Bundled loader removal not reported'
+    Assert (-not (Test-Path -LiteralPath $umm) -and -not (Test-Path -LiteralPath (Join-Path $game 'winhttp.dll')) -and
+        -not (Test-Path -LiteralPath (Join-Path $game 'doorstop_config.ini'))) 'Uninstall left the bundled loader'
+
+    # A game whose own Unity Mod Manager is installed: it is used as it is and never recorded or removed.
+    $game = Join-Path $run 'own loader'; $umm = Join-Path $game 'artofrally_Data/Managed/UnityModManager'
+    New-Item -ItemType Directory -Path $umm -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $game 'artofrally.exe') -Value 'fixture; never executed'
+    Set-Content -LiteralPath (Join-Path $umm 'UnityModManager.dll') -Value 'own manager; never loaded'
+    Set-Content -LiteralPath (Join-Path $game 'winhttp.dll') -Value 'own loader; never loaded'
+    $log = Invoke-Installer 'own-loader-install'
+    Assert ($log -match 'Unity Mod Manager present' -and -not (Test-Path -LiteralPath (Join-Path $umm 'installed-by-art-of-sim-rally.json'))) 'Own loader was recorded as bundled'
+    Assert ((Get-Content -LiteralPath (Join-Path $game 'winhttp.dll') -Raw).Trim() -eq 'own loader; never loaded') 'Own loader replaced'
+    $null = Invoke-Installer 'own-loader-uninstall' -Action 'Uninstall'
+    Assert ((Test-Path -LiteralPath (Join-Path $umm 'UnityModManager.dll')) -and (Test-Path -LiteralPath (Join-Path $game 'winhttp.dll'))) 'Uninstall removed an own loader'
 
     $output = & $ps -NoProfile -ExecutionPolicy Bypass -File (Join-Path $package 'install.ps1') -GameDir (Join-Path $run 'absent game') 2>&1
     $code = $LASTEXITCODE

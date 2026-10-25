@@ -44,7 +44,7 @@ namespace Dbce.Wheel.Ui
         {
             return (canFindDevices
                 ? "Choose a device under Bind from. Use Find devices if it is missing. "
-                : "Choose an available device under Bind from. To add a device, close the game and run Set Up Controls.bat. Wheelkit is optional. ") +
+                : "Choose an available device under Bind from. To add a device, close the game, update the shared profile in Wheelkit, then restart. ") +
                 "Select Bind, release the control, then move it. Review the draft, select Save bindings, and restart to use the saved controls.";
         }
 

@@ -44,6 +44,13 @@ $PayloadFiles = @(
     'ArtOfSimRally/Info.json', 'ArtOfSimRally/build.json',
     'LICENSE', 'README.txt', 'Install.bat', 'Uninstall.bat', 'install.ps1', 'verify.ps1'
 )
+# Unity Mod Manager, bundled (STD-040; tools/installer/UnityModManager/PROVENANCE.md). The installer places the game
+# files beside artofrally.exe and the manager files in artofrally_Data\Managed\UnityModManager, only when it is missing.
+$UmmGameFiles = @('winhttp.dll', 'doorstop_config.ini')
+$UmmManagerFiles = @('UnityModManager.dll', '0Harmony.dll', 'dnlib.dll', 'Config.xml', 'Params.xml')
+$PayloadFiles += @($UmmGameFiles + $UmmManagerFiles + 'PROVENANCE.md' +
+    @('UnityModManager-MIT.txt', 'UnityDoorstop-LGPL-2.1.txt', 'Harmony-MIT.txt', 'dnlib-MIT.txt' | ForEach-Object { 'licenses/' + $_ }) |
+    ForEach-Object { 'UnityModManager/' + $_ })
 # Shipped only by a private shared-input candidate (package.ps1 -SharedInputCandidate), whose
 # build.json pins it and the native it reads through.
 $OptionalPayloadFiles = @('ArtOfSimRally/dbce_shim.dll')

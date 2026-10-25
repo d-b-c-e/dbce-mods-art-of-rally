@@ -16,9 +16,7 @@ To try it, with the game closed:
    on "Use shared profile" and sets the mod's gearbox to match
    the profile. Your Art bindings are kept, and the preview lists any control it
    leaves out, with the reason.
-   Without Wheelkit: the optional controls setup download (its own ZIP,
-   ArtOfSimRally-<version>-shared-input-controls-setup.zip) does the same for this
-   package. Extract it outside the game folder and follow its README.
+   Without Wheelkit you do not need this: bind everything in F6 > Controls.
 2. Launch the game; the choice applies at startup. To turn the option on or off
    by hand, press F6, open Controls, change it and restart the game.
 3. Stay in the menus for a moment. The Controls page says which of these happened:

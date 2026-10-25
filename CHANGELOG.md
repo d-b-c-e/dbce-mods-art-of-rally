@@ -7,6 +7,19 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-10-25
+
+### Changed
+
+- One download: the release is a single `ArtOfSimRally-0.4.3.zip`. The separate
+  Controls Setup download is gone; everything is set up in F6.
+- Unity Mod Manager is included. Install.bat adds it when the game does not have it
+  yet (an existing one is used as it is, and another mod loader is never replaced).
+  Uninstall.bat removes it again unless other mods use it. Its window no longer
+  opens at every start.
+- F6 > Controls shows "Use shared profile" only when a Wheelkit shared profile is
+  present, and its messages no longer point to the retired Controls Setup.
+
 ## [0.4.2] - 2026-10-24
 
 ### Fixed

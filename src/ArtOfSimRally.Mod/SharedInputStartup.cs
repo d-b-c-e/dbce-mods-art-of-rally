@@ -41,6 +41,8 @@ namespace ArtOfSimRally.Mod
         internal static bool HoldsShifter => Active || phase == SharedInputStatus.Phase.CleanupFailed;
         // The setting as read at startup; a later change applies after a restart.
         internal static bool RequestedAtStartup { get; private set; }
+        // A shared profile was beside the mod at startup. Without one, F6 hides the shared-profile option (STD-040).
+        internal static bool ProfilePresent { get; private set; }
 
         private static void Enter(SharedInputStatus.Phase next)
         {
@@ -58,14 +60,15 @@ namespace ArtOfSimRally.Mod
                     !GameState.IsDriving && ShimInput.Consumer.Started);
             session = null; reason = waitingFor = null; startedLogged = stopLogged = false; restoreAttempts = 0;
             RequestedAtStartup = !ShimStartup.Requested && Main.Settings != null && Main.Settings.SharedInput;
+            ProfilePresent = File.Exists(Path.Combine(modDirectory, ProfileFileName));
             FfbSelection.PrepareShared(RequestedAtStartup);
             if (!RequestedAtStartup) { Enter(SharedInputStatus.Phase.Off); return; }
             try
             {
                 string profilePath = Path.Combine(modDirectory, ProfileFileName);
                 shimPath = Path.Combine(modDirectory, ShimFileName);
-                // The portable Controls Setup download writes this file (Wheelkit 0.6.23 or later also can); Wheelkit is optional.
-                if (!File.Exists(profilePath)) { Refuse("no shared profile beside the mod. Run Set Up Controls.bat from the matching Controls Setup download (or apply a profile in Wheelkit 0.6.23 or later); it writes " + ProfileFileName + " here. Then restart."); return; }
+                // Wheelkit (0.6.23 or later) writes this file; without it, players use Art's own F6 bindings (STD-040).
+                if (!File.Exists(profilePath)) { Refuse("no shared profile beside the mod. Turn off Use shared profile, restart, and bind your controls in F6 Controls."); return; }
                 if (!File.Exists(shimPath)) { Refuse(ShimFileName + " is missing beside the mod."); return; }
                 if (!String.Equals(ProbeRequest.Hash(shimPath), ExpectedShimSha256, StringComparison.OrdinalIgnoreCase)) { Refuse(ShimFileName + " is not the qualified build."); return; }
                 var info = new FileInfo(profilePath);

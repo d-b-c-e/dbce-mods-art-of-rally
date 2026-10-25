@@ -9,24 +9,20 @@ download or SimHub helper is needed. Some hardware scenarios remain untested.
 INSTALL / UPDATE
 ----------------
 1. Close art of rally.
-2. Install Unity Mod Manager 0.27.0 or newer for this game (one-time setup):
-   https://www.nexusmods.com/site/mods/21
-   Extract UMM, run UnityModManager.exe, select Art of Rally, check its game
-   folder, click Install, then close UMM.
-3. Use Extract All on this mod ZIP. Keep its files together, then double-click
-   Install.bat. Wait for successful verification. Existing settings are retained.
-4. Launch through Steam. Press F6 for Wheel settings, or Ctrl+F10 to find the
-   same panel in Unity Mod Manager. Check the installed version there.
+2. Use Extract All on this mod ZIP. Keep its files together, then double-click
+   Install.bat. It finds the game, adds the mod loader (Unity Mod Manager, included)
+   if the game does not have it yet, and installs the mod. Existing settings are kept.
+3. Launch through Steam and press F6 to set up your wheel.
 
 For a custom folder, find artofrally.exe using Steam > Manage > Browse local files.
 Open PowerShell in this extracted download and use the real path:
   .\Install.bat -GameDir "D:\Games\artofrally"
-Alternatively, drag the mod ZIP onto UMM's Mods tab after installing its loader.
+If you already use Unity Mod Manager, you can also drag the mod ZIP onto its Mods tab.
 Prefer Install.bat for updates if you used it before: both native DLL copies stay
 synchronized. Vortex installation has not been validated.
 
-Remove with the game closed: double-click Uninstall.bat. Settings, other mods and
-UMM stay. A custom path also works: .\Uninstall.bat -GameDir "D:\Games\artofrally"
+Remove with the game closed: double-click Uninstall.bat. Settings and other mods
+stay. The included mod loader is removed too unless other mods use it. A custom path also works: .\Uninstall.bat -GameDir "D:\Games\artofrally"
 Before updating, keep the previous ZIP and back up Settings.xml, TripleScreen.xml,
 desired-layout.json and dbce-controls.ini from Mods\ArtOfSimRally if present.
 The installer preserves settings but does not create a backup or automatically
@@ -37,7 +33,7 @@ are in the shared-input section when that flavor is included.
 FIRST DRIVE
 -----------
 Pause before setting up. Opening settings stops mod controls/FFB but does not
-promise to pause the game simulation. Keep a mouse/keyboard available for UMM.
+promise to pause the game simulation. Keep a mouse/keyboard available for F6.
 Simple is the first view; Advanced adds tuning to the same saved values.
 
 * Controls: keep working game bindings. For a missing axis, center/release it,

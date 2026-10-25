@@ -20,24 +20,19 @@ changing bindings or devices; the game simulation does not pause automatically.
 ## Install
 
 For the **64-bit Windows game**. Tested on the Steam version; other stores are
-not confirmed. You need the game, your wheel's Windows driver, and Unity Mod
-Manager **0.27.0 or newer** (UMM). SimHub is optional. No SDK or separate toolkit
-download is needed.
+not confirmed. You need the game and your wheel's Windows driver. Everything else
+is in the one download (including the Unity Mod Manager loader). SimHub is optional.
 
-1. **Close the game.** Download and extract
-   [Unity Mod Manager](https://www.nexusmods.com/site/mods/21). Run
-   `UnityModManager.exe`, select **Art of Rally**, check its game folder, and click
-   **Install**. This is a one-time setup for this game.
-2. Download **ArtOfSimRally-0.4.1.zip** from the release's **Assets** section.
-   Choose the mod ZIP, not GitHub's **Source code** downloads.
-3. Right-click the ZIP → **Extract All**. Open the extracted folder and
+1. **Close the game.** Download **ArtOfSimRally-0.4.3.zip** from the latest
+   release's **Assets** section (not GitHub's **Source code** downloads).
+2. Right-click the ZIP → **Extract All**. Open the extracted folder and
    double-click **Install.bat**. Wait for the successful verification message.
-4. Launch art of rally through Steam. Press **F6** for Wheel settings, or
-   **Ctrl+F10** to open UMM. Check that version **0.4.1** is listed.
+3. Launch art of rally through Steam and press **F6** to set up your wheel.
 
-The installer finds Steam libraries on other drives and preserves existing mod
-settings. If it cannot find your game, see [custom folders](docs/SETUP.md#custom-game-folder).
-UMM's [Mods-tab installation](docs/SETUP.md#installing-through-umm) is also supported.
+The installer finds Steam libraries on other drives, adds Unity Mod Manager if the
+game does not have it yet (an existing one is used as it is), and preserves existing
+mod settings. If it cannot find your game, see [custom folders](docs/SETUP.md#custom-game-folder).
+If you already use Unity Mod Manager, its [Mods-tab installation](docs/SETUP.md#installing-through-umm) also works.
 
 **Updating:** close the game, extract the new ZIP into a fresh folder, and run
 its `Install.bat`. No uninstall is needed. **Removing:** close the game and run
@@ -55,7 +50,8 @@ focused while force feedback initializes.
 - **Controls:** keep game bindings that work. For a missing axis, centre or
   release it, click **Bind** in Controls, move it through full travel, check the
   preview, then **Save calibration**. Use **Invert** if it reads backwards.
-  Menus still use keyboard/pad.
+  Wheel buttons can also drive the game's menus (Confirm, Back, Start, arrows) and
+  actions such as horn, look back and recover car: bind them on the same page.
 - **Separate USB handbrake or pedals:** bind them on their Controls rows.
   Each row can use a different device; leave working game-controlled rows unbound.
   [TSS handbrake steps](docs/SETUP.md#separate-usb-handbrake).
