@@ -21,6 +21,16 @@ Severity is about the effect on driving, not on how annoying it looks:
 
 ## Open
 
+### KI-52 — Surround span: some UI and backgrounds use all three screens
+
+**Future improvement, owner report 2026-10-24 on 0.4.2; not a release blocker.** On a
+7680x1440 NVIDIA Surround span the three driving views are correct and the owner
+signed Surround off. Parts of the UI still reach the left-hand screen, and some
+menu/loading backgrounds are not constrained to the center monitor the way they are
+under separate monitors (where the side displays only show side views). Improve by
+keeping those UI canvases and backgrounds on the center 2560 of the span (the
+`CenterMenusOnMiddleScreen` path covers menus but not every canvas/background).
+
 ### KI-51 — Private rc29 companion CLI cannot qualify the Settings first-launch refusal
 
 **Offline companion gap, 2026-10-22; Wheelkit helper ownership.** The exact

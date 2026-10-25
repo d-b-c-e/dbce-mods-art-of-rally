@@ -17,8 +17,10 @@ mods kept; rc30 files backed up under hub `.local/art-rc32-owner-install-claude-
 A plain Steam launch on the 7680x1440 Surround desktop logged the switch from
 2560x1440 to 7680x1440 and three-view `active`, no exceptions, normal close.
 
-Owner sign-off: driving, force, performance (rc30, Oct 23); telemetry, H-pattern and
-separate-monitor triples (Oct 24). Surround is launch-verified, not yet driven by the owner.
+Owner sign-off: driving, force, performance (rc30, Oct 23); telemetry, H-pattern,
+separate-monitor triples and, on 0.4.2, Surround span triples (Oct 24). Art is fully
+signed off. Future improvement: on Surround some UI and backgrounds still use all three
+screens ([KI-52](KNOWN-ISSUES.md#ki-52--surround-span-some-ui-and-backgrounds-use-all-three-screens)).
 
 Known behavior: if a controller Rewired cannot identify appears while the game starts
 (for example a Steam Controller presented by Steam Input as "Controller (XBOX 360 For
