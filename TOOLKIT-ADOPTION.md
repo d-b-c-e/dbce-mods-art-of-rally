@@ -280,3 +280,12 @@ runtime adoption or user readiness. STD-008 remains partial: the existing
 OutputResolution size retry policy is unchanged. Existing unchecked ledger
 rows remain as recorded; STD-037/039/040 still lack full adoption rows.
 See docs/reviews/2026-10-26-window-landing.md.
+
+October 26 DBC-272 corrections: STD-038 remains partial. Landing now waits for
+observed engine/native client-size and windowed-mode agreement (10s deadline),
+retains transient pending state, offsets native placement to the client origin,
+and canonicalizes topology order. Projection defers its size writer while the
+landing request is pending. Production episode logic has 11 added offline checks;
+559 TripleScreen assertions and warning-as-error plugin build pass. Persistence,
+actual native placement and rendered/runtime qualification remain open. Existing
+unchecked/pending standards listed above remain outside this bounded correction.

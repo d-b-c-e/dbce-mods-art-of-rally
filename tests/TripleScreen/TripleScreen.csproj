@@ -13,6 +13,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Dbce.TripleScreen.Core\Dbce.TripleScreen.Core.csproj" />
     <ProjectReference Include="..\..\src\Dbce.TripleScreen.Protocol\Dbce.TripleScreen.Protocol.csproj" />
+    <Compile Include="..\..\src\ArtOfSimRally.Mod\Triple\RacingWindowLanding.cs" Link="RacingWindowLanding.cs" />
     <Compile Include="..\..\src\ArtOfSimRally.Mod\Triple\AdapterConstants.cs" Link="AdapterConstants.cs" />
     <Compile Include="..\..\src\ArtOfSimRally.Mod\Triple\FovPreference.cs" Link="FovPreference.cs" />
     <Compile Include="..\..\src\ArtOfSimRally.Mod\Triple\LayoutSource.cs" Link="LayoutSource.cs" />

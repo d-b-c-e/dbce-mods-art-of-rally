@@ -1,58 +1,75 @@
 using System;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
+using System.Linq;
 using Dbce.Wheel.Display;
-using UnityEngine;
 
 namespace ArtOfSimRally.Mod.Triple;
 
-// One windowed apply per observed topology. No preference writes: test/muted launch
-// classification must be qualified before enabling STD-038's optional persistence.
+// A -> B -> A is three observed episodes, not lifetime topology uniqueness.
 internal sealed class RacingWindowLanding
 {
-    private string _appliedTopology;
-    private IntPtr _pendingWindow;
-    private int _x, _y;
-    private float _placeAfter;
+    internal interface IHost
+    {
+        float Now { get; }
+        IReadOnlyList<MonitorRect> Monitors { get; }
+        bool Observe(out Observation observation);
+        void Resize(int width, int height);
+        bool Place(long window, int x, int y);
+        void Log(string message);
+    }
+    internal struct Observation
+    {
+        internal long Window;
+        internal int X, Y, Width, Height, OffsetX, OffsetY, EngineWidth, EngineHeight;
+        internal bool Windowed;
+    }
+    private readonly IHost _host;
+    private string _topology;
+    private bool _admitted;
+    private bool _pending;
+    private float _deadline;
+    private int _x, _y, _width, _height;
+    internal bool BlocksOutputResize => _pending;
+    internal RacingWindowLanding(IHost host) { _host = host; }
 
     internal void Update()
     {
-        var monitors = new List<MonitorRect>(WindowsMonitors.Read());
-        var topology = string.Join(";", monitors);
-        if (_pendingWindow != IntPtr.Zero)
+        var monitors = new List<MonitorRect>(_host.Monitors);
+        var topology = string.Join(";", monitors.OrderBy(m => m.X).ThenBy(m => m.Y)
+            .ThenBy(m => m.Width).ThenBy(m => m.Height).ThenBy(m => m.Primary));
+        if (_topology != topology)
         {
-            if (topology == _appliedTopology && Time.realtimeSinceStartup < _placeAfter) return;
-            var pending = _pendingWindow;
-            _pendingWindow = IntPtr.Zero;
-            if (topology == _appliedTopology && SecondaryDisplayWindows.LandingWindow() == pending)
-            {
-                // Unity owns client size; move only, without focus or z-order changes.
-                if (!SetWindowPos(pending, IntPtr.Zero, _x, _y, 0, 0, 0x0015))
-                    ModLog.Info("Window landing: Windows refused placement; no repeated apply this episode.");
-            }
+            if (_pending) Finish("topology changed; stale placement cancelled");
+            _topology = topology;
+            _admitted = false;
         }
-        if (_appliedTopology == topology) return;
-        var window = SecondaryDisplayWindows.LandingWindow();
-        if (window == IntPtr.Zero || !GetWindowRect(window, out var rect)) return;
-        var row = RacingRowPolicy.Select(monitors);
-        var decision = WindowLandingPolicy.Decide(monitors, row, false,
-            rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top, null, null, null);
-        // A minimized, moving or unavailable window is not an apply episode.
-        if (WindowLandingPolicy.DisplayOf(monitors, rect.Left, rect.Top,
-                rect.Right - rect.Left, rect.Bottom - rect.Top) == null) return;
-        _appliedTopology = topology;
-        ModLog.Info("Window landing: " + decision.Reason + "; start monitor unchanged (persistence deferred).");
+        if (_pending)
+        {
+            if (_host.Now >= _deadline) { Finish("resize/placement deadline expired"); return; }
+            // A replacement HWND must independently satisfy the same observed contract.
+            // Temporary minimize/ambiguity never consumes the pending placement.
+            if (!_host.Observe(out var current) || !current.Windowed ||
+                current.EngineWidth != _width || current.EngineHeight != _height ||
+                current.Width != _width || current.Height != _height) return;
+            var placed = _host.Place(current.Window, _x - current.OffsetX, _y - current.OffsetY);
+            Finish(placed ? "client placement accepted" : "Windows refused placement; no retry this episode");
+            return;
+        }
+        if (_admitted || !_host.Observe(out var opening)) return;
+        if (WindowLandingPolicy.DisplayOf(monitors, opening.X, opening.Y, opening.Width, opening.Height) == null) return;
+        var decision = WindowLandingPolicy.Decide(monitors, RacingRowPolicy.Select(monitors), false,
+            opening.X, opening.Y, opening.Width, opening.Height, null, null, null);
+        _admitted = true;
+        _host.Log("Window landing: " + decision.Reason + "; start monitor unchanged (persistence deferred).");
         if (!decision.Move) return;
-        // Separate-display rendering keeps one center window, never a desktop span.
-        // Surround already appears as one wide primary to the shared selector.
-        Screen.SetResolution(decision.Width, decision.Height, FullScreenMode.Windowed);
-        _pendingWindow = window;
-        _x = decision.X; _y = decision.Y;
-        _placeAfter = Time.realtimeSinceStartup + .5f;
+        _x = decision.X; _y = decision.Y; _width = decision.Width; _height = decision.Height;
+        _pending = true;
+        _deadline = _host.Now + 10f;
+        _host.Resize(_width, _height);
     }
-
-    [StructLayout(LayoutKind.Sequential)] private struct Rect { public int Left, Top, Right, Bottom; }
-    [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr window, out Rect rect);
-    [DllImport("user32.dll")] private static extern bool SetWindowPos(IntPtr window, IntPtr after,
-        int x, int y, int width, int height, uint flags);
+    private void Finish(string reason)
+    {
+        _pending = false;
+        _host.Log("Window landing: " + reason + ".");
+    }
 }

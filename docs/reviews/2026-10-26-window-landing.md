@@ -37,3 +37,30 @@ Actual asynchronous Unity sizing and native client placement remain unverified.
 Darlene review and Sandy affected-display QA remain required before user-ready
 claims. No package, install, launch, rig/input, public push or physical acceptance.
 KI-52 remains separately scoped to DBC-28.
+
+## October 26 review corrections
+
+Sandy DBC-272 identified asynchronous resize, transient invalidation and client
+origin defects in 63a1ff5. The corrected production adapter now uses an injected
+host so the actual episode logic runs in the offline suite. It retains pending
+state for up to 10 seconds, requires observed Unity windowed mode plus matching
+engine/native client dimensions, and translates the observed client-to-outer
+origin offset before the sole native placement. A unique validated replacement
+HWND may complete the same pending request without another resize. Unavailable
+windows wait; deadline/refusal are explicit terminal log outcomes. Topology
+changes cancel stale targets. Rectangle/primary tuples are sorted before the
+key is constructed; A->B->A is a new observed episode. Projection's output-size
+writer is explicitly suspended while landing owns the resize, including the
+request frame. Other output policy and accepted projection math are unchanged.
+
+Release plugin -warnaserror PASS: zero warnings/errors. TripleScreen PASS 559
+assertions (11 added against production episode code). Display pin PASS all
+four files. Diff check PASS. Initial correction build caught a list-interface
+mismatch and duplicate test Compile inclusion; both corrected before passing.
+The fake host does not test native APIs or rendered output. Native sampling uses
+the Unity caller's DPI context; unequal engine/native sizes time out rather than
+assuming success. Actual mixed-DPI, post-resize Unity behavior and stable final
+client placement remain for Sandy's separately authorized runtime QA. No runtime
+or preference-write qualification claimed. STD-038 remains partial; saved-monitor
+persistence with qualified test/muted launch classification is still unfinished.
+No package, install, launch, rig/input, public push, shared toolkit/Wheelkit edits.

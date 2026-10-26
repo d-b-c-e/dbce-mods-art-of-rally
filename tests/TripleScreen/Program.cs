@@ -17,6 +17,7 @@ internal static class Program
         try
         {
             WindowLandingChecks.Run(Check);
+            LandingSequenceChecks.Run(Check);
             DimensionsFromDiagonal();
             HingesAreContinuous();
             CenterProjectionIsSymmetric();

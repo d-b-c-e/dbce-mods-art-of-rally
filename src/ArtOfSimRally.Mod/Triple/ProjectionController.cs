@@ -11,6 +11,7 @@ namespace ArtOfSimRally.Mod.Triple;
 
 internal sealed class ProjectionController
 {
+    internal bool LandingOwnsOutputResize { get; set; }
     private Camera _camera;
     private CenterProjectionDriver _centerDriver;
     private SeparateDisplayRenderDriver _separateDriver;
@@ -232,6 +233,7 @@ internal sealed class ProjectionController
     /// <summary>The switching outcome when this frame asked Unity for the mode's output size, otherwise null.</summary>
     private ProjectionOutcome RequestOutputSize(LayoutLoadResult layoutResult, int width, int height, string purpose)
     {
+        if (LandingOwnsOutputResize) return ProjectionOutcome.Starting(layoutResult, "WINDOW_LANDING", "Waiting for the game window to finish resizing.");
         if (!_outputResolution.ShouldRequest(Display.main.systemWidth, Display.main.systemHeight, Screen.width, Screen.height,
                 width, height, Time.realtimeSinceStartup))
             return null;
