@@ -1,22 +1,5 @@
 # art of sim rally
 
-Private development and installed-candidate evidence is tracked in [local deployment](docs/LOCAL-DEPLOYMENT.md); public downloads below remain the published0.4.1 release.
-
-Drive [art of rally](https://store.steampowered.com/app/550320/) with a racing
-wheel, pedals and a shifter. Adds force feedback from the game's tyre forces,
-direct USB controls, bonnet/bumper cameras, telemetry for SimHub, and
-angle-correct triple screens (one wide display or three separate displays).
-
-**[Download 0.4.1](https://github.com/d-b-c-e/dbce-mods-art-of-rally/releases/tag/v0.4.1)** ·
-[Setup guide](docs/SETUP.md) · [Troubleshooting](docs/TROUBLESHOOTING.md) ·
-[Changelog](CHANGELOG.md)
-
-Version 0.4.1 moves the camera keys to a numpad layout with one step per press, adds a
-short rattle to crashes and switches support logging off at each launch. Since 0.4.0 the
-triple-screen mod is part of this one; its settings are on the Cameras page. There are five settings pages (Controls, FFB, Cameras, Telemetry and
-Help) with Simple and Advanced views. Press **F6** to open Wheel settings. Pause before
-changing bindings or devices; the game simulation does not pause automatically.
-
 ## Install
 
 For the **64-bit Windows game**. Tested on the Steam version; other stores are
@@ -79,11 +62,7 @@ SimHub with the same UDP port. No extra SimHub helper is required.
 
 ## Getting help
 
-Developers can record and replay drives with the optional SessionTools asset.
-See [recording, playback and offline force analysis](docs/SESSION-REPLAY.md).
-It is installed separately; ordinary play does not record sessions.
-
-For a recurring problem: enable **Log detail for support**, reproduce briefly,
+For a problem: enable **Log detail for support**, reproduce briefly,
 pause, then use **Help → Create support file**. Turn detail off afterward. Ordinary
 errors/settings can be collected without detailed logging.
 
