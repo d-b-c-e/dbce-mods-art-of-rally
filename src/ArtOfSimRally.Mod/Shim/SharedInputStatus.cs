@@ -32,7 +32,17 @@ namespace ArtOfSimRally.Mod.Shim
             switch (f.Phase)
             {
                 case Phase.Off: lines.Add("Shared profile is off; Art bindings are used."); break;
-                case Phase.Refused: lines.Add("Shared profile not used: " + f.Reason + " Art bindings are used. Restart to try again."); break;
+                case Phase.Refused:
+                    // SharedInputStartup preserves the qualification reason. Only this exact identity
+                    // refusal gets the workaround; other failures and incomplete cleanup keep their text.
+                    if (f.Reason != null && f.Reason.StartsWith("Rewired joystick identity unavailable:", System.StringComparison.Ordinal))
+                    {
+                        lines.Add("Shared profile not used for this session: a controller could not be identified, so the mod cannot rule out duplicate wheel input. Art bindings are used.");
+                        lines.Add("Start the game without that controller connected, or, if you use Steam Input, disable it for art of rally, then restart the game. Steam Input is one possible cause.");
+                        lines.Add("Details: " + f.Reason);
+                    }
+                    else lines.Add("Shared profile not used: " + f.Reason + " Art bindings are used. Restart to try again.");
+                    break;
                 case Phase.CleanupFailed:
                     lines.Add("Shared profile not used: " + f.Reason + " The game's own input for the isolated wheel is still off (" + f.RestoreStatus + "); " +
                         (f.Retrying ? "retrying in the menus." : "restart the game to restore it.") + " Art's shifter stays closed until then.");
