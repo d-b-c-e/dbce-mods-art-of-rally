@@ -16,7 +16,8 @@ window, excluding secondary display windows. Shared policy selects the home
 rectangle; independent rendering stays on the center display. No racing row
 means no move. Unknown/off-desktop windows wait without consuming the episode.
 One windowed SetResolution is allowed per observed topology; placement follows
-at least 0.5 seconds later with NOSIZE/NOZORDER/NOACTIVATE. A refused placement
+after observed windowed engine/native size agreement, within 10 seconds, with
+NOSIZE/NOZORDER/NOACTIVATE. A refused placement
 is logged and not retried. No projection, controls, force or saved geometry edits.
 The preexisting output-size policy remains unchanged.
 
@@ -147,3 +148,11 @@ specific Sandy handoff for native placement/mixed DPI and actual preference
 flush/relaunch, under existing runtime authorization gates. No package, install,
 launch, rig/input, shared edits or public push. Darlene passed 5049c08; this
 correction adds diagnostic text requiring final review.
+
+
+## Current exact-candidate runtime handoff
+
+DBC-279 and DBC-280 passed f2a770491dad80b5c5c0088f55bb20c04e7d6cdf.
+See [source-owned Sandy handoff](2026-10-26-window-runtime-handoff.md) for
+preconditions, expected behavior, evidence, rollback and unfinished allocation.
+STD-038 remains PARTIAL; parent runtime authorization and adoption gates remain.
