@@ -37,6 +37,17 @@ internal static class IsolationTests
         check(!isolation.Check(14) && !reconnect.Value && isolation.Check(15), "new duplicate/reconnected wheel was missed");
         inventory.Items.Add(new Joystick { Id = Guid.Empty });
         check(!isolation.Check(16) && isolation.Status.Contains("cannot exclude a duplicate"), "unknown identity silently treated unrelated");
+        // Use the real Check catch/wrapper, then the unchanged startup diagnostic suffix.
+        string refusalReason = isolation.Status + ".";
+        var facts = new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.Refused, Reason = refusalReason };
+        var guidance = SharedInputStatus.Lines(facts);
+        check(guidance.Length == 3 && guidance[0] == "Shared profile was not used for this session because a controller could not be identified. This prevents duplicate wheel input. Art bindings are used.", "production identity refusal missed reviewed explanation");
+        check(guidance[1] == "Restart the game with that controller disconnected. If you use Steam Input, disable it for art of rally before restarting; Steam Input may be the cause.", "production identity workaround differs from reviewed copy");
+        check(guidance[2] == "Details: " + refusalReason, "production wrapped diagnostic changed");
+        check(string.Join("|", SharedInputStatus.Lines(facts, false)) == string.Join("|", guidance), "compact production identity explanation differs");
+        facts.Phase = SharedInputStatus.Phase.CleanupFailed; facts.RestoreStatus = "restore pending";
+        var cleanupLines = SharedInputStatus.Lines(facts, false);
+        check(cleanupLines.Length == 1 && cleanupLines[0].Contains("still off") && !cleanupLines[0].Contains("Art bindings are used") && !cleanupLines[0].Contains("Steam Input"), "wrapped identity cleanup failure claims restored bindings");
         inventory.Items.RemoveAt(inventory.Items.Count - 1); check(isolation.Check(17), "requalified scan did not age out");
         first.ThrowGet = true; check(!isolation.Check(18), "throwing runtime getter marked clean"); first.ThrowGet = false;
         check(isolation.Check(19), "getter recovery did not requalify");
@@ -49,6 +60,8 @@ internal static class IsolationTests
         int writes = first.Writes; check(isolation.Restore() && first.Writes == writes && !isolation.Check(23), "restored session resumed or rewrote flags");
         var missing = new NativeInputIsolation(new[] { Guid.NewGuid() }, inventory);
         check(!missing.Check(1) && missing.Status.Contains("RawInput GUID"), "different RawInput GUID silently accepted as absent");
+        var unrelated = SharedInputStatus.Lines(new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.Refused, Reason = missing.Status + "." });
+        check(unrelated.Length == 1 && !unrelated[0].Contains("Steam Input") && !unrelated[0].Contains("controller disconnected"), "unrelated production isolation failure gets identity workaround");
         first.ThrowSet = true; var failure = new NativeInputIsolation(new[] { wheel }, inventory);
         check(!failure.Check(1), "failed enabled setter marked clean"); first.ThrowSet = false;
         check(failure.Restore(), "refused partial handoff could not restore");

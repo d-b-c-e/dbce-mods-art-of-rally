@@ -272,11 +272,11 @@ internal static class Program
         Check(Lines(new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.Off })[0].Contains("is off") , "off text");
         var refused = Lines(new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.Refused, Reason = "no shared profile beside the mod." });
         Check(refused.Length == 1 && refused[0].Contains("no shared profile") && refused[0].Contains("Art bindings are used"), "refusal text");
-        const string identityReason = "Rewired joystick identity unavailable: cannot exclude a duplicate mapped wheel; no name/index fallback";
+        const string identityReason = "native isolation unqualified: Rewired joystick identity unavailable: cannot exclude a duplicate mapped wheel; no name/index fallback";
         var identityFacts = new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.Refused, Reason = identityReason };
         var unidentified = Lines(identityFacts);
         Check(unidentified.Length == 3 && unidentified[0].Contains("for this session") && unidentified[0].Contains("could not be identified") && unidentified[0].Contains("Art bindings are used"), "identity refusal does not explain the session fallback");
-        Check(unidentified[1].Contains("without that controller connected") && unidentified[1].Contains("if you use Steam Input") && unidentified[1].Contains("restart the game") && unidentified[1].Contains("one possible cause"), "identity workaround assumes Steam Input or omits restart");
+        Check(unidentified[1].Contains("with that controller disconnected") && unidentified[1].Contains("If you use Steam Input") && unidentified[1].Contains("Restart the game") && unidentified[1].Contains("may be the cause"), "identity workaround assumes Steam Input or omits restart");
         Check(unidentified[2] == "Details: " + identityReason, "identity diagnostic lost");
         Check(string.Join("|", SharedInputStatus.Lines(identityFacts, false)) == string.Join("|", unidentified), "compact F6 hides the refusal workaround");
         Check(!string.Join("|", refused).Contains("Steam Input"), "unrelated refusal gets controller workaround");
