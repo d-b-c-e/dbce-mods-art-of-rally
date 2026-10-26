@@ -71,13 +71,21 @@ internal sealed class RacingWindowLanding
             if (!_topologyChanged) _openedOn = WindowLandingPolicy.DisplayOf(monitors,
                 opening.X, opening.Y, opening.Width, opening.Height);
         }
-        var saved = _host.SavedMonitor;
+        int? saved = null;
+        var preferenceAvailable = true;
+        try { saved = _host.SavedMonitor; }
+        catch (Exception failure)
+        {
+            preferenceAvailable = false;
+            _host.Log("Window landing: start monitor read failed (" + failure.GetType().Name +
+                "); preference unavailable; persistence suppressed for this episode.");
+        }
         var decision = WindowLandingPolicy.Decide(monitors, RacingRowPolicy.Select(monitors), false,
             opening.X, opening.Y, opening.Width, opening.Height,
-            _topologyChanged ? null : _openedOn, _host.EngineDisplays, saved);
+            _topologyChanged || !preferenceAvailable ? null : _openedOn, _host.EngineDisplays, saved);
         _admitted = true;
         _host.Log("Window landing: " + decision.Reason + ". " + decision.PersistReason + ".");
-        if (decision.Persist.HasValue)
+        if (preferenceAvailable && decision.Persist.HasValue)
         {
             var blocked = _host.PersistenceBlock;
             if (blocked != null) _host.Log("Window landing: start monitor unchanged: " + blocked + ".");

@@ -25,6 +25,12 @@ internal static class PersistenceChecks
             flush ?? (() => flushes++), logs.Add);
         check(!Save(0) && sets == 0 && flushes == 0, "late marker blocks write boundary");
         block = null;
+        logs.Clear();
+        check(!guard.Save(0, 1, () => throw new IOException(), _ => sets++, () => sets++,
+            () => flushes++, logs.Add) && sets == 0 && flushes == 0,
+            "write-boundary read failure performs no mutation or flush");
+        check(logs.Exists(s => s.Contains("write failed")) && !logs.Exists(s => s.Contains("restored")),
+            "write-boundary read failure contained and logged without restoration");
         check(!Save(2) && sets == 0, "expected-value mismatch refuses write");
         check(Save(0) && value == 1 && sets == 1 && flushes == 1, "admitted boundary sets and flushes");
         value = 0; logs.Clear();

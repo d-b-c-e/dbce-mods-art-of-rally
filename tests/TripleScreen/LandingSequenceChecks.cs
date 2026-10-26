@@ -10,7 +10,11 @@ internal static class LandingSequenceChecks
     {
         public float Now { get; set; }
         public IList<EngineDisplay> EngineDisplays { get; set; }
-        public int? SavedMonitor { get; set; }
+        private int? _savedMonitor;
+        internal bool ThrowRead;
+        internal int Reads;
+        internal readonly List<string> Logs = new();
+        public int? SavedMonitor { get { Reads++; if (ThrowRead) throw new InvalidOperationException(); return _savedMonitor; } set { _savedMonitor=value; } }
         public string PersistenceBlock { get; set; }
         internal int Saves;
         internal bool SaveAccepted = true;
@@ -26,7 +30,7 @@ internal static class LandingSequenceChecks
         public bool Observe(out RacingWindowLanding.Observation observation) { observation=Sample; return Available; }
         public void Resize(int width,int height) { Resizes++; }
         public bool Place(long window,int x,int y) { Places++; Window=window; X=x; Y=y; return Accept; }
-        public void Log(string message) { }
+        public void Log(string message) { Logs.Add(message); }
         internal void Ready() { Sample.Width=Sample.EngineWidth=1000; Sample.Height=Sample.EngineHeight=700; Sample.Windowed=true; Sample.OffsetX=8; Sample.OffsetY=31; }
     }
     internal static void Run(Action<bool,string> check)
@@ -48,6 +52,12 @@ internal static class LandingSequenceChecks
         check(p.Saves==1 && p.SavedMonitor==1,"proven engine order saves once before resize changes opening");
         p=PersistenceHost(); p.SaveAccepted=false; episode=new RacingWindowLanding(p); episode.Update(); episode.Update();
         check(p.Saves==1 && p.Resizes==1 && episode.BlocksOutputResize,"failed persistence still starts landing without retrying write");
+        p=PersistenceHost(); p.ThrowRead=true; episode=new RacingWindowLanding(p); episode.Update();
+        check(p.Resizes==1 && p.Saves==0 && episode.BlocksOutputResize,"unavailable initial preference suppresses writes but starts geometric landing");
+        p.Sample.Width=p.Sample.EngineWidth=3000; p.Sample.Height=p.Sample.EngineHeight=700; p.Sample.Windowed=true;
+        episode.Update(); episode.Update();
+        check(p.Places==1 && p.Resizes==1 && p.Reads==1 && p.Saves==0 && !episode.BlocksOutputResize,"initial getter failure lands once without repeated acquisition or preference writes");
+        check(p.Logs.Exists(s=>s.Contains("read failed") && s.Contains("preference unavailable")),"initial getter failure logs unavailable rather than absent preference");
         p=PersistenceHost(); p.PersistenceBlock="muted"; new RacingWindowLanding(p).Update();
         check(p.Saves==0 && p.Resizes==1,"muted launch keeps landing but never saves");
         p=PersistenceHost(); p.SavedMonitor=1; new RacingWindowLanding(p).Update();

@@ -126,3 +126,24 @@ prevent landing or cause a second write. Delegates do not execute Unity/native A
 STD-038 remains PARTIAL pending corrected-source reviews and separately authorized
 native placement, mixed-DPI, actual preference flush/relaunch and runtime evidence.
 No package, install, launch, rig/input, shared edits or public push.
+
+## DBC-277 initial preference-read correction
+
+The initial SavedMonitor getter is now contained at episode admission. Unavailable
+preference evidence is distinct from an absent key: it logs a preference-specific
+failure, withholds opening-order evidence from persistence policy, and explicitly
+suppresses the write. Geometric landing still starts and completes; admission
+prevents repeated preference acquisition within that topology episode.
+The native PlayerPrefs getter remains direct so the Save boundary can independently
+catch a failed expected-value re-read without treating it as absent.
+
+Release plugin -warnaserror PASS, zero warnings/errors; TripleScreen PASS 596
+assertions, including a throwing initial getter with completed resize/placement,
+zero save calls and exactly one read, plus a throwing write-boundary reader with
+zero mutations/flushes. Display pin and diff checks PASS. These are offline
+production-code checks, not Unity/native runtime qualification.
+STD-038 stays PARTIAL. After corrected-source review, next outcome is a candidate-
+specific Sandy handoff for native placement/mixed DPI and actual preference
+flush/relaunch, under existing runtime authorization gates. No package, install,
+launch, rig/input, shared edits or public push. Darlene passed 5049c08; this
+correction adds diagnostic text requiring final review.

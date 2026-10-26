@@ -310,3 +310,9 @@ and 591 offline assertions pass; source pin/diff pass. STD-038 remains PARTIAL:
 corrected-source reviews plus native/Unity/mixed-DPI/write/relaunch qualification
 remain. No package adoption or user-ready claim. Existing unrelated unchecked,
 partial and missing standard rows remain unchanged.
+
+October 26 DBC-277: initial preference-read failure now suppresses persistence
+without suppressing landing or repeatedly acquiring preferences in the episode.
+596 offline assertions and Release warning-as-error build pass; pin/diff pass.
+STD-038 remains PARTIAL pending corrected-source and native/runtime evidence.
+Existing unrelated unchecked/partial/missing standards remain as listed above.
