@@ -84,7 +84,7 @@ internal sealed class RacingWindowLanding
             else if (_host.SaveMonitor(saved, decision.Persist.Value))
                 _host.Log("Window landing: start monitor " + (saved?.ToString() ?? "unset (0)") +
                     " -> " + decision.Persist.Value + ".");
-            else _host.Log("Window landing: start monitor write not admitted; unchanged.");
+            else _host.Log("Window landing: start monitor write rejected or failed; see preference result above.");
         }
         if (!decision.Move) return;
         _x = decision.X; _y = decision.Y; _width = decision.Width; _height = decision.Height;

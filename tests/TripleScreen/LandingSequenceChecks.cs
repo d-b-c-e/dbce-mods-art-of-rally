@@ -13,7 +13,8 @@ internal static class LandingSequenceChecks
         public int? SavedMonitor { get; set; }
         public string PersistenceBlock { get; set; }
         internal int Saves;
-        public bool SaveMonitor(int? expected,int index) { Saves++; SavedMonitor=index; return true; }
+        internal bool SaveAccepted = true;
+        public bool SaveMonitor(int? expected,int index) { Saves++; if (!SaveAccepted) return false; SavedMonitor=index; return true; }
         public IReadOnlyList<MonitorRect> Monitors { get; set; } = new[] {
             new MonitorRect(-1000,0,1000,700,false), new MonitorRect(0,0,1000,700,true),
             new MonitorRect(1000,0,1000,700,false), new MonitorRect(0,-600,800,600,false) };
@@ -30,6 +31,7 @@ internal static class LandingSequenceChecks
     }
     internal static void Run(Action<bool,string> check)
     {
+        PersistenceChecks.Run(check);
         check(LandingLaunchPolicy.Block(null,null,false,false,false,Array.Empty<string>())==null,"ordinary launch admitted");
         check(LandingLaunchPolicy.Block("1",null,false,false,false,Array.Empty<string>())!=null,"muted launch suppressed");
         check(LandingLaunchPolicy.Block(null,"probe",false,false,false,Array.Empty<string>())!=null,"shim launch suppressed");
@@ -44,6 +46,8 @@ internal static class LandingSequenceChecks
             EngineDisplays=new[]{new EngineDisplay(800,600),new EngineDisplay(3000,700)}, SavedMonitor=0 };
         var p=PersistenceHost(); var episode=new RacingWindowLanding(p); episode.Update(); episode.Update();
         check(p.Saves==1 && p.SavedMonitor==1,"proven engine order saves once before resize changes opening");
+        p=PersistenceHost(); p.SaveAccepted=false; episode=new RacingWindowLanding(p); episode.Update(); episode.Update();
+        check(p.Saves==1 && p.Resizes==1 && episode.BlocksOutputResize,"failed persistence still starts landing without retrying write");
         p=PersistenceHost(); p.PersistenceBlock="muted"; new RacingWindowLanding(p).Update();
         check(p.Saves==0 && p.Resizes==1,"muted launch keeps landing but never saves");
         p=PersistenceHost(); p.SavedMonitor=1; new RacingWindowLanding(p).Update();

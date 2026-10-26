@@ -299,3 +299,14 @@ checks PASS. STD-038 remains partial pending review and native/runtime evidence.
 Existing unchecked STD-011/012/013/014/016/018/019, partial STD-008 and missing
 full STD-037/039/040 adoption rows are unchanged by this bounded source work.
 See docs/reviews/2026-10-26-window-landing.md for classification limits.
+
+October 26 DBC-275/276 correction supersedes the earlier persistence-unimplemented
+wording. Saved-monitor persistence is implemented in the private source candidate;
+launch classification is fail-closed on marker inspection errors. The production
+boundary contains preference failures, attempts in-memory restoration and reports
+uncertain disk/restore state without claiming unchanged preferences. Failed saves
+leave landing active and do not retry persistence. Release warning-as-error build
+and 591 offline assertions pass; source pin/diff pass. STD-038 remains PARTIAL:
+corrected-source reviews plus native/Unity/mixed-DPI/write/relaunch qualification
+remain. No package adoption or user-ready claim. Existing unrelated unchecked,
+partial and missing standard rows remain unchanged.

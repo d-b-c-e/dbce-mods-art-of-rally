@@ -98,3 +98,31 @@ authorized affected-display/runtime qualification. PlayerPrefs.Save flushes the
 engine's preference store; actual Unity write and subsequent launch require
 runtime evidence. No package, install, launch, rig/input, shared edits or public
 push. Accepted force/controls/display geometry and dirty main are preserved.
+
+## Current DBC-275 / DBC-276 correction
+
+The historical persistence-unfinished paragraphs above are superseded by the
+saved-monitor milestone and this correction. Marker discovery now uses
+File.GetAttributes: only FileNotFoundException/DirectoryNotFoundException prove
+absence. Access/IO/path failures or unavailable base paths block classification.
+The production LandingPersistence boundary is compiled directly into offline
+checks; it owns the construction latch, write-boundary recheck, expected-value
+comparison, preference operations and failure containment. The native host binds
+those delegates to PlayerPrefs and real marker inspection.
+
+Read/SetInt/Save exceptions emit a preference-specific failure without escaping
+to the adapter update catch. After an attempted mutation, the previous in-memory
+value (or absent key) is restored without another Save; restore failure is logged.
+Neither path claims disk rollback: a failed flush leaves disk state unconfirmed.
+Landing continues and persistence remains one attempt per admitted episode.
+Successful old -> new logging still follows successful SetInt/Save only.
+
+Focused offline validation: Release plugin -warnaserror PASS, zero warnings/errors;
+TripleScreen PASS 591 assertions; display pin PASS; git diff --check PASS.
+New boundary checks cover absence/presence, denied/IO inspection, initial latch,
+late marker, expected-value refusal, success, SetInt/Save failures, missing-key
+restore and failed restore. Episode coverage proves failed persistence does not
+prevent landing or cause a second write. Delegates do not execute Unity/native APIs.
+STD-038 remains PARTIAL pending corrected-source reviews and separately authorized
+native placement, mixed-DPI, actual preference flush/relaunch and runtime evidence.
+No package, install, launch, rig/input, shared edits or public push.

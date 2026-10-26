@@ -11,33 +11,31 @@ namespace ArtOfSimRally.Mod.Triple;
 internal sealed class NativeWindowLandingHost : RacingWindowLanding.IHost
 {
     private const string MonitorKey = "UnitySelectMonitor";
-    private readonly string _launchBlock = ReadPersistenceBlock();
+    private readonly LandingPersistence _persistence = new LandingPersistence(ReadPersistenceBlock);
     public IList<EngineDisplay> EngineDisplays => Display.displays
         .Select(d => new EngineDisplay(d.systemWidth, d.systemHeight)).ToList();
     public int? SavedMonitor => PlayerPrefs.HasKey(MonitorKey) ? PlayerPrefs.GetInt(MonitorKey) : (int?)null;
-    public string PersistenceBlock => _launchBlock ?? ReadPersistenceBlock();
+    public string PersistenceBlock => _persistence.Block;
     private static string ReadPersistenceBlock()
     {
         try
         {
             var root = Path.GetDirectoryName(Application.dataPath);
-            var recorder = Directory.Exists(Path.Combine(root, "Mods", "ArtOfSimRally.DevRecorder")) ||
+            var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            if (string.IsNullOrEmpty(root) || string.IsNullOrEmpty(local)) return "launch classification unavailable";
+            var recorder = LandingPersistence.MarkerPresent(Path.Combine(root, "Mods", "ArtOfSimRally.DevRecorder"), File.GetAttributes) ||
                 AppDomain.CurrentDomain.GetAssemblies().Any(a => a.GetName().Name == "ArtOfSimRally.DevRecorder");
-            var request = File.Exists(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "ArtOfSimRally", "session-request.txt"));
+            var request = LandingPersistence.MarkerPresent(Path.Combine(local,
+                "ArtOfSimRally", "session-request.txt"), File.GetAttributes);
             return LandingLaunchPolicy.Block(Environment.GetEnvironmentVariable("DBCE_FFB_MUTE"),
                 Environment.GetEnvironmentVariable("DBCE_ART_SHIM_REQUEST"), recorder, request,
                 Application.isEditor, Environment.GetCommandLineArgs());
         }
         catch { return "launch classification unavailable"; }
     }
-    public bool SaveMonitor(int? expected, int index)
-    {
-        if (PersistenceBlock != null || SavedMonitor != expected) return false;
-        PlayerPrefs.SetInt(MonitorKey, index);
-        PlayerPrefs.Save();
-        return true;
-    }
+    public bool SaveMonitor(int? expected, int index) => _persistence.Save(expected, index,
+        () => SavedMonitor, value => PlayerPrefs.SetInt(MonitorKey, value),
+        () => PlayerPrefs.DeleteKey(MonitorKey), () => PlayerPrefs.Save(), Log);
     public float Now => Time.realtimeSinceStartup;
     public IReadOnlyList<MonitorRect> Monitors => WindowsMonitors.Read();
     public void Resize(int width, int height) => Screen.SetResolution(width, height, FullScreenMode.Windowed);
