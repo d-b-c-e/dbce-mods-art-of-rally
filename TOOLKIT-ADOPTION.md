@@ -267,3 +267,16 @@ Both owned identities quiescent/query-safe, exact release and literal absence
 passed06:38:27Z; direct handback preceded documentation. The private offline tuple
 is complete; rendered/physical gates and installed rc27 remain unchanged. See the
 same review note for exact continuation evidence and preserved original failure.
+
+
+October 26 DBC-29: STD-038 partial, private source candidate. Byte-exact
+WindowLanding.cs from toolkit 7e131c98a27404d8b2c5dda2ea3a9a02cbd6460e
+is pinned separately from the existing display reader/selector revision.
+Startup/topology landing targets the home display (center for independent
+outputs, wide primary for Surround), one windowed apply per observed topology,
+with no activation/z-order changes. Start-monitor persistence is deliberately
+not implemented until test/muted launch classification is qualified. No
+runtime adoption or user readiness. STD-008 remains partial: the existing
+OutputResolution size retry policy is unchanged. Existing unchecked ledger
+rows remain as recorded; STD-037/039/040 still lack full adoption rows.
+See docs/reviews/2026-10-26-window-landing.md.

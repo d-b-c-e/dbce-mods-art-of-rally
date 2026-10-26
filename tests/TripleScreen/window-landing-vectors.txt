@@ -1,0 +1,38 @@
+# Vectors for WindowLanding.cs (WindowLandingPolicy.Decide), run by tests/RacingRow. Every implementation runs them.
+# Fields are separated by " | ":
+#   landing | name | monitors | spanning | window | opened | engine | saved | result | engine index | persist | reason has | persist reason has
+# monitors: "x,y,width,height", with ",primary" on the primary, separated by "; " in Windows enumeration order.
+# spanning: yes when the consumer spans a Separate row. window: the game window's x,y,width,height now.
+# opened: the display the game opened on, as a position in the monitors list ("-" when unknown).
+# engine: the engine's own display list in its order, "WxH" separated by "; " ("none" when unavailable).
+# saved: the engine's saved start-monitor index ("-" when none is saved).
+# result: "move x,y,width,height" or "stay x,y,width,height" (the target; 0,0,0,0 with no racing row).
+# engine index / persist: an engine index or "-". The two "has" fields are substrings of Reason and PersistReason.
+# Rigs: Surround 7680x1440 primary with the 1920x1080 dashboard at (2886,-1080) (2026-10-24, Woden and DRIVE Rally);
+# separate 2560x1440 displays at x = -2560, 0, 2560 with the dashboard at (314,-1080) (2026-10-13).
+
+landing | Woden 2026-10-24: Surround, stale saved dashboard index 1 | 0,0,7680,1440,primary; 2886,-1080,1920,1080 | no | 2886,-1080,1920,1080 | 1 | 7680x1440; 1920x1080 | 1 | move 0,0,7680,1440 | 0 | 0 | outside the racing row | is the racing display
+landing | DRIVE Rally 2026-10-24: Windows lists the dashboard first | 2886,-1080,1920,1080; 0,0,7680,1440,primary | no | 2886,-1080,1920,1080 | 0 | 7680x1440; 1920x1080 | 1 | move 0,0,7680,1440 | 0 | 0 | outside the racing row | is the racing display
+landing | the engine lists the dashboard first | 0,0,7680,1440,primary; 2886,-1080,1920,1080 | no | 2886,-1080,1920,1080 | 1 | 1920x1080; 7680x1440 | 0 | move 0,0,7680,1440 | 1 | 1 | outside the racing row | is the racing display
+landing | Surround, already on the primary and saved | 0,0,7680,1440,primary; 2886,-1080,1920,1080 | no | 0,0,7680,1440 | 0 | 7680x1440; 1920x1080 | 0 | stay 0,0,7680,1440 | 0 | - | on the racing row | already the racing display
+landing | Surround, a smaller window on the primary is the player's | 0,0,7680,1440,primary; 2886,-1080,1920,1080 | no | 2880,180,1920,1080 | 0 | 7680x1440; 1920x1080 | 0 | stay 0,0,7680,1440 | 0 | - | on the racing row | already the racing display
+landing | no saved index, engine 0 is the dashboard it opened on | 0,0,7680,1440,primary; 2886,-1080,1920,1080 | no | 2886,-1080,1920,1080 | 1 | 1920x1080; 7680x1440 | - | move 0,0,7680,1440 | 1 | 1 | outside the racing row | is the racing display
+landing | no saved index, but engine 0 is not where it opened | 0,0,7680,1440,primary; 2886,-1080,1920,1080 | no | 2886,-1080,1920,1080 | 1 | 7680x1440; 1920x1080 | - | move 0,0,7680,1440 | 0 | - | outside the racing row | not proven
+landing | the saved index does not name the opened display | 0,0,7680,1440,primary; 2886,-1080,1920,1080 | no | 2886,-1080,1920,1080 | 1 | 7680x1440; 1920x1080 | 0 | move 0,0,7680,1440 | 0 | - | outside the racing row | not proven
+landing | a saved index out of range | 0,0,7680,1440,primary; 2886,-1080,1920,1080 | no | 2886,-1080,1920,1080 | 1 | 7680x1440; 1920x1080 | 5 | move 0,0,7680,1440 | 0 | - | outside the racing row | not proven
+landing | the opened display is unknown | 0,0,7680,1440,primary; 2886,-1080,1920,1080 | no | 2886,-1080,1920,1080 | - | 7680x1440; 1920x1080 | 1 | move 0,0,7680,1440 | 0 | - | outside the racing row | unknown
+landing | the engine list is unavailable | 0,0,7680,1440,primary; 2886,-1080,1920,1080 | no | 2886,-1080,1920,1080 | 1 | none | 1 | move 0,0,7680,1440 | - | - | outside the racing row | unavailable
+landing | the engine lists another number of displays | 0,0,7680,1440,primary; 2886,-1080,1920,1080 | no | 2886,-1080,1920,1080 | 1 | 7680x1440 | 1 | move 0,0,7680,1440 | - | - | outside the racing row | not mapped
+landing | no engine display has the racing size | 0,0,7680,1440,primary; 2886,-1080,1920,1080 | no | 2886,-1080,1920,1080 | 1 | 1920x1080; 1920x1080 | 1 | move 0,0,7680,1440 | - | - | outside the racing row | no engine display is
+landing | Surround with a side display: the side is not home | 0,0,7680,1440,primary; 7680,0,2560,1440 | no | 7680,0,2560,1440 | 1 | 7680x1440; 2560x1440 | 1 | move 0,0,7680,1440 | 0 | 0 | outside the racing row | is the racing display
+landing | a minimized window is not moved | 0,0,7680,1440,primary; 2886,-1080,1920,1080 | no | -32000,-32000,160,28 | 1 | 7680x1440; 1920x1080 | 1 | stay 0,0,7680,1440 | 0 | 0 | no single display | is the racing display
+
+landing | Surround off, spanning: the window moves to the span | 314,-1080,1920,1080; 2560,0,2560,1440; 0,0,2560,1440,primary; -2560,0,2560,1440 | yes | 314,-1080,1920,1080 | 0 | 2560x1440; 2560x1440; 2560x1440; 1920x1080 | 3 | move -2560,0,7680,1440 | - | - | racing row's span | ambiguous
+landing | Surround off, already spanning | -2560,0,2560,1440; 0,0,2560,1440,primary; 2560,0,2560,1440; 314,-1080,1920,1080 | yes | -2560,0,7680,1440 | 1 | 2560x1440; 2560x1440; 2560x1440; 1920x1080 | 0 | stay -2560,0,7680,1440 | - | - | spans the racing row | ambiguous
+landing | Surround off, not spanning: a side display moves to the center | -2560,0,2560,1440; 0,0,2560,1440,primary; 2560,0,2560,1440; 314,-1080,1920,1080 | no | -2560,0,2560,1440 | 0 | 2560x1440; 2560x1440; 2560x1440; 1920x1080 | 0 | move 0,0,2560,1440 | - | - | outside the racing row | ambiguous
+landing | Surround off, not spanning: the dashboard moves to the center | -2560,0,2560,1440; 0,0,2560,1440,primary; 2560,0,2560,1440; 314,-1080,1920,1080 | no | 314,-1080,1920,1080 | 3 | 2560x1440; 2560x1440; 2560x1440; 1920x1080 | 3 | move 0,0,2560,1440 | - | - | outside the racing row | ambiguous
+
+landing | a single display: nothing to do | 0,0,2560,1440,primary | no | 0,0,2560,1440 | 0 | 2560x1440 | - | stay 0,0,0,0 | - | - | no racing row | no racing row
+landing | a single display, windowed | 0,0,2560,1440,primary | no | 100,100,1280,720 | 0 | 2560x1440 | 0 | stay 0,0,0,0 | - | - | no racing row | no racing row
+landing | one racing display and a dashboard: no row, never a guess | 0,0,2560,1440,primary; 314,-1080,1920,1080 | no | 314,-1080,1920,1080 | 1 | 2560x1440; 1920x1080 | 1 | stay 0,0,0,0 | - | - | no racing row | no racing row
+landing | an ambiguous row: four panels | -5120,0,2560,1440; -2560,0,2560,1440; 0,0,2560,1440,primary; 2560,0,2560,1440 | no | -5120,0,2560,1440 | 0 | 2560x1440; 2560x1440; 2560x1440; 2560x1440 | 0 | stay 0,0,0,0 | - | - | no racing row | no racing row

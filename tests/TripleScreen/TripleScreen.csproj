@@ -9,6 +9,7 @@
     <ManagedDir>$(GameDir)\artofrally_Data\Managed</ManagedDir>
   </PropertyGroup>
 
+  <ItemGroup><None Include="window-landing-vectors.txt" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Dbce.TripleScreen.Core\Dbce.TripleScreen.Core.csproj" />
     <ProjectReference Include="..\..\src\Dbce.TripleScreen.Protocol\Dbce.TripleScreen.Protocol.csproj" />
@@ -20,6 +21,7 @@
     <Compile Include="..\..\src\ArtOfSimRally.Mod\Triple\SideDisplaySelector.cs" Link="SideDisplaySelector.cs" />
     <Compile Include="..\..\src\ArtOfSimRally.Mod\Triple\SideActivationWitness.cs" Link="SideActivationWitness.cs" />
     <Compile Include="..\..\src\ArtOfSimRally.Mod\Triple\OutputResolution.cs" Link="OutputResolution.cs" />
+    <Compile Include="..\..\lib\display\WindowLanding.cs" Link="Toolkit\Display\WindowLanding.cs" />
     <Compile Include="..\..\lib\display\RacingRow.cs" Link="RacingRow.cs" />
     <Compile Include="..\..\lib\display\WindowsMonitors.cs" Link="WindowsMonitors.cs" />
   </ItemGroup>

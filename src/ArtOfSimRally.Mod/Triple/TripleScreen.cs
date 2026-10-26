@@ -27,6 +27,7 @@ internal static class TripleScreen
     private static bool _enabled;
     private static bool _blockedByLegacyMod;
     private static int _frame;
+    private static readonly RacingWindowLanding Landing = new();
     private static ProjectionOutcome _lastOutcome;
     private static bool _showAdvanced;
 
@@ -112,6 +113,7 @@ internal static class TripleScreen
                 LogLayoutRefresh(Layout.Refresh(false));
                 _blockedByLegacyMod = LegacyModActive();
             }
+            if (_enabled && !_blockedByLegacyMod && _frame % 30 == 0) Landing.Update();
             var layout = EffectiveLayout.Resolve(Layout.Current, _settings);
             ProjectionOutcome outcome;
             if (!_enabled)

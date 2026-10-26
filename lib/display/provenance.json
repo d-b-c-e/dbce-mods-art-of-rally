@@ -19,6 +19,13 @@
       "source": "LICENSE",
       "file": "LICENSE",
       "sha256": "b2212c476244c444d6b7e804ac89c038a88b5c9288a087b30a2343d2dc3021db"
+    },
+    {
+      "source": "shared/display/WindowLanding.cs",
+      "file": "WindowLanding.cs",
+      "sourceRevision": "7e131c98a27404d8b2c5dda2ea3a9a02cbd6460e",
+      "sha256": "3c356191a31d2b372ce190fe9310e8fd7b8b01cb6eb970f6d7d0142cfec4e59f",
+      "gitBlob": "b111307d7ad3bcaca494c17ef7420cf76fa9caaa"
     }
   ]
 }
