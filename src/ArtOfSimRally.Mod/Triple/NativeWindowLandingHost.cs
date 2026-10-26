@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using Dbce.Wheel.Display;
 using UnityEngine;
@@ -8,6 +10,34 @@ namespace ArtOfSimRally.Mod.Triple;
 
 internal sealed class NativeWindowLandingHost : RacingWindowLanding.IHost
 {
+    private const string MonitorKey = "UnitySelectMonitor";
+    private readonly string _launchBlock = ReadPersistenceBlock();
+    public IList<EngineDisplay> EngineDisplays => Display.displays
+        .Select(d => new EngineDisplay(d.systemWidth, d.systemHeight)).ToList();
+    public int? SavedMonitor => PlayerPrefs.HasKey(MonitorKey) ? PlayerPrefs.GetInt(MonitorKey) : (int?)null;
+    public string PersistenceBlock => _launchBlock ?? ReadPersistenceBlock();
+    private static string ReadPersistenceBlock()
+    {
+        try
+        {
+            var root = Path.GetDirectoryName(Application.dataPath);
+            var recorder = Directory.Exists(Path.Combine(root, "Mods", "ArtOfSimRally.DevRecorder")) ||
+                AppDomain.CurrentDomain.GetAssemblies().Any(a => a.GetName().Name == "ArtOfSimRally.DevRecorder");
+            var request = File.Exists(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "ArtOfSimRally", "session-request.txt"));
+            return LandingLaunchPolicy.Block(Environment.GetEnvironmentVariable("DBCE_FFB_MUTE"),
+                Environment.GetEnvironmentVariable("DBCE_ART_SHIM_REQUEST"), recorder, request,
+                Application.isEditor, Environment.GetCommandLineArgs());
+        }
+        catch { return "launch classification unavailable"; }
+    }
+    public bool SaveMonitor(int? expected, int index)
+    {
+        if (PersistenceBlock != null || SavedMonitor != expected) return false;
+        PlayerPrefs.SetInt(MonitorKey, index);
+        PlayerPrefs.Save();
+        return true;
+    }
     public float Now => Time.realtimeSinceStartup;
     public IReadOnlyList<MonitorRect> Monitors => WindowsMonitors.Read();
     public void Resize(int width, int height) => Screen.SetResolution(width, height, FullScreenMode.Windowed);

@@ -289,3 +289,13 @@ landing request is pending. Production episode logic has 11 added offline checks
 559 TripleScreen assertions and warning-as-error plugin build pass. Persistence,
 actual native placement and rendered/runtime qualification remain open. Existing
 unchecked/pending standards listed above remain outside this bounded correction.
+
+October 26 DBC-29 persistence: shared policy now receives observed opening and
+Unity engine-order evidence. Proven changed start-monitor index writes through
+PlayerPrefs only in identified ordinary launches. Test/muted/recorder/shim and
+batch/editor launches suppress writes; topology change invalidates launch mapping.
+Release warning-as-error build PASS, 576 TripleScreen assertions PASS; pin/diff
+checks PASS. STD-038 remains partial pending review and native/runtime evidence.
+Existing unchecked STD-011/012/013/014/016/018/019, partial STD-008 and missing
+full STD-037/039/040 adoption rows are unchanged by this bounded source work.
+See docs/reviews/2026-10-26-window-landing.md for classification limits.

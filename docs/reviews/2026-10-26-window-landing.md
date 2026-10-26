@@ -64,3 +64,37 @@ client placement remain for Sandy's separately authorized runtime QA. No runtime
 or preference-write qualification claimed. STD-038 remains partial; saved-monitor
 persistence with qualified test/muted launch classification is still unfinished.
 No package, install, launch, rig/input, public push, shared toolkit/Wheelkit edits.
+
+## October 26 saved-monitor source milestone
+
+Sandy DBC-273 passed bed2e7e; that source blocker is resolved. The adapter now
+passes the first observed opening display, Unity Display.displays sizes in engine
+order and PlayerPrefs UnitySelectMonitor to the byte-identical shared policy.
+Only a proven changed index is written through PlayerPrefs.SetInt/Save, with
+old -> new logging after admission. Missing preference means engine default 0.
+Observed topology changes invalidate opening-order evidence for persistence;
+landing itself continues with its existing per-topology episode behavior.
+
+Persistence is suppressed for any DBCE_FFB_MUTE or DBCE_ART_SHIM_REQUEST value,
+installed or loaded ArtOfSimRally.DevRecorder, a session-request.txt marker,
+editor and -batchmode/-nographics/-runTests. Classification is latched when the
+host is constructed and checked again at the write boundary. Inspection failure
+suppresses writes. Saved value is reread before writing to avoid overwriting a
+changed value. Recorder presence deliberately suppresses even ordinary recordings
+and disabled recorder installs. Unknown external test harnesses must use these
+markers; this is qualification of the repository's identified routes, not a
+claim that every possible external test process can be detected.
+
+Qualified offline against production episode/policy code: Release plugin build
+-warnaserror PASS, zero warnings/errors; TripleScreen PASS 576 assertions, including
+changed-once, unchanged, muted, ambiguous sizes, mismatched list/order, no row and
+topology invalidation. Display source pin and git diff --check PASS. A follow-up
+fixture invocation omitted the adapter's missing ProgramData/ProgramFiles(x86)
+repair and failed NuGet restore; rerunning with child-only standard Windows
+values passed. No game, preference API or native window call was executed.
+
+STD-038 remains partial pending independent source review and Sandy's separately
+authorized affected-display/runtime qualification. PlayerPrefs.Save flushes the
+engine's preference store; actual Unity write and subsequent launch require
+runtime evidence. No package, install, launch, rig/input, shared edits or public
+push. Accepted force/controls/display geometry and dirty main are preserved.

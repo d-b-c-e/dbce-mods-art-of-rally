@@ -9,6 +9,11 @@ internal static class LandingSequenceChecks
     private sealed class Host : RacingWindowLanding.IHost
     {
         public float Now { get; set; }
+        public IList<EngineDisplay> EngineDisplays { get; set; }
+        public int? SavedMonitor { get; set; }
+        public string PersistenceBlock { get; set; }
+        internal int Saves;
+        public bool SaveMonitor(int? expected,int index) { Saves++; SavedMonitor=index; return true; }
         public IReadOnlyList<MonitorRect> Monitors { get; set; } = new[] {
             new MonitorRect(-1000,0,1000,700,false), new MonitorRect(0,0,1000,700,true),
             new MonitorRect(1000,0,1000,700,false), new MonitorRect(0,-600,800,600,false) };
@@ -25,6 +30,37 @@ internal static class LandingSequenceChecks
     }
     internal static void Run(Action<bool,string> check)
     {
+        check(LandingLaunchPolicy.Block(null,null,false,false,false,Array.Empty<string>())==null,"ordinary launch admitted");
+        check(LandingLaunchPolicy.Block("1",null,false,false,false,Array.Empty<string>())!=null,"muted launch suppressed");
+        check(LandingLaunchPolicy.Block(null,"probe",false,false,false,Array.Empty<string>())!=null,"shim launch suppressed");
+        check(LandingLaunchPolicy.Block(null,null,true,false,false,Array.Empty<string>())!=null,"recorder even before load suppressed");
+        check(LandingLaunchPolicy.Block(null,null,false,true,false,Array.Empty<string>())!=null,"session request suppressed");
+        check(LandingLaunchPolicy.Block(null,null,false,false,true,Array.Empty<string>())!=null,"editor suppressed");
+        foreach(var flag in new[]{"-batchmode","-nographics","-runTests"})
+            check(LandingLaunchPolicy.Block(null,null,false,false,false,new[]{flag})!=null,"test argument suppressed: "+flag);
+        // Surround is uniquely identifiable, unlike the equal-size separate row below.
+        Host PersistenceHost() => new Host {
+            Monitors=new[]{new MonitorRect(0,0,3000,700,true),new MonitorRect(0,-600,800,600,false)},
+            EngineDisplays=new[]{new EngineDisplay(800,600),new EngineDisplay(3000,700)}, SavedMonitor=0 };
+        var p=PersistenceHost(); var episode=new RacingWindowLanding(p); episode.Update(); episode.Update();
+        check(p.Saves==1 && p.SavedMonitor==1,"proven engine order saves once before resize changes opening");
+        p=PersistenceHost(); p.PersistenceBlock="muted"; new RacingWindowLanding(p).Update();
+        check(p.Saves==0 && p.Resizes==1,"muted launch keeps landing but never saves");
+        p=PersistenceHost(); p.SavedMonitor=1; new RacingWindowLanding(p).Update();
+        check(p.Saves==0,"opening inconsistent with saved order never writes");
+        p=PersistenceHost(); p.Sample.X=0; p.Sample.Y=0; p.Sample.Width=3000; p.SavedMonitor=1;
+        new RacingWindowLanding(p).Update(); check(p.Saves==0,"already home and saved never rewrites");
+        p=PersistenceHost(); p.EngineDisplays=new[]{new EngineDisplay(800,600)};
+        new RacingWindowLanding(p).Update(); check(p.Saves==0,"engine count mismatch never writes");
+        p=new Host { EngineDisplays=new[]{new EngineDisplay(800,600),new EngineDisplay(1000,700),
+            new EngineDisplay(1000,700),new EngineDisplay(1000,700)}, SavedMonitor=0 };
+        new RacingWindowLanding(p).Update(); check(p.Saves==0,"identical separate displays are ambiguous and never saved");
+        p=PersistenceHost(); p.Monitors=new[]{new MonitorRect(0,-600,800,600,true)};
+        new RacingWindowLanding(p).Update(); check(p.Saves==0 && p.Resizes==0,"no row never moves or saves");
+        p=PersistenceHost(); p.PersistenceBlock="test"; episode=new RacingWindowLanding(p); episode.Update();
+        p.PersistenceBlock=null; p.Monitors=new[]{new MonitorRect(0,0,3300,700,true),new MonitorRect(0,-600,800,600,false)};
+        p.EngineDisplays=new[]{new EngineDisplay(800,600),new EngineDisplay(3300,700)}; episode.Update();
+        check(p.Saves==0,"topology change cannot reuse opening evidence to prove engine order");
         var h=new Host(); var landing=new RacingWindowLanding(h); landing.Update();
         check(h.Resizes==1 && landing.BlocksOutputResize,"landing exclusively owns resize immediately");
         h.Now=1; landing.Update(); check(h.Places==0,"elapsed delay alone cannot place");
