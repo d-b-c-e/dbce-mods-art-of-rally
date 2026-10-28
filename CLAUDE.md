@@ -39,6 +39,25 @@ third-party binaries, nothing that would force the repo private.
 | `docs/DEVELOPMENT-CAPTURE.md` | Separate probe schema, motion/contact units, standalone analysis and interpretation limits. |
 | `docs/` | FINDINGS, FORCE-FEEDBACK, TELEMETRY, CONTROLS, CAMERA, ROADMAP, RELEASING |
 
+## Status (2026-10-27) — pinned, paused at 0.4.3
+
+Project paused by the owner with **0.4.3** (2026-10-25) as the shipped, installed and
+fully owner-signed-off baseline. Main is the only branch; all earlier agent branches are
+kept as `archive/*` tags. CustomVehicles is installed but disabled in UMM; TurtleVan and
+DevRecorder are disabled.
+
+**Local evidence was cleared on 2026-10-27.** The ignored `results/`, `artifacts/`,
+`dist/` and experiment `artifacts/`/`dist/` folders were deleted by mistake and the
+owner chose a clean slate. Tracked review docs keep the summaries and hashes, but
+paths they cite under `results/` or `artifacts/` no longer exist locally. Published
+ZIPs are on GitHub Releases. `lib/umm` was restored from the game install; the
+Release build passes.
+
+Known follow-ups if resumed: GitHub #2/#3 (HeadCRACK; retest-on-0.4.3 replies drafted, not posted), KI-52
+(Surround UI/background spill; needs a rig capture of the affected canvas first), and the
+unmerged Egon candidates in `archive/egon/*` (F6 unidentified-controller copy, racing-row
+window landing), none runtime-tested.
+
 ## Status (2026-10-04)
 
 Owner-accepted on 2026-10-01 (MOZA R12, three 2560×1440 panels in Surround): wheel 0.2.7,

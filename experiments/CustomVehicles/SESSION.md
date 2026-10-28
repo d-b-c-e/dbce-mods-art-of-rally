@@ -57,8 +57,8 @@ checkpoint. Installation receipt and full pre-install Mods/config backup:
 - No game launch, rendered/runtime acceptance, physics unlock or publication.
   RuntimeQualified remains false. Next check is the attended Group 2 chooser,
   previews, intro and cockpit sequence in QUALIFICATION.md.
-- Rollback with the game closed: move the CustomVehicles folder outside Mods and
-  restore `Params.xml.before` from the backup to the UMM path in the receipt.
+- Rollback with the game closed: move the CustomVehicles folder outside Mods.
+  (The receipt and pre-install backup under `artifacts/` were deleted 2026-10-27.)
 
 ## Resume
 
