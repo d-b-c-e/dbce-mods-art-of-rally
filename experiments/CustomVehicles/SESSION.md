@@ -39,6 +39,27 @@ integration, native replay identity and public distribution remain future work.
 No Steam Workshop uploader was produced. Creator packages are data-only ZIPs for
 this experimental runtime.
 
+## Owner-authorized installation — 2026-10-09
+
+Installed the exact 0.2.0 runtime candidate at the owner's explicit request, with
+the game closed. The earlier build-only statements above describe the October 8
+checkpoint. Installation receipt and full pre-install Mods/config backup:
+`artifacts/install-20261009-213010/receipt.json`.
+
+- Target: `D:\Program Files (x86)\Steam\steamapps\common\artofrally\Mods\ArtOfSimRally.CustomVehicles`.
+- All 13 installed files match the candidate receipt; archive SHA256 is
+  `C85B96554CC2866247EFAF3FE7DF233FE6CEE1A64A5389BD7DB045FA9F867220`.
+- All 28 existing mod/native files retained their pre-install hashes, including
+  the current main mod 0.4.2 and its settings. The cosmetic TurtleVan files remain
+  installed unchanged, but its UMM entry is disabled; CustomVehicles is enabled.
+- Current checkout was clean at `905d04bceea6b3b684ca91efd57abae3a3332d33`;
+  the candidate remains the exact artifact from checkpoint `32c5957`.
+- No game launch, rendered/runtime acceptance, physics unlock or publication.
+  RuntimeQualified remains false. Next check is the attended Group 2 chooser,
+  previews, intro and cockpit sequence in QUALIFICATION.md.
+- Rollback with the game closed: move the CustomVehicles folder outside Mods and
+  restore `Params.xml.before` from the backup to the UMM path in the receipt.
+
 ## Resume
 
 Use the newest `artifacts/CustomVehicles-0.2.0-offline-*-receipt.json` (excluding the
@@ -51,3 +72,11 @@ Hcom tara used manual delivery. Hula supplied two completed read-only reviews;
 nene supplied the completed creator review and was asked for a second runtime
 presentation pass, which remains pending at this checkpoint. Check messages on
 resume; peer acknowledgement is not runtime certification. No memory-store edits.
+
+## Disabled — 2026-10-27
+
+The owner confirms the 0.2.0 runtime was run in game after installation. Project
+pinned with 0.4.3 as the shipped baseline: CustomVehicles disabled in UMM
+(`Enabled="false"`), files left installed. Backup of the previous Params.xml:
+`artofrally_Data\Managed\UnityModManager\Params.xml.before-disable-customvehicles-20261027`.
+Re-enable from the UMM panel or by setting `Enabled="true"` with the game closed.
