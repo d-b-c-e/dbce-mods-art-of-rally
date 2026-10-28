@@ -53,7 +53,7 @@ paths they cite under `results/` or `artifacts/` no longer exist locally. Publis
 ZIPs are on GitHub Releases. `lib/umm` was restored from the game install; the
 Release build passes.
 
-Known follow-ups if resumed: GitHub #2/#3 (HeadCRACK; retest-on-0.4.3 replies drafted, not posted), KI-52
+Known follow-ups if resumed: GitHub #2/#3 (HeadCRACK; asked 2026-10-27 to retest on 0.4.3), KI-52
 (Surround UI/background spill; needs a rig capture of the affected canvas first), and the
 unmerged Egon candidates in `archive/egon/*` (F6 unidentified-controller copy, racing-row
 window landing), none runtime-tested.
