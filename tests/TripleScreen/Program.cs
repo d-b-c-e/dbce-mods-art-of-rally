@@ -651,6 +651,19 @@ internal static class Program
         Check(Chase(null, true, false, true) == 1d, "mounted view stays measured");
         Check(Chase(null, true, true, false) == 1d, "chase exemption off keeps the measured view");
         Check(Chase(false, true, true, true) == 1d && Chase(true, true, false, true) == game, "F7 overrides the chase policy");
+        // F7 from the default policy always changes what is shown: chase (game) -> measured, mounted (measured) -> game.
+        bool? Press(bool? s, bool chase) => ArtOfSimRally.Mod.Triple.FovPreference.NextSessionGameFov(s, true, chase, true);
+        double Shown(bool? s, bool chase) => Chase(s, true, chase, true);
+        bool? chaseSession = Press(null, true);
+        Check(Shown(null, true) == game && chaseSession == false && Shown(chaseSession, true) == 1d, "first F7 in a chase view shows measured");
+        chaseSession = Press(chaseSession, true);
+        Check(chaseSession == true && Shown(chaseSession, true) == game, "second F7 in a chase view shows game");
+        chaseSession = Press(chaseSession, true);
+        Check(chaseSession == false && Shown(chaseSession, true) == 1d, "third F7 in a chase view is measured again");
+        bool? mountedSession = Press(null, false);
+        Check(Shown(null, false) == 1d && mountedSession == true && Shown(mountedSession, false) == game, "first F7 in a mounted view shows game");
+        mountedSession = Press(mountedSession, false);
+        Check(mountedSession == false && Shown(mountedSession, false) == 1d, "second F7 in a mounted view is measured");
     }
 
     private static void Check(bool condition, string message)

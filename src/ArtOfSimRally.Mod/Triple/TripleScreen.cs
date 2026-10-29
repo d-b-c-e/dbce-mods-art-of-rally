@@ -110,7 +110,8 @@ internal static class TripleScreen
 
     private static void ToggleSessionView()
     {
-        SessionGameFov = FovPreference.NextSessionGameFov(SessionGameFov, _settings.OverrideFieldOfView);
+        SessionGameFov = FovPreference.NextSessionGameFov(SessionGameFov, _settings.OverrideFieldOfView,
+            ProjectionController.LastChaseView, _settings.ChaseUsesGameFov);
         _notice = SessionGameFov.Value ? "Game field of view (F7)" : "Measured perspective (F7)";
         _noticeUntil = Time.unscaledTime + 2.5f;
     }

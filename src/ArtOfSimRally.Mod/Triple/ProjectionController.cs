@@ -490,23 +490,31 @@ internal sealed class ProjectionController
             Math.Min(FovPreference.MaximumSliderScale, requested));
     }
 
+    /// <summary>Whether the last projected view was a stock chase view; F7 and the status use it with the same policy.</summary>
+    internal static bool LastChaseView { get; private set; }
+
     private static double ResolveViewWidthScale(PanelDocument panel, GeometryDocument geometry,
         Camera camera, Settings settings)
     {
         // Stock camera angles are chase views (the cars have no interiors); the mod's bonnet and bumper are mounted.
         var rig = camera.transform.parent != null ? camera.transform.parent.GetComponent<CarCameras>() : null;
         var chase = rig != null && BonnetCamera.ActiveView(rig) == BonnetCamera.View.None;
+        LastChaseView = chase;
         return FovPreference.ResolveScale(TripleScreen.SessionGameFov, settings.OverrideFieldOfView,
             SafeViewWidthScale(settings.ViewWidthScale), () => FovPreference.ScaleForGameDegrees(panel.PhysicalHeightMm,
                 geometry.EyeDistanceMm, geometry.EyeHeightAbovePanelCenterMm, camera.fieldOfView),
             chase, settings.ChaseUsesGameFov);
     }
 
-    private string FovDescription(Settings settings, Camera camera) => TripleScreen.SessionGameFov == false ? "the measured perspective (F7, this session)"
-        : TripleScreen.SessionGameFov == true ? $"the game's {camera.fieldOfView:0}° camera FOV (F7, this session)"
-        : settings.OverrideFieldOfView
-        ? $"custom {CenterVerticalFovDegrees:0}° center FOV"
-        : $"the game's {camera.fieldOfView:0}° camera FOV across all views";
+    private string FovDescription(Settings settings, Camera camera)
+    {
+        var session = TripleScreen.SessionGameFov.HasValue ? " (F7, this session)" : "";
+        if (FovPreference.ShowsGameFov(TripleScreen.SessionGameFov, settings.OverrideFieldOfView, LastChaseView, settings.ChaseUsesGameFov))
+            return $"the game's {camera.fieldOfView:0}° camera FOV across all views" + session +
+                (session.Length == 0 && settings.OverrideFieldOfView ? " (chase view)" : "");
+        if (TripleScreen.SessionGameFov == false) return "the measured perspective" + session;
+        return $"custom {CenterVerticalFovDegrees:0}° center FOV";
+    }
 
     // The racing-row prediction, refreshed at most once a second until activation starts.
     private static SideDisplaySelector.Result SelectSideDisplays(PanelDocument panel)

@@ -11,8 +11,14 @@ internal static class FovPreference
     private const double MinimumGameScale = 0.1d;
     private const double MaximumGameScale = 10d;
 
+    // Whether the game's field of view is what shows now: the same precedence as ResolveScale (F7, then the chase
+    // policy, then the saved choice; a saved custom slider counts as not-game).
+    internal static bool ShowsGameFov(bool? sessionGameFov, bool savedOverride, bool chaseView = false, bool chaseUsesGameFov = false) =>
+        sessionGameFov ?? ((chaseView && chaseUsesGameFov) || !savedOverride);
+
     // F7 A/B, this session only: null follows the saved choice. F7 always switches to the opposite of what shows now.
-    internal static bool NextSessionGameFov(bool? sessionGameFov, bool savedOverride) => !(sessionGameFov ?? !savedOverride);
+    internal static bool NextSessionGameFov(bool? sessionGameFov, bool savedOverride, bool chaseView = false, bool chaseUsesGameFov = false) =>
+        !ShowsGameFov(sessionGameFov, savedOverride, chaseView, chaseUsesGameFov);
 
     // The view-width scale for the effective policy: measured is exactly 1 (the seat), game follows the camera, and with
     // no session choice the saved override keeps its slider. Without an F7 choice, a stock chase view keeps the game's
