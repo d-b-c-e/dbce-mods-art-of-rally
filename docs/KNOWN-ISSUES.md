@@ -39,6 +39,14 @@ under separate monitors (where the side displays only show side views). Improve 
 keeping those UI canvases and backgrounds on the center 2560 of the span (the
 `CenterMenusOnMiddleScreen` path covers menus but not every canvas/background).
 
+**Source candidate, 2026-10-29, untested in game.** The game's main `UI` and `HUD` canvas scalers match
+height (1920x1080 and 1720x880 reference, read from `resources.assets`), so on a 7680 span anything anchored
+to the edges lands on the side screens and stretched backgrounds span all three. `MenuCenteringController`
+now maps the horizontal anchors of each full-span root canvas's top-level elements into the center third
+(restored on release), replacing the three hard-coded menu offsets. Same `CenterMenusOnMiddleScreen`
+setting, relabelled "Keep menus and HUD on the middle screen". Needs a Surround check: menus, loading,
+stage HUD, and whether full-screen fades now leave the side screens unfaded.
+
 ### KI-51 — Private rc29 companion CLI cannot qualify the Settings first-launch refusal
 
 **Offline companion gap, 2026-10-22; Wheelkit helper ownership.** The exact

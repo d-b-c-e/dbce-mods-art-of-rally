@@ -2419,7 +2419,7 @@
       "key": "CenterMenusOnMiddleScreen",
       "source": "src/ArtOfSimRally.Mod/Triple/Settings.cs",
       "page": "Cameras",
-      "label": "Center title and main menu on middle screen",
+      "label": "Keep menus and HUD on the middle screen",
       "type": "bool",
       "displayUnit": null,
       "scale": 1,

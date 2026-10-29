@@ -7,6 +7,10 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed (source, not yet packaged)
+
+- Surround span: "Keep menus and HUD on the middle screen" (was "Center title and main menu") now keeps every full-span UI canvas, including backgrounds and the driving HUD, on the middle screen (KI-52).
+
 ### Changed (0.4.4-rc.1, owner test)
 
 - F6 explains when a controller cannot be identified and suggests a restart.

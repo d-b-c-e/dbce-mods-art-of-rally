@@ -4,12 +4,15 @@ using UnityEngine;
 
 namespace ArtOfSimRally.Mod.Triple;
 
-/// <summary>Repositions only interactive menu elements; never crops the game canvas.</summary>
+/// <summary>
+/// On a three-panel span, keeps the game's screen-space UI (menus, backgrounds, HUD) on the middle panel, as separate
+/// displays already do (KI-52). Every root canvas covering the whole span has its top-level elements' horizontal
+/// anchors mapped into the center third. The game's main UI and HUD scalers match height, so element sizes stay right.
+/// Original anchors are restored on release.
+/// </summary>
 internal sealed class MenuCenteringController
 {
-    private readonly Dictionary<RectTransform, Vector2> _original = new();
-    private PanelManager _manager;
-    private float _offset;
+    private readonly Dictionary<RectTransform, (Vector2 Min, Vector2 Max)> _original = new();
 
     internal void Update(bool enabled, LayoutLoadResult layout)
     {
@@ -19,54 +22,37 @@ internal sealed class MenuCenteringController
             return;
         }
 
-        var manager = Object.FindObjectOfType<PanelManager>();
-        if (manager == null)
+        var gone = new List<RectTransform>();
+        foreach (var rect in _original.Keys) if (rect == null) gone.Add(rect);
+        foreach (var rect in gone) _original.Remove(rect);   // destroyed with their scene
+
+        foreach (var canvas in Object.FindObjectsOfType<Canvas>())
         {
-            Release();
-            return;
+            if (!canvas.isRootCanvas || canvas.renderMode == RenderMode.WorldSpace) continue;
+            // A camera canvas already limited to a camera rect is not on the whole span.
+            if (Mathf.Abs(canvas.pixelRect.width - Screen.width) > 1f) continue;
+            foreach (Transform child in canvas.transform)
+                if (child is RectTransform rect && !_original.ContainsKey(rect))
+                {
+                    _original.Add(rect, (rect.anchorMin, rect.anchorMax));
+                    rect.anchorMin = new Vector2(CenterThird(rect.anchorMin.x), rect.anchorMin.y);
+                    rect.anchorMax = new Vector2(CenterThird(rect.anchorMax.x), rect.anchorMax.y);
+                }
         }
-
-        if (_manager != manager)
-        {
-            Release();
-            _manager = manager;
-        }
-
-        var canvas = manager.PanelsCanvas;
-        if (canvas == null || canvas.scaleFactor <= 0f)
-        {
-            Release();
-            return;
-        }
-
-        var offset = Screen.width / 3f / canvas.scaleFactor;
-        if (_original.Count > 0 && Mathf.Abs(offset - _offset) > 0.01f)
-            Release();
-        _manager = manager;
-        _offset = offset;
-
-        Move(manager.transform.Find("IntroSplashScreen/Text"), offset);
-        Move(manager.transform.Find("Main Menu/Race/VerticalLayoutGroup"), offset);
-        Move(manager.transform.Find("Main Menu/Race/GameLogo"), offset);
+        // shortcut: an element the game re-anchors after we move it stays where the game put it; add a re-check if a capture shows one.
     }
+
+    internal static float CenterThird(float anchor) => (1f + anchor) / 3f;
 
     internal void Release()
     {
         foreach (var item in _original)
-            if (item.Key != null) item.Key.anchoredPosition = item.Value;
+            if (item.Key != null)
+            {
+                item.Key.anchorMin = item.Value.Min;
+                item.Key.anchorMax = item.Value.Max;
+            }
         _original.Clear();
-        _manager = null;
-        _offset = 0f;
-    }
-
-    private void Move(Transform candidate, float offset)
-    {
-        if (candidate == null) return;
-        var rect = candidate as RectTransform;
-        if (rect == null || _original.ContainsKey(rect)) return;
-        var original = rect.anchoredPosition;
-        _original.Add(rect, original);
-        rect.anchoredPosition = new Vector2(original.x + offset, original.y);
     }
 
     private static bool MatchesThreePanelOutput(LayoutLoadResult result)

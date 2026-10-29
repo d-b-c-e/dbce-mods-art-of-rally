@@ -282,7 +282,7 @@ internal static class TripleScreen
             // no longer used, so they are not shown. Their stored values are left untouched.
             w.Help("Side displays are found automatically: the equal-size displays directly left and right of the primary. Other displays, such as a dashboard, are ignored.");
         }
-        _settings.CenterMenusOnMiddleScreen = w.ToggleRow("triple-center-menus", "Center title and main menu on middle screen", null,
+        _settings.CenterMenusOnMiddleScreen = w.ToggleRow("triple-center-menus", "Keep menus and HUD on the middle screen", null,
             _settings.CenterMenusOnMiddleScreen, true);
         _settings.AllowOutputResolutionMismatch = w.ToggleRow("triple-allow-mismatch", "Developer: allow output resolution mismatch", null,
             _settings.AllowOutputResolutionMismatch, true);
