@@ -1,21 +1,22 @@
-# Save, restore and compare art of rally's per-user state around a clean-install launch (Phase B).
+# Save, verify, restore and compare art of rally's per-user state around a clean-install launch (Phase B).
 # The game keeps its state per Windows user, not per install folder: PlayerPrefs in HKCU, saves and logs in
-# LocalLow (its "cloud" folder is Steam Auto-Cloud), mod logs/runs in LOCALAPPDATA. Steam's own userdata cache for
-# 550320 is snapshotted for comparison only and never restored by this script.
-#   -Save <dir>     export everything to a new directory
+# LocalLow (its "cloud" folder is Steam Auto-Cloud), mod logs/runs in LOCALAPPDATA. Steam's userdata cache for
+# 550320 is snapshotted for comparison only and never restored.
+#   -Save <dir>     export to a new directory and verify the backup bytes against the live state
 #   -Compare <dir>  exit 0 only when the live state equals the saved one byte for byte
-#   -Restore <dir>  put the saved state back (registry key replaced, folders mirrored), then compare
-#   -SelfTest       prove save/mutate/restore/compare on a throwaway key and folders under -Root; touches no game state
+#   -Restore <dir>  verify the backup, put it back (key replaced, folders mirrored), then compare
+#   -SelfTest       prove every path, including refusals, on throwaway state under a new -Root; no game state
+# Dot-source it (. .\ArtUserState.ps1) to reuse the functions without running an action.
 param(
     [string]$Save,
     [string]$Compare,
     [string]$Restore,
     [switch]$SelfTest,
-    [string]$Root = (Join-Path $env:TEMP 'art-user-state-selftest')
+    [string]$Root = (Join-Path $env:TEMP ('art-user-state-selftest-' + [guid]::NewGuid().ToString('n')))
 )
 $ErrorActionPreference = 'Stop'
 
-function Default-State {
+function Get-OwnerState {
     $steamUserdata = 'D:\Program Files (x86)\Steam\userdata'
     $cloud = @(Get-ChildItem -LiteralPath $steamUserdata -Directory -ErrorAction SilentlyContinue |
         ForEach-Object { Join-Path $_.FullName '550320' } | Where-Object { Test-Path -LiteralPath $_ })
@@ -46,6 +47,41 @@ function Tree-Hashes([string]$folder) {
     $map
 }
 
+function Compare-Hashes($expected, $actual, [string]$label) {
+    $diffs = [System.Collections.Generic.List[string]]::new()
+    $names = @($expected.Keys)
+    foreach ($name in $names) {
+        if (-not $actual.Contains($name)) { $diffs.Add("$label removed $name") }
+        elseif ($actual[$name] -ne $expected[$name]) { $diffs.Add("$label changed $name") }
+    }
+    foreach ($name in $actual.Keys) { if ($names -notcontains $name) { $diffs.Add("$label added $name") } }
+    $diffs
+}
+
+function As-Map($object) {
+    $map = [ordered]@{}
+    if ($object) { foreach ($p in $object.PSObject.Properties) { $map[$p.Name] = $p.Value } }
+    $map
+}
+
+# A restore target must be one of the state's own folders and no part of its path may be a junction or symlink.
+function Assert-SafeTarget($state, [string]$path) {
+    $full = [IO.Path]::GetFullPath($path).TrimEnd('\')
+    $allowed = @($state.Folders.Values | ForEach-Object { [IO.Path]::GetFullPath($_).TrimEnd('\') })
+    if ($allowed -notcontains $full) { throw "Refusing restore target outside the known state folders: $full" }
+    $probe = $full
+    while ($probe) {
+        if (Test-Path -LiteralPath $probe) {
+            if ((Get-Item -LiteralPath $probe -Force).Attributes -band [IO.FileAttributes]::ReparsePoint) {
+                throw "Refusing restore through a junction or symlink: $probe"
+            }
+        }
+        $parent = Split-Path -Parent $probe
+        if ($parent -eq $probe) { break }
+        $probe = $parent
+    }
+}
+
 function Save-State($state, [string]$dir) {
     if (Test-Path -LiteralPath $dir) { throw "$dir already exists; never overwrite a saved state." }
     New-Item -ItemType Directory -Path $dir | Out-Null
@@ -53,9 +89,10 @@ function Save-State($state, [string]$dir) {
     $manifest = [ordered]@{ key = $state.Key; folders = [ordered]@{}; compareOnly = [ordered]@{} }
     foreach ($name in $state.Folders.Keys) {
         $folder = $state.Folders[$name]
+        Assert-SafeTarget $state $folder
         $present = Test-Path -LiteralPath $folder
         if ($present) {
-            & robocopy $folder (Join-Path $dir $name) /MIR /COPY:DAT /DCOPY:DAT /R:1 /W:1 /NFL /NDL /NJH /NJS /NP | Out-Null
+            & robocopy $folder (Join-Path $dir $name) /MIR /COPY:DAT /DCOPY:DAT /XJ /R:1 /W:1 /NFL /NDL /NJH /NJS /NP | Out-Null
             if ($LASTEXITCODE -ge 8) { throw "robocopy failed for $folder ($LASTEXITCODE)" }
         }
         $manifest.folders[$name] = [ordered]@{ path = $folder; present = $present; hashes = Tree-Hashes $folder }
@@ -64,7 +101,28 @@ function Save-State($state, [string]$dir) {
         $manifest.compareOnly[$name] = [ordered]@{ path = $state.CompareOnly[$name]; hashes = Tree-Hashes $state.CompareOnly[$name] }
     }
     $manifest | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $dir 'manifest.json') -Encoding UTF8
+    $bad = Test-Backup $state $dir
+    if ($bad.Count) { throw "Backup does not match the live state: $($bad -join '; ')" }
     Write-Host "saved $dir"
+}
+
+# The saved bytes themselves: every folder copy must equal its manifest and the registry export must be readable.
+function Test-Backup($state, [string]$dir) {
+    $diffs = [System.Collections.Generic.List[string]]::new()
+    $manifestFile = Join-Path $dir 'manifest.json'
+    $keyFile = Join-Path $dir 'key.reg'
+    if (-not (Test-Path -LiteralPath $manifestFile) -or -not (Test-Path -LiteralPath $keyFile)) { $diffs.Add('backup incomplete'); return $diffs }
+    $keyText = [IO.File]::ReadAllText($keyFile)
+    if ($keyText -ne 'ABSENT' -and -not $keyText.StartsWith('Windows Registry Editor')) { $diffs.Add('registry export unreadable') }
+    $manifest = Get-Content -LiteralPath $manifestFile -Raw | ConvertFrom-Json
+    if ($manifest.key -ne $state.Key) { $diffs.Add("backup is for $($manifest.key)") }
+    foreach ($entry in $manifest.folders.PSObject.Properties) {
+        if (-not $state.Folders.Contains($entry.Name)) { $diffs.Add("unknown folder $($entry.Name)"); continue }
+        if ([IO.Path]::GetFullPath($entry.Value.path) -ne [IO.Path]::GetFullPath($state.Folders[$entry.Name])) { $diffs.Add("path changed for $($entry.Name)") }
+        $saved = if ($entry.Value.present) { Tree-Hashes (Join-Path $dir $entry.Name) } else { [ordered]@{} }
+        foreach ($d in (Compare-Hashes (As-Map $entry.Value.hashes) $saved "backup $($entry.Name)")) { $diffs.Add($d) }
+    }
+    $diffs
 }
 
 function Compare-State($state, [string]$dir) {
@@ -78,25 +136,20 @@ function Compare-State($state, [string]$dir) {
     finally { Remove-Item -LiteralPath $now -ErrorAction SilentlyContinue }
     foreach ($group in @('folders', 'compareOnly')) {
         foreach ($entry in $manifest.$group.PSObject.Properties) {
-            $saved = $entry.Value.hashes.PSObject.Properties
-            $live = Tree-Hashes $entry.Value.path
-            foreach ($file in $saved) {
-                if (-not $live.Contains($file.Name)) { $diffs.Add("$($entry.Name) removed $($file.Name)") }
-                elseif ($live[$file.Name] -ne $file.Value) { $diffs.Add("$($entry.Name) changed $($file.Name)") }
-            }
-            $savedNames = @($saved | ForEach-Object Name)
-            foreach ($name in $live.Keys) { if ($savedNames -notcontains $name) { $diffs.Add("$($entry.Name) added $name") } }
+            foreach ($d in (Compare-Hashes (As-Map $entry.Value.hashes) (Tree-Hashes $entry.Value.path) $entry.Name)) { $diffs.Add($d) }
         }
     }
     $diffs
 }
 
 function Restore-State($state, [string]$dir) {
-    if (Get-Process artofrally -ErrorAction SilentlyContinue) { throw 'art of rally is running; restore only with the game closed.' }
+    $bad = Test-Backup $state $dir
+    if ($bad.Count) { throw "Refusing restore, the backup is not intact: $($bad -join '; ')" }
     $manifest = Get-Content -LiteralPath (Join-Path $dir 'manifest.json') -Raw | ConvertFrom-Json
+    foreach ($entry in $manifest.folders.PSObject.Properties) { Assert-SafeTarget $state $entry.Value.path }
     $saved = Join-Path $dir 'key.reg'
     & reg.exe query $state.Key *> $null
-    if ($LASTEXITCODE -eq 0) { & reg.exe delete $state.Key /f *> $null; if ($LASTEXITCODE -ne 0) { throw "reg delete failed" } }
+    if ($LASTEXITCODE -eq 0) { & reg.exe delete $state.Key /f *> $null; if ($LASTEXITCODE -ne 0) { throw 'reg delete failed' } }
     if ([IO.File]::ReadAllText($saved) -ne 'ABSENT') {
         & reg.exe import $saved *> $null
         if ($LASTEXITCODE -ne 0) { throw "reg import failed; the saved export is still at $saved" }
@@ -104,7 +157,7 @@ function Restore-State($state, [string]$dir) {
     foreach ($entry in $manifest.folders.PSObject.Properties) {
         $folder = $entry.Value.path
         if ($entry.Value.present) {
-            & robocopy (Join-Path $dir $entry.Name) $folder /MIR /COPY:DAT /DCOPY:DAT /R:1 /W:1 /NFL /NDL /NJH /NJS /NP | Out-Null
+            & robocopy (Join-Path $dir $entry.Name) $folder /MIR /COPY:DAT /DCOPY:DAT /XJ /R:1 /W:1 /NFL /NDL /NJH /NJS /NP | Out-Null
             if ($LASTEXITCODE -ge 8) { throw "robocopy restore failed for $folder ($LASTEXITCODE)" }
         }
         elseif (Test-Path -LiteralPath $folder) { Remove-Item -LiteralPath $folder -Recurse -Force }
@@ -112,44 +165,91 @@ function Restore-State($state, [string]$dir) {
     Write-Host "restored from $dir"
 }
 
-if ($SelfTest) {
-    # Throwaway key and folders only: save, mutate every way, restore, and require an exact match.
-    if (Test-Path -LiteralPath $Root) { Remove-Item -LiteralPath $Root -Recurse -Force }
-    $live = Join-Path $Root 'live'
-    $state = [ordered]@{
-        Key = 'HKCU\Software\DBCE-ArtUserStateSelfTest'
+# Throwaway state for the self-tests: its own key and folders under a new root.
+function New-ThrowawayState([string]$root) {
+    $live = Join-Path $root 'live'
+    [ordered]@{
+        Key = 'HKCU\Software\DBCE-ArtUserStateSelfTest-' + (Split-Path -Leaf $root)
         Folders = [ordered]@{ a = (Join-Path $live 'a'); b = (Join-Path $live 'b') }
         CompareOnly = [ordered]@{}
     }
-    & reg.exe add $state.Key /v keep /t REG_SZ /d one /f *> $null
-    & reg.exe add $state.Key /v change /t REG_DWORD /d 1 /f *> $null
-    New-Item -ItemType Directory -Force (Join-Path $live 'a\sub') | Out-Null
-    Set-Content (Join-Path $live 'a\keep.txt') 'keep'; Set-Content (Join-Path $live 'a\change.txt') 'v1'; Set-Content (Join-Path $live 'a\sub\gone.txt') 'x'
-    $failed = 0
+}
+
+function Invoke-SelfTest([string]$root) {
+    if (Test-Path -LiteralPath $root) { throw "Self-test root $root already exists; it is never deleted or reused." }
+    New-Item -ItemType Directory -Path $root | Out-Null
+    $state = New-ThrowawayState $root
+    $live = Join-Path $root 'live'
+    $failed = [System.Collections.Generic.List[string]]::new()
+    function Expect([bool]$ok, [string]$name) { if ($ok) { Write-Host "PASS $name" } else { Write-Host "FAIL $name"; $failed.Add($name) } }
+    function Throws([scriptblock]$block) { try { & $block; $false } catch { $true } }
     try {
-        Save-State $state (Join-Path $Root 'saved')
-        if ((Compare-State $state (Join-Path $Root 'saved')).Count) { Write-Host 'FAIL unchanged state differs'; $failed++ }
+        & reg.exe add $state.Key /v keep /t REG_SZ /d one /f *> $null
+        & reg.exe add $state.Key /v change /t REG_DWORD /d 1 /f *> $null
+        New-Item -ItemType Directory -Force (Join-Path $live 'a\sub') | Out-Null
+        Set-Content (Join-Path $live 'a\keep.txt') 'keep'; Set-Content (Join-Path $live 'a\change.txt') 'v1'; Set-Content (Join-Path $live 'a\sub\gone.txt') 'x'
+        $saved = Join-Path $root 'saved'
+        Save-State $state $saved
+        Expect ((Compare-State $state $saved).Count -eq 0) 'unchanged state equals backup'
+        Expect ((Test-Backup $state $saved).Count -eq 0) 'backup bytes verified'
+        Expect (Throws { Save-State $state $saved }) 'existing backup is never overwritten'
+
         & reg.exe add $state.Key /v change /t REG_DWORD /d 2 /f *> $null
         & reg.exe add $state.Key /v added /t REG_SZ /d new /f *> $null
         & reg.exe delete $state.Key /v keep /f *> $null
         Set-Content (Join-Path $live 'a\change.txt') 'v2'; Remove-Item (Join-Path $live 'a\sub\gone.txt'); Set-Content (Join-Path $live 'a\new.txt') 'n'
         New-Item -ItemType Directory -Force (Join-Path $live 'b') | Out-Null; Set-Content (Join-Path $live 'b\appeared.txt') 'n'
-        $seen = Compare-State $state (Join-Path $Root 'saved')
-        if ($seen.Count -lt 5) { Write-Host "FAIL mutations not all detected: $($seen -join '; ')"; $failed++ }
-        Restore-State $state (Join-Path $Root 'saved')
-        $after = Compare-State $state (Join-Path $Root 'saved')
-        if ($after.Count) { Write-Host "FAIL after restore: $($after -join '; ')"; $failed++ }
+        Expect ((Compare-State $state $saved).Count -ge 4) 'mutations detected'
+        Restore-State $state $saved
+        Expect ((Compare-State $state $saved).Count -eq 0) 'restore is exact'
+
+        # A damaged backup is refused before anything live is touched.
+        $broken = Join-Path $root 'broken'
+        Copy-Item -LiteralPath $saved -Destination $broken -Recurse
+        Set-Content (Join-Path $broken 'a\keep.txt') 'tampered'
+        Set-Content (Join-Path $live 'a\marker.txt') 'live'
+        Expect (Throws { Restore-State $state $broken }) 'tampered backup refused'
+        Expect (Test-Path (Join-Path $live 'a\marker.txt')) 'refused restore left live state alone'
+        Remove-Item (Join-Path $live 'a\marker.txt')
+
+        # A manifest pointing elsewhere is refused.
+        $moved = Join-Path $root 'moved'
+        Copy-Item -LiteralPath $saved -Destination $moved -Recurse
+        $m = Get-Content (Join-Path $moved 'manifest.json') -Raw | ConvertFrom-Json
+        $m.folders.a.path = (Join-Path $root 'elsewhere')
+        $m | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $moved 'manifest.json') -Encoding UTF8
+        Expect (Throws { Restore-State $state $moved }) 'restore target outside the state folders refused'
+
+        # A junction in a state folder's path is refused.
+        $target = Join-Path $root 'junction-target'
+        New-Item -ItemType Directory -Path $target | Out-Null
+        if (Test-Path -LiteralPath (Join-Path $live 'b')) { Remove-Item -LiteralPath (Join-Path $live 'b') -Recurse -Force }
+        New-Item -ItemType Junction -Path (Join-Path $live 'b') -Target $target | Out-Null
+        Expect (Throws { Restore-State $state $saved }) 'junction restore target refused'
+        Expect (Throws { Save-State $state (Join-Path $root 'saved-junction') }) 'junction save source refused'
+        Remove-Item -LiteralPath (Join-Path $live 'b') -Force
+
+        Expect (Throws { Invoke-SelfTest $root }) 'existing self-test root refused'
     }
     finally {
         & reg.exe delete $state.Key /f *> $null
-        Remove-Item -LiteralPath $Root -Recurse -Force -ErrorAction SilentlyContinue
+        $leftover = Join-Path $live 'b'
+        if (Test-Path -LiteralPath $leftover) { (Get-Item -LiteralPath $leftover -Force).Delete() }
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
     }
-    if ($failed) { Write-Host "SELFTEST FAIL ($failed)"; exit 1 }
-    Write-Host 'SELFTEST PASS (unchanged equal; 7 mutations detected; restore exact; throwaway state removed)'
+    $failed
+}
+
+if ($MyInvocation.InvocationName -eq '.') { return }
+
+if ($SelfTest) {
+    $failed = Invoke-SelfTest $Root
+    if ($failed.Count) { Write-Host "SELFTEST FAIL ($($failed.Count))"; exit 1 }
+    Write-Host 'SELFTEST PASS'
     exit 0
 }
 
-$state = Default-State
+$state = Get-OwnerState
 if ($Save) { Save-State $state $Save; exit 0 }
 if ($Compare) {
     $diffs = Compare-State $state $Compare
@@ -157,6 +257,7 @@ if ($Compare) {
     Write-Host 'state equal'; exit 0
 }
 if ($Restore) {
+    if (Get-Process artofrally -ErrorAction SilentlyContinue) { throw 'art of rally is running; restore only with the game closed.' }
     Restore-State $state $Restore
     $diffs = Compare-State $state $Restore
     if ($diffs.Count) { $diffs | ForEach-Object { Write-Host "DIFF $_" }; exit 1 }

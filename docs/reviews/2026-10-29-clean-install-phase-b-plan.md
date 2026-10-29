@@ -26,16 +26,24 @@ the copy exits.
 unless the operator states `-CloudProtection SteamExited` (Steam fully closed) or `CloudDisabledForArt`
 (Steam Cloud switched off in art of rally's Steam properties for the run, then back on).
 
-## Tools
+## Tools (revised after lulu review 471339)
 
-- `tools/testing/ArtUserState.ps1` — `-Save`/`-Compare`/`-Restore`. `-SelfTest` on a throwaway key and
-  folders: unchanged state equal, 7 kinds of change detected, restore exact, throwaway state removed —
-  **PASS**. Read-only owner snapshot (`-Save` then `-Compare`, no restore): equal, 32.8 MB, kept at
-  `E:\Source\temp\art-phaseB\owner-state-20261029-a`.
-- `tools/testing/Start-CleanInstallLaunch.ps1` — saves and verifies owner state, isolates it, writes
-  `steam_appid.txt`, launches the copy, watches the process path, and in `finally` stops the game,
-  restores and compares owner state and checks the installed mod is unchanged; result
-  `phaseB-result.json` in the state directory.
+- `tools/testing/ArtUserState.ps1` — `-Save` (backup bytes verified against the live state before any
+  change), `-Compare`, `-Restore` (backup verified first; targets must be the known state folders, and no
+  path component may be a junction or symlink). `-SelfTest` on a throwaway key and folders under a new root
+  (an existing root is refused, never deleted): **11/11 PASS** — unchanged equal, backup verified, no
+  overwrite of a backup, mutations detected, exact restore, tampered backup refused with live state
+  untouched, outside target refused, junction target and source refused, existing root refused.
+  Read-only owner snapshot (`-Save` then `-Compare`, no restore): equal, 32.8 MB, kept at
+  `E:\Source	emprt-phaseB\owner-state-20261029-a`.
+- `tools/testing/Start-CleanInstallLaunch.ps1` — preflight changes nothing; save and verify; every state
+  change, the launch and the watch run inside `try`, and `finally` stops only the launched PID, waits for
+  any other art of rally process to close before restoring (never kills it; reports `restorePending` with
+  the restore command if it stays open), restores and compares. Success requires the copy seen at its own
+  path, a clean exit, no conflict, no time-out, an exact restore and an unchanged installed mod.
+  `-SelfTest` (stand-in `artofrally.exe`, throwaway state): **5/5 PASS** — clean exit 0; failure after the
+  key was deleted, failure after launch, time limit, and a second process all exit 1 with state restored
+  exactly; the second process is reported, not stopped.
 
 ## Run order (one guna slot, Rig-Lease held)
 
