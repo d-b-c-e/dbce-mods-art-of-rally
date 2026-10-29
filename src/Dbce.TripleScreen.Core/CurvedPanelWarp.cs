@@ -11,6 +11,9 @@ namespace Dbce.TripleScreen;
 public sealed class CurvedPanelWarp
 {
     private const int EdgeSamples = 256;
+
+    /// <summary>The presenter grid every game draws (curved-presenter contract): 64x36 cells.</summary>
+    public const int GridColumns = 64, GridRows = 36;
     private readonly double _minX, _minY, _spanX, _spanY;
 
     private CurvedPanelWarp(DisplaySurface panel, Vector3d eye, double radiusMm, DisplaySurface source,
@@ -99,6 +102,24 @@ public sealed class CurvedPanelWarp
         OnChordPlane(Panel, Eye, PanelPoint(Panel, RadiusMm, u, v), out var x, out var y);
         sourceU = (x - _minX) / _spanX;
         sourceV = (y - _minY) / _spanY;
+    }
+
+    /// <summary>
+    /// <see cref="SourceUv"/> at every vertex of a <paramref name="columns"/> x <paramref name="rows"/> grid, row-major from
+    /// the lower-left: entry <c>2 * (row * (columns + 1) + column)</c> is source U, the next is source V.
+    /// </summary>
+    public double[] SourceUvGrid(int columns = GridColumns, int rows = GridRows)
+    {
+        if (columns < 1) throw new ArgumentOutOfRangeException(nameof(columns));
+        if (rows < 1) throw new ArgumentOutOfRangeException(nameof(rows));
+        var grid = new double[(columns + 1) * (rows + 1) * 2];
+        for (var row = 0; row <= rows; row++)
+        for (var column = 0; column <= columns; column++)
+        {
+            var i = 2 * ((row * (columns + 1)) + column);
+            SourceUv((double)column / columns, (double)row / rows, out grid[i], out grid[i + 1]);
+        }
+        return grid;
     }
 
     // The eye ray through a physical point, met with the chord plane, in panel-local millimeters from the lower-left.

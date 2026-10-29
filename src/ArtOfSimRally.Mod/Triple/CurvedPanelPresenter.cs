@@ -11,7 +11,7 @@ namespace ArtOfSimRally.Mod.Triple;
 /// </summary>
 internal sealed class CurvedPanelPresenter : MonoBehaviour
 {
-    internal const int Columns = 64, Rows = 36;
+    internal const int Columns = CurvedPanelWarp.GridColumns, Rows = CurvedPanelWarp.GridRows;
     private const string ShaderName = "Hidden/BlitCopy";
     private static Material s_material;
     private readonly List<Panel> _panels = new();
@@ -63,13 +63,9 @@ internal sealed class CurvedPanelPresenter : MonoBehaviour
     /// <summary>Adds a panel drawn into <paramref name="area"/> (fractions of this camera's viewport, 0,0 lower-left).</summary>
     internal void Add(Texture texture, Rect area, CurvedPanelWarp warp)
     {
-        var source = new Vector2[(Columns + 1) * (Rows + 1)];
-        for (var row = 0; row <= Rows; row++)
-        for (var column = 0; column <= Columns; column++)
-        {
-            warp.SourceUv((double)column / Columns, (double)row / Rows, out var u, out var v);
-            source[(row * (Columns + 1)) + column] = new Vector2((float)u, (float)v);
-        }
+        var grid = warp.SourceUvGrid(Columns, Rows);
+        var source = new Vector2[grid.Length / 2];
+        for (var i = 0; i < source.Length; i++) source[i] = new Vector2((float)grid[2 * i], (float)grid[(2 * i) + 1]);
         _panels.Add(new Panel { Texture = texture, Area = area, Source = source });
     }
 
