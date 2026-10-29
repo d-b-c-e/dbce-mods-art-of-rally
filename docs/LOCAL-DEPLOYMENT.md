@@ -12,7 +12,7 @@ render diagnostics (support logging only). Source `e41c62a`, identity
 `ArtOfSimRally.Mod.dll` `13B24EFBDEE6CF3670FD114250AAC103E5E7F135D3838C90D7150BC089FD1C67`.
 Installer test 70 passed; game closed, rig lease held and released; payload 9/9 hashes match;
 Settings.xml, TripleScreen.xml, dbce-controls.ini and UMM Params.xml byte-identical; no CurveRadiusMm
-key. Verified rollback copy of rc.6: `E:\Source	emprt-0.4.4-rc.7ackup-installed-rc.6`.
+key. Verified rollback copy of rc.6: `E:\Source\temp\art-0.4.4-rc.7\backup-installed-rc.6`.
 No game launch.
 
 ## Previous installation — 0.4.4-rc.6 (October 29, owner test)
