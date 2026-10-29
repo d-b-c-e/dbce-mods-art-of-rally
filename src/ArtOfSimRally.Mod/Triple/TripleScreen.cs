@@ -201,7 +201,8 @@ internal static class TripleScreen
         if (mode != 0)
         {
             var seat = MatchesSeat(_settings);
-            w.Help(seat ? "View: matched to your seat (your screen sizes and eye distance)."
+            w.Help(seat ? "View: matched to your seat (your screen sizes and eye distance)" +
+                    (_settings.ChaseUsesGameFov ? " in bonnet and bumper views; chase views keep the game's framing." : ".")
                 : "View: not matched to your seat, so lines can bend at the screen edges.");
             if (SessionGameFov.HasValue)
                 w.Help("F7 is showing the " + (SessionGameFov.Value ? "game's field of view" : "measured perspective") +
@@ -219,6 +220,8 @@ internal static class TripleScreen
             w.Caption("Field of view");
             _settings.OverrideFieldOfView = !w.ToggleRow("triple-game-fov", "Use the game's field of view",
                 "Wider, but not matched to your seat.", !_settings.OverrideFieldOfView, true);
+            _settings.ChaseUsesGameFov = w.ToggleRow("triple-chase-game-fov", "Chase views use the game's framing",
+                "Bonnet and bumper views stay matched to your seat.", _settings.ChaseUsesGameFov, true);
         }
         if (mode != 0 && !_settings.OverrideFieldOfView)
         {

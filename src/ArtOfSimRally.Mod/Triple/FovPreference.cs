@@ -15,12 +15,15 @@ internal static class FovPreference
     internal static bool NextSessionGameFov(bool? sessionGameFov, bool savedOverride) => !(sessionGameFov ?? !savedOverride);
 
     // The view-width scale for the effective policy: measured is exactly 1 (the seat), game follows the camera, and with
-    // no session choice the saved override keeps its slider.
-    internal static double ResolveScale(bool? sessionGameFov, bool savedOverride, double savedScale, Func<double> gameScale)
+    // no session choice the saved override keeps its slider. Without an F7 choice, a stock chase view keeps the game's
+    // framing when chaseUsesGameFov is on (mounted bonnet/bumper views stay measured); one scale feeds all three panels.
+    internal static double ResolveScale(bool? sessionGameFov, bool savedOverride, double savedScale, Func<double> gameScale,
+        bool chaseView = false, bool chaseUsesGameFov = false)
     {
         if (sessionGameFov == false) return 1d;
-        if (sessionGameFov == null && savedOverride) return savedScale;
-        return gameScale();
+        if (sessionGameFov == true) return gameScale();
+        if (chaseView && chaseUsesGameFov) return gameScale();
+        return savedOverride ? savedScale : gameScale();
     }
 
     internal static double VerticalDegrees(double panelHeightMm, double eyeDistanceMm,

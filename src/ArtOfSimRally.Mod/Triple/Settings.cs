@@ -31,6 +31,9 @@ public sealed class Settings : UnityModManager.ModSettings
     // together; this is a visual preference, not a new physical measurement.
     public float ViewWidthScale = 1f;
 
+    // Stock chase views keep the game's framing (all three panels share that eye); bonnet and bumper stay measured.
+    public bool ChaseUsesGameFov = true;
+
     // Monitor curve radius in millimeters (1500 for a 1500R panel); 0 is flat and keeps the direct render path.
     public float CurveRadiusMm;
 

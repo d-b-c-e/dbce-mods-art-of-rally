@@ -493,9 +493,13 @@ internal sealed class ProjectionController
     private static double ResolveViewWidthScale(PanelDocument panel, GeometryDocument geometry,
         Camera camera, Settings settings)
     {
+        // Stock camera angles are chase views (the cars have no interiors); the mod's bonnet and bumper are mounted.
+        var rig = camera.transform.parent != null ? camera.transform.parent.GetComponent<CarCameras>() : null;
+        var chase = rig != null && BonnetCamera.ActiveView(rig) == BonnetCamera.View.None;
         return FovPreference.ResolveScale(TripleScreen.SessionGameFov, settings.OverrideFieldOfView,
             SafeViewWidthScale(settings.ViewWidthScale), () => FovPreference.ScaleForGameDegrees(panel.PhysicalHeightMm,
-                geometry.EyeDistanceMm, geometry.EyeHeightAbovePanelCenterMm, camera.fieldOfView));
+                geometry.EyeDistanceMm, geometry.EyeHeightAbovePanelCenterMm, camera.fieldOfView),
+            chase, settings.ChaseUsesGameFov);
     }
 
     private string FovDescription(Settings settings, Camera camera) => TripleScreen.SessionGameFov == false ? "the measured perspective (F7, this session)"

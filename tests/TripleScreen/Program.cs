@@ -644,6 +644,13 @@ internal static class Program
         Check(session == true && Scale(session, true) == game, "first F7 from saved custom scale shows game FOV");
         session = Next(session, true);
         Check(session == false && Scale(session, true) == 1d, "measured ignores the saved custom scale");
+        // Chase views keep the game's framing without an F7 choice; mounted views keep the saved policy; F7 wins.
+        double Chase(bool? s, bool savedOverride, bool chase, bool chaseGame) =>
+            ArtOfSimRally.Mod.Triple.FovPreference.ResolveScale(s, savedOverride, 1d, () => game, chase, chaseGame);
+        Check(Chase(null, true, true, true) == game, "chase view keeps the game's framing by default");
+        Check(Chase(null, true, false, true) == 1d, "mounted view stays measured");
+        Check(Chase(null, true, true, false) == 1d, "chase exemption off keeps the measured view");
+        Check(Chase(false, true, true, true) == 1d && Chase(true, true, false, true) == game, "F7 overrides the chase policy");
     }
 
     private static void Check(bool condition, string message)
