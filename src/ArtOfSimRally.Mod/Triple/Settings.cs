@@ -34,6 +34,9 @@ public sealed class Settings : UnityModManager.ModSettings
     // Monitor curve radius in millimeters (1500 for a 1500R panel); 0 is flat and keeps the direct render path.
     public float CurveRadiusMm;
 
+    // Gap between adjacent lit areas at each seam (both bezels), in millimeters; the scene behind it is skipped.
+    public float BezelGapMm;
+
     // A mod-local rig works without Triple Screen Optimizer. The example values
     // are inert until the player explicitly accepts them in Advanced setup.
     public bool UseLocalLayout;

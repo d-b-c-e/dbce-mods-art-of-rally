@@ -80,6 +80,18 @@ public sealed class CurvedPanelWarp
             + (panel.NormalTowardViewer * sag) + lift;
     }
 
+    /// <summary>How far a curved panel's middle sits behind its chord (0 when flat).</summary>
+    public static double Sagitta(double chordMm, double radiusMm)
+    {
+        if (!(chordMm > 0d) || double.IsInfinity(chordMm)) throw new ArgumentOutOfRangeException(nameof(chordMm));
+        if (double.IsNaN(radiusMm) || double.IsInfinity(radiusMm) || radiusMm < 0d || (radiusMm > 0d && chordMm > 2d * radiusMm))
+            throw new ArgumentOutOfRangeException(nameof(radiusMm), "Curve radius must be 0 (flat) or at least half the chord.");
+        if (radiusMm == 0d) return 0d;
+        var half = chordMm / 2d;
+        // R - sqrt(R^2 - c^2/4) without cancellation for flat-ish panels.
+        return half * half / (radiusMm + Math.Sqrt((radiusMm * radiusMm) - (half * half)));
+    }
+
     /// <summary>Where panel UV (0,0 lower-left) samples the source view, in source UV (0,0 lower-left).</summary>
     public void SourceUv(double u, double v, out double sourceU, out double sourceV)
     {

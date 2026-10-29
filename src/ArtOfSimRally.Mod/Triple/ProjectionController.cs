@@ -143,13 +143,7 @@ internal sealed class ProjectionController
         try
         {
             var viewWidthScale = ResolveViewWidthScale(panel, geometry, camera, settings);
-            var definition = new TripleRigDefinition(
-                panel.PhysicalWidthMm,
-                panel.PhysicalHeightMm,
-                geometry.EyeDistanceMm / viewWidthScale,
-                geometry.LeftYawDegrees,
-                geometry.RightYawDegrees,
-                geometry.EyeHeightAbovePanelCenterMm);
+            var definition = Rig(panel, geometry, viewWidthScale, settings);
             var surfaces = TripleRigBuilder.Build(definition);
             ActiveViewWidthScale = viewWidthScale;
 
@@ -332,9 +326,7 @@ internal sealed class ProjectionController
         try
         {
             var viewWidthScale = ResolveViewWidthScale(panel, geometry, camera, settings);
-            var definition = new TripleRigDefinition(
-                panel.PhysicalWidthMm, panel.PhysicalHeightMm, geometry.EyeDistanceMm / viewWidthScale,
-                geometry.LeftYawDegrees, geometry.RightYawDegrees, geometry.EyeHeightAbovePanelCenterMm);
+            var definition = Rig(panel, geometry, viewWidthScale, settings);
             var surfaces = TripleRigBuilder.Build(definition);
             ActiveViewWidthScale = viewWidthScale;
             EnsureSeparateDriver(camera);
@@ -405,16 +397,35 @@ internal sealed class ProjectionController
     private readonly CurveLatch _curve = new();
     private string CurveDescription => _curve.Note != null ? " " + SafeMessage(_curve.Note) : "";
 
+    // Bezel gap and curve come only from the local measurements (set in Advanced setup or by Wheelkit), so an imported
+    // layout renders as before. The eye distance is to the glass middle; a curved rig places the chord one sagitta
+    // closer (toolkit TripleRigDefinition). An unusable curve keeps the flat rig and is reported by ConfigureViews.
+    private static double RequestedCurve(Settings settings) =>
+        settings.UseLocalLayout && settings.CurveRadiusMm > 0f && !float.IsInfinity(settings.CurveRadiusMm) ? settings.CurveRadiusMm : 0d;
+
+    private static TripleRigDefinition Rig(PanelDocument panel, GeometryDocument geometry, double viewWidthScale, Settings settings)
+    {
+        var bezel = settings.UseLocalLayout ? panel.BezelWidthMm : 0d;
+        var radius = RequestedCurve(settings);
+        TripleRigDefinition Build(double curve) => new(panel.PhysicalWidthMm, panel.PhysicalHeightMm,
+            geometry.EyeDistanceMm / viewWidthScale, geometry.LeftYawDegrees, geometry.RightYawDegrees,
+            geometry.EyeHeightAbovePanelCenterMm, bezel, curve);
+        try { return Build(radius); }
+        catch (ArgumentOutOfRangeException) when (radius > 0d) { return Build(0d); }
+    }
+
     private void ConfigureViews(IReadOnlyList<DisplaySurface> surfaces, TripleRigDefinition definition, Settings settings,
         string output, Action<CurvedPanelWarp[]> configure)
     {
-        var radius = settings.CurveRadiusMm;
-        var key = radius > 0f
+        var radius = RequestedCurve(settings);
+        var key = radius > 0d
             ? string.Join("|", output, radius, definition.PanelWidthMm, definition.PanelHeightMm, definition.EyeDistanceMm,
-                definition.LeftAngleDegrees, definition.RightAngleDegrees, definition.EyeHeightAbovePanelCenterMm)
+                definition.LeftAngleDegrees, definition.RightAngleDegrees, definition.EyeHeightAbovePanelCenterMm, definition.BezelGapMm)
             : null;
         var warps = _curve.Resolve(key, () =>
         {
+            if (definition.CurveRadiusMm != radius)
+                throw new InvalidOperationException("the radius must be at least half the panel width, with the eyes in front of the curve.");
             if (!CurvedPanelPresenter.Available) throw new InvalidOperationException("Unity's copy shader is unavailable.");
             return surfaces.Select(s => CurvedPanelWarp.Create(s, new Vector3d(0d, 0d, 0d), radius)).ToArray();
         });

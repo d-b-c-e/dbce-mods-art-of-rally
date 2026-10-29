@@ -17,7 +17,7 @@ internal sealed class ResolvedLayoutSource
             settings.UseLocalLayout, settings.ManualSetupConfirmed, settings.EnableThreeViewPrototype,
             settings.EnableSeparateDisplayPrototype, settings.PanelWidthPx, settings.PanelHeightPx,
             settings.PanelWidthMm, settings.PanelHeightMm, settings.EyeDistanceMm,
-            settings.LeftYawDegrees, settings.RightYawDegrees);
+            settings.LeftYawDegrees, settings.RightYawDegrees, settings.BezelGapMm, settings.CurveRadiusMm);
         if (key == _key && _result != null) return _result;
         _key = key;
 
@@ -71,7 +71,9 @@ internal sealed class ResolvedLayoutSource
             NativeWidthPx = settings.PanelWidthPx,
             NativeHeightPx = settings.PanelHeightPx,
             PhysicalWidthMm = settings.PanelWidthMm,
-            PhysicalHeightMm = settings.PanelHeightMm
+            PhysicalHeightMm = settings.PanelHeightMm,
+            BezelWidthMm = settings.BezelGapMm,
+            CurveRadiusMm = settings.CurveRadiusMm > 0f ? settings.CurveRadiusMm : (double?)null
         },
         Geometry = new GeometryDocument
         {

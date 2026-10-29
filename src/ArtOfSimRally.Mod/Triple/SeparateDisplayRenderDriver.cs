@@ -56,7 +56,8 @@ internal sealed class SeparateDisplayRenderDriver : MonoBehaviour
     internal bool AllDisplaysRendered => LastCenterFrame >= 0 &&
         Time.frameCount - LastCenterFrame <= 2 &&
         _sideFrames[0] != null && _sideFrames[0].LastRenderedFrame == LastCenterFrame &&
-        _sideFrames[1] != null && _sideFrames[1].LastRenderedFrame == LastCenterFrame;
+        _sideFrames[1] != null && _sideFrames[1].LastRenderedFrame == LastCenterFrame &&
+        (!Curved || _presenters.Count > 0 && _presenters.TrueForAll(p => p != null && !p.Failed && p.LastPresentedFrame == LastCenterFrame));
     internal DateTime LastThreeViewFrameUtc => AllDisplaysRendered
         ? Min(LastCenterFrameUtc, Min(_sideFrames[0].LastFrameUtc, _sideFrames[1].LastFrameUtc))
         : default;

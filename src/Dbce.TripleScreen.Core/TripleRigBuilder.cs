@@ -12,7 +12,7 @@ public static class TripleRigBuilder
         var width = definition.PanelWidthMm;
         var height = definition.PanelHeightMm;
         var centerY = -definition.EyeHeightAbovePanelCenterMm;
-        var centerZ = -definition.EyeDistanceMm;
+        var centerZ = -definition.ChordDistanceMm;
         var up = new Vector3d(0d, 1d, 0d);
         var centerRight = new Vector3d(1d, 0d, 0d);
         var center = CreateSurface("center", new Vector3d(0d, centerY, centerZ), centerRight, up, width, height);
@@ -23,13 +23,14 @@ public static class TripleRigBuilder
 
         var leftRight = new Vector3d(leftCosine, 0d, -leftSine);
         var leftHinge = new Vector3d(-width / 2d, centerY, centerZ);
-        var leftCenter = leftHinge - (leftRight * (width / 2d));
+        // Each side panel starts one bezel gap beyond the hinge, along its own surface.
+        var leftCenter = leftHinge - (leftRight * (definition.BezelGapMm + width / 2d));
         var left = CreateSurface("left", leftCenter, leftRight, up, width, height);
 
         var rightRadians = definition.RightAngleDegrees * Math.PI / 180d;
         var rightRight = new Vector3d(Math.Cos(rightRadians), 0d, Math.Sin(rightRadians));
         var rightHinge = new Vector3d(width / 2d, centerY, centerZ);
-        var rightCenter = rightHinge + (rightRight * (width / 2d));
+        var rightCenter = rightHinge + (rightRight * (definition.BezelGapMm + width / 2d));
         var right = CreateSurface("right", rightCenter, rightRight, up, width, height);
 
         return new[] { left, center, right };

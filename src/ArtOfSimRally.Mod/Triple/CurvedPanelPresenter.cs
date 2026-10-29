@@ -28,6 +28,9 @@ internal sealed class CurvedPanelPresenter : MonoBehaviour
     /// <summary>Set once the copy shader or its pass could not be used; the driver then falls back to flat.</summary>
     internal bool Failed { get; private set; }
 
+    /// <summary>The last frame every panel was drawn; status counts a curved display only once this matches.</summary>
+    internal int LastPresentedFrame { get; private set; } = -1;
+
     /// <summary>False when the copy shader is missing or unsupported; the caller then stays flat.</summary>
     internal static bool Available
     {
@@ -98,6 +101,7 @@ internal sealed class CurvedPanelPresenter : MonoBehaviour
             GL.End();
         }
         GL.PopMatrix();
+        if (!Failed) LastPresentedFrame = Time.frameCount;
     }
 
     private static void Corner(Panel panel, int column, int row)

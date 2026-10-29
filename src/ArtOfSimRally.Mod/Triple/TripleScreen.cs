@@ -225,7 +225,7 @@ internal static class TripleScreen
         }
         if (_settings.UseLocalLayout)
         {
-            w.Help("Enter the visible size of one panel and your distance from its center. The example values below are inactive until accepted.");
+            w.Help("Enter the visible size of one panel and your distance from your eyes to the middle of the center screen's glass. The example values below are inactive until accepted.");
             _settings.PanelWidthPx = IntField(w, "triple-panel-width-px", "Panel width (pixels)", _settings.PanelWidthPx);
             _settings.PanelHeightPx = IntField(w, "triple-panel-height-px", "Panel height (pixels)", _settings.PanelHeightPx);
             _settings.PanelWidthMm = FloatField(w, "triple-panel-width-mm", "Visible panel width (mm)", _settings.PanelWidthMm);
@@ -233,11 +233,11 @@ internal static class TripleScreen
             _settings.EyeDistanceMm = FloatField(w, "triple-eye-distance", "Eye distance (mm)", _settings.EyeDistanceMm);
             _settings.LeftYawDegrees = FloatField(w, "triple-left-yaw", "Left screen angle (degrees)", _settings.LeftYawDegrees);
             _settings.RightYawDegrees = FloatField(w, "triple-right-yaw", "Right screen angle (degrees)", _settings.RightYawDegrees);
+            _settings.BezelGapMm = FloatField(w, "triple-bezel-gap", "Gap between screens' lit areas (mm, both bezels)", _settings.BezelGapMm);
+            _settings.CurveRadiusMm = FloatField(w, "triple-curve-radius", "Screen curve radius (mm, 0 = flat)", _settings.CurveRadiusMm);
             if (w.Command("triple-use-measurements", "Use these measurements")) { _settings.ManualSetupConfirmed = true; MatchSeat(_settings); }
             w.Help(_settings.ManualSetupConfirmed ? "Local setup active" : "Local setup not yet active");
         }
-        if (mode != 0)
-            _settings.CurveRadiusMm = FloatField(w, "triple-curve-radius", "Screen curve radius (mm, 0 = flat)", _settings.CurveRadiusMm);
         if (mode == 2)
         {
             w.Help("Center must be Windows primary. Exit the game after changing display mode; activated displays release on exit.");
