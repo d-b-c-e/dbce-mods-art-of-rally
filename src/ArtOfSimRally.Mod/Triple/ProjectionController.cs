@@ -165,7 +165,7 @@ internal sealed class ProjectionController
                 }
 
                 EnsureSeparateDriver(camera);
-                ConfigureViews(surfaces, definition, settings, camera, warps =>
+                ConfigureViews(surfaces, definition, settings, $"span|{panel.NativeWidthPx}x{panel.NativeHeightPx}", warps =>
                 {
                     var (projections, rotations) = Views(surfaces, warps, camera);
                     _separateDriver.ConfigureSpan(layoutResult.Sha256, projections, rotations, warps, panel.NativeWidthPx, panel.NativeHeightPx);
@@ -338,7 +338,8 @@ internal sealed class ProjectionController
             var surfaces = TripleRigBuilder.Build(definition);
             ActiveViewWidthScale = viewWidthScale;
             EnsureSeparateDriver(camera);
-            ConfigureViews(surfaces, definition, settings, camera, warps =>
+            ConfigureViews(surfaces, definition, settings,
+                $"separate|{s_sideWitness.LeftIndex}|{s_sideWitness.RightIndex}|{panel.NativeWidthPx}x{panel.NativeHeightPx}", warps =>
             {
                 var (projections, rotations) = Views(surfaces, warps, camera);
                 _separateDriver.Configure(layoutResult.Sha256, projections, rotations, s_sideWitness.LeftIndex, s_sideWitness.RightIndex,
@@ -400,16 +401,16 @@ internal sealed class ProjectionController
     }
 
     // Curve correction is opt-in: radius 0 keeps the direct flat path. Any failure latches flat output, with the original
-    // flat frusta, until the rig or radius changes; the reason shows in the status.
+    // flat frusta, until the output (mode, displays, pixels), rig or radius changes; the reason shows in the status.
     private readonly CurveLatch _curve = new();
     private string CurveDescription => _curve.Note != null ? " " + SafeMessage(_curve.Note) : "";
 
     private void ConfigureViews(IReadOnlyList<DisplaySurface> surfaces, TripleRigDefinition definition, Settings settings,
-        Camera camera, Action<CurvedPanelWarp[]> configure)
+        string output, Action<CurvedPanelWarp[]> configure)
     {
         var radius = settings.CurveRadiusMm;
         var key = radius > 0f
-            ? string.Join("|", radius, definition.PanelWidthMm, definition.PanelHeightMm, definition.EyeDistanceMm,
+            ? string.Join("|", output, radius, definition.PanelWidthMm, definition.PanelHeightMm, definition.EyeDistanceMm,
                 definition.LeftAngleDegrees, definition.RightAngleDegrees, definition.EyeHeightAbovePanelCenterMm)
             : null;
         var warps = _curve.Resolve(key, () =>
