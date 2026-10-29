@@ -1,6 +1,21 @@
 # Local deployment
 
-## Current installation — 0.4.4-rc.5 (October 28, owner test)
+## Current installation — 0.4.4-rc.6 (October 29, owner test)
+
+guna GO 471949 after lulu's final source review of b131565. rc.5 plus: stock chase views keep the
+game's framing (`ChaseUsesGameFov`, default on; bonnet/bumper measured) and F7/status use the same
+effective policy. Source `b131565`, identity
+`0.4.4-rc.6+b131565f952f4dc1aaf8eacf5fbcd72f108ceaac.clean`, ZIP
+`ArtOfSimRally-0.4.4-rc.6-shared-input.zip` SHA-256
+`96BF9867510AE4AC152998F062D39D53895E0F4F571F9E26AD9AC0E144BE3233`; installed
+`ArtOfSimRally.Mod.dll` `2FDBAB2C845CDF56EC759AD4BCA2C68D6472E5F864BB8F6A7D526802C619FABE`.
+Installer test 70 passed; game closed, rig lease held and released; payload hashes match;
+Settings.xml, TripleScreen.xml, dbce-controls.ini and UMM Params.xml byte-identical. The saved
+TripleScreen.xml has no CurveRadiusMm/ChaseUsesGameFov yet, so curvature stays 0 and chase uses the
+default. Verified rollback copy of rc.5: `E:\Source\temp\art-0.4.4-rc.6\backup-installed-rc.5`.
+No game launch.
+
+## Previous installation — 0.4.4-rc.5 (October 28, owner test)
 
 Owner-requested deployment (guna GO 470430, after Wheelkit 0.6.58+0c670b7). rc.3 plus: opt-in
 curved-panel correction (CurveRadiusMm, 0 = flat), eye distance to the glass middle, local bezel
