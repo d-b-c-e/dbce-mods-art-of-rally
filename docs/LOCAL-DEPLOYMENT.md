@@ -1,6 +1,16 @@
 # Local deployment
 
-## Current installation — 0.4.4-rc.1 (October 28, owner test)
+## Current installation — 0.4.4-rc.3 (October 28, owner test)
+
+0.4.4-rc.1 plus the KI-46 "next weather" prompt fix and the seat-matched view line/"Match my
+seat" on the Cameras page (game FOV moved to Advanced; saved settings not reset). Source
+`f27de37`, ZIP `ArtOfSimRally-0.4.4-rc.3-shared-input.zip` (SHA-256 starts `261EA55E8A984617`).
+PromptGlyphs 41 and SettingsUi 3351 assertions, installer test 70 passed; installed with the
+game closed under the rig lease; payload hashes match. TripleScreen.xml kept as the owner left it
+(separate monitors, game FOV). rc.2 was packaged but never installed. Backup of the replaced
+rc.1: `E:\Source\temp\art-0.4.4-rc.3\backup-installed-rc.1`. No game launch.
+
+## Previous installation — 0.4.4-rc.1 (October 28, owner test)
 
 Same source as the earlier 0.4.3-rc.1 install (Egon F6 controller copy and window landing,
 untested in game), relabelled so Wheelkit no longer reports published 0.4.3 as an update, and
