@@ -67,6 +67,20 @@ internal static class SecondaryDisplayWindows
         return new SideActivationWitness.MainWindow(1, origin.X, origin.Y, client.Right - client.Left, client.Bottom - client.Top, detail);
     }
 
+    internal static IntPtr LandingWindow()
+    {
+        var found = new List<IntPtr>();
+        Enumerate(window =>
+        {
+            if (IsWindowVisible(window) && !IsIconic(window) &&
+                ClassName(window) == UnityWindowClass && Title(window) != SideWindowFocusRestorer.SecondaryWindowTitle)
+                found.Add(window);
+        });
+        return found.Count == 1 ? found[0] : IntPtr.Zero;
+    }
+
+    [DllImport("user32.dll")] private static extern bool IsIconic(IntPtr window);
+
     private static void Enumerate(Action<IntPtr> visit)
     {
         EnumWindowsProc callback = (window, _) =>

@@ -9,9 +9,13 @@
     <ManagedDir>$(GameDir)\artofrally_Data\Managed</ManagedDir>
   </PropertyGroup>
 
+  <ItemGroup><None Include="window-landing-vectors.txt" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Dbce.TripleScreen.Core\Dbce.TripleScreen.Core.csproj" />
     <ProjectReference Include="..\..\src\Dbce.TripleScreen.Protocol\Dbce.TripleScreen.Protocol.csproj" />
+    <Compile Include="..\..\src\ArtOfSimRally.Mod\Triple\RacingWindowLanding.cs" Link="RacingWindowLanding.cs" />
+    <Compile Include="..\..\src\ArtOfSimRally.Mod\Triple\LandingPersistence.cs" Link="LandingPersistence.cs" />
+    <Compile Include="..\..\src\ArtOfSimRally.Mod\Triple\LandingLaunchPolicy.cs" Link="LandingLaunchPolicy.cs" />
     <Compile Include="..\..\src\ArtOfSimRally.Mod\Triple\AdapterConstants.cs" Link="AdapterConstants.cs" />
     <Compile Include="..\..\src\ArtOfSimRally.Mod\Triple\FovPreference.cs" Link="FovPreference.cs" />
     <Compile Include="..\..\src\ArtOfSimRally.Mod\Triple\LayoutSource.cs" Link="LayoutSource.cs" />
@@ -20,6 +24,7 @@
     <Compile Include="..\..\src\ArtOfSimRally.Mod\Triple\SideDisplaySelector.cs" Link="SideDisplaySelector.cs" />
     <Compile Include="..\..\src\ArtOfSimRally.Mod\Triple\SideActivationWitness.cs" Link="SideActivationWitness.cs" />
     <Compile Include="..\..\src\ArtOfSimRally.Mod\Triple\OutputResolution.cs" Link="OutputResolution.cs" />
+    <Compile Include="..\..\lib\display\WindowLanding.cs" Link="Toolkit\Display\WindowLanding.cs" />
     <Compile Include="..\..\lib\display\RacingRow.cs" Link="RacingRow.cs" />
     <Compile Include="..\..\lib\display\WindowsMonitors.cs" Link="WindowsMonitors.cs" />
   </ItemGroup>

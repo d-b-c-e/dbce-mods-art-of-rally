@@ -27,6 +27,7 @@ internal static class TripleScreen
     private static bool _enabled;
     private static bool _blockedByLegacyMod;
     private static int _frame;
+    private static readonly RacingWindowLanding Landing = new(new NativeWindowLandingHost());
     private static ProjectionOutcome _lastOutcome;
     private static bool _showAdvanced;
 
@@ -112,6 +113,7 @@ internal static class TripleScreen
                 LogLayoutRefresh(Layout.Refresh(false));
                 _blockedByLegacyMod = LegacyModActive();
             }
+            if (_enabled && !_blockedByLegacyMod && _frame % 30 == 0) Landing.Update();
             var layout = EffectiveLayout.Resolve(Layout.Current, _settings);
             ProjectionOutcome outcome;
             if (!_enabled)
@@ -123,7 +125,10 @@ internal static class TripleScreen
                     "The old DBCE triple-screen mod is still installed. Disable or remove it in Unity Mod Manager.");
             }
             else
+            {
+                Projection.LandingOwnsOutputResize = Landing.BlocksOutputResize;
                 outcome = Projection.Update(layout, _settings);
+            }
             _lastOutcome = outcome;
             _status.Publish(outcome, Application.version);
             _renderDiagnostics.Sample(outcome, Projection);

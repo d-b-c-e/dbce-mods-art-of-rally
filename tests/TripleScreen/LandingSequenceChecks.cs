@@ -1,0 +1,97 @@
+using System;
+using System.Collections.Generic;
+using ArtOfSimRally.Mod.Triple;
+using Dbce.Wheel.Display;
+
+namespace Dbce.TripleScreen.Tests;
+internal static class LandingSequenceChecks
+{
+    private sealed class Host : RacingWindowLanding.IHost
+    {
+        public float Now { get; set; }
+        public IList<EngineDisplay> EngineDisplays { get; set; }
+        private int? _savedMonitor;
+        internal bool ThrowRead;
+        internal int Reads;
+        internal readonly List<string> Logs = new();
+        public int? SavedMonitor { get { Reads++; if (ThrowRead) throw new InvalidOperationException(); return _savedMonitor; } set { _savedMonitor=value; } }
+        public string PersistenceBlock { get; set; }
+        internal int Saves;
+        internal bool SaveAccepted = true;
+        public bool SaveMonitor(int? expected,int index) { Saves++; if (!SaveAccepted) return false; SavedMonitor=index; return true; }
+        public IReadOnlyList<MonitorRect> Monitors { get; set; } = new[] {
+            new MonitorRect(-1000,0,1000,700,false), new MonitorRect(0,0,1000,700,true),
+            new MonitorRect(1000,0,1000,700,false), new MonitorRect(0,-600,800,600,false) };
+        internal bool Available = true, Accept = true;
+        internal int Resizes, Places, X, Y;
+        internal long Window;
+        internal RacingWindowLanding.Observation Sample = new() {
+            Window=1, X=0, Y=-600, Width=800, Height=600, EngineWidth=800, EngineHeight=600 };
+        public bool Observe(out RacingWindowLanding.Observation observation) { observation=Sample; return Available; }
+        public void Resize(int width,int height) { Resizes++; }
+        public bool Place(long window,int x,int y) { Places++; Window=window; X=x; Y=y; return Accept; }
+        public void Log(string message) { Logs.Add(message); }
+        internal void Ready() { Sample.Width=Sample.EngineWidth=1000; Sample.Height=Sample.EngineHeight=700; Sample.Windowed=true; Sample.OffsetX=8; Sample.OffsetY=31; }
+    }
+    internal static void Run(Action<bool,string> check)
+    {
+        PersistenceChecks.Run(check);
+        check(LandingLaunchPolicy.Block(null,null,false,false,false,Array.Empty<string>())==null,"ordinary launch admitted");
+        check(LandingLaunchPolicy.Block("1",null,false,false,false,Array.Empty<string>())!=null,"muted launch suppressed");
+        check(LandingLaunchPolicy.Block(null,"probe",false,false,false,Array.Empty<string>())!=null,"shim launch suppressed");
+        check(LandingLaunchPolicy.Block(null,null,true,false,false,Array.Empty<string>())!=null,"recorder even before load suppressed");
+        check(LandingLaunchPolicy.Block(null,null,false,true,false,Array.Empty<string>())!=null,"session request suppressed");
+        check(LandingLaunchPolicy.Block(null,null,false,false,true,Array.Empty<string>())!=null,"editor suppressed");
+        foreach(var flag in new[]{"-batchmode","-nographics","-runTests"})
+            check(LandingLaunchPolicy.Block(null,null,false,false,false,new[]{flag})!=null,"test argument suppressed: "+flag);
+        // Surround is uniquely identifiable, unlike the equal-size separate row below.
+        Host PersistenceHost() => new Host {
+            Monitors=new[]{new MonitorRect(0,0,3000,700,true),new MonitorRect(0,-600,800,600,false)},
+            EngineDisplays=new[]{new EngineDisplay(800,600),new EngineDisplay(3000,700)}, SavedMonitor=0 };
+        var p=PersistenceHost(); var episode=new RacingWindowLanding(p); episode.Update(); episode.Update();
+        check(p.Saves==1 && p.SavedMonitor==1,"proven engine order saves once before resize changes opening");
+        p=PersistenceHost(); p.SaveAccepted=false; episode=new RacingWindowLanding(p); episode.Update(); episode.Update();
+        check(p.Saves==1 && p.Resizes==1 && episode.BlocksOutputResize,"failed persistence still starts landing without retrying write");
+        p=PersistenceHost(); p.ThrowRead=true; episode=new RacingWindowLanding(p); episode.Update();
+        check(p.Resizes==1 && p.Saves==0 && episode.BlocksOutputResize,"unavailable initial preference suppresses writes but starts geometric landing");
+        p.Sample.Width=p.Sample.EngineWidth=3000; p.Sample.Height=p.Sample.EngineHeight=700; p.Sample.Windowed=true;
+        episode.Update(); episode.Update();
+        check(p.Places==1 && p.Resizes==1 && p.Reads==1 && p.Saves==0 && !episode.BlocksOutputResize,"initial getter failure lands once without repeated acquisition or preference writes");
+        check(p.Logs.Exists(s=>s.Contains("read failed") && s.Contains("preference unavailable")),"initial getter failure logs unavailable rather than absent preference");
+        p=PersistenceHost(); p.PersistenceBlock="muted"; new RacingWindowLanding(p).Update();
+        check(p.Saves==0 && p.Resizes==1,"muted launch keeps landing but never saves");
+        p=PersistenceHost(); p.SavedMonitor=1; new RacingWindowLanding(p).Update();
+        check(p.Saves==0,"opening inconsistent with saved order never writes");
+        p=PersistenceHost(); p.Sample.X=0; p.Sample.Y=0; p.Sample.Width=3000; p.SavedMonitor=1;
+        new RacingWindowLanding(p).Update(); check(p.Saves==0,"already home and saved never rewrites");
+        p=PersistenceHost(); p.EngineDisplays=new[]{new EngineDisplay(800,600)};
+        new RacingWindowLanding(p).Update(); check(p.Saves==0,"engine count mismatch never writes");
+        p=new Host { EngineDisplays=new[]{new EngineDisplay(800,600),new EngineDisplay(1000,700),
+            new EngineDisplay(1000,700),new EngineDisplay(1000,700)}, SavedMonitor=0 };
+        new RacingWindowLanding(p).Update(); check(p.Saves==0,"identical separate displays are ambiguous and never saved");
+        p=PersistenceHost(); p.Monitors=new[]{new MonitorRect(0,-600,800,600,true)};
+        new RacingWindowLanding(p).Update(); check(p.Saves==0 && p.Resizes==0,"no row never moves or saves");
+        p=PersistenceHost(); p.PersistenceBlock="test"; episode=new RacingWindowLanding(p); episode.Update();
+        p.PersistenceBlock=null; p.Monitors=new[]{new MonitorRect(0,0,3300,700,true),new MonitorRect(0,-600,800,600,false)};
+        p.EngineDisplays=new[]{new EngineDisplay(800,600),new EngineDisplay(3300,700)}; episode.Update();
+        check(p.Saves==0,"topology change cannot reuse opening evidence to prove engine order");
+        var h=new Host(); var landing=new RacingWindowLanding(h); landing.Update();
+        check(h.Resizes==1 && landing.BlocksOutputResize,"landing exclusively owns resize immediately");
+        h.Now=1; landing.Update(); check(h.Places==0,"elapsed delay alone cannot place");
+        h.Ready(); h.Sample.Windowed=false; landing.Update(); check(h.Places==0,"old fullscreen mode cannot place");
+        h.Sample.Windowed=true; h.Sample.Width=999; landing.Update(); check(h.Places==0,"native client must match engine");
+        h.Sample.Width=1000; h.Available=false; landing.Update(); check(landing.BlocksOutputResize,"temporary unavailable retains pending");
+        h.Available=true; h.Sample.Window=2; landing.Update();
+        check(h.Places==1 && h.Window==2 && h.X==-8 && h.Y==-31,"validated replacement uses client border offsets");
+        landing.Update(); check(h.Resizes==1 && h.Places==1 && !landing.BlocksOutputResize,"terminal episode does not repeat");
+        h.Monitors=new[] { h.Monitors[3],h.Monitors[2],h.Monitors[1],h.Monitors[0] }; landing.Update();
+        check(h.Resizes==1,"enumeration reorder is unchanged topology");
+        h=new Host(); landing=new RacingWindowLanding(h); landing.Update(); h.Now=10; h.Ready(); landing.Update(); landing.Update();
+        check(h.Places==0 && h.Resizes==1 && !landing.BlocksOutputResize,"deadline terminal even when size arrives late");
+        h=new Host(); landing=new RacingWindowLanding(h); landing.Update(); h.Ready(); h.Accept=false; landing.Update(); landing.Update();
+        check(h.Places==1 && h.Resizes==1,"native refusal is terminal");
+        h=new Host(); landing=new RacingWindowLanding(h); landing.Update();
+        h.Monitors=new[] {new MonitorRect(0,0,1000,700,true)}; h.Ready(); landing.Update();
+        check(h.Places==0 && !landing.BlocksOutputResize,"topology change cancels stale target");
+    }
+}

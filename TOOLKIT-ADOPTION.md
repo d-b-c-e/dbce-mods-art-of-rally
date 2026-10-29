@@ -267,3 +267,52 @@ Both owned identities quiescent/query-safe, exact release and literal absence
 passed06:38:27Z; direct handback preceded documentation. The private offline tuple
 is complete; rendered/physical gates and installed rc27 remain unchanged. See the
 same review note for exact continuation evidence and preserved original failure.
+
+
+October 26 DBC-29: STD-038 partial, private source candidate. Byte-exact
+WindowLanding.cs from toolkit 7e131c98a27404d8b2c5dda2ea3a9a02cbd6460e
+is pinned separately from the existing display reader/selector revision.
+Startup/topology landing targets the home display (center for independent
+outputs, wide primary for Surround), one windowed apply per observed topology,
+with no activation/z-order changes. Start-monitor persistence is deliberately
+not implemented until test/muted launch classification is qualified. No
+runtime adoption or user readiness. STD-008 remains partial: the existing
+OutputResolution size retry policy is unchanged. Existing unchecked ledger
+rows remain as recorded; STD-037/039/040 still lack full adoption rows.
+See docs/reviews/2026-10-26-window-landing.md.
+
+October 26 DBC-272 corrections: STD-038 remains partial. Landing now waits for
+observed engine/native client-size and windowed-mode agreement (10s deadline),
+retains transient pending state, offsets native placement to the client origin,
+and canonicalizes topology order. Projection defers its size writer while the
+landing request is pending. Production episode logic has 11 added offline checks;
+559 TripleScreen assertions and warning-as-error plugin build pass. Persistence,
+actual native placement and rendered/runtime qualification remain open. Existing
+unchecked/pending standards listed above remain outside this bounded correction.
+
+October 26 DBC-29 persistence: shared policy now receives observed opening and
+Unity engine-order evidence. Proven changed start-monitor index writes through
+PlayerPrefs only in identified ordinary launches. Test/muted/recorder/shim and
+batch/editor launches suppress writes; topology change invalidates launch mapping.
+Release warning-as-error build PASS, 576 TripleScreen assertions PASS; pin/diff
+checks PASS. STD-038 remains partial pending review and native/runtime evidence.
+Existing unchecked STD-011/012/013/014/016/018/019, partial STD-008 and missing
+full STD-037/039/040 adoption rows are unchanged by this bounded source work.
+See docs/reviews/2026-10-26-window-landing.md for classification limits.
+
+October 26 DBC-275/276 correction supersedes the earlier persistence-unimplemented
+wording. Saved-monitor persistence is implemented in the private source candidate;
+launch classification is fail-closed on marker inspection errors. The production
+boundary contains preference failures, attempts in-memory restoration and reports
+uncertain disk/restore state without claiming unchanged preferences. Failed saves
+leave landing active and do not retry persistence. Release warning-as-error build
+and 591 offline assertions pass; source pin/diff pass. STD-038 remains PARTIAL:
+corrected-source reviews plus native/Unity/mixed-DPI/write/relaunch qualification
+remain. No package adoption or user-ready claim. Existing unrelated unchecked,
+partial and missing standard rows remain unchanged.
+
+October 26 DBC-277: initial preference-read failure now suppresses persistence
+without suppressing landing or repeatedly acquiring preferences in the episode.
+596 offline assertions and Release warning-as-error build pass; pin/diff pass.
+STD-038 remains PARTIAL pending corrected-source and native/runtime evidence.
+Existing unrelated unchecked/partial/missing standards remain as listed above.
