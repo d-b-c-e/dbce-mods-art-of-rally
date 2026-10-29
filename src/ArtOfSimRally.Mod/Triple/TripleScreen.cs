@@ -101,10 +101,41 @@ internal static class TripleScreen
         modEntry.Logger.Log("Triple screens: migrated " + Path.GetFileName(from) + " from " + Path.GetDirectoryName(from) + ".");
     }
 
+    // F7 A/B (this session only, never saved): null follows the saved choice; true shows the game's field of view,
+    // false the measured perspective for the seat. Both use the same rig for projection and curve warp.
+    internal static bool? SessionGameFov;
+    private static string _notice;
+    private static float _noticeUntil;
+    private static GUIStyle _noticeStyle;
+
+    private static void ToggleSessionView()
+    {
+        var gameFov = SessionGameFov ?? !_settings.OverrideFieldOfView;
+        SessionGameFov = !gameFov;
+        _notice = SessionGameFov.Value ? "Game field of view (F7)" : "Measured perspective (F7)";
+        _noticeUntil = Time.unscaledTime + 2.5f;
+    }
+
+    /// <summary>The brief F7 label, top center of the center screen.</summary>
+    internal static void DrawNotice()
+    {
+        if (_notice == null || Time.unscaledTime > _noticeUntil || Event.current == null || Event.current.type != EventType.Repaint) return;
+        if (_noticeStyle == null) _noticeStyle = new GUIStyle(GUI.skin.label) { fontSize = Mathf.Max(18, Screen.height / 40), alignment = TextAnchor.UpperCenter };
+        var center = Screen.width / 2f; // middle of a span is the center screen
+        var rect = new Rect(center - 400f, 40f, 800f, 80f);
+        var old = GUI.color;
+        GUI.color = Color.black; GUI.Label(new Rect(rect.x + 2, rect.y + 2, rect.width, rect.height), _notice, _noticeStyle);
+        GUI.color = Color.white; GUI.Label(rect, _notice, _noticeStyle);
+        GUI.color = old;
+    }
+
     internal static void Update()
     {
         if (_settings == null) return;
         _frame++;
+        if (_enabled && Application.isFocused && !SettingsPanel.Editing && !CameraKeys.ModifierHeld() && Input.GetKeyDown(KeyCode.F7)
+            && (_settings.EnableThreeViewPrototype || _settings.EnableSeparateDisplayPrototype))
+            ToggleSessionView();
 
         try
         {
@@ -173,6 +204,9 @@ internal static class TripleScreen
             var seat = MatchesSeat(_settings);
             w.Help(seat ? "View: matched to your seat (your screen sizes and eye distance)."
                 : "View: not matched to your seat, so lines can bend at the screen edges.");
+            if (SessionGameFov.HasValue)
+                w.Help("F7 is showing the " + (SessionGameFov.Value ? "game's field of view" : "measured perspective") +
+                    " until the game restarts or you press F7 again; nothing is saved.");
             if (!seat && w.Command("triple-match-seat", "Match my seat")) MatchSeat(_settings);
         }
 

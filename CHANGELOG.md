@@ -12,6 +12,7 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - F6 explains when a controller cannot be identified and suggests a restart.
 - The game window lands on the racing row of monitors.
 - Triple screens: the Cameras page says whether the view matches your seat, with a one-press "Match my seat". The game field-of-view option moved to Advanced; "Use these measurements" also matches the seat. Saved settings are not reset.
+- Triple screens: **F7** switches between the measured perspective for your seat and the game's field of view for comparison, with a short label on the center screen. It lasts until the game restarts; nothing is saved.
 - The "next weather" prompt no longer draws a PlayStation symbol over the keyboard key with a wheel (KI-46).
 
 ## [0.4.3] - 2026-10-25

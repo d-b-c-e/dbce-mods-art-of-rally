@@ -56,3 +56,10 @@ Surround tearing remains unresolved on the tested rig even though Unity reported
 Close the game before installation, updating, removal, or changing Windows display topology. To update, extract a new release to a fresh folder and run its `Install.bat`. To remove, run `Uninstall.bat` with the game closed. Your UMM settings and screen measurements remain for a later reinstall.
 
 This mod was exercised alongside art of sim rally on one rig. It does not install or depend on that mod and does not modify its files. Other camera mods may change the source camera; report the other mod name and version with any conflict. For a bad image, choose **Off** in this mod and restart the game; [troubleshooting](TROUBLESHOOTING.md) has more checks.
+
+## Comparing views (F7)
+
+While driving with triple screens on, **F7** switches between the measured perspective (your screen
+sizes and eye-to-glass distance) and the game's own field of view. A label on the center screen says
+which is showing. It lasts until the game restarts, never changes saved settings, and uses the same
+screen layout and curve setting for both.

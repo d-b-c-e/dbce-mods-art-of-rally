@@ -137,7 +137,11 @@ namespace ArtOfSimRally.Mod
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
         private static void DrawFrameRate() => FrameRate.Draw();
 
-        private void OnGUI() => DrawFrameRate();
+        private void OnGUI()
+        {
+            DrawFrameRate();
+            Triple.TripleScreen.DrawNotice();
+        }
 
         private void OnApplicationQuit()
         {
