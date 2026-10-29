@@ -25,8 +25,18 @@ internal sealed class CurvedPanelPresenter : MonoBehaviour
 
     internal Camera Camera { get; private set; }
 
-    /// <summary>False when the copy shader is missing; the caller then stays flat.</summary>
-    internal static bool Available => Shader.Find(ShaderName) != null;
+    /// <summary>Set once the copy shader or its pass could not be used; the driver then falls back to flat.</summary>
+    internal bool Failed { get; private set; }
+
+    /// <summary>False when the copy shader is missing or unsupported; the caller then stays flat.</summary>
+    internal static bool Available
+    {
+        get
+        {
+            var shader = Shader.Find(ShaderName);
+            return shader != null && shader.isSupported;
+        }
+    }
 
     internal static CurvedPanelPresenter Create(string name, Transform parent, int display, float depth)
     {
@@ -62,10 +72,11 @@ internal sealed class CurvedPanelPresenter : MonoBehaviour
 
     private void OnPostRender()
     {
+        if (Failed) return;
         if (s_material == null)
         {
             var shader = Shader.Find(ShaderName);
-            if (shader == null) return;
+            if (shader == null) { Failed = true; return; }
             s_material = new Material(shader) { hideFlags = HideFlags.DontSave };
         }
         GL.PushMatrix();
@@ -74,7 +85,7 @@ internal sealed class CurvedPanelPresenter : MonoBehaviour
         {
             if (panel.Texture == null) continue;
             s_material.mainTexture = panel.Texture;
-            s_material.SetPass(0);
+            if (!s_material.SetPass(0)) { Failed = true; break; }
             GL.Begin(GL.QUADS);
             for (var row = 0; row < Rows; row++)
             for (var column = 0; column < Columns; column++)

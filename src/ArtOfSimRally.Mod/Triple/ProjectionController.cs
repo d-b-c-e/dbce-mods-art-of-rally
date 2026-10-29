@@ -164,23 +164,12 @@ internal sealed class ProjectionController
                         "The first three-view prototype requires exactly three native panel widths; disable driver bezel correction for this experiment.");
                 }
 
-                var warps = CurveWarps(surfaces, definition, settings);
-                var projections = new Matrix4x4[3];
-                var rotations = new Quaternion[3];
-                for (var index = 0; index < 3; index++)
-                {
-                    var view = CalculateView(warps?[index].SourceSurface ?? surfaces[index], camera);
-                    projections[index] = ToUnityProjection(view, camera);
-                    if (index == 1)
-                        CenterVerticalFovDegrees = (Math.Atan(view.Top / view.Near) - Math.Atan(view.Bottom / view.Near)) * 180d / Math.PI;
-                    var forward = view.CameraForward;
-                    rotations[index] = Quaternion.LookRotation(
-                        new Vector3((float)forward.X, (float)forward.Y, (float)-forward.Z),
-                        Vector3.up);
-                }
-
                 EnsureSeparateDriver(camera);
-                _separateDriver.ConfigureSpan(layoutResult.Sha256, projections, rotations, warps, panel.NativeWidthPx, panel.NativeHeightPx);
+                ConfigureViews(surfaces, definition, settings, camera, warps =>
+                {
+                    var (projections, rotations) = Views(surfaces, warps, camera);
+                    _separateDriver.ConfigureSpan(layoutResult.Sha256, projections, rotations, warps, panel.NativeWidthPx, panel.NativeHeightPx);
+                });
                 if (_separateDriver.RenderError != null)
                     return ProjectionOutcome.Error(layoutResult, "THREE_VIEW_RENDER_ERROR", _separateDriver.RenderError);
                 if (!_separateDriver.AllDisplaysRendered)
@@ -348,23 +337,13 @@ internal sealed class ProjectionController
                 geometry.LeftYawDegrees, geometry.RightYawDegrees, geometry.EyeHeightAbovePanelCenterMm);
             var surfaces = TripleRigBuilder.Build(definition);
             ActiveViewWidthScale = viewWidthScale;
-            var warps = CurveWarps(surfaces, definition, settings);
-            var projections = new Matrix4x4[3];
-            var rotations = new Quaternion[3];
-            for (var index = 0; index < 3; index++)
-            {
-                var view = CalculateView(warps?[index].SourceSurface ?? surfaces[index], camera);
-                projections[index] = ToUnityProjection(view, camera);
-                if (index == 1)
-                    CenterVerticalFovDegrees = (Math.Atan(view.Top / view.Near) - Math.Atan(view.Bottom / view.Near)) * 180d / Math.PI;
-                var forward = view.CameraForward;
-                rotations[index] = Quaternion.LookRotation(
-                    new Vector3((float)forward.X, (float)forward.Y, (float)-forward.Z), Vector3.up);
-            }
-
             EnsureSeparateDriver(camera);
-            _separateDriver.Configure(layoutResult.Sha256, projections, rotations, s_sideWitness.LeftIndex, s_sideWitness.RightIndex,
-                warps, panel.NativeWidthPx, panel.NativeHeightPx);
+            ConfigureViews(surfaces, definition, settings, camera, warps =>
+            {
+                var (projections, rotations) = Views(surfaces, warps, camera);
+                _separateDriver.Configure(layoutResult.Sha256, projections, rotations, s_sideWitness.LeftIndex, s_sideWitness.RightIndex,
+                    warps, panel.NativeWidthPx, panel.NativeHeightPx);
+            });
             if (_separateDriver.RenderError != null)
                 return ProjectionOutcome.Error(layoutResult, "SEPARATE_DISPLAY_RENDER_ERROR", _separateDriver.RenderError);
             if (!_separateDriver.AllDisplaysRendered)
@@ -420,37 +399,46 @@ internal sealed class ProjectionController
         if (_separateDriver == null) _separateDriver = camera.gameObject.AddComponent<SeparateDisplayRenderDriver>();
     }
 
-    // Curve correction is opt-in: radius 0 keeps the direct flat path. Warps are rebuilt only when the rig changes, and an
-    // invalid radius falls back to flat with the reason in the status.
-    private CurvedPanelWarp[] _warps;
-    private string _warpKey;
-    private string _curveNote;
-    private string CurveDescription => _curveNote != null ? " " + _curveNote : _warps != null ? " Curved screens are corrected." : "";
+    // Curve correction is opt-in: radius 0 keeps the direct flat path. Any failure latches flat output, with the original
+    // flat frusta, until the rig or radius changes; the reason shows in the status.
+    private readonly CurveLatch _curve = new();
+    private string CurveDescription => _curve.Note != null ? " " + SafeMessage(_curve.Note) : "";
 
-    private CurvedPanelWarp[] CurveWarps(IReadOnlyList<DisplaySurface> surfaces, TripleRigDefinition definition, Settings settings)
+    private void ConfigureViews(IReadOnlyList<DisplaySurface> surfaces, TripleRigDefinition definition, Settings settings,
+        Camera camera, Action<CurvedPanelWarp[]> configure)
     {
         var radius = settings.CurveRadiusMm;
-        if (!(radius > 0f))
-        {
-            _warps = null; _warpKey = null; _curveNote = null;
-            return null;
-        }
-        var key = string.Join("|", radius, definition.PanelWidthMm, definition.PanelHeightMm, definition.EyeDistanceMm,
-            definition.LeftAngleDegrees, definition.RightAngleDegrees, definition.EyeHeightAbovePanelCenterMm);
-        if (key == _warpKey) return _warps;
-        _warpKey = key;
-        try
+        var key = radius > 0f
+            ? string.Join("|", radius, definition.PanelWidthMm, definition.PanelHeightMm, definition.EyeDistanceMm,
+                definition.LeftAngleDegrees, definition.RightAngleDegrees, definition.EyeHeightAbovePanelCenterMm)
+            : null;
+        var warps = _curve.Resolve(key, () =>
         {
             if (!CurvedPanelPresenter.Available) throw new InvalidOperationException("Unity's copy shader is unavailable.");
-            _warps = surfaces.Select(s => CurvedPanelWarp.Create(s, new Vector3d(0d, 0d, 0d), radius)).ToArray();
-            _curveNote = null;
-        }
-        catch (Exception exception)
+            return surfaces.Select(s => CurvedPanelWarp.Create(s, new Vector3d(0d, 0d, 0d), radius)).ToArray();
+        });
+        configure(warps);
+        if (warps == null || _separateDriver.CurveFailure == null) return;
+        _curve.Fail(_separateDriver.CurveFailure);
+        configure(null);
+    }
+
+    private (Matrix4x4[] Projections, Quaternion[] Rotations) Views(IReadOnlyList<DisplaySurface> surfaces,
+        CurvedPanelWarp[] warps, Camera camera)
+    {
+        var projections = new Matrix4x4[3];
+        var rotations = new Quaternion[3];
+        for (var index = 0; index < 3; index++)
         {
-            _warps = null;
-            _curveNote = "Curve correction is off: " + SafeMessage(exception.Message);
+            var view = CalculateView(warps?[index].SourceSurface ?? surfaces[index], camera);
+            projections[index] = ToUnityProjection(view, camera);
+            if (index == 1)
+                CenterVerticalFovDegrees = (Math.Atan(view.Top / view.Near) - Math.Atan(view.Bottom / view.Near)) * 180d / Math.PI;
+            var forward = view.CameraForward;
+            rotations[index] = Quaternion.LookRotation(
+                new Vector3((float)forward.X, (float)forward.Y, (float)-forward.Z), Vector3.up);
         }
-        return _warps;
+        return (projections, rotations);
     }
 
     private static OffAxisProjection CalculateView(DisplaySurface surface, Camera camera)

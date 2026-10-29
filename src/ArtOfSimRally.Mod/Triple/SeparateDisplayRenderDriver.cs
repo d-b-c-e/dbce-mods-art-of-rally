@@ -122,15 +122,21 @@ internal sealed class SeparateDisplayRenderDriver : MonoBehaviour
         if (warps == null || panelWidthPx <= 0 || panelHeightPx <= 0)
         {
             ReleaseCurve();
+            CurveFailure = null;
             return;
         }
         var layout = $"{_spanMode}|{_leftDisplayIndex}|{_rightDisplayIndex}|{panelWidthPx}x{panelHeightPx}";
         if (ReferenceEquals(warps, _warps) && layout == _curveLayout)
         {
-            foreach (var presenter in _presenters) presenter.Camera.enabled = true;
+            foreach (var presenter in _presenters)
+            {
+                if (presenter == null || presenter.Failed) { FailCurve("the curved view could not be drawn."); return; }
+                presenter.Camera.enabled = true;
+            }
             return;
         }
         ReleaseCurve();
+        CurveFailure = null;
         _warps = warps;
         _curveLayout = layout;
         for (var index = 0; index < 3; index++)
@@ -141,7 +147,7 @@ internal sealed class SeparateDisplayRenderDriver : MonoBehaviour
             var height = Mathf.Clamp(Mathf.RoundToInt((float)(panelHeightPx * warp.SourceSurface.Height / warp.Panel.Height)), 1, panelHeightPx * 2);
             _targets[index] = new RenderTexture(width, height, 24, RenderTextureFormat.ARGB32)
                 { name = "DBCE Curved View " + index, hideFlags = HideFlags.DontSave };
-            _targets[index].Create();
+            if (!_targets[index].Create()) { FailCurve("a curved view's render target could not be created."); return; }
         }
         var depth = _source.depth + 10f;
         if (_spanMode)
@@ -161,6 +167,15 @@ internal sealed class SeparateDisplayRenderDriver : MonoBehaviour
                 _presenters.Add(presenter);
             }
         }
+    }
+
+    /// <summary>Set when the last curved configuration could not run; the caller latches flat output.</summary>
+    internal string CurveFailure { get; private set; }
+
+    private void FailCurve(string reason)
+    {
+        ReleaseCurve();
+        CurveFailure = reason;
     }
 
     private void ReleaseCurve()

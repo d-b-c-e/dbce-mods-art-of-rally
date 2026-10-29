@@ -29,6 +29,7 @@ internal static class Program
             IndependentSideAnglesArePreserved();
             MatrixMatchesFrustum();
             CurvedPanelsCoverAlongEyeRays();
+            CurveFailureLatchesFlat();
             BadEyeSideIsRejected();
             CanonicalLayoutParsesStrictly();
             SeparateDisplayLayoutParsesWithoutWideOutput();
@@ -589,6 +590,26 @@ internal static class Program
         var refused = false;
         try { CurvedPanelWarp.Create(surfaces[1], eye, 300d); } catch (ArgumentOutOfRangeException) { refused = true; }
         Check(refused, "radius below half the panel width is refused");
+    }
+
+    private static void CurveFailureLatchesFlat()
+    {
+        var surfaces = TripleRigBuilder.Build(new TripleRigDefinition(708.417d, 398.484d, 660d, 70d, 70d, 0d));
+        CurvedPanelWarp[] Build() => surfaces.Select(s => CurvedPanelWarp.Create(s, new Vector3d(0d, 0d, 0d), 1500d)).ToArray();
+        DisplaySurface Projected(CurvedPanelWarp[] warps, int index) => warps?[index].SourceSurface ?? surfaces[index];
+        var latch = new ArtOfSimRally.Mod.Triple.CurveLatch();
+        Check(latch.Resolve(null, Build) == null && latch.Builds == 0 && latch.Note == null, "radius 0 builds nothing");
+        var warps = latch.Resolve("a", Build);
+        Check(warps != null && latch.Builds == 1 && !ReferenceEquals(Projected(warps, 0), surfaces[0]), "curved views project widened sources");
+        Check(ReferenceEquals(latch.Resolve("a", Build), warps) && latch.Builds == 1, "same rig reuses warps");
+        latch.Fail("a curved view's render target could not be created.");
+        var after = latch.Resolve("a", Build);
+        Check(after == null && latch.Builds == 1, "failure latches flat without retrying");
+        Check(ReferenceEquals(Projected(after, 0), surfaces[0]) && ReferenceEquals(Projected(after, 2), surfaces[2]), "latched failure restores the original flat frusta");
+        Check(latch.Note.Contains("render target"), "status names the failure");
+        Check(latch.Resolve("b", Build) != null && latch.Builds == 2 && latch.Failure == null, "a changed rig retries");
+        Check(latch.Resolve("c", () => throw new ArgumentOutOfRangeException("radiusMm")) == null && latch.Failure != null, "invalid geometry stays flat");
+        Check(latch.Resolve("c", Build) == null && latch.Builds == 3, "invalid geometry is not retried every frame");
     }
 
     private static void Check(bool condition, string message)
