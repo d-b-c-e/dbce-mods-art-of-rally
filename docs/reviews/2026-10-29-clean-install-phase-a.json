@@ -1,0 +1,90 @@
+{
+  "candidateSha256": "EAB5D08DE1534219EC183A62EF5659B7B60EAC1CC113E7A2FF9C530A77EB481B",
+  "publicSha256": "83CBE857FFB056F4FAB6FC5EE11B324DE78852295EC86B0D437AE2C8AA4C4F16",
+  "pristine-has-no-loader": {
+    "ok": true,
+    "detail": "453 files"
+  },
+  "install-exit-0": {
+    "ok": true,
+    "detail": "exit 0"
+  },
+  "install-placed-loader": {
+    "ok": true,
+    "detail": ""
+  },
+  "install-payload-matches": {
+    "ok": true,
+    "detail": ""
+  },
+  "verify-script-loads": {
+    "ok": true,
+    "detail": ""
+  },
+  "install-touches-no-game-file": {
+    "ok": true,
+    "detail": "added 18"
+  },
+  "installAdded": [
+    "artofrally_Data\\Managed\\UnityModManager\\0Harmony.dll",
+    "artofrally_Data\\Managed\\UnityModManager\\dnlib.dll",
+    "Mods\\ArtOfSimRally\\dbce_shim.dll",
+    "winhttp.dll",
+    "Mods\\ArtOfSimRally\\UnityForceFeedback.dll",
+    "artofrally_Data\\Managed\\UnityModManager\\installed-by-art-of-sim-rally.json",
+    "Mods\\ArtOfSimRally\\build.json",
+    "Mods\\ArtOfSimRally\\ArtOfSimRally.Mod.dll",
+    "Mods\\ArtOfSimRally\\Dbce.Wheel.Telemetry.dll",
+    "Mods\\ArtOfSimRally\\Dbce.TripleScreen.Core.dll",
+    "Mods\\ArtOfSimRally\\Info.json",
+    "artofrally_Data\\Managed\\UnityModManager\\Params.xml",
+    "Mods\\ArtOfSimRally\\Dbce.Wheel.Ffb.dll",
+    "doorstop_config.ini",
+    "Mods\\ArtOfSimRally\\Dbce.TripleScreen.Protocol.dll",
+    "artofrally_Data\\Managed\\UnityModManager\\Config.xml",
+    "artofrally_Data\\Managed\\UnityModManager\\UnityModManager.dll",
+    "artofrally_Data\\Plugins\\x86_64\\UnityForceFeedback.dll"
+  ],
+  "uninstall-exit-0": {
+    "ok": true,
+    "detail": "exit 0"
+  },
+  "uninstall-restores-pristine": {
+    "ok": true,
+    "detail": "added [] removed [] changed []"
+  },
+  "uninstallLeftovers": {
+    "added": [],
+    "removed": [],
+    "changed": []
+  },
+  "reinstall-exit-0": {
+    "ok": true,
+    "detail": "exit 0"
+  },
+  "reinstall-payload-matches": {
+    "ok": true,
+    "detail": ""
+  },
+  "rollback-to-0.4.3-exit-0": {
+    "ok": true,
+    "detail": "exit 0"
+  },
+  "rollback-payload-is-0.4.3": {
+    "ok": true,
+    "detail": ""
+  },
+  "rollback-removed-candidate-only-files": {
+    "ok": true,
+    "detail": "dbce_shim.dll matches the 0.4.3 payload set"
+  },
+  "forward-to-rc5-exit-0": {
+    "ok": true,
+    "detail": "exit 0"
+  },
+  "forward-payload-is-rc5": {
+    "ok": true,
+    "detail": ""
+  },
+  "failures": []
+}
