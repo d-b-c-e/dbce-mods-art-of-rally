@@ -166,8 +166,27 @@ internal static class TripleScreen
         var layout = EffectiveLayout.Resolve(Layout.Current, _settings);
         var panel = layout.Document?.Panel;
         var geometry = layout.Document?.Geometry;
+        // The seat-matched view (measured screens, real eye distance) is the default; anything else is an Advanced choice,
+        // offered back here in one press. Nothing is reset on load.
         if (mode != 0)
-            _settings.OverrideFieldOfView = w.ToggleRow("triple-override-fov", "Override field of view", null, _settings.OverrideFieldOfView, true);
+        {
+            var seat = MatchesSeat(_settings);
+            w.Help(seat ? "View: matched to your seat (your screen sizes and eye distance)."
+                : "View: not matched to your seat, so lines can bend at the screen edges.");
+            if (!seat && w.Command("triple-match-seat", "Match my seat")) MatchSeat(_settings);
+        }
+
+        if (_lastOutcome != null && mode != 0)
+            w.Help("Status: " + _lastOutcome.Diagnostic.Message);
+        if (w.Command("triple-advanced", (_showAdvanced ? "Hide" : "Show") + " advanced setup and diagnostics")) _showAdvanced = !_showAdvanced;
+        if (!_showAdvanced) return;
+
+        if (mode != 0)
+        {
+            w.Caption("Field of view");
+            _settings.OverrideFieldOfView = !w.ToggleRow("triple-game-fov", "Use the game's field of view",
+                "Wider, but not matched to your seat.", !_settings.OverrideFieldOfView, true);
+        }
         if (mode != 0 && !_settings.OverrideFieldOfView)
         {
             w.Help("Following the game's camera field of view on all three screens.");
@@ -190,12 +209,7 @@ internal static class TripleScreen
                 _settings.ViewWidthScale = ScaleForFov(layout, (float)proposed);
         }
         else if (mode != 0)
-            w.Help("Set up your screens in Advanced setup to enable field of view.");
-
-        if (_lastOutcome != null && mode != 0)
-            w.Help("Status: " + _lastOutcome.Diagnostic.Message);
-        if (w.Command("triple-advanced", (_showAdvanced ? "Hide" : "Show") + " advanced setup and diagnostics")) _showAdvanced = !_showAdvanced;
-        if (!_showAdvanced) return;
+            w.Help("Enter your screen measurements below to enable field of view.");
 
         w.Caption("Screen measurements");
         var imported = Layout.Current.IsSuccess;
@@ -219,7 +233,7 @@ internal static class TripleScreen
             _settings.EyeDistanceMm = FloatField(w, "triple-eye-distance", "Eye distance (mm)", _settings.EyeDistanceMm);
             _settings.LeftYawDegrees = FloatField(w, "triple-left-yaw", "Left screen angle (degrees)", _settings.LeftYawDegrees);
             _settings.RightYawDegrees = FloatField(w, "triple-right-yaw", "Right screen angle (degrees)", _settings.RightYawDegrees);
-            if (w.Command("triple-use-measurements", "Use these measurements")) _settings.ManualSetupConfirmed = true;
+            if (w.Command("triple-use-measurements", "Use these measurements")) { _settings.ManualSetupConfirmed = true; MatchSeat(_settings); }
             w.Help(_settings.ManualSetupConfirmed ? "Local setup active" : "Local setup not yet active");
         }
         if (mode == 2)
@@ -237,6 +251,15 @@ internal static class TripleScreen
         w.Help(layout.IsSuccess ? "Effective layout: " + layout.Sha256.Substring(0, 12) + "…"
             : "Setup: " + layout.ErrorMessage);
         w.Help(_renderDiagnostics.PresentationSummary);
+    }
+
+    // Seat-matched: the projection uses the measured eye distance unscaled (ProjectionController.ResolveViewWidthScale).
+    internal static bool MatchesSeat(Settings s) => s.OverrideFieldOfView && s.ViewWidthScale == 1f;
+
+    internal static void MatchSeat(Settings s)
+    {
+        s.OverrideFieldOfView = true;
+        s.ViewWidthScale = 1f;
     }
 
     private static double FovAtScale(LayoutLoadResult layout, double scale)
