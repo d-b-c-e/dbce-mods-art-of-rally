@@ -101,6 +101,9 @@ internal static class Program
         image.enabled = true; badge.enabled = false; text.text = "other player";
         PromptGlyphFallback.ShowNameWhenNoGlyph(new Rewired.Player(), wheel, action, ControllerButtonDisplay.AxisPolarity.NONE, image, text, badge, glyphs);
         Check(image.enabled && !badge.enabled && text.text == "other player", "other player's native prompt is not replaced by primary player's shared binding");
+        image.enabled = true; badge.enabled = true; text.text = "space";
+        PromptGlyphFallback.ShowNameWhenNoGlyph(PadManager.GetPlayer(), wheel, new Rewired.InputAction { id = 999 }, ControllerButtonDisplay.AxisPolarity.NONE, image, text, badge, glyphs);
+        Check(!image.enabled && badge.enabled && text.text == "space", "wheel with no binding for the action drops the stale sprite over the keyboard badge");
         var maps = PadManager.GetPlayer().controllers.maps.Items; maps.Add(native);
         image.enabled = true; badge.enabled = false; text.text = "pad";
         PromptGlyphFallback.ShowNameWhenNoGlyph(PadManager.GetPlayer(), gamepad, action, ControllerButtonDisplay.AxisPolarity.NONE, image, text, badge, glyphs);

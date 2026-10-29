@@ -44,7 +44,13 @@ namespace ArtOfSimRally.Mod
                 if (!owned)
                 {
                     var aem = Pick(p, controller, action, ___axisPolarity);
-                    if (aem == null) return;
+                    if (aem == null)
+                    {
+                        // Stock returns early too, leaving the prefab's gamepad sprite over the keyboard badge
+                        // ("next weather" before any key press); keep the badge, drop the stale sprite.
+                        if (___keyboardImage.enabled) ___displayImage.enabled = false;
+                        return;
+                    }
                     if (___controllerGlyphs != null && ___controllerGlyphs.GetGlyph(joystick.hardwareTypeGuid, aem.elementIdentifierId, aem.axisRange) != null) return;
                     label = GlyphFallback.Shorten(aem.elementIdentifierName);
                 }
