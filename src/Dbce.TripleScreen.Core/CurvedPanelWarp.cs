@@ -38,10 +38,7 @@ public sealed class CurvedPanelWarp
     {
         if (panel is null) throw new ArgumentNullException(nameof(panel));
         if (!Finite(eye)) throw new ArgumentException("The eye position must be finite.", nameof(eye));
-        if (double.IsNaN(radiusMm) || double.IsInfinity(radiusMm) || radiusMm < 0d)
-            throw new ArgumentOutOfRangeException(nameof(radiusMm), "Curve radius must be 0 (flat) or a positive number of millimeters.");
-        if (radiusMm > 0d && panel.Width > 2d * radiusMm)
-            throw new ArgumentOutOfRangeException(nameof(radiusMm), "Curve radius must be at least half the panel width.");
+        ValidateRadius(panel, radiusMm);
         if (Vector3d.Dot(eye - panel.LowerLeft, panel.NormalTowardViewer) <= 1e-9)
             throw new ArgumentException("The eye must be in front of the panel.", nameof(eye));
         if (radiusMm == 0d) return new CurvedPanelWarp(panel, eye, 0d, panel, 0d, 0d, panel.Width, panel.Height);
@@ -69,6 +66,7 @@ public sealed class CurvedPanelWarp
     public static Vector3d PanelPoint(DisplaySurface panel, double radiusMm, double u, double v)
     {
         if (panel is null) throw new ArgumentNullException(nameof(panel));
+        ValidateRadius(panel, radiusMm);
         if (double.IsNaN(u) || u < 0d || u > 1d) throw new ArgumentOutOfRangeException(nameof(u));
         if (double.IsNaN(v) || v < 0d || v > 1d) throw new ArgumentOutOfRangeException(nameof(v));
         var chord = panel.Width;
@@ -99,6 +97,14 @@ public sealed class CurvedPanelWarp
         var hit = eye + (ray * (Vector3d.Dot(panel.LowerLeft - eye, normal) / Vector3d.Dot(ray, normal)));
         x = Vector3d.Dot(hit - panel.LowerLeft, panel.Right);
         y = Vector3d.Dot(hit - panel.LowerLeft, panel.Up);
+    }
+
+    private static void ValidateRadius(DisplaySurface panel, double radiusMm)
+    {
+        if (double.IsNaN(radiusMm) || double.IsInfinity(radiusMm) || radiusMm < 0d)
+            throw new ArgumentOutOfRangeException(nameof(radiusMm), "Curve radius must be 0 (flat) or a positive number of millimeters.");
+        if (radiusMm > 0d && panel.Width > 2d * radiusMm)
+            throw new ArgumentOutOfRangeException(nameof(radiusMm), "Curve radius must be at least half the panel width.");
     }
 
     private static bool Finite(Vector3d p) =>

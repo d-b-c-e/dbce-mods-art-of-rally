@@ -590,6 +590,12 @@ internal static class Program
         var refused = false;
         try { CurvedPanelWarp.Create(surfaces[1], eye, 300d); } catch (ArgumentOutOfRangeException) { refused = true; }
         Check(refused, "radius below half the panel width is refused");
+        foreach (var bad in new[] { -1500d, 300d, double.NaN })
+        {
+            var threw = false;
+            try { CurvedPanelWarp.PanelPoint(surfaces[1], bad, 0.5d, 0.5d); } catch (ArgumentOutOfRangeException) { threw = true; }
+            Check(threw, "PanelPoint refuses radius " + bad);
+        }
     }
 
     private static void CurveFailureLatchesFlat()
