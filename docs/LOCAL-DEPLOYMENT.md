@@ -1,6 +1,22 @@
 # Local deployment
 
-## Current installation — 0.4.4-rc.3 (October 28, owner test)
+## Current installation — 0.4.4-rc.5 (October 28, owner test)
+
+Owner-requested deployment (guna GO 470430, after Wheelkit 0.6.58+0c670b7). rc.3 plus: opt-in
+curved-panel correction (CurveRadiusMm, 0 = flat), eye distance to the glass middle, local bezel
+gap (BezelGapMm), presenter-gated status, F7 session-only A/B (measured perspective / game FOV),
+and the `artCurvedTriples` Info.json marker for Wheelkit. Source `a2a99b4`, identity
+`0.4.4-rc.5+a2a99b4f5bd1e0cf7e9d8439c8d0fe9b56c35c81.clean`, ZIP
+`ArtOfSimRally-0.4.4-rc.5-shared-input.zip` SHA-256
+`EAB5D08DE1534219EC183A62EF5659B7B60EAC1CC113E7A2FF9C530A77EB481B`; installed
+`ArtOfSimRally.Mod.dll` `F7F0CDEC1BE3B1BA36667ED57D023A63086733B894D77B23AD8C5BF0A51668F7`.
+Installer test 70 passed; installed with the game closed under the rig lease; payload hashes
+match; Settings.xml, TripleScreen.xml and dbce-controls.ini byte-identical before/after. UMM
+Params unchanged by the install (CustomVehicles and TurtleVan were already enabled since the
+22:10 game exit). Backup of rc.3: `E:\Source\temp\art-0.4.4-rc.5\backup-installed-rc.3`.
+No game launch.
+
+## Previous installation — 0.4.4-rc.3 (October 28, owner test)
 
 0.4.4-rc.1 plus the KI-46 "next weather" prompt fix and the seat-matched view line/"Match my
 seat" on the Cameras page (game FOV moved to Advanced; saved settings not reset). Source
