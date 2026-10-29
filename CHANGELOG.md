@@ -7,6 +7,11 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed (0.4.4-rc.1, owner test)
+
+- F6 explains when a controller cannot be identified and suggests a restart.
+- The game window lands on the racing row of monitors.
+
 ## [0.4.3] - 2026-10-25
 
 ### Changed
