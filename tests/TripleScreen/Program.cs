@@ -30,6 +30,7 @@ internal static class Program
             MatrixMatchesFrustum();
             CurvedPanelsCoverAlongEyeRays();
             CurveFailureLatchesFlat();
+            F7SessionPolicyIsReversible();
             BadEyeSideIsRejected();
             CanonicalLayoutParsesStrictly();
             SeparateDisplayLayoutParsesWithoutWideOutput();
@@ -621,6 +622,28 @@ internal static class Program
         Check(latch.Resolve("b", Build) != null && latch.Builds == 2 && latch.Failure == null, "a changed rig retries");
         Check(latch.Resolve("c", () => throw new ArgumentOutOfRangeException("radiusMm")) == null && latch.Failure != null, "invalid geometry stays flat");
         Check(latch.Resolve("c", Build) == null && latch.Builds == 3, "invalid geometry is not retried every frame");
+    }
+
+    private static void F7SessionPolicyIsReversible()
+    {
+        const double game = 3.0007d, saved = 1.33168638d;
+        double Scale(bool? session, bool savedOverride) => ArtOfSimRally.Mod.Triple.FovPreference.ResolveScale(session, savedOverride, saved, () => game);
+        bool? Next(bool? session, bool savedOverride) => ArtOfSimRally.Mod.Triple.FovPreference.NextSessionGameFov(session, savedOverride);
+
+        // No session choice: the saved policy, including a custom slider.
+        Check(Scale(null, true) == saved && Scale(null, false) == game, "no F7 press keeps the saved policy");
+        // Saved game FOV: first F7 shows measured, exactly 1, then alternates.
+        bool? session = Next(null, false);
+        Check(session == false && Scale(session, false) == 1d, "first F7 from saved game FOV shows measured scale 1");
+        session = Next(session, false);
+        Check(session == true && Scale(session, false) == game, "second F7 shows game FOV");
+        session = Next(session, false);
+        Check(session == false && Scale(session, false) == 1d, "third F7 is measured again");
+        // Saved override with a custom slider (not the seat): first F7 shows game FOV, the next is measured at exactly 1.
+        session = Next(null, true);
+        Check(session == true && Scale(session, true) == game, "first F7 from saved custom scale shows game FOV");
+        session = Next(session, true);
+        Check(session == false && Scale(session, true) == 1d, "measured ignores the saved custom scale");
     }
 
     private static void Check(bool condition, string message)

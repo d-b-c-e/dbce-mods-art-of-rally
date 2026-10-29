@@ -493,11 +493,9 @@ internal sealed class ProjectionController
     private static double ResolveViewWidthScale(PanelDocument panel, GeometryDocument geometry,
         Camera camera, Settings settings)
     {
-        // F7 A/B: measured is the seat (scale 1), game follows the camera; null keeps the saved choice and slider.
-        if (TripleScreen.SessionGameFov == false) return 1d;
-        if (TripleScreen.SessionGameFov == null && settings.OverrideFieldOfView) return SafeViewWidthScale(settings.ViewWidthScale);
-        return FovPreference.ScaleForGameDegrees(panel.PhysicalHeightMm,
-            geometry.EyeDistanceMm, geometry.EyeHeightAbovePanelCenterMm, camera.fieldOfView);
+        return FovPreference.ResolveScale(TripleScreen.SessionGameFov, settings.OverrideFieldOfView,
+            SafeViewWidthScale(settings.ViewWidthScale), () => FovPreference.ScaleForGameDegrees(panel.PhysicalHeightMm,
+                geometry.EyeDistanceMm, geometry.EyeHeightAbovePanelCenterMm, camera.fieldOfView));
     }
 
     private string FovDescription(Settings settings, Camera camera) => TripleScreen.SessionGameFov == false ? "the measured perspective (F7, this session)"

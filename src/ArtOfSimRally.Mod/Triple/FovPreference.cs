@@ -11,6 +11,18 @@ internal static class FovPreference
     private const double MinimumGameScale = 0.1d;
     private const double MaximumGameScale = 10d;
 
+    // F7 A/B, this session only: null follows the saved choice. F7 always switches to the opposite of what shows now.
+    internal static bool NextSessionGameFov(bool? sessionGameFov, bool savedOverride) => !(sessionGameFov ?? !savedOverride);
+
+    // The view-width scale for the effective policy: measured is exactly 1 (the seat), game follows the camera, and with
+    // no session choice the saved override keeps its slider.
+    internal static double ResolveScale(bool? sessionGameFov, bool savedOverride, double savedScale, Func<double> gameScale)
+    {
+        if (sessionGameFov == false) return 1d;
+        if (sessionGameFov == null && savedOverride) return savedScale;
+        return gameScale();
+    }
+
     internal static double VerticalDegrees(double panelHeightMm, double eyeDistanceMm,
         double eyeHeightMm, double scale)
     {
