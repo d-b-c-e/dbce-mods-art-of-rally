@@ -23,7 +23,7 @@ param(
     # Self-test plumbing only.
     [string]$ThrowawayRoot,
     [string]$GameArgs,
-    [ValidateSet('', 'isolate', 'launch')][string]$FailAt = ''
+    [ValidateSet('', 'regdelete', 'isolate', 'launch', 'cleanup')][string]$FailAt = ''
 )
 $ErrorActionPreference = 'Stop'
 
@@ -40,9 +40,24 @@ function Invoke-Launch {
     # Preflight: nothing owner-side is changed before these pass.
     if (Get-Process artofrally -ErrorAction SilentlyContinue) { throw 'An art of rally process is already running.' }
     if (-not (Test-Path -LiteralPath $exe)) { throw "No game copy at $Copy." }
+    # The copy and the backup live only under disposable roots, through no junction or symlink, and the backup is
+    # never inside a state folder it will restore (or the installed game).
+    function Inside([string]$path, [string[]]$roots) {
+        $full = [IO.Path]::GetFullPath($path).TrimEnd('\') + '\'
+        foreach ($r in $roots) { if ($full.StartsWith([IO.Path]::GetFullPath($r).TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase)) { return $true } }
+        $false
+    }
+    $disposable = if ($throwaway) { @($env:TEMP) } else { @('E:\Source\_work', 'E:\Source\temp') }
+    if (-not (Inside $Copy $disposable)) { throw "The copy must be under $($disposable -join ' or ')." }
+    if (-not (Inside $StateDir $disposable)) { throw "The state directory must be under $($disposable -join ' or ')." }
+    Assert-NoReparse $Copy
+    Assert-NoReparse $StateDir
+    if (Inside $StateDir @($state.Folders.Values)) { throw 'The state directory is inside a state folder it would restore.' }
+    if (-not $throwaway -and ((Inside $Copy @($Installed)) -or (Inside $StateDir @($Installed)) -or (Inside $Installed @($Copy)))) {
+        throw 'The copy or state directory overlaps the installed game.'
+    }
     if (-not $throwaway) {
         if (-not $CloudProtection) { throw 'State -CloudProtection SteamExited or CloudDisabledForArt.' }
-        if ([IO.Path]::GetFullPath($Copy).TrimEnd('\') -ieq [IO.Path]::GetFullPath($Installed).TrimEnd('\')) { throw 'The copy is the installed game.' }
         if ($CloudProtection -eq 'SteamExited' -and (Get-Process steam -ErrorAction SilentlyContinue)) { throw 'Steam is running.' }
         # steam_appid.txt makes SteamAPI_RestartAppIfNecessary return false, so Steam does not start the installed
         # game instead; the process watch below proves it. Written into the copy only.
@@ -54,13 +69,15 @@ function Invoke-Launch {
     if ((Compare-State $state $StateDir).Count) { throw 'Saved state does not match the live state; nothing was changed.' }
     Note "state saved and verified: $StateDir"
 
-    $result = [ordered]@{ copy = $exe; cloudProtection = $CloudProtection; seenCopy = $false; exited = $false;
+    $result = [ordered]@{ copy = $exe; cloudProtection = $CloudProtection; seenCopy = $false; exited = $false; exitCode = $null;
         timedOut = $false; conflicts = @(); restorePending = $false; ownerStateRestored = $false; installedModUnchanged = $true }
     $isolated = $false
     $launched = $null
     try {
         $isolated = $true
-        & reg.exe delete $state.Key /f *> $null
+        if ($FailAt -ne 'regdelete') { & reg.exe delete $state.Key /f *> $null }
+        & reg.exe query $state.Key *> $null
+        if ($LASTEXITCODE -eq 0) { throw "The registry key is still present after delete: $($state.Key)" }
         if ($FailAt -eq 'isolate') { throw 'injected failure during isolation' }
         foreach ($folder in $state.Folders.Values) {
             Assert-SafeTarget $state $folder
@@ -70,6 +87,7 @@ function Invoke-Launch {
         $start = @{ FilePath = $exe; WorkingDirectory = $Copy; PassThru = $true }
         if ($GameArgs) { $start.ArgumentList = $GameArgs; $start.WindowStyle = 'Hidden' }
         $launched = Start-Process @start
+        $null = $launched.Handle  # keeps the handle so ExitCode is available after exit
         $launchedStart = $launched.StartTime
         Note "launched pid $($launched.Id)"
         if ($FailAt -eq 'launch') { throw 'injected failure after launch' }
@@ -101,10 +119,12 @@ function Invoke-Launch {
                 $other = Foreign
                 if ($other.Count) { Record $other; break }
             }
-            $result.exited = $result.conflicts.Count -eq 0
+            $result.exitCode = $launched.ExitCode
+            if ($result.exitCode -ne 0) { Note "copy exited with code $($result.exitCode)" }
+            $result.exited = $result.conflicts.Count -eq 0 -and $result.exitCode -eq 0
             break
         }
-        if (-not $result.exited -and $result.conflicts.Count -eq 0) { $result.timedOut = $true; Note 'time limit reached' }
+        if (-not $result.exited -and $result.conflicts.Count -eq 0 -and $null -eq $result.exitCode) { $result.timedOut = $true; Note 'time limit reached' }
         if (-not $throwaway) {
             $copyLog = Join-Path $state.Folders.locallow 'Player.log'
             if (Test-Path -LiteralPath $copyLog) { Copy-Item -LiteralPath $copyLog -Destination (Join-Path $StateDir 'copy-run-Player.log') }
@@ -114,9 +134,14 @@ function Invoke-Launch {
     }
     catch { Note "ERROR: $($_.Exception.Message)" }
     finally {
+        # Owned-process cleanup may fail; the restore below still runs, and it still refuses while any game runs.
         if ($launched) {
-            $launched.Refresh()
-            if (-not $launched.HasExited) { Note "stopping launched pid $($launched.Id)"; Stop-Process -Id $launched.Id -Force; $launched.WaitForExit(10000) | Out-Null }
+            try {
+                if ($FailAt -eq 'cleanup') { throw 'injected cleanup failure' }
+                $launched.Refresh()
+                if (-not $launched.HasExited) { Note "stopping launched pid $($launched.Id)"; Stop-Process -Id $launched.Id -Force; $launched.WaitForExit(10000) | Out-Null }
+            }
+            catch { Note "could not stop launched pid $($launched.Id): $($_.Exception.Message)" }
         }
         if ($isolated) {
             # Never restore under a running game: wait for any other art of rally process to close.
@@ -154,6 +179,7 @@ function Invoke-LaunchSelfTest {
     Copy-Item "$env:WINDIR\System32\PING.EXE" (Join-Path $copy 'artofrally.exe')
     Copy-Item "$env:WINDIR\System32\PING.EXE" (Join-Path $other 'artofrally.exe')
     $failed = [System.Collections.Generic.List[string]]::new()
+    $outside = Join-Path 'E:\Source\_work' ('art-launch-outside-' + [guid]::NewGuid().ToString('n'))
     function Scenario([string]$name, [int]$expectExit, [hashtable]$extra, [scriptblock]$during, [scriptblock]$check) {
         $root = Join-Path $base $name
         $state = New-ThrowawayState $root
@@ -181,11 +207,47 @@ function Invoke-LaunchSelfTest {
             Start-Sleep -Seconds 4
             Start-Process (Join-Path $other 'artofrally.exe') -ArgumentList '-n', '12', '127.0.0.1' -WindowStyle Hidden | Out-Null
         } { param($r) $r.conflicts.Count -ge 1 -and $r.ownerStateRestored -and -not $r.restorePending }
+        # 192.0.2.1 (TEST-NET) never answers, so ping runs ~2 s and exits 1: a crash after the copy was seen.
+        Scenario 'nonzero-exit' 1 @{ args = @('-GameArgs', '-n 3 -w 700 192.0.2.1') } $null { param($r) $r.seenCopy -and -not $r.exited -and $r.exitCode -ne 0 -and $r.ownerStateRestored }
+        Scenario 'key-not-deleted' 1 @{ args = @('-FailAt', 'regdelete', '-GameArgs', '-n 2 127.0.0.1') } $null { param($r) -not $r.seenCopy -and $r.ownerStateRestored -and ($r.log -match 'still present') }
+        # Cleanup throws while the timed-out copy still runs: the restore waits for it to close, then restores.
+        Scenario 'cleanup-throws' 1 @{ args = @('-FailAt', 'cleanup', '-MaxSeconds', '3', '-ConflictWaitSeconds', '60', '-GameArgs', '-n 10 127.0.0.1') } $null {
+            param($r) $r.timedOut -and $r.ownerStateRestored -and -not $r.restorePending -and ($r.log -match 'could not stop') }
+
+        # Preflight refusals: nothing is saved or changed.
+        function Refusal([string]$name, [string]$copyPath, [string]$stateDir) {
+            $root = Join-Path $base $name
+            $state = New-ThrowawayState $root
+            & reg.exe add $state.Key /v seeded /t REG_SZ /d $name /f *> $null
+            New-Item -ItemType Directory -Force $state.Folders.a | Out-Null
+            Set-Content (Join-Path $state.Folders.a 'save.txt') $name
+            if (-not $stateDir) { $stateDir = Join-Path $root 'saved' }
+            & pwsh -NoProfile -File $PSCommandPath -Copy $copyPath -StateDir $stateDir -ThrowawayRoot $root -GameArgs '-n 2 127.0.0.1' *> $null
+            $code = $LASTEXITCODE
+            & reg.exe query $state.Key /v seeded *> $null
+            $untouched = $LASTEXITCODE -eq 0 -and (Get-Content (Join-Path $state.Folders.a 'save.txt')) -eq $name -and
+                -not (Test-Path -LiteralPath (Join-Path $stateDir 'manifest.json'))
+            $ok = $code -ne 0 -and $untouched
+            Write-Host ("{0} {1} (exit {2}, untouched {3})" -f ($(if ($ok) { 'PASS' } else { 'FAIL' })), $name, $code, $untouched)
+            if (-not $ok) { $failed.Add($name) }
+            & reg.exe delete $state.Key /f *> $null
+        }
+        $alias = Join-Path $base 'copy-alias'
+        New-Item -ItemType Junction -Path $alias -Target $copy | Out-Null
+        Refusal 'refuse-copy-junction' $alias $null
+        Refusal 'refuse-statedir-in-state' $copy (Join-Path $base 'refuse-statedir-in-state\live\a\saved')
+        # A real stand-in outside the self-test's disposable root (%TEMP%), so only the bound can refuse it.
+        New-Item -ItemType Directory -Path $outside | Out-Null
+        Copy-Item "$env:WINDIR\System32\PING.EXE" (Join-Path $outside 'artofrally.exe')
+        Refusal 'refuse-copy-outside-roots' $outside $null
     }
     finally {
         Get-Process artofrally -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$base*" } | Stop-Process -Force
         Start-Sleep -Seconds 1
+        $alias = Join-Path $base 'copy-alias'
+        if (Test-Path -LiteralPath $alias) { (Get-Item -LiteralPath $alias -Force).Delete() }
         Remove-Item -LiteralPath $base -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $outside -Recurse -Force -ErrorAction SilentlyContinue
     }
     $failed
 }

@@ -26,14 +26,16 @@ is a recorded conflict that fails the run, never a process the launcher stops.
 unless the operator states `-CloudProtection SteamExited` (Steam fully closed) or `CloudDisabledForArt`
 (Steam Cloud switched off in art of rally's Steam properties for the run, then back on).
 
-## Tools (revised after lulu review 471339)
+## Tools (revised after lulu reviews 471339 and 471632)
 
 - `tools/testing/ArtUserState.ps1` — `-Save` (backup bytes verified against the live state before any
   change), `-Compare`, `-Restore` (backup verified first; targets must be the known state folders, and no
   path component may be a junction or symlink). `-SelfTest` on a throwaway key and folders under a new root
-  (an existing root is refused, never deleted): **11/11 PASS** — unchanged equal, backup verified, no
+  (an existing root is refused, never deleted): **15/15 PASS** — unchanged equal, backup verified, no
   overwrite of a backup, mutations detected, exact restore, tampered backup refused with live state
-  untouched, outside target refused, junction target and source refused, existing root refused.
+  untouched, a re-pinned export for another key refused, an export edited after save refused, a manifest
+  missing expected folders refused, outside target refused, junction target and source refused, existing
+  root refused. The registry export is pinned by SHA-256 and must start with this key's own section.
   Read-only owner snapshot (`-Save` then `-Compare`, no restore): equal, 32.8 MB, kept at
   `E:\Source\temp\art-phaseB\owner-state-20261029-a`.
 - `tools/testing/Start-CleanInstallLaunch.ps1` — preflight changes nothing; save and verify; every state
@@ -41,9 +43,13 @@ unless the operator states `-CloudProtection SteamExited` (Steam fully closed) o
   any other art of rally process to close before restoring (never kills it; reports `restorePending` with
   the restore command if it stays open), restores and compares. Success requires the copy seen at its own
   path, a clean exit, no conflict, no time-out, an exact restore and an unchanged installed mod.
-  `-SelfTest` (stand-in `artofrally.exe`, throwaway state): **5/5 PASS** — clean exit 0; failure after the
-  key was deleted, failure after launch, time limit, and a second process all exit 1 with state restored
-  exactly; the second process is reported, not stopped.
+  Preflight bounds the copy and backup to `E:\Source\_work`/`E:\Source\temp`, refuses junctions and a backup
+  inside a state folder or overlap with the installed game, and the registry delete is verified. A clean exit
+  needs exit code 0. Owned-process cleanup errors cannot skip the restore.
+  `-SelfTest` (stand-in `artofrally.exe`, throwaway state): **11/11 PASS** — clean exit 0; failure after the
+  key was deleted, failure after launch, time limit, second process (reported, not stopped), non-zero exit,
+  key not deleted, cleanup throwing while the copy runs all exit 1 with state restored exactly; copy through
+  a junction, backup inside a state folder and copy outside the disposable root are refused before any change.
 
 ## Run order (one guna slot, Rig-Lease held)
 

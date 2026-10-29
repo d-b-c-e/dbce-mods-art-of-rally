@@ -69,15 +69,20 @@ function Assert-SafeTarget($state, [string]$path) {
     $full = [IO.Path]::GetFullPath($path).TrimEnd('\')
     $allowed = @($state.Folders.Values | ForEach-Object { [IO.Path]::GetFullPath($_).TrimEnd('\') })
     if ($allowed -notcontains $full) { throw "Refusing restore target outside the known state folders: $full" }
-    $probe = $full
+    Assert-NoReparse $full
+}
+
+# No component of the path may be a junction or symlink (an alias could reach the owner's install or state).
+function Assert-NoReparse([string]$path) {
+    $probe = [IO.Path]::GetFullPath($path).TrimEnd('\')
     while ($probe) {
         if (Test-Path -LiteralPath $probe) {
             if ((Get-Item -LiteralPath $probe -Force).Attributes -band [IO.FileAttributes]::ReparsePoint) {
-                throw "Refusing restore through a junction or symlink: $probe"
+                throw "Refusing a path through a junction or symlink: $probe"
             }
         }
         $parent = Split-Path -Parent $probe
-        if ($parent -eq $probe) { break }
+        if (-not $parent -or $parent -eq $probe) { break }
         $probe = $parent
     }
 }
@@ -86,7 +91,8 @@ function Save-State($state, [string]$dir) {
     if (Test-Path -LiteralPath $dir) { throw "$dir already exists; never overwrite a saved state." }
     New-Item -ItemType Directory -Path $dir | Out-Null
     Export-Key $state.Key (Join-Path $dir 'key.reg')
-    $manifest = [ordered]@{ key = $state.Key; folders = [ordered]@{}; compareOnly = [ordered]@{} }
+    $manifest = [ordered]@{ key = $state.Key; keySha256 = (Get-FileHash -LiteralPath (Join-Path $dir 'key.reg') -Algorithm SHA256).Hash
+        folders = [ordered]@{}; compareOnly = [ordered]@{} }
     foreach ($name in $state.Folders.Keys) {
         $folder = $state.Folders[$name]
         Assert-SafeTarget $state $folder
@@ -112,14 +118,26 @@ function Test-Backup($state, [string]$dir) {
     $manifestFile = Join-Path $dir 'manifest.json'
     $keyFile = Join-Path $dir 'key.reg'
     if (-not (Test-Path -LiteralPath $manifestFile) -or -not (Test-Path -LiteralPath $keyFile)) { $diffs.Add('backup incomplete'); return $diffs }
-    $keyText = [IO.File]::ReadAllText($keyFile)
-    if ($keyText -ne 'ABSENT' -and -not $keyText.StartsWith('Windows Registry Editor')) { $diffs.Add('registry export unreadable') }
     $manifest = Get-Content -LiteralPath $manifestFile -Raw | ConvertFrom-Json
     if ($manifest.key -ne $state.Key) { $diffs.Add("backup is for $($manifest.key)") }
+    if ((Get-FileHash -LiteralPath $keyFile -Algorithm SHA256).Hash -ne $manifest.keySha256) { $diffs.Add('registry export changed since save') }
+    $keyText = [IO.File]::ReadAllText($keyFile)
+    if ($keyText -ne 'ABSENT') {
+        # The export's first section must be this key (reg export writes HKEY_CURRENT_USER for HKCU).
+        $header = '[' + ($state.Key -replace '^HKCU', 'HKEY_CURRENT_USER') + ']'
+        $first = $keyText -split "`r?`n" | Where-Object { $_.StartsWith('[') } | Select-Object -First 1
+        if (-not $keyText.StartsWith('Windows Registry Editor') -or $first -ne $header) { $diffs.Add('registry export is not for this key') }
+    }
+    $names = @($manifest.folders.PSObject.Properties | ForEach-Object Name)
+    foreach ($name in $state.Folders.Keys) { if ($names -notcontains $name) { $diffs.Add("backup lacks folder $name") } }
+    $compareNames = @($manifest.compareOnly.PSObject.Properties | ForEach-Object Name)
+    foreach ($name in $state.CompareOnly.Keys) { if ($compareNames -notcontains $name) { $diffs.Add("backup lacks compare entry $name") } }
     foreach ($entry in $manifest.folders.PSObject.Properties) {
         if (-not $state.Folders.Contains($entry.Name)) { $diffs.Add("unknown folder $($entry.Name)"); continue }
         if ([IO.Path]::GetFullPath($entry.Value.path) -ne [IO.Path]::GetFullPath($state.Folders[$entry.Name])) { $diffs.Add("path changed for $($entry.Name)") }
-        $saved = if ($entry.Value.present) { Tree-Hashes (Join-Path $dir $entry.Name) } else { [ordered]@{} }
+        $copy = Join-Path $dir $entry.Name
+        if ([bool]$entry.Value.present -ne (Test-Path -LiteralPath $copy)) { $diffs.Add("presence differs for $($entry.Name)") }
+        $saved = if ($entry.Value.present) { Tree-Hashes $copy } else { [ordered]@{} }
         foreach ($d in (Compare-Hashes (As-Map $entry.Value.hashes) $saved "backup $($entry.Name)")) { $diffs.Add($d) }
     }
     $diffs
@@ -211,6 +229,32 @@ function Invoke-SelfTest([string]$root) {
         Expect (Throws { Restore-State $state $broken }) 'tampered backup refused'
         Expect (Test-Path (Join-Path $live 'a\marker.txt')) 'refused restore left live state alone'
         Remove-Item (Join-Path $live 'a\marker.txt')
+
+        # A valid-looking registry export for another key is refused, even with its hash re-pinned.
+        $otherKey = Join-Path $root 'other-key'
+        Copy-Item -LiteralPath $saved -Destination $otherKey -Recurse
+        $keyCopy = Join-Path $otherKey 'key.reg'
+        [IO.File]::WriteAllText($keyCopy, [IO.File]::ReadAllText($keyCopy).Replace('DBCE-ArtUserStateSelfTest', 'DBCE-SomethingElse'), [Text.Encoding]::Unicode)
+        $m = Get-Content (Join-Path $otherKey 'manifest.json') -Raw | ConvertFrom-Json
+        $m.keySha256 = (Get-FileHash -LiteralPath $keyCopy -Algorithm SHA256).Hash
+        $m | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $otherKey 'manifest.json') -Encoding UTF8
+        Expect ((Test-Backup $state $otherKey).Count -gt 0) 'registry export for another key refused'
+        Expect (Throws { Restore-State $state $otherKey }) 'restore from another key''s export refused'
+
+        # A registry export edited after save (valid content, wrong hash) is refused.
+        $edited = Join-Path $root 'edited-key'
+        Copy-Item -LiteralPath $saved -Destination $edited -Recurse
+        $keyCopy = Join-Path $edited 'key.reg'
+        [IO.File]::WriteAllText($keyCopy, [IO.File]::ReadAllText($keyCopy).Replace('"keep"="one"', '"keep"="two"'), [Text.Encoding]::Unicode)
+        Expect ((Test-Backup $state $edited) -contains 'registry export changed since save') 'edited registry export refused'
+
+        # A manifest that drops the expected folders is refused.
+        $partial = Join-Path $root 'partial'
+        Copy-Item -LiteralPath $saved -Destination $partial -Recurse
+        $m = Get-Content (Join-Path $partial 'manifest.json') -Raw | ConvertFrom-Json
+        $m.folders = [pscustomobject]@{}
+        $m | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $partial 'manifest.json') -Encoding UTF8
+        Expect ((Test-Backup $state $partial).Count -ge 2) 'manifest missing expected folders refused'
 
         # A manifest pointing elsewhere is refused.
         $moved = Join-Path $root 'moved'
