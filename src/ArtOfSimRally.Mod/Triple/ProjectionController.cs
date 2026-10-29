@@ -164,11 +164,12 @@ internal sealed class ProjectionController
                         "The first three-view prototype requires exactly three native panel widths; disable driver bezel correction for this experiment.");
                 }
 
+                var warps = CurveWarps(surfaces, definition, settings);
                 var projections = new Matrix4x4[3];
                 var rotations = new Quaternion[3];
                 for (var index = 0; index < 3; index++)
                 {
-                    var view = CalculateView(surfaces[index], camera);
+                    var view = CalculateView(warps?[index].SourceSurface ?? surfaces[index], camera);
                     projections[index] = ToUnityProjection(view, camera);
                     if (index == 1)
                         CenterVerticalFovDegrees = (Math.Atan(view.Top / view.Near) - Math.Atan(view.Bottom / view.Near)) * 180d / Math.PI;
@@ -179,7 +180,7 @@ internal sealed class ProjectionController
                 }
 
                 EnsureSeparateDriver(camera);
-                _separateDriver.ConfigureSpan(layoutResult.Sha256, projections, rotations);
+                _separateDriver.ConfigureSpan(layoutResult.Sha256, projections, rotations, warps, panel.NativeWidthPx, panel.NativeHeightPx);
                 if (_separateDriver.RenderError != null)
                     return ProjectionOutcome.Error(layoutResult, "THREE_VIEW_RENDER_ERROR", _separateDriver.RenderError);
                 if (!_separateDriver.AllDisplaysRendered)
@@ -189,7 +190,7 @@ internal sealed class ProjectionController
                     layoutResult,
                     _separateDriver.LastThreeViewFrameUtc,
                     "THREE_VIEW_EXPERIMENTAL",
-                    $"Three camera viewports cover the wide display with {FovDescription(settings, camera)}. HUD routing, replay, and photo mode still need visual verification.");
+                    $"Three camera viewports cover the wide display with {FovDescription(settings, camera)}.{CurveDescription} HUD routing, replay, and photo mode still need visual verification.");
             }
 
             EnsureCenterDriver(camera);
@@ -347,11 +348,12 @@ internal sealed class ProjectionController
                 geometry.LeftYawDegrees, geometry.RightYawDegrees, geometry.EyeHeightAbovePanelCenterMm);
             var surfaces = TripleRigBuilder.Build(definition);
             ActiveViewWidthScale = viewWidthScale;
+            var warps = CurveWarps(surfaces, definition, settings);
             var projections = new Matrix4x4[3];
             var rotations = new Quaternion[3];
             for (var index = 0; index < 3; index++)
             {
-                var view = CalculateView(surfaces[index], camera);
+                var view = CalculateView(warps?[index].SourceSurface ?? surfaces[index], camera);
                 projections[index] = ToUnityProjection(view, camera);
                 if (index == 1)
                     CenterVerticalFovDegrees = (Math.Atan(view.Top / view.Near) - Math.Atan(view.Bottom / view.Near)) * 180d / Math.PI;
@@ -361,7 +363,8 @@ internal sealed class ProjectionController
             }
 
             EnsureSeparateDriver(camera);
-            _separateDriver.Configure(layoutResult.Sha256, projections, rotations, s_sideWitness.LeftIndex, s_sideWitness.RightIndex);
+            _separateDriver.Configure(layoutResult.Sha256, projections, rotations, s_sideWitness.LeftIndex, s_sideWitness.RightIndex,
+                warps, panel.NativeWidthPx, panel.NativeHeightPx);
             if (_separateDriver.RenderError != null)
                 return ProjectionOutcome.Error(layoutResult, "SEPARATE_DISPLAY_RENDER_ERROR", _separateDriver.RenderError);
             if (!_separateDriver.AllDisplaysRendered)
@@ -369,7 +372,7 @@ internal sealed class ProjectionController
                     "Three physical views are armed; waiting for all three cameras to finish a frame.");
             return ProjectionOutcome.SeparateViewActive(layoutResult, _separateDriver.LastThreeViewFrameUtc,
                 "SEPARATE_DISPLAYS_EXPERIMENTAL",
-                $"Three cameras target independent Unity displays with {FovDescription(settings, camera)}. Side post-processing, UI routing, FPS and scanout remain under test.");
+                $"Three cameras target independent Unity displays with {FovDescription(settings, camera)}.{CurveDescription} Side post-processing, UI routing, FPS and scanout remain under test.");
         }
         catch (Exception exception)
         {
@@ -415,6 +418,39 @@ internal sealed class ProjectionController
         _camera = camera;
         _separateDriver = camera.GetComponent<SeparateDisplayRenderDriver>();
         if (_separateDriver == null) _separateDriver = camera.gameObject.AddComponent<SeparateDisplayRenderDriver>();
+    }
+
+    // Curve correction is opt-in: radius 0 keeps the direct flat path. Warps are rebuilt only when the rig changes, and an
+    // invalid radius falls back to flat with the reason in the status.
+    private CurvedPanelWarp[] _warps;
+    private string _warpKey;
+    private string _curveNote;
+    private string CurveDescription => _curveNote != null ? " " + _curveNote : _warps != null ? " Curved screens are corrected." : "";
+
+    private CurvedPanelWarp[] CurveWarps(IReadOnlyList<DisplaySurface> surfaces, TripleRigDefinition definition, Settings settings)
+    {
+        var radius = settings.CurveRadiusMm;
+        if (!(radius > 0f))
+        {
+            _warps = null; _warpKey = null; _curveNote = null;
+            return null;
+        }
+        var key = string.Join("|", radius, definition.PanelWidthMm, definition.PanelHeightMm, definition.EyeDistanceMm,
+            definition.LeftAngleDegrees, definition.RightAngleDegrees, definition.EyeHeightAbovePanelCenterMm);
+        if (key == _warpKey) return _warps;
+        _warpKey = key;
+        try
+        {
+            if (!CurvedPanelPresenter.Available) throw new InvalidOperationException("Unity's copy shader is unavailable.");
+            _warps = surfaces.Select(s => CurvedPanelWarp.Create(s, new Vector3d(0d, 0d, 0d), radius)).ToArray();
+            _curveNote = null;
+        }
+        catch (Exception exception)
+        {
+            _warps = null;
+            _curveNote = "Curve correction is off: " + SafeMessage(exception.Message);
+        }
+        return _warps;
     }
 
     private static OffAxisProjection CalculateView(DisplaySurface surface, Camera camera)

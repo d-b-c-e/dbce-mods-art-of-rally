@@ -31,6 +31,9 @@ public sealed class Settings : UnityModManager.ModSettings
     // together; this is a visual preference, not a new physical measurement.
     public float ViewWidthScale = 1f;
 
+    // Monitor curve radius in millimeters (1500 for a 1500R panel); 0 is flat and keeps the direct render path.
+    public float CurveRadiusMm;
+
     // A mod-local rig works without Triple Screen Optimizer. The example values
     // are inert until the player explicitly accepts them in Advanced setup.
     public bool UseLocalLayout;

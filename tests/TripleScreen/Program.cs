@@ -28,6 +28,7 @@ internal static class Program
             GameFovPreservesAllThreeSeams();
             IndependentSideAnglesArePreserved();
             MatrixMatchesFrustum();
+            CurvedPanelsCoverAlongEyeRays();
             BadEyeSideIsRejected();
             CanonicalLayoutParsesStrictly();
             SeparateDisplayLayoutParsesWithoutWideOutput();
@@ -561,6 +562,33 @@ internal static class Program
         var threw = false;
         try { _ = new SideActivationWitness(0, 3, left, center, right); } catch (ArgumentException) { threw = true; }
         Check(threw, "index 0 (the primary) is never a side");
+    }
+
+    private static void CurvedPanelsCoverAlongEyeRays()
+    {
+        // Owner rig: 32-inch panels, 660 mm, 70 degree sides, 1500R. The vendored core must match the toolkit's.
+        var surfaces = TripleRigBuilder.Build(new TripleRigDefinition(708.417d, 398.484d, 660d, 70d, 70d, 0d));
+        var eye = new Vector3d(0d, 0d, 0d);
+        foreach (var surface in surfaces)
+        {
+            var flat = CurvedPanelWarp.Create(surface, eye, 0d);
+            flat.SourceUv(0.3d, 0.7d, out var fu, out var fv);
+            Check(ReferenceEquals(flat.SourceSurface, surface) && fu == 0.3d && fv == 0.7d, "radius 0 is the flat panel");
+            var warp = CurvedPanelWarp.Create(surface, eye, 1500d);
+            var source = warp.SourceSurface;
+            for (var i = 0; i <= 10; i++)
+            for (var j = 0; j <= 10; j++)
+            {
+                warp.SourceUv(i / 10d, j / 10d, out var u, out var v);
+                Check(u >= -1e-9 && u <= 1d + 1e-9 && v >= -1e-9 && v <= 1d + 1e-9, surface.Id + " curved pixel inside its source view");
+                var onSource = source.LowerLeft + ((source.LowerRight - source.LowerLeft) * u) + ((source.UpperLeft - source.LowerLeft) * v);
+                var onPanel = CurvedPanelWarp.PanelPoint(surface, 1500d, i / 10d, j / 10d);
+                Check(Vector3d.Cross(onSource.Normalized(), onPanel.Normalized()).Length < 1e-9, surface.Id + " source and panel on one eye ray");
+            }
+        }
+        var refused = false;
+        try { CurvedPanelWarp.Create(surfaces[1], eye, 300d); } catch (ArgumentOutOfRangeException) { refused = true; }
+        Check(refused, "radius below half the panel width is refused");
     }
 
     private static void Check(bool condition, string message)

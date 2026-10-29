@@ -236,6 +236,8 @@ internal static class TripleScreen
             if (w.Command("triple-use-measurements", "Use these measurements")) { _settings.ManualSetupConfirmed = true; MatchSeat(_settings); }
             w.Help(_settings.ManualSetupConfirmed ? "Local setup active" : "Local setup not yet active");
         }
+        if (mode != 0)
+            _settings.CurveRadiusMm = FloatField(w, "triple-curve-radius", "Screen curve radius (mm, 0 = flat)", _settings.CurveRadiusMm);
         if (mode == 2)
         {
             w.Help("Center must be Windows primary. Exit the game after changing display mode; activated displays release on exit.");

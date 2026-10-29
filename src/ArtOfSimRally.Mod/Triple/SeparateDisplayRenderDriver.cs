@@ -42,6 +42,13 @@ internal sealed class SeparateDisplayRenderDriver : MonoBehaviour
     private bool _configured;
     private bool _wasFocused;
     private int _raiseWindowsAfterFrame = -1;
+    // Curved panels: each view renders to a texture and a presenter per display redraws it along the eye rays.
+    private CurvedPanelWarp[] _warps;
+    private string _curveLayout;
+    private readonly RenderTexture[] _targets = new RenderTexture[3];
+    private readonly List<CurvedPanelPresenter> _presenters = new();
+    private RenderTexture _originalTargetTexture;
+    private bool Curved => _warps != null;
 
     internal long SuccessfulCenterFrames { get; private set; }
     internal DateTime LastCenterFrameUtc { get; private set; }
@@ -83,9 +90,11 @@ internal sealed class SeparateDisplayRenderDriver : MonoBehaviour
         if (_source == null) return;
         _originalRect = _source.rect;
         _originalTargetDisplay = _source.targetDisplay;
+        _originalTargetTexture = _source.targetTexture;
     }
 
-    internal void Configure(string layoutHash, Matrix4x4[] projections, Quaternion[] rotations, int leftDisplayIndex, int rightDisplayIndex)
+    internal void Configure(string layoutHash, Matrix4x4[] projections, Quaternion[] rotations, int leftDisplayIndex, int rightDisplayIndex,
+        CurvedPanelWarp[] warps = null, int panelWidthPx = 0, int panelHeightPx = 0)
     {
         if (_source == null) throw new InvalidOperationException("The gameplay camera is unavailable.");
         if (projections == null || projections.Length != 3 || rotations == null || rotations.Length != 3)
@@ -95,14 +104,82 @@ internal sealed class SeparateDisplayRenderDriver : MonoBehaviour
             throw new ArgumentOutOfRangeException(nameof(leftDisplayIndex), "Two distinct secondary Unity display indices are required.");
 
         ConfigureCore(layoutHash, projections, rotations, false, leftDisplayIndex, rightDisplayIndex);
+        ConfigureCurve(warps, panelWidthPx, panelHeightPx);
     }
 
-    internal void ConfigureSpan(string layoutHash, Matrix4x4[] projections, Quaternion[] rotations)
+    internal void ConfigureSpan(string layoutHash, Matrix4x4[] projections, Quaternion[] rotations,
+        CurvedPanelWarp[] warps = null, int panelWidthPx = 0, int panelHeightPx = 0)
     {
         if (_source == null) throw new InvalidOperationException("The gameplay camera is unavailable.");
         if (projections == null || projections.Length != 3 || rotations == null || rotations.Length != 3)
             throw new ArgumentException("Exactly three projections and rotations are required.");
         ConfigureCore(layoutHash, projections, rotations, true, 0, 0);
+        ConfigureCurve(warps, panelWidthPx, panelHeightPx);
+    }
+
+    private void ConfigureCurve(CurvedPanelWarp[] warps, int panelWidthPx, int panelHeightPx)
+    {
+        if (warps == null || panelWidthPx <= 0 || panelHeightPx <= 0)
+        {
+            ReleaseCurve();
+            return;
+        }
+        var layout = $"{_spanMode}|{_leftDisplayIndex}|{_rightDisplayIndex}|{panelWidthPx}x{panelHeightPx}";
+        if (ReferenceEquals(warps, _warps) && layout == _curveLayout)
+        {
+            foreach (var presenter in _presenters) presenter.Camera.enabled = true;
+            return;
+        }
+        ReleaseCurve();
+        _warps = warps;
+        _curveLayout = layout;
+        for (var index = 0; index < 3; index++)
+        {
+            var warp = warps[index];
+            // The source surface is the panel widened to cover the curve; keep its pixel density.
+            var width = Mathf.Clamp(Mathf.RoundToInt((float)(panelWidthPx * warp.SourceSurface.Width / warp.Panel.Width)), 1, panelWidthPx * 2);
+            var height = Mathf.Clamp(Mathf.RoundToInt((float)(panelHeightPx * warp.SourceSurface.Height / warp.Panel.Height)), 1, panelHeightPx * 2);
+            _targets[index] = new RenderTexture(width, height, 24, RenderTextureFormat.ARGB32)
+                { name = "DBCE Curved View " + index, hideFlags = HideFlags.DontSave };
+            _targets[index].Create();
+        }
+        var depth = _source.depth + 10f;
+        if (_spanMode)
+        {
+            var presenter = CurvedPanelPresenter.Create("DBCE Curved Presenter", transform, 0, depth);
+            for (var index = 0; index < 3; index++)
+                presenter.Add(_targets[index], new Rect(index / 3f, 0f, 1f / 3f, 1f), warps[index]);
+            _presenters.Add(presenter);
+        }
+        else
+        {
+            var displays = new[] { _leftDisplayIndex, 0, _rightDisplayIndex };
+            for (var index = 0; index < 3; index++)
+            {
+                var presenter = CurvedPanelPresenter.Create("DBCE Curved Presenter " + index, transform, displays[index], depth);
+                presenter.Add(_targets[index], new Rect(0f, 0f, 1f, 1f), warps[index]);
+                _presenters.Add(presenter);
+            }
+        }
+    }
+
+    private void ReleaseCurve()
+    {
+        _warps = null;
+        _curveLayout = null;
+        foreach (var presenter in _presenters)
+            if (presenter != null) Destroy(presenter.gameObject);
+        _presenters.Clear();
+        if (_source != null && _source.targetTexture != _originalTargetTexture) _source.targetTexture = _originalTargetTexture;
+        for (var index = 0; index < _sides.Length; index++)
+            if (_sides[index] != null) _sides[index].targetTexture = null;
+        for (var index = 0; index < _targets.Length; index++)
+        {
+            if (_targets[index] == null) continue;
+            _targets[index].Release();
+            Destroy(_targets[index]);
+            _targets[index] = null;
+        }
     }
 
     private void ConfigureCore(string layoutHash, Matrix4x4[] projections, Quaternion[] rotations,
@@ -163,6 +240,7 @@ internal sealed class SeparateDisplayRenderDriver : MonoBehaviour
         }
         _vegetationOriginalCulling.Clear();
         _lastVegetationScan = -1f;
+        ReleaseCurve();
         RestoreSource();
         for (var index = 0; index < _sides.Length; index++)
         {
@@ -313,9 +391,9 @@ internal sealed class SeparateDisplayRenderDriver : MonoBehaviour
                 // non-physical camera. A custom matrix remains authoritative
                 // when physical properties are enabled.
                 view.usePhysicalProperties = true;
-                view.targetTexture = null;
+                view.targetTexture = Curved ? _targets[index == 0 ? 0 : 2] : null;
                 view.targetDisplay = _spanMode ? 0 : index == 0 ? _leftDisplayIndex : _rightDisplayIndex;
-                view.rect = _spanMode ? SpanRect(index == 0 ? 0 : 2) : new Rect(0f, 0f, 1f, 1f);
+                view.rect = _spanMode && !Curved ? SpanRect(index == 0 ? 0 : 2) : new Rect(0f, 0f, 1f, 1f);
                 view.depth = _source.depth + index + 1f;
                 view.stereoTargetEye = StereoTargetEyeMask.None;
                 view.transform.position = _source.transform.position;
@@ -324,6 +402,7 @@ internal sealed class SeparateDisplayRenderDriver : MonoBehaviour
                 _sideFrames[index].Projection = _projections[index == 0 ? 0 : 2];
                 view.enabled = true;
             }
+            if (Curved) _source.targetTexture = _targets[1];
             if (focused && _raiseWindowsAfterFrame >= 0 && Time.frameCount >= _raiseWindowsAfterFrame)
             {
                 try { LastRaisedSideWindowCount = SideWindowFocusRestorer.Raise(); }
@@ -344,7 +423,7 @@ internal sealed class SeparateDisplayRenderDriver : MonoBehaviour
     {
         if (!_configured || _source == null) return;
         _source.targetDisplay = 0;
-        _source.rect = _spanMode ? SpanRect(1) : new Rect(0f, 0f, 1f, 1f);
+        _source.rect = _spanMode && !Curved ? SpanRect(1) : new Rect(0f, 0f, 1f, 1f);
         _source.projectionMatrix = _projections[1];
     }
 
@@ -371,6 +450,8 @@ internal sealed class SeparateDisplayRenderDriver : MonoBehaviour
         RestoreSource();
         for (var index = 0; index < _sides.Length; index++)
             if (_sides[index] != null) _sides[index].enabled = false;
+        foreach (var presenter in _presenters)
+            if (presenter != null) presenter.Camera.enabled = false;
     }
     private void OnDestroy() => Release();
 
@@ -378,6 +459,7 @@ internal sealed class SeparateDisplayRenderDriver : MonoBehaviour
     {
         if (_source == null) return;
         _source.targetDisplay = _originalTargetDisplay;
+        _source.targetTexture = _originalTargetTexture;
         _source.rect = _originalRect;
         _source.ResetProjectionMatrix();
     }
