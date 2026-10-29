@@ -1,6 +1,21 @@
 # Local deployment
 
-## Current installation — 0.4.4-rc.6 (October 29, owner test)
+## Current installation — 0.4.4-rc.7 (October 29, owner test)
+
+guna GO 476449, file-only. rc.6 plus: Surround keeps every full-span UI canvas on the middle screen
+(KI-52, "Keep menus and HUD on the middle screen"), the presenter grid from the shared
+`CurvedPanelWarp.SourceUvGrid` (toolkit 29c1f4d), and an opt-in curved-view luminance sample in
+render diagnostics (support logging only). Source `e41c62a`, identity
+`0.4.4-rc.7+e41c62aea328b8a2eaf3885b9cac9f23e34047c8.clean`, ZIP
+`ArtOfSimRally-0.4.4-rc.7-shared-input.zip` SHA-256
+`CF4A7AA000EFBFDB6E14699D9BB21A77B48085ECA0A1E5968865982C22EC166E`; installed
+`ArtOfSimRally.Mod.dll` `13B24EFBDEE6CF3670FD114250AAC103E5E7F135D3838C90D7150BC089FD1C67`.
+Installer test 70 passed; game closed, rig lease held and released; payload 9/9 hashes match;
+Settings.xml, TripleScreen.xml, dbce-controls.ini and UMM Params.xml byte-identical; no CurveRadiusMm
+key. Verified rollback copy of rc.6: `E:\Source	emprt-0.4.4-rc.7ackup-installed-rc.6`.
+No game launch.
+
+## Previous installation — 0.4.4-rc.6 (October 29, owner test)
 
 guna GO 471949 after lulu's final source review of b131565. rc.5 plus: stock chase views keep the
 game's framing (`ChaseUsesGameFov`, default on; bonnet/bumper measured) and F7/status use the same
