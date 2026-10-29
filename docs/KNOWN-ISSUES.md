@@ -21,6 +21,14 @@ Severity is about the effect on driving, not on how annoying it looks:
 
 ## Open
 
+### KI-53 — Bumper camera flickers subtly in evening light
+
+**Owner report 2026-10-28 on 0.4.4-rc.1, cosmetic.** In the bumper camera at the evening
+time of day there is a lot of subtle flashing, apparently tied to how the low sun meets the
+camera at certain angles. Not yet captured or diagnosed; candidates are sun/specular
+highlights or bloom at the low bumper height, and shadow-cascade or near-plane shimmer.
+Needs a short clip and the stage/car before any change. Bonnet camera not reported.
+
 ### KI-52 — Surround span: some UI and backgrounds use all three screens
 
 **Future improvement, owner report 2026-10-24 on 0.4.2; not a release blocker.** On a
@@ -166,6 +174,12 @@ keyboard badge stays as the keyboard left it. **Fix candidate (unreleased,
 `PromptGlyphFallback`, not yet seen in game):** with no artwork, the stale image
 is hidden and the badge shows the bound wheel element ("B12"), as `GlyphFallback`
 does on the controls screen. Severity: cosmetic.
+
+**Still seen 2026-10-28 on 0.4.4-rc.1 with the shared profile:** one screen first shows the
+PlayStation triangle over a "Space" badge instead of the wheel button. With shared input the
+wheel buttons are delivered by the shim, not bound in Rewired, so the fallback may have no
+wheel element to name. Which screen, and which action the prompt stands for, is not yet
+confirmed; do not assume it is Confirm.
 ### KI-44 — Open game bindings locks up the game again (0.4.0-rc.3)
 
 **Owner-reported 2026-10-04, blocking for that route; KI-42 regression.** In
