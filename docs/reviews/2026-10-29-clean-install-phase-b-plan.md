@@ -18,8 +18,8 @@ The game keeps state per Windows user, not per install folder, so a copy shares 
 **Steam relaunch (verified in source).** The game calls `SteamAPI.RestartAppIfNecessary(550320)` and quits
 when it returns true, so a copied exe started outside Steam would make Steam start the *installed* game.
 `steam_appid.txt` (550320) beside the copy's exe is Valve's documented developer path that makes it return
-false. The launcher also stops any `artofrally` process whose path is not the copy, including for 20 s after
-the copy exits.
+false. The launcher watches for any other `artofrally` process, including for 20 s after the copy exits; one
+is a recorded conflict that fails the run, never a process the launcher stops.
 
 **Steam Cloud risk — owner decision required.** A first run starts with no saves. If Steam syncs the
 `cloud` folder for that session, it could delete the owner's cloud saves. The launcher refuses to start
@@ -35,7 +35,7 @@ unless the operator states `-CloudProtection SteamExited` (Steam fully closed) o
   overwrite of a backup, mutations detected, exact restore, tampered backup refused with live state
   untouched, outside target refused, junction target and source refused, existing root refused.
   Read-only owner snapshot (`-Save` then `-Compare`, no restore): equal, 32.8 MB, kept at
-  `E:\Source	emprt-phaseB\owner-state-20261029-a`.
+  `E:\Source\temp\art-phaseB\owner-state-20261029-a`.
 - `tools/testing/Start-CleanInstallLaunch.ps1` — preflight changes nothing; save and verify; every state
   change, the launch and the watch run inside `try`, and `finally` stops only the launched PID, waits for
   any other art of rally process to close before restoring (never kills it; reports `restorePending` with
