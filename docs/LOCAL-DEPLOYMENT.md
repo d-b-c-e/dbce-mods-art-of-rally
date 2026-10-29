@@ -1,6 +1,18 @@
 # Local deployment
 
-## Current installation and public stable release — 0.4.2 (October 24)
+## Current installation — 0.4.4-rc.1 (October 28, owner test)
+
+Same source as the earlier 0.4.3-rc.1 install (Egon F6 controller copy and window landing,
+untested in game), relabelled so Wheelkit no longer reports published 0.4.3 as an update, and
+packaged with `-SharedInputCandidate` so the shared adapter and `dbce_shim.dll` are present
+(0.4.3-rc.1 lacked both, so Wheelkit's Apply Rig Profile refused). Source `efc89b4`, ZIP
+`ArtOfSimRally-0.4.4-rc.1-shared-input.zip` (SHA-256 starts `545835435A194F39`). Installer
+test 70 assertions passed; installed with the game closed under the rig lease; all payload
+hashes match the package; settings kept (`SharedInput` true). Backup of the replaced rc.1:
+`E:\Source\temp\art-0.4.4-rc.1\backup-installed-rc.1`; the pre-rc.1 backup stays at
+`E:\Source\temp\art-0.4.3-rc.1-backup\before`. No game launch.
+
+## Public stable release — 0.4.2 (October 24)
 
 [Public stable 0.4.2](https://github.com/d-b-c-e/dbce-mods-art-of-rally/releases/tag/v0.4.2)
 is the latest release, tag `v0.4.2` at clean `77ddd30276cfefe59f99fe211d3c561b2969cb70`,
