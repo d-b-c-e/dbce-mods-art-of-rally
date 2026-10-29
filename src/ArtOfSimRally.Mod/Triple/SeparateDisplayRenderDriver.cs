@@ -173,6 +173,45 @@ internal sealed class SeparateDisplayRenderDriver : MonoBehaviour
     /// <summary>Set when the last curved configuration could not run; the caller latches flat output.</summary>
     internal string CurveFailure { get; private set; }
 
+    /// <summary>
+    /// Opt-in evidence (support logging): mean luminance of each curved view texture, sampled through a 64x36
+    /// downscale, so a log tells black sources from a missing presenter draw. Null when flat; never throws.
+    /// </summary>
+    internal string SampleCurveLuminance()
+    {
+        if (!Curved) return null;
+        var previous = RenderTexture.active;
+        RenderTexture small = null;
+        Texture2D readback = null;
+        try
+        {
+            small = RenderTexture.GetTemporary(64, 36, 0, RenderTextureFormat.ARGB32);
+            readback = new Texture2D(64, 36, TextureFormat.RGBA32, false);
+            var parts = new string[_targets.Length];
+            for (var index = 0; index < _targets.Length; index++)
+            {
+                if (_targets[index] == null) { parts[index] = "missing"; continue; }
+                Graphics.Blit(_targets[index], small);
+                RenderTexture.active = small;
+                readback.ReadPixels(new Rect(0, 0, 64, 36), 0, 0, false);
+                var sum = 0d;
+                foreach (var pixel in readback.GetPixels32()) sum += (0.2126 * pixel.r) + (0.7152 * pixel.g) + (0.0722 * pixel.b);
+                parts[index] = (sum / (64 * 36 * 255d)).ToString("0.000", System.Globalization.CultureInfo.InvariantCulture);
+            }
+            return "left " + parts[0] + ", center " + parts[1] + ", right " + parts[2];
+        }
+        catch (Exception exception)
+        {
+            return "sample failed: " + exception.GetType().Name;
+        }
+        finally
+        {
+            RenderTexture.active = previous;
+            if (small != null) RenderTexture.ReleaseTemporary(small);
+            if (readback != null) Destroy(readback);
+        }
+    }
+
     private void FailCurve(string reason)
     {
         ReleaseCurve();

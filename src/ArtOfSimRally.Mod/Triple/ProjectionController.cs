@@ -52,6 +52,7 @@ internal sealed class ProjectionController
     internal int ExpandedVegetationSystems => _separateDriver?.ExpandedVegetationSystems ?? 0;
     internal int SideOcclusionCount => _separateDriver?.SideOcclusionCount ?? 0;
     internal int SideBeautifyCount => _separateDriver?.SideBeautifyCount ?? 0;
+    internal string SampleCurveLuminance() => _separateDriver?.SampleCurveLuminance();
     internal int SideVolumetricCount => _separateDriver?.SideVolumetricCount ?? 0;
     internal int LastRaisedSideWindowCount => _separateDriver?.LastRaisedSideWindowCount ?? 0;
     internal double ActiveViewWidthScale { get; private set; } = 1d;

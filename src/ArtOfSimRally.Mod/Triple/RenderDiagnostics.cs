@@ -18,6 +18,8 @@ internal sealed class RenderDiagnostics
     private string _lastPresentation;
     private string _lastObservedRow;
     private string _lastIdentity;
+    private string _lastCurveLuminance;
+    private int _curveLuminanceLines;
 
     internal string PresentationSummary { get; private set; } = "Waiting for presentation sample.";
 
@@ -66,6 +68,13 @@ internal sealed class RenderDiagnostics
         {
             _lastIdentity = identity.Summary;
             _logger.Log("Unity display identity (diagnostic only): " + identity.Summary);
+        }
+        // Opt-in GPU readback (presenter contract section 5): only with "Log detail for support".
+        var curveLuminance = Main.Settings?.DiagnosticLogging == true ? projection.SampleCurveLuminance() : null;
+        if (curveLuminance != null && curveLuminance != _lastCurveLuminance && _curveLuminanceLines++ < 30)   // about five minutes of log lines; the JSON keeps updating
+        {
+            _lastCurveLuminance = curveLuminance;
+            _logger.Log("Curved view luminance (0 black, 1 white): " + curveLuminance);
         }
         var camera = Camera.main;
         var postProcessing = camera == null ? null : camera.GetComponent<PostProcessLayer>();
@@ -117,6 +126,7 @@ internal sealed class RenderDiagnostics
             sourcePostProcessVolumeLayer = postProcessing == null ? (int?)null : postProcessing.volumeLayer.value,
             centerProjectionVerticalFovDegrees = projection.CenterVerticalFovDegrees,
             activeViewWidthScale = projection.ActiveViewWidthScale,
+            curveLuminance,
             successfulWideFrames = projection.SuccessfulWideFrames,
             lastSuccessfulWideFrameUtc = projection.LastSuccessfulWideFrameUtc?.ToString("O"),
             separateDisplaysRenderedRecently = projection.SeparateDisplaysRendered,
