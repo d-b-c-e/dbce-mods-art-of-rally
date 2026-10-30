@@ -401,8 +401,24 @@ internal sealed class ProjectionController
     // Bezel gap and curve come only from the local measurements (set in Advanced setup or by Wheelkit), so an imported
     // layout renders as before. The eye distance is to the glass middle; a curved rig places the chord one sagitta
     // closer (toolkit TripleRigDefinition). An unusable curve keeps the flat rig and is reported by ConfigureViews.
-    private static double RequestedCurve(Settings settings) =>
+    private static double SavedCurve(Settings settings) =>
         settings.UseLocalLayout && settings.CurveRadiusMm > 0f && !float.IsInfinity(settings.CurveRadiusMm) ? settings.CurveRadiusMm : 0d;
+
+    // The F7 "Angle correction" step keeps the angled views and drops only the warp.
+    private static double RequestedCurve(Settings settings) =>
+        TripleScreen.SessionStep == ComparisonStep.Angle ? 0d : SavedCurve(settings);
+
+    internal bool CurveActive => _curve.Warps != null && _curve.Failure == null;
+    internal string CurveFailure => _curve.Failure;
+    internal static bool CurveAvailable(Settings settings) => SavedCurve(settings) > 0d && CurvedPanelPresenter.Available;
+
+    /// <summary>The gameplay stage camera is live (menus, maps and cinematics are not).</summary>
+    internal static bool InStage()
+    {
+        var camera = Camera.main;
+        var rig = camera == null || camera.transform.parent == null ? null : camera.transform.parent.GetComponent<CarCameras>();
+        return rig != null && camera.name == "Camera Main";
+    }
 
     private static TripleRigDefinition Rig(PanelDocument panel, GeometryDocument geometry, double viewWidthScale, Settings settings)
     {
@@ -501,7 +517,7 @@ internal sealed class ProjectionController
         var rig = camera.transform.parent != null ? camera.transform.parent.GetComponent<CarCameras>() : null;
         var chase = rig != null && BonnetCamera.ActiveView(rig) == BonnetCamera.View.None;
         LastChaseView = chase;
-        return FovPreference.ResolveScale(TripleScreen.SessionGameFov, settings.OverrideFieldOfView,
+        return FovPreference.ResolveScale(settings.OverrideFieldOfView,
             SafeViewWidthScale(settings.ViewWidthScale), () => FovPreference.ScaleForGameDegrees(panel.PhysicalHeightMm,
                 geometry.EyeDistanceMm, geometry.EyeHeightAbovePanelCenterMm, camera.fieldOfView),
             chase, settings.ChaseUsesGameFov);
@@ -509,11 +525,9 @@ internal sealed class ProjectionController
 
     private string FovDescription(Settings settings, Camera camera)
     {
-        var session = TripleScreen.SessionGameFov.HasValue ? " (F7, this session)" : "";
-        if (FovPreference.ShowsGameFov(TripleScreen.SessionGameFov, settings.OverrideFieldOfView, LastChaseView, settings.ChaseUsesGameFov))
-            return $"the game's {camera.fieldOfView:0}° camera FOV across all views" + session +
-                (session.Length == 0 && settings.OverrideFieldOfView ? " (chase view)" : "");
-        if (TripleScreen.SessionGameFov == false) return "the measured perspective" + session;
+        if (FovPreference.ShowsGameFov(settings.OverrideFieldOfView, LastChaseView, settings.ChaseUsesGameFov))
+            return $"the game's {camera.fieldOfView:0}° camera FOV across all views" + (settings.OverrideFieldOfView ? " (chase view)" : "");
+        if (TripleScreen.MatchesSeat(settings)) return "the measured perspective";
         return $"custom {CenterVerticalFovDegrees:0}° center FOV";
     }
 

@@ -9,6 +9,7 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed (source, not yet packaged)
 
+- F7 is now a comparison of the screen correction, not of the field of view: Original game view → Angle correction → Angle + curve correction (the curve step only when a curve is set and working). Your saved framing (game or measured field of view) stays the same throughout. A centered label shows the mode, the framing, the step and "Not saved" for 2.5 s; in menus F7 says the comparison is available while driving. A curve that cannot be drawn reports the fallback. Nothing is saved; changing the view settings ends the comparison.
 - Triple screens: the game's field of view is now the default framing for every camera (owner decision). The measured perspective is opt-in with one press ("Use measured perspective"), and "Use the game's field of view" switches back. F7 still compares the two and names the mode on screen. "Use these measurements" no longer switches the view. Saved settings keep their choice.
 - Surround span: "Keep menus and HUD on the middle screen" (was "Center title and main menu") now keeps every full-span UI canvas, including backgrounds and the driving HUD, on the middle screen (KI-52).
 

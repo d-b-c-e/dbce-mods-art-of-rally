@@ -11,26 +11,17 @@ internal static class FovPreference
     private const double MinimumGameScale = 0.1d;
     private const double MaximumGameScale = 10d;
 
-    // Whether the game's field of view is what shows now: the same precedence as ResolveScale (F7, then the chase
-    // policy, then the saved choice; a saved custom slider counts as not-game).
-    internal static bool ShowsGameFov(bool? sessionGameFov, bool savedOverride, bool chaseView = false, bool chaseUsesGameFov = false) =>
-        sessionGameFov ?? ((chaseView && chaseUsesGameFov) || !savedOverride);
+    // Whether the game's field of view frames the views: the same precedence as ResolveScale (the chase policy, then the
+    // saved choice; a saved custom slider counts as not-game). Framing is never changed by F7.
+    internal static bool ShowsGameFov(bool savedOverride, bool chaseView = false, bool chaseUsesGameFov = false) =>
+        (chaseView && chaseUsesGameFov) || !savedOverride;
 
-    // F7 A/B, this session only: null follows the saved choice. F7 always switches to the opposite of what shows now.
-    internal static bool NextSessionGameFov(bool? sessionGameFov, bool savedOverride, bool chaseView = false, bool chaseUsesGameFov = false) =>
-        !ShowsGameFov(sessionGameFov, savedOverride, chaseView, chaseUsesGameFov);
-
-    // The view-width scale for the effective policy: measured is exactly 1 (the seat), game follows the camera, and with
-    // no session choice the saved override keeps its slider. Without an F7 choice, a stock chase view keeps the game's
-    // framing when chaseUsesGameFov is on (mounted bonnet/bumper views stay measured); one scale feeds all three panels.
-    internal static double ResolveScale(bool? sessionGameFov, bool savedOverride, double savedScale, Func<double> gameScale,
-        bool chaseView = false, bool chaseUsesGameFov = false)
-    {
-        if (sessionGameFov == false) return 1d;
-        if (sessionGameFov == true) return gameScale();
-        if (chaseView && chaseUsesGameFov) return gameScale();
-        return savedOverride ? savedScale : gameScale();
-    }
+    // The view-width scale for the saved framing: game follows the camera, the saved override keeps its slider (1 is the
+    // measured seat), and a stock chase view keeps the game's framing when chaseUsesGameFov is on. One scale feeds all
+    // three panels and the curve warp.
+    internal static double ResolveScale(bool savedOverride, double savedScale, Func<double> gameScale,
+        bool chaseView = false, bool chaseUsesGameFov = false) =>
+        ShowsGameFov(savedOverride, chaseView, chaseUsesGameFov) ? gameScale() : savedScale;
 
     internal static double VerticalDegrees(double panelHeightMm, double eyeDistanceMm,
         double eyeHeightMm, double scale)

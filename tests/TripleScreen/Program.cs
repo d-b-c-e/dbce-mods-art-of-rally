@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System;
 using System.IO;
 using System.Linq;
@@ -627,43 +628,36 @@ internal static class Program
     private static void F7SessionPolicyIsReversible()
     {
         const double game = 3.0007d, saved = 1.33168638d;
-        double Scale(bool? session, bool savedOverride) => ArtOfSimRally.Mod.Triple.FovPreference.ResolveScale(session, savedOverride, saved, () => game);
-        bool? Next(bool? session, bool savedOverride) => ArtOfSimRally.Mod.Triple.FovPreference.NextSessionGameFov(session, savedOverride);
+        double Scale(bool savedOverride, bool chase = false, bool chaseGame = true) =>
+            ArtOfSimRally.Mod.Triple.FovPreference.ResolveScale(savedOverride, savedOverride ? saved : 1d, () => game, chase, chaseGame);
 
-        // No session choice: the saved policy, including a custom slider.
-        Check(Scale(null, true) == saved && Scale(null, false) == game, "no F7 press keeps the saved policy");
-        // Saved game FOV: first F7 shows measured, exactly 1, then alternates.
-        bool? session = Next(null, false);
-        Check(session == false && Scale(session, false) == 1d, "first F7 from saved game FOV shows measured scale 1");
-        session = Next(session, false);
-        Check(session == true && Scale(session, false) == game, "second F7 shows game FOV");
-        session = Next(session, false);
-        Check(session == false && Scale(session, false) == 1d, "third F7 is measured again");
-        // Saved override with a custom slider (not the seat): first F7 shows game FOV, the next is measured at exactly 1.
-        session = Next(null, true);
-        Check(session == true && Scale(session, true) == game, "first F7 from saved custom scale shows game FOV");
-        session = Next(session, true);
-        Check(session == false && Scale(session, true) == 1d, "measured ignores the saved custom scale");
-        // Chase views keep the game's framing without an F7 choice; mounted views keep the saved policy; F7 wins.
-        double Chase(bool? s, bool savedOverride, bool chase, bool chaseGame) =>
-            ArtOfSimRally.Mod.Triple.FovPreference.ResolveScale(s, savedOverride, 1d, () => game, chase, chaseGame);
-        Check(Chase(null, true, true, true) == game, "chase view keeps the game's framing by default");
-        Check(Chase(null, true, false, true) == 1d, "mounted view stays measured");
-        Check(Chase(null, true, true, false) == 1d, "chase exemption off keeps the measured view");
-        Check(Chase(false, true, true, true) == 1d && Chase(true, true, false, true) == game, "F7 overrides the chase policy");
-        // F7 from the default policy always changes what is shown: chase (game) -> measured, mounted (measured) -> game.
-        bool? Press(bool? s, bool chase) => ArtOfSimRally.Mod.Triple.FovPreference.NextSessionGameFov(s, true, chase, true);
-        double Shown(bool? s, bool chase) => Chase(s, true, chase, true);
-        bool? chaseSession = Press(null, true);
-        Check(Shown(null, true) == game && chaseSession == false && Shown(chaseSession, true) == 1d, "first F7 in a chase view shows measured");
-        chaseSession = Press(chaseSession, true);
-        Check(chaseSession == true && Shown(chaseSession, true) == game, "second F7 in a chase view shows game");
-        chaseSession = Press(chaseSession, true);
-        Check(chaseSession == false && Shown(chaseSession, true) == 1d, "third F7 in a chase view is measured again");
-        bool? mountedSession = Press(null, false);
-        Check(Shown(null, false) == 1d && mountedSession == true && Shown(mountedSession, false) == game, "first F7 in a mounted view shows game");
-        mountedSession = Press(mountedSession, false);
-        Check(mountedSession == false && Shown(mountedSession, false) == 1d, "second F7 in a mounted view is measured");
+        // Framing follows the saved choice only (camera framing policy rev 2): F7 never switches it.
+        Check(Scale(false) == game && Scale(false, chase: true) == game, "saved game framing follows the game in every view");
+        Check(Scale(true) == saved, "saved measured/custom framing keeps its scale in mounted views");
+        Check(Scale(true, chase: true) == game && Scale(true, chase: true, chaseGame: false) == saved, "chase keeps game framing unless turned off");
+
+        // The comparison cycle changes only the scene correction.
+        var cycle = new List<ArtOfSimRally.Mod.Triple.ComparisonStep>();
+        ArtOfSimRally.Mod.Triple.ComparisonStep? session = null;
+        for (var press = 0; press < 4; press++)
+        {
+            session = ArtOfSimRally.Mod.Triple.F7Comparison.Next(ArtOfSimRally.Mod.Triple.F7Comparison.Current(session, curveActive: true), curveAvailable: true);
+            cycle.Add(session.Value);
+        }
+        Check(string.Join(",", cycle) == "Original,Angle,AngleCurve,Original", "curved: F7 cycles from the current curved view to original, angle, angle + curve");
+        session = null; cycle.Clear();
+        for (var press = 0; press < 3; press++)
+        {
+            session = ArtOfSimRally.Mod.Triple.F7Comparison.Next(ArtOfSimRally.Mod.Triple.F7Comparison.Current(session, curveActive: false), curveAvailable: false);
+            cycle.Add(session.Value);
+        }
+        Check(string.Join(",", cycle) == "Original,Angle,Original", "flat: the curve step is never offered");
+        Check(ArtOfSimRally.Mod.Triple.F7Comparison.Label(ArtOfSimRally.Mod.Triple.ComparisonStep.AngleCurve, false, true) ==
+            "Angle + curve correction · Game FOV · 3/3 · Not saved", "label names mode, framing, step and Not saved");
+        Check(ArtOfSimRally.Mod.Triple.F7Comparison.Label(ArtOfSimRally.Mod.Triple.ComparisonStep.Angle, true, false) ==
+            "Angle correction · Measured FOV · 2/2 · Not saved", "measured framing is named");
+        Check(ArtOfSimRally.Mod.Triple.F7Comparison.Label(ArtOfSimRally.Mod.Triple.ComparisonStep.Original, true, true) ==
+            "Original game view · 1/3 · Not saved", "original view carries no framing");
     }
 
     private static void Check(bool condition, string message)

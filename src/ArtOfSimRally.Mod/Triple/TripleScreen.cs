@@ -101,30 +101,56 @@ internal static class TripleScreen
         modEntry.Logger.Log("Triple screens: migrated " + Path.GetFileName(from) + " from " + Path.GetDirectoryName(from) + ".");
     }
 
-    // F7 A/B (this session only, never saved): null follows the saved choice; true shows the game's field of view,
-    // false the measured perspective for the seat. Both use the same rig for projection and curve warp.
-    internal static bool? SessionGameFov;
+    // F7 comparison (this session only, never saved): null follows the saved choice. Steps change the scene correction
+    // (original / angle / angle + curve); the saved framing stays. A saved framing or output change ends the session step.
+    internal static ComparisonStep? SessionStep;
+    private static string _sessionKey;
     private static string _notice;
     private static float _noticeUntil;
     private static GUIStyle _noticeStyle;
 
-    private static void ToggleSessionView()
+    private static string SessionKey() => string.Join("|", _settings.OverrideFieldOfView, _settings.ViewWidthScale,
+        _settings.ChaseUsesGameFov, _settings.CurveRadiusMm, _settings.EnableThreeViewPrototype, _settings.EnableSeparateDisplayPrototype);
+
+    private static void Notify(string text)
     {
-        SessionGameFov = FovPreference.NextSessionGameFov(SessionGameFov, _settings.OverrideFieldOfView,
-            ProjectionController.LastChaseView, _settings.ChaseUsesGameFov);
-        _notice = SessionGameFov.Value ? "Game field of view (F7)" : "Measured perspective (F7)";
+        _notice = text;
         _noticeUntil = Time.unscaledTime + 2.5f;
     }
 
-    /// <summary>The brief F7 label, top center of the center screen.</summary>
+    private static void ToggleSessionView()
+    {
+        if (!ProjectionController.InStage()) { Notify("Comparison available while driving"); return; }
+        var curveAvailable = ProjectionController.CurveAvailable(_settings);
+        SessionStep = F7Comparison.Next(F7Comparison.Current(SessionStep, Projection.CurveActive), curveAvailable);
+        _sessionKey = SessionKey();
+        var measured = !FovPreference.ShowsGameFov(_settings.OverrideFieldOfView, ProjectionController.LastChaseView, _settings.ChaseUsesGameFov);
+        Notify(F7Comparison.Label(SessionStep.Value, measured, curveAvailable));
+        var eye = EffectiveLayout.Resolve(Layout.Current, _settings).Document?.Geometry?.EyeDistanceMm / Projection.ActiveViewWidthScale;
+        _modEntry.Logger.Log("F7 comparison: " + _notice + "; camera " + (ProjectionController.LastChaseView ? "chase" : "mounted") +
+            ", framing " + (measured ? "measured" : "game") + ", effective eye " + (eye.HasValue ? eye.Value.ToString("0") + " mm" : "unknown") +
+            ", radius " + (curveAvailable ? _settings.CurveRadiusMm.ToString("0") + " mm" : "none") + ".");
+    }
+
+    // A requested curve that falls back reports the actual view once.
+    private static void ReportCurveFallback()
+    {
+        if (SessionStep != ComparisonStep.AngleCurve || Projection.CurveFailure == null) return;
+        SessionStep = ComparisonStep.Angle;
+        Notify("Angle correction (curve unavailable: " + Projection.CurveFailure + ") · Not saved");
+        _modEntry.Logger.Warning("F7 comparison: curve fell back to flat: " + Projection.CurveFailure);
+    }
+
+    /// <summary>The brief F7 label, centered on the center screen over a dark band.</summary>
     internal static void DrawNotice()
     {
         if (_notice == null || Time.unscaledTime > _noticeUntil || Event.current == null || Event.current.type != EventType.Repaint) return;
-        if (_noticeStyle == null) _noticeStyle = new GUIStyle(GUI.skin.label) { fontSize = Mathf.Max(18, Screen.height / 40), alignment = TextAnchor.UpperCenter };
+        if (_noticeStyle == null) _noticeStyle = new GUIStyle(GUI.skin.label) { fontSize = Mathf.Max(18, Screen.height / 40), alignment = TextAnchor.MiddleCenter };
         var center = Screen.width / 2f; // middle of a span is the center screen
-        var rect = new Rect(center - 400f, 40f, 800f, 80f);
+        var height = _noticeStyle.fontSize * 2.4f;
+        var rect = new Rect(center - 520f, (Screen.height - height) / 2f, 1040f, height);
         var old = GUI.color;
-        GUI.color = Color.black; GUI.Label(new Rect(rect.x + 2, rect.y + 2, rect.width, rect.height), _notice, _noticeStyle);
+        GUI.color = new Color(0f, 0f, 0f, 0.65f); GUI.DrawTexture(rect, Texture2D.whiteTexture);
         GUI.color = Color.white; GUI.Label(rect, _notice, _noticeStyle);
         GUI.color = old;
     }
@@ -157,8 +183,18 @@ internal static class TripleScreen
             }
             else
             {
+                if (SessionStep.HasValue && _sessionKey != SessionKey()) SessionStep = null;
                 Projection.LandingOwnsOutputResize = Landing.BlocksOutputResize;
-                outcome = Projection.Update(layout, _settings);
+                if (SessionStep == ComparisonStep.Original)
+                {
+                    Projection.Release();
+                    outcome = ProjectionOutcome.Inactive(layout, "F7_ORIGINAL_VIEW", "Original game view (F7 comparison, this session); stock rendering.");
+                }
+                else
+                {
+                    outcome = Projection.Update(layout, _settings);
+                    ReportCurveFallback();
+                }
             }
             _lastOutcome = outcome;
             _status.Publish(outcome, Application.version);
@@ -206,9 +242,10 @@ internal static class TripleScreen
                 : seat ? "View: measured perspective from your seat" +
                     (_settings.ChaseUsesGameFov ? " in bonnet and bumper views; chase views keep the game's framing." : ".")
                 : "View: widened measured perspective (Advanced).");
-            if (SessionGameFov.HasValue)
-                w.Help("F7 is showing the " + (SessionGameFov.Value ? "game's field of view" : "measured perspective") +
-                    " until the game restarts or you press F7 again; nothing is saved.");
+            if (SessionStep.HasValue)
+                w.Help("F7 comparison is showing: " + (SessionStep == ComparisonStep.Original ? "original game view"
+                    : SessionStep == ComparisonStep.Angle ? "angle correction" : "angle + curve correction") +
+                    ", until the game restarts or you press F7 again; nothing is saved.");
             if (!seat && w.Command("triple-match-seat", "Use measured perspective")) MatchSeat(_settings);
             if (_settings.OverrideFieldOfView && w.Command("triple-game-view", "Use the game's field of view"))
                 _settings.OverrideFieldOfView = false;
