@@ -39,24 +39,27 @@ third-party binaries, nothing that would force the repo private.
 | `docs/DEVELOPMENT-CAPTURE.md` | Separate probe schema, motion/contact units, standalone analysis and interpretation limits. |
 | `docs/` | FINDINGS, FORCE-FEEDBACK, TELEMETRY, CONTROLS, CAMERA, ROADMAP, RELEASING |
 
-## Status (2026-10-27) — pinned, paused at 0.4.3
+## Status (2026-10-29) — paused, 0.4.4-rc.7 installed for owner test
 
-Project paused by the owner with **0.4.3** (2026-10-25) as the shipped, installed and
-fully owner-signed-off baseline. Main is the only branch; all earlier agent branches are
-kept as `archive/*` tags. CustomVehicles is installed but disabled in UMM; TurtleVan and
-DevRecorder are disabled.
+Public baseline stays **0.4.3** (GitHub release). Installed on the rig: **0.4.4-rc.7** (source `e41c62a`,
+ZIP SHA-256 `CF4A7AA0…166E`, Mod.dll `13B24EFB…1C67`; details and rollback copy of rc.6 in
+`docs/LOCAL-DEPLOYMENT.md`). Main is pushed; no tag or release for 0.4.4 yet.
 
-**Local evidence was cleared on 2026-10-27.** The ignored `results/`, `artifacts/`,
-`dist/` and experiment `artifacts/`/`dist/` folders were deleted by mistake and the
-owner chose a clean slate. Tracked review docs keep the summaries and hashes, but
-paths they cite under `results/` or `artifacts/` no longer exist locally. Published
-ZIPs are on GitHub Releases. `lib/umm` was restored from the game install; the
-Release build passes.
+Since 0.4.3 (all offline-tested, **none driven in game yet**): "Match my seat" + F6 seat line, F7
+session A/B (measured vs game FOV), chase views keep game framing (`ChaseUsesGameFov`), opt-in curved
+panels (`CurveRadiusMm`, presenter per display, fail-to-flat latch, opt-in luminance sample in
+render diagnostics), local bezel gap, KI-46 "next weather" prompt fix, KI-52 Surround canvas
+centring, racing-row window landing, Wheelkit receipt marker `artCurvedTriples`. Shared curve math
+is vendored from the triple toolkit (`CurvedPanelWarp`, toolkit `29c1f4d`).
 
-Known follow-ups if resumed: GitHub #2/#3 (HeadCRACK; asked 2026-10-27 to retest on 0.4.3), KI-52
-(Surround UI/background spill; needs a rig capture of the affected canvas first), and the
-unmerged Egon candidates in `archive/egon/*` (F6 unidentified-controller copy, racing-row
-window landing), none runtime-tested.
+Owner-gated: first curved drive (recipe `docs/reviews/2026-10-29-curved-drive-recipe.md`, script
+`tools/testing/Set-ArtCurveRun.ps1`); rc.6/rc.7 feel (Match my seat, F7, chase); clean-install
+Phase B launch needs the owner's Steam Cloud choice (`docs/reviews/2026-10-29-clean-install-phase-b-plan.md`);
+whether CustomVehicles/TurtleVan stay enabled in UMM (both currently enabled). Parked: KI-53 bumper
+flicker (needs a clip), GitHub #2/#3 (HeadCRACK retest on 0.4.3). Art cannot be driven unattended
+(injected input rejected; triples draw only on the stage camera).
+
+Local `results/`/`artifacts/` from before 2026-10-27 were lost; tracked review docs keep the hashes.
 
 ## Status (2026-10-04)
 
