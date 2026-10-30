@@ -1,6 +1,18 @@
 # Local deployment
 
-## Current installation — 0.4.4-rc.8 (October 29, owner test)
+## Current installation — 0.4.4-rc.9 (October 30, owner test)
+
+guna GO 479018, file-only. rc.8 plus the camera policy rev 2 F7 comparison (toolkit 7319e71): Original game
+view → Angle correction → Angle + curve correction, framing follows the saved choice, centered 2.5 s label with
+"Not saved", menus answer "Comparison available while driving". Source `9cfd798`, ZIP
+`ArtOfSimRally-0.4.4-rc.9-shared-input.zip` SHA-256
+`85C2006B9A9EC4FE268A90407F649A52D2EB5876685B228A560AF8992CF53F57`; installed `ArtOfSimRally.Mod.dll`
+`6DFC735A453B3F9E17B12E725FF9A0C5B6B927A2E6C4BB2A0A23FCAADFA0C52C`. Installer test 70 passed; game closed,
+lease held and released; payload 9/9 match; Settings.xml, TripleScreen.xml (owner's measured view + 1500R),
+dbce-controls.ini and UMM Params.xml byte-identical. Verified rollback copy of rc.8:
+`E:\Source\temp\art-0.4.4-rc.9\backup-installed-rc.8`. No game launch.
+
+## Previous installation — 0.4.4-rc.8 (October 29, owner test)
 
 guna GO 478560, file-only. rc.7 plus the owner's ISS-0005 policy: the game's field of view is the default
 framing (`OverrideFieldOfView` default false; saved files keep their value), F6 names the view with
