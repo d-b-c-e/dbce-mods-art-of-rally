@@ -1,6 +1,26 @@
 # Local deployment
 
-## Current installation — 0.4.4-rc.7 (October 29, owner test)
+## Current installation — 0.4.4-rc.8 (October 29, owner test)
+
+guna GO 478560, file-only. rc.7 plus the owner's ISS-0005 policy: the game's field of view is the default
+framing (`OverrideFieldOfView` default false; saved files keep their value), F6 names the view with
+"Use measured perspective" / "Use the game's field of view". Source `d054820`, identity
+`0.4.4-rc.8+d0548200f4d648330297397006370c6898f540f3.clean`, ZIP `ArtOfSimRally-0.4.4-rc.8-shared-input.zip`
+SHA-256 `8193BD0193178A372B47041D8105E4AC673CC88750950E858434FB3B082FB451`; installed `ArtOfSimRally.Mod.dll`
+`2721521ECF1703F6BF0DBEA8ED3B3FC125D7218FA015D01CA0CDD947B8E37D48`. Installer test 70 passed; game closed,
+lease held and released; payload 9/9 match; Settings.xml, TripleScreen.xml, dbce-controls.ini and UMM
+Params.xml byte-identical. Verified rollback copy of rc.7: `E:\Source\temp\art-0.4.4-rc.8\backup-installed-rc.7`.
+No game launch.
+
+**First in-game curved evidence (owner session on rc.7, 2026-10-29 ~22:30-22:43 local).** The owner set
+`CurveRadiusMm` 1500 and the measured view in F6 (TripleScreen.xml written 22:43:45). The last status.json
+(03:43:44Z) reads "Three cameras target independent Unity displays with the measured perspective (F7, this
+session). Curved screens are corrected." and render-diagnostics (03:43:39Z) has
+`separateDisplaysRenderedRecently` true, which for a curved rig requires every presenter to have drawn the
+current center frame. Camera completion, not pixels: support logging was off (no luminance) and no capture
+or owner verdict yet.
+
+## Previous installation — 0.4.4-rc.7 (October 29, owner test)
 
 guna GO 476449, file-only. rc.6 plus: Surround keeps every full-span UI canvas on the middle screen
 (KI-52, "Keep menus and HUD on the middle screen"), the presenter grid from the shared
