@@ -9,6 +9,7 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed (source, not yet packaged)
 
+- Triple screens: the game's field of view is now the default framing for every camera (owner decision). The measured perspective is opt-in with one press ("Use measured perspective"), and "Use the game's field of view" switches back. F7 still compares the two and names the mode on screen. "Use these measurements" no longer switches the view. Saved settings keep their choice.
 - Surround span: "Keep menus and HUD on the middle screen" (was "Center title and main menu") now keeps every full-span UI canvas, including backgrounds and the driving HUD, on the middle screen (KI-52).
 
 ### Changed (0.4.4-rc.1, owner test)

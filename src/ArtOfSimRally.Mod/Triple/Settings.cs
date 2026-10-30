@@ -23,9 +23,9 @@ public sealed class Settings : UnityModManager.ModSettings
     public int LeftDisplayIndex = 1;
     public int RightDisplayIndex = 2;
 
-    // Existing installs keep their current slider behavior. When disabled,
-    // all three views follow the game's live camera FOV instead.
-    public bool OverrideFieldOfView = true;
+    // Owner policy 2026-10-29 (ISS-0005): the game's field of view is the default framing for every camera; the
+    // measured perspective (true) is opt-in. Saved files keep their value.
+    public bool OverrideFieldOfView;
 
     // 1 uses the measured eye distance. Larger values widen all three views
     // together; this is a visual preference, not a new physical measurement.

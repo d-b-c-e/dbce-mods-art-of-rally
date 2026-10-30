@@ -197,18 +197,21 @@ internal static class TripleScreen
         var layout = EffectiveLayout.Resolve(Layout.Current, _settings);
         var panel = layout.Document?.Panel;
         var geometry = layout.Document?.Geometry;
-        // The seat-matched view (measured screens, real eye distance) is the default; anything else is an Advanced choice,
-        // offered back here in one press. Nothing is reset on load.
+        // The game's field of view is the default framing (owner policy, ISS-0005); the measured perspective is one
+        // press away and one press back. Nothing is reset on load.
         if (mode != 0)
         {
             var seat = MatchesSeat(_settings);
-            w.Help(seat ? "View: matched to your seat (your screen sizes and eye distance)" +
+            w.Help(!_settings.OverrideFieldOfView ? "View: the game's field of view on all three screens."
+                : seat ? "View: measured perspective from your seat" +
                     (_settings.ChaseUsesGameFov ? " in bonnet and bumper views; chase views keep the game's framing." : ".")
-                : "View: not matched to your seat, so lines can bend at the screen edges.");
+                : "View: widened measured perspective (Advanced).");
             if (SessionGameFov.HasValue)
                 w.Help("F7 is showing the " + (SessionGameFov.Value ? "game's field of view" : "measured perspective") +
                     " until the game restarts or you press F7 again; nothing is saved.");
-            if (!seat && w.Command("triple-match-seat", "Match my seat")) MatchSeat(_settings);
+            if (!seat && w.Command("triple-match-seat", "Use measured perspective")) MatchSeat(_settings);
+            if (_settings.OverrideFieldOfView && w.Command("triple-game-view", "Use the game's field of view"))
+                _settings.OverrideFieldOfView = false;
         }
 
         if (_lastOutcome != null && mode != 0)
@@ -272,7 +275,7 @@ internal static class TripleScreen
             _settings.RightYawDegrees = FloatField(w, "triple-right-yaw", "Right screen angle (degrees)", _settings.RightYawDegrees);
             _settings.BezelGapMm = FloatField(w, "triple-bezel-gap", "Gap between screens' lit areas (mm, both bezels)", _settings.BezelGapMm);
             _settings.CurveRadiusMm = FloatField(w, "triple-curve-radius", "Screen curve radius (mm, 0 = flat)", _settings.CurveRadiusMm);
-            if (w.Command("triple-use-measurements", "Use these measurements")) { _settings.ManualSetupConfirmed = true; MatchSeat(_settings); }
+            if (w.Command("triple-use-measurements", "Use these measurements")) _settings.ManualSetupConfirmed = true;
             w.Help(_settings.ManualSetupConfirmed ? "Local setup active" : "Local setup not yet active");
         }
         if (mode == 2)
