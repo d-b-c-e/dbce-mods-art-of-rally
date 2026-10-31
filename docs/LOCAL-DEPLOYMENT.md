@@ -1,6 +1,17 @@
 # Local deployment
 
-## Current installation — 0.4.4-rc.13 (October 31, owner test)
+## Current installation — 0.4.4-rc.14 (October 31, owner test)
+
+rc.13 plus: numpad camera tuning no longer stays blocked while an H-pattern shifter is in gear (the release wait
+counted joystick buttons; owner report) and a camera overlay on every camera change (camera, field of view, keys).
+Source `7db0a4e`, ZIP `ArtOfSimRally-0.4.4-rc.14-shared-input.zip` SHA-256
+`F46227E24F937BE60C12956DDC634E35571DB16600E2F36EF72DB3A1E1BCD57B`; installed `ArtOfSimRally.Mod.dll`
+`49F83F2FB9AE633F9FD14CBADBC06F228E1CB9CF32971448A14B16CF7C28B925`. Installer 70, Triple 1357, SettingsUi 3412,
+CameraTuning 386 passed. Game closed; payload 9/9; owner settings byte-identical. Rollback copy of rc.13:
+`E:\Source\temp\art-0.4.4-rc.14\backup-installed-rc.13`. Custom Vehicles 0.4.3 (cfef600, Custom Rally arrival
+preview) installed alongside, 13/13 match; 0.4.2 backup at `E:\Source\temp\customvehicles-0.4.3\backup-installed-0.4.2`.
+
+## Previous installation — 0.4.4-rc.13 (October 31, owner test)
 
 Owner 10-31: simplify triple-screen framing (Art first, then the portfolio if it works). rc.13: always angle (and
 curve) corrected; chase views always the game's field of view; bonnet/bumper use the camera's own field of view
