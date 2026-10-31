@@ -245,12 +245,7 @@ internal static class TripleScreen
                 : seat ? "View: measured perspective from your seat" +
                     (_settings.ChaseUsesGameFov ? " in bonnet and bumper views; chase views keep the game's framing." : ".")
                 : "View: widened measured perspective (Advanced).");
-            if (SessionStep.HasValue)
-                w.Help("F7 comparison is showing: " + (SessionStep == ComparisonStep.Original ? "original game view"
-                    : SessionStep == ComparisonStep.Angle ? "angle correction" : "angle + curve correction") +
-                    (F7Comparison.FromSaved(_settings.F7View) == SessionStep
-                        ? " (picked with F7, kept next time; press F7 while driving to change it)."
-                        : " for now; next time starts from your saved choice."));
+            w.Help("While driving, F7 switches the view (original / angle / angle + curve) and saves it.");
             if (!seat && w.Command("triple-match-seat", "Use measured perspective")) MatchSeat(_settings);
             if (_settings.OverrideFieldOfView && w.Command("triple-game-view", "Use the game's field of view"))
                 _settings.OverrideFieldOfView = false;
