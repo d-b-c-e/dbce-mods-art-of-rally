@@ -143,6 +143,10 @@ internal static class Program
         Check(SelectionResolver.Resolve("test.b",3,reordered)==12,"package reorder resolves current slot");
         Check(SelectionResolver.Resolve("test.b",3,catalog.Take(1))==3,"removed or failed preview falls back to donor");
         Check(SelectionResolver.Resolve("test.b",2,catalog)==2,"new native donor selection takes precedence");
+        var customIds=new List<string>{"dbce.trail-scout","dbce.turtle-van"};
+        Check(CustomClassMenu.SlotFor("dbce.turtle-van",0,customIds)==1,"Custom class remembers its pick by package id");
+        Check(CustomClassMenu.SlotFor("removed.car",1,customIds)==1 && CustomClassMenu.SlotFor("removed.car",7,customIds)==0,"a removed pick keeps a valid slot, else the first car");
+        Check(CustomClassMenu.SlotFor(null,5,new List<string>())==0 && CustomClassMenu.Clamp(-1,2)==0 && CustomClassMenu.Clamp(1,2)==1,"empty or out-of-range slots fall back to 0");
         File.WriteAllText(path,"{bad"); Reject(()=>again.Load(),"corrupt selection rejected"); Check(again.Get("GROUP_3")=="test.b","failed read leaves loaded state intact");
     }
     private static void TestJournal()

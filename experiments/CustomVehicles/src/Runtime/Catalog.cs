@@ -22,6 +22,17 @@ namespace RallyCustomVehicles
         private static readonly ConditionalWeakTable<Season, Choice> selections = new ConditionalWeakTable<Season, Choice>();
         private static bool discovered;
         internal static bool Registered => entries.Any(e=>e.Active);
+
+        // Free Roam's class picker maps list position to Car.CarClass, so "Custom" is the value after the ten stock
+        // classes. It exists only in the menu: starting Free Roam hands the game the donor's class and car, and the
+        // Free Roam season is never saved, so no native save or switch ever sees it.
+        internal const Car.CarClass CustomClass = Car.CarClass.COUNT;
+        private static readonly List<Car> customCars = new List<Car>();
+        private static readonly List<CarMenuDisplay> customDisplays = new List<CarMenuDisplay>();
+        private static Registration launched;   // the custom car Free Roam last started with; the menu returns to Custom
+        private static bool InCustomMenu => Registered && GameModeManager.GameMode == GameModeManager.GAME_MODES.FREEROAM;
+        private static Registration At(int slot) => entries.FirstOrDefault(e => e.Active && e.Slot == slot);
+        private static List<string> CurrentIds() => entries.Where(e => e.Active).OrderBy(e => e.Slot).Select(e => e.Package.Manifest.id).ToList();
         internal static VehiclePackage Selected
         {
             get
@@ -30,7 +41,8 @@ namespace RallyCustomVehicles
                 var season = GameModeManager.GetSeasonDataCurrentGameMode();
                 if (season == null || !selections.TryGetValue(season, out var choice)) return null;
                 var item = choice.Item;
-                return item != null && item.Active && season.CarClass == item.Donor.carClass && season.SelectedCar?.prefabName == item.Donor.prefabName ? item.Package : null;
+                return item != null && item.Active && (season.CarClass == item.Donor.carClass || season.CarClass == CustomClass) &&
+                    season.SelectedCar?.prefabName == item.Donor.prefabName ? item.Package : null;
             }
         }
 
@@ -76,13 +88,14 @@ namespace RallyCustomVehicles
             // AllCarsList stays stock: saves, setup, unlocks and Steam stats use it.
             var donor = CarManager.AllCarsList.FirstOrDefault(c => c.prefabName == package.Manifest.donorPrefab);
             if (donor == null) { Main.Log("Vehicle " + id + " skipped: donor/DLC unavailable: " + package.Manifest.donorPrefab); return; }
-            var cars = CarManager.GetCurrentCarsListForClass(donor.carClass);
-            var displays = Displays(chooser, donor.carClass);
+            // Custom cars are listed only in the Custom class; the donor's own class stays stock.
+            var cars = customCars;
+            var displays = customDisplays;
             var item = entries.FirstOrDefault(e => e.Package == package);
-            int donorIndex = cars.IndexOf(donor);
+            int donorIndex = CarManager.GetCurrentCarsListForClass(donor.carClass).IndexOf(donor);
             int slot = item != null && cars.Contains(item.MenuCar) ? cars.IndexOf(item.MenuCar) : cars.Count;
-            if (displays.Count != slot) throw new InvalidOperationException("Unexpected car preview count; refusing to replace a stock slot.");
-            var original = displays[donorIndex].CarGameObject;
+            if (displays.Count != slot) throw new InvalidOperationException("Unexpected custom preview count.");
+            var original = Displays(chooser, donor.carClass)[donorIndex].CarGameObject;
             GameObject preview = null;
             var transaction=new MutationJournal();
             try
@@ -112,7 +125,7 @@ namespace RallyCustomVehicles
                 if (item == null)
                 {
                     item = new Registration { Package = package, Donor = donor,
-                        MenuCar = new Car(package.Manifest.name, donor.carNameIndex, donor.prefabName, donor.livery, donor.carClass, CopyStats(donor.carStats), donor.DLC) };
+                        MenuCar = new Car(package.Manifest.name, donor.carNameIndex, donor.prefabName, donor.livery, CustomClass, CopyStats(donor.carStats), donor.DLC) };
                     transaction.Change(()=>entries.Add(item),()=>entries.Remove(item));
                 }
                 var priorDonor=item.Donor; int priorSlot=item.Slot,priorIndex=item.DonorIndex;
@@ -121,7 +134,7 @@ namespace RallyCustomVehicles
                 transaction.Change(()=>displays.Add(display),()=>displays.Remove(display));
                 transaction.Change(()=>chooser.AllCars.Add(display),()=>chooser.AllCars.Remove(display));
                 transaction.Change(()=>item.Active=true,()=>item.Active=false);
-                Main.Log("Vehicle " + id + " menu preview registered: " + donor.carClass + " index " + slot + "; saved donor index " + donorIndex + ".");
+                Main.Log("Vehicle " + id + " menu preview registered: Custom class index " + slot + "; donor " + donor.carClass + " " + donor.prefabName + ".");
             }
             catch
             {
@@ -158,14 +171,14 @@ namespace RallyCustomVehicles
         {
             [HarmonyPrefix] private static void Before()
             {
-                foreach (var item in entries) { CarManager.GetCurrentCarsListForClass(item.Donor.carClass).Remove(item.MenuCar); item.Active=false; }
+                foreach (var item in entries) item.Active=false;
+                customCars.Clear(); customDisplays.Clear();   // the old chooser's previews go with it
             }
             [HarmonyPostfix] private static void After(CarChooserManager __instance)
             {
                 AddPreviews(__instance); discovered = true;
             }
         }
-        private static Registration At(Car.CarClass carClass, int index) => entries.FirstOrDefault(e => e.Active && e.Donor.carClass == carClass && e.Slot == index);
         [HarmonyPatch(typeof(CarChooserManager), "DisplayCarInRallyCompleteScreen")]
         private static class CompletionDisplayPatch
         {
@@ -176,22 +189,24 @@ namespace RallyCustomVehicles
                 var selected = Selected;
                 if (selected == null) return;
                 var item = entries.FirstOrDefault(e => e.Package == selected);
-                if (item != null && Displays(__instance, item.Donor.carClass).Count > item.Slot)
-                    __instance.SelectCarInClass(item.Donor.carClass, item.Slot);
+                if (item != null && customDisplays.Count > item.Slot)
+                    __instance.SelectCarInClass(CustomClass, item.Slot);
             }
         }
         [HarmonyPatch(typeof(CarManager), "SetChosenCar", new[] { typeof(int) })]
         private static class ChoosePatch
         {
-            [HarmonyPrefix] private static void Before(ref int index)
+            [HarmonyPrefix] private static bool Before(int index)
             {
-                if (!Registered) return;
+                if (!Registered) return true;
                 var season = GameModeManager.GetSeasonDataCurrentGameMode();
-                var item = At(season.CarClass, index);
+                if (season == null) return true;
+                if (season.CarClass != CustomClass) { selections.GetValue(season, s => new Choice()).Item = null; launched = null; return true; }
+                var item = At(CustomClassMenu.Clamp(index, customCars.Count));
+                if (item == null) { season.CarClass = Car.CarClass.GROUP_2; return true; }   // never leave the season on a class only the menu knows
                 selections.GetValue(season, s => new Choice()).Item = item;
-                if (item == null) return;
-                index = new SelectionState(item.Slot, item.DonorIndex).Choose(index, true);
-                Main.Log("Selected " + item.Package.Manifest.id + "; native season retains " + item.Donor.prefabName + ".");
+                season.SelectedCar = item.Donor;   // native season data always holds the donor
+                return false;
             }
         }
         [HarmonyPatch(typeof(CarManager), "SetChosenCar", new[] { typeof(Car) })]
@@ -209,13 +224,13 @@ namespace RallyCustomVehicles
         [HarmonyPatch(typeof(SaveGame), "SetInt")]
         private static class SavePatch
         {
-            [HarmonyPrefix] private static void Before(string key, ref int value)
+            // The menu stores each class's car index under the class name; Custom's ("COUNT") is remembered by package id.
+            [HarmonyPrefix] private static void Before(string key, int value)
             {
-                if (!Registered || !Enum.TryParse<Car.CarClass>(key, out var carClass) || key!=carClass.ToString()) return;
-                var item = At(carClass, value);
+                if (!Registered || key != CustomClass.ToString()) return;
+                var item = At(value);
                 remembered[key] = item;
                 try { Main.Selections.Set(key, item?.Package.Manifest.id); } catch(Exception ex) { Main.LogError(ex); }
-                if (item != null) value = new SelectionState(item.Slot, item.DonorIndex).ToSavedIndex(value);
             }
         }
         [HarmonyPatch(typeof(SaveGame), "GetInt")]
@@ -223,10 +238,138 @@ namespace RallyCustomVehicles
         {
             [HarmonyPostfix] private static void After(string key, ref int __result)
             {
+                if (key != CustomClass.ToString()) return;
                 string id=remembered.TryGetValue(key,out var item) ? item?.Package.Manifest.id : Main.Selections.Get(key);
-                var current=entries.Where(e=>e.Active && e.Donor.carClass.ToString()==key)
-                    .Select(e=>new KeyValuePair<string,SelectionState>(e.Package.Manifest.id,new SelectionState(e.Slot,e.DonorIndex)));
-                __result=SelectionResolver.Resolve(id,__result,current);
+                __result=CustomClassMenu.SlotFor(id,__result,CurrentIds());
+            }
+        }
+
+        // Free Roam's class list gains "custom" while custom cars are registered.
+        [HarmonyPatch(typeof(CarManager), "GetClassStrings")]
+        private static class ClassStringsPatch
+        {
+            [HarmonyPostfix] private static void After(List<string> __result) { if (InCustomMenu) __result.Add("custom"); }
+        }
+        [HarmonyPatch(typeof(CarManager), "SetChosenClass", new[] { typeof(int) })]
+        private static class ChooseClassPatch
+        {
+            [HarmonyPrefix] private static bool Before(int index)
+            {
+                if (index != (int)CustomClass || !InCustomMenu) { launched = null; return true; }
+                GameModeManager.GetSeasonDataCurrentGameMode().CarClass = CustomClass;
+                return false;
+            }
+        }
+        [HarmonyPatch(typeof(CarManager), "GetCurrentCarsListForClass")]
+        private static class CarsListPatch
+        {
+            [HarmonyPrefix] private static bool Before(Car.CarClass theClass, ref List<Car> __result)
+            { if (theClass != CustomClass) return true; __result = customCars; return false; }
+        }
+        [HarmonyPatch(typeof(CarManager), "GetCurrentCarsForClass")]
+        private static class CarNamesPatch
+        {
+            [HarmonyPrefix] private static bool Before(Car.CarClass theClass, ref List<string> __result)
+            { if (theClass != CustomClass) return true; __result = customCars.Select(c => c.name).ToList(); return false; }
+        }
+        [HarmonyPatch(typeof(CarManager), "GetCurrentPrefabCarsForClass")]
+        private static class CarPrefabsPatch
+        {
+            [HarmonyPrefix] private static bool Before(Car.CarClass theClass, ref List<string> __result)
+            { if (theClass != CustomClass) return true; __result = customCars.Select(c => c.prefabName).ToList(); return false; }
+        }
+        [HarmonyPatch(typeof(GroupTitle), "GetStringFromClass")]
+        private static class GroupTitlePatch
+        {
+            [HarmonyPrefix] private static bool Before(Car.CarClass carClass, ref string __result)
+            { if (carClass != CustomClass) return true; __result = "Custom"; return false; }
+        }
+
+        // The car chooser's per-class switches throw on an unknown class; the Custom class uses its own previews.
+        private static readonly System.Reflection.MethodInfo ShowOne = AccessTools.Method(typeof(CarChooserManager), "ShowOneCarForClass");
+        private static readonly System.Reflection.MethodInfo ShowAdditional = AccessTools.Method(typeof(CarChooserManager), "ShowAdditionalCarForClass");
+        private static readonly System.Reflection.MethodInfo DeselectAll = AccessTools.Method(typeof(CarChooserManager), "DeselectAllCars");
+        [HarmonyPatch(typeof(CarChooserManager), "EnableAllCarsInCurrentClass")]
+        private static class EnableClassPatch
+        {
+            [HarmonyPrefix] private static bool Before()
+            {
+                if (GameModeManager.GetSeasonDataCurrentGameMode()?.CarClass != CustomClass) return true;
+                foreach (var display in customDisplays) display.SetActive(true);
+                return false;
+            }
+        }
+        [HarmonyPatch(typeof(CarChooserManager), "SelectCarInClass")]
+        private static class SelectPatch
+        {
+            [HarmonyPrefix] private static bool Before(CarChooserManager __instance, ref Car.CarClass carClass, int index, ref CarMenuDisplay __result)
+            {
+                if (carClass != CustomClass) return true;
+                if (customDisplays.Count == 0) { carClass = Car.CarClass.GROUP_2; return true; }
+                __instance.DisableAllCars();
+                DeselectAll.Invoke(__instance, null);
+                index = CustomClassMenu.Clamp(index, customDisplays.Count);
+                customDisplays[index].isSelected = true;
+                __result = (CarMenuDisplay)ShowOne.Invoke(__instance, new object[] { customDisplays, index });
+                return false;
+            }
+        }
+        [HarmonyPatch(typeof(CarChooserManager), "SelectAdditionalCarInClass")]
+        private static class SelectAdditionalPatch
+        {
+            [HarmonyPrefix] private static bool Before(CarChooserManager __instance, Car.CarClass carClass, int index)
+            {
+                if (carClass != CustomClass) return true;
+                if (index >= 0 && index < customDisplays.Count)
+                { customDisplays[index].isSelected = true; ShowAdditional.Invoke(__instance, new object[] { customDisplays, index }); }
+                return false;
+            }
+        }
+        [HarmonyPatch(typeof(CarChooserManager), "ChangeCarClass")]
+        private static class ChangeClassPatch
+        {
+            [HarmonyPrefix] private static bool Before(CarChooserManager __instance, int carClass)
+            {
+                if (carClass != (int)CustomClass) return true;
+                __instance.DisableAllCars();
+                if (customDisplays.Count > 0) ShowOne.Invoke(__instance, new object[] { customDisplays, 0 });
+                return false;
+            }
+        }
+        [HarmonyPatch(typeof(CarChooserManager), "DisplayCarInLocation")]
+        private static class LocationPatch
+        {
+            [HarmonyPrefix] private static bool Before(Car.CarClass carclass) => carclass != CustomClass;
+        }
+
+        // Starting Free Roam from the Custom class: the game gets the donor's class and car (its own data, saves and
+        // physics path), and the custom choice rides along as the selection. Coming back, the menu shows Custom again.
+        [HarmonyPatch(typeof(FreeroamManager), "LoadFreeRoam")]
+        private static class StartPatch
+        {
+            [HarmonyPrefix] private static void Before()
+            {
+                var season = GameModeManager.GetSeasonDataCurrentGameMode();
+                if (season == null || season.CarClass != CustomClass) return;
+                Registration item = null;
+                if (selections.TryGetValue(season, out var choice)) item = choice.Item;
+                item = item != null && item.Active ? item : At(SaveGame.GetInt(CustomClass.ToString()));
+                if (item == null) { season.CarClass = Car.CarClass.GROUP_2; season.SelectedCar = CarManager.GetCurrentCarsListForClass(Car.CarClass.GROUP_2)[0]; return; }
+                season.CarClass = item.Donor.carClass;
+                season.SelectedCar = item.Donor;
+                selections.GetValue(season, s => new Choice()).Item = item;
+                launched = item;
+                Main.Log("Free Roam with " + item.Package.Manifest.id + " (Custom class); native season: " + item.Donor.carClass + " " + item.Donor.prefabName + ".");
+            }
+        }
+        [HarmonyPatch(typeof(CustomButtonCars), "Init")]
+        private static class ReturnPatch
+        {
+            [HarmonyPrefix] private static void Before()
+            {
+                var season = GameModeManager.GetSeasonDataCurrentGameMode();
+                if (launched != null && launched.Active && InCustomMenu && season != null && season.CarClass == launched.Donor.carClass && ReferenceEquals(season.SelectedCar, launched.Donor))
+                    season.CarClass = CustomClass;
             }
         }
         [HarmonyPatch]
