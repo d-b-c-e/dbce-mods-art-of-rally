@@ -197,9 +197,39 @@ static class Program
         Ui.Instance.ToggleWindow(false);Host.TickSettingsUi();SettingsPanel.HasDraft=false;
         Host.ToggleSettings();Host.CloseSettings();Check(!Ui.Instance.Opened&&!DraftCloseGuard.Warned,"without a draft the first close did not close");
     }
+    // F7 saves through Triple.Settings.Save: the pick reaches disk with the other values, a pre-update file loads with no
+    // pick, and a failed write throws and leaves the last good file.
+    static void TripleSave()
+    {
+        var dir=Path.Combine(Path.GetTempPath(),"art-triple-save-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(dir);
+        var file=Path.Combine(dir,"TripleScreen.xml");
+        var xml=new System.Xml.Serialization.XmlSerializer(typeof(ArtOfSimRally.Mod.Triple.Settings));
+        ArtOfSimRally.Mod.Triple.Settings Read(){using var s=File.OpenRead(file);return (ArtOfSimRally.Mod.Triple.Settings)xml.Deserialize(s);}
+        try
+        {
+            var entry=new UnityModManagerNet.UnityModManager.ModEntry{Path=dir};
+            File.WriteAllText(file,"<?xml version=\"1.0\" encoding=\"utf-8\"?><Settings><CurveRadiusMm>1500</CurveRadiusMm><OverrideFieldOfView>true</OverrideFieldOfView></Settings>");
+            var loaded=Read();
+            Check(loaded.F7View==0&&loaded.CurveRadiusMm==1500f&&loaded.OverrideFieldOfView,"a pre-update TripleScreen.xml did not load with no pick and its values");
+            foreach(var pick in new[]{1,2,3})
+            {
+                loaded.F7View=pick;loaded.Save(entry);var back=Read();
+                Check(back.F7View==pick&&back.CurveRadiusMm==1500f&&back.OverrideFieldOfView,"F7 pick "+pick+" did not survive a restart with radius and framing intact");
+            }
+            Check(!File.Exists(file+".tmp"),"a successful save left its temp file");
+            var good=File.ReadAllBytes(file);
+            File.SetAttributes(file,FileAttributes.ReadOnly);
+            loaded.F7View=1;var threw=false;
+            try{loaded.Save(entry);}catch(Exception){threw=true;}
+            File.SetAttributes(file,FileAttributes.Normal);
+            Check(threw,"a failed save did not throw");
+            Check(File.ReadAllBytes(file).AsSpan().SequenceEqual(good)&&!File.Exists(file+".tmp"),"a failed save changed the last good file or left a temp file");
+        }
+        finally{Directory.Delete(dir,true);}
+    }
     static int Main()
     {
-        try{Inventory();TelemetryDefault();Views();SelectionAndMigration();Runtime();MenuIsolation();Display();Console.WriteLine(JsonSerializer.Serialize(new{status="passed",assertions,hardwareOutput=false,visualInspection=false}));return 0;}
+        try{Inventory();TripleSave();TelemetryDefault();Views();SelectionAndMigration();Runtime();MenuIsolation();Display();Console.WriteLine(JsonSerializer.Serialize(new{status="passed",assertions,hardwareOutput=false,visualInspection=false}));return 0;}
         catch(Exception e){Console.Error.WriteLine(e);return 1;}
     }
     static void MenuIsolation()
