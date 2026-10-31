@@ -222,8 +222,10 @@ namespace ArtOfSimRally.Mod
                 }
             }
             if (!ForceReconnect.Pending || _modEntry == null || Settings == null) return;
+            // With F6 open mid-stage the wheel is already released (ModWatchdog), so switching FFB on there starts it
+            // now instead of waiting for the stage to end (owner report 2026-10-31: turned on mid-race, never started).
             if (!ForceReconnect.TryBegin(Time.realtimeSinceStartup,
-                Enabled && Settings.ForceFeedbackEnabled, GameState.IsDriving,
+                Enabled && Settings.ForceFeedbackEnabled, GameState.IsDriving && !SettingsVisible,
                 WheelInput.Assigning.HasValue, FfbNative.FocusedGameWindow())) return;
             if (!FfbSelection.TryTarget(Settings, out var targetName, out var targetIndex, out var targetGuid, out var reason))
             {

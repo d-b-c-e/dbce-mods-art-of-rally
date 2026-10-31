@@ -34,7 +34,7 @@ namespace ArtOfSimRally.Mod
     internal sealed class ModWatchdog : MonoBehaviour
     {
         private static ModWatchdog _instance;
-        private bool _wheelReleased;
+        private bool _wheelReleased, _offShownThisStage;
 
         /// <summary>Creates the watchdog once, outside the scene hierarchy.</summary>
         public static void Install()
@@ -77,11 +77,16 @@ namespace ArtOfSimRally.Mod
             // it cannot.
             if (GameState.IsDriving && !Main.SettingsVisible && Main.HasFocus())
             {
+                // Once per stage: a saved Off (F8, the F6 toggle) is easy to miss, and a profile Apply keeps it.
+                if (!_offShownThisStage && Main.Settings != null && !Main.Settings.ForceFeedbackEnabled)
+                    Main.ReportFeedbackOff(Main.FeedbackOffNotice);
+                _offShownThisStage = true;
                 ImpactController.Tick();
                 _wheelReleased = false;
                 return;
             }
 
+            if (!GameState.IsDriving) _offShownThisStage = false;
             if (!_wheelReleased)
             {
                 _wheelReleased = true;
