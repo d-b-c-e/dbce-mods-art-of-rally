@@ -653,12 +653,24 @@ internal static class Program
         }
         Check(string.Join(",", cycle) == "Original,Angle,Original", "flat: the curve step is never offered");
         Check(ArtOfSimRally.Mod.Triple.F7Comparison.Label(ArtOfSimRally.Mod.Triple.ComparisonStep.AngleCurve, false, true) ==
-            "Angle + curve correction · Game FOV · 3/3 · Not saved", "label names mode, framing, step and Not saved");
+            "Angle + curve correction · Game FOV · 3/3", "label names mode, framing and step; a saved pick adds nothing");
         Check(ArtOfSimRally.Mod.Triple.F7Comparison.Label(ArtOfSimRally.Mod.Triple.ComparisonStep.Angle, true, false) ==
-            "Angle correction · Measured FOV · 2/2 · Not saved", "measured framing is named");
+            "Angle correction · Measured FOV · 2/2", "measured framing is named");
         Check(ArtOfSimRally.Mod.Triple.F7Comparison.Label(ArtOfSimRally.Mod.Triple.ComparisonStep.Original, true, true) ==
-            "Original game view · 1/3 · Not saved", "original view carries no framing");
-    }
+            "Original game view · 1/3", "original view carries no framing");
+        Check(ArtOfSimRally.Mod.Triple.F7Comparison.Label(ArtOfSimRally.Mod.Triple.ComparisonStep.Angle, false, true, saved: false) ==
+            "Angle correction · Game FOV · 2/3 · Could not save", "only a failed save is reported");
+
+        // The pick is saved (Settings.F7View) and restored at launch; a missing or unknown value keeps the old startup.
+        foreach (var step in new[] { ArtOfSimRally.Mod.Triple.ComparisonStep.Original, ArtOfSimRally.Mod.Triple.ComparisonStep.Angle,
+                                     ArtOfSimRally.Mod.Triple.ComparisonStep.AngleCurve })
+            Check(ArtOfSimRally.Mod.Triple.F7Comparison.FromSaved((int)step) == step, "saved " + step + " restores after a restart");
+        Check(ArtOfSimRally.Mod.Triple.F7Comparison.FromSaved(0) == null && ArtOfSimRally.Mod.Triple.F7Comparison.FromSaved(4) == null
+            && ArtOfSimRally.Mod.Triple.F7Comparison.FromSaved(-1) == null, "missing or unknown pick follows the saved settings");
+        Check(ArtOfSimRally.Mod.Triple.F7Comparison.Current(ArtOfSimRally.Mod.Triple.F7Comparison.FromSaved(0), curveActive: true)
+            == ArtOfSimRally.Mod.Triple.ComparisonStep.AngleCurve, "no pick: a working curve shows curved, as before");
+        Check(ArtOfSimRally.Mod.Triple.F7Comparison.Next(ArtOfSimRally.Mod.Triple.ComparisonStep.AngleCurve, curveAvailable: false)
+            == ArtOfSimRally.Mod.Triple.ComparisonStep.Original, "a saved curve pick on a now-flat rig moves on without a curve step");    }
 
     private static void Check(bool condition, string message)
     {

@@ -37,6 +37,9 @@ public sealed class Settings : UnityModManager.ModSettings
     // Monitor curve radius in millimeters (1500 for a 1500R panel); 0 is flat and keeps the direct render path.
     public float CurveRadiusMm;
 
+    // The view last picked with F7 (1 original, 2 angle, 3 angle + curve); 0 (never pressed) keeps the saved settings' view.
+    public int F7View;
+
     // Gap between adjacent lit areas at each seam (both bezels), in millimeters; the scene behind it is skipped.
     public float BezelGapMm;
 

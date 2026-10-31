@@ -44,6 +44,7 @@ internal static class TripleScreen
             modEntry.Logger.Warning("Triple screens: could not load settings; safe defaults are active: " + exception.Message);
             _settings = new Settings();
         }
+        SessionStep = F7Comparison.FromSaved(_settings.F7View);
 
         _status = new StatusPublisher(modEntry.Logger);
         _renderDiagnostics = new RenderDiagnostics(modEntry.Logger);
@@ -101,8 +102,9 @@ internal static class TripleScreen
         modEntry.Logger.Log("Triple screens: migrated " + Path.GetFileName(from) + " from " + Path.GetDirectoryName(from) + ".");
     }
 
-    // F7 comparison (this session only, never saved): null follows the saved choice. Steps change the scene correction
-    // (original / angle / angle + curve); the saved framing stays. A saved framing or output change ends the session step.
+    // F7 comparison, saved as Settings.F7View and restored at load: null (never pressed) follows the saved choice. Steps
+    // change the scene correction (original / angle / angle + curve); framing, radius and geometry stay. A saved framing
+    // or output change returns to the saved pick (clearing a renderer fallback, which is never saved).
     internal static ComparisonStep? SessionStep;
     private static string _sessionKey;
     private static string _notice;
@@ -124,8 +126,12 @@ internal static class TripleScreen
         var curveAvailable = ProjectionController.CurveAvailable(_settings);
         SessionStep = F7Comparison.Next(F7Comparison.Current(SessionStep, Projection.CurveActive), curveAvailable);
         _sessionKey = SessionKey();
+        var previous = _settings.F7View;
+        _settings.F7View = (int)SessionStep.Value;
+        var saved = Save();
+        if (!saved) _settings.F7View = previous; // a later F6 save must not write a pick the player was told failed
         var measured = !FovPreference.ShowsGameFov(_settings.OverrideFieldOfView, ProjectionController.LastChaseView, _settings.ChaseUsesGameFov);
-        Notify(F7Comparison.Label(SessionStep.Value, measured, curveAvailable));
+        Notify(F7Comparison.Label(SessionStep.Value, measured, curveAvailable, saved));
         var eye = EffectiveLayout.Resolve(Layout.Current, _settings).Document?.Geometry?.EyeDistanceMm / Projection.ActiveViewWidthScale;
         _modEntry.Logger.Log("F7 comparison: " + _notice + "; camera " + (ProjectionController.LastChaseView ? "chase" : "mounted") +
             ", framing " + (measured ? "measured" : "game") + ", effective eye " + (eye.HasValue ? eye.Value.ToString("0") + " mm" : "unknown") +
@@ -137,7 +143,7 @@ internal static class TripleScreen
     {
         if (SessionStep != ComparisonStep.AngleCurve || Projection.CurveFailure == null) return;
         SessionStep = ComparisonStep.Angle;
-        Notify("Angle correction (curve unavailable: " + Projection.CurveFailure + ") · Not saved");
+        Notify("Angle correction (curve unavailable: " + Projection.CurveFailure + ")");
         _modEntry.Logger.Warning("F7 comparison: curve fell back to flat: " + Projection.CurveFailure);
     }
 
@@ -183,12 +189,12 @@ internal static class TripleScreen
             }
             else
             {
-                if (SessionStep.HasValue && _sessionKey != SessionKey()) SessionStep = null;
+                if (_sessionKey != SessionKey()) { SessionStep = F7Comparison.FromSaved(_settings.F7View); _sessionKey = SessionKey(); }
                 Projection.LandingOwnsOutputResize = Landing.BlocksOutputResize;
                 if (SessionStep == ComparisonStep.Original)
                 {
                     Projection.Release();
-                    outcome = ProjectionOutcome.Inactive(layout, "F7_ORIGINAL_VIEW", "Original game view (F7 comparison, this session); stock rendering.");
+                    outcome = ProjectionOutcome.Inactive(layout, "F7_ORIGINAL_VIEW", "Original game view (picked with F7); stock rendering.");
                 }
                 else
                 {
@@ -245,7 +251,7 @@ internal static class TripleScreen
             if (SessionStep.HasValue)
                 w.Help("F7 comparison is showing: " + (SessionStep == ComparisonStep.Original ? "original game view"
                     : SessionStep == ComparisonStep.Angle ? "angle correction" : "angle + curve correction") +
-                    ", until the game restarts or you press F7 again; nothing is saved.");
+                    " (picked with F7, kept next time; press F7 while driving to change it).");
             if (!seat && w.Command("triple-match-seat", "Use measured perspective")) MatchSeat(_settings);
             if (_settings.OverrideFieldOfView && w.Command("triple-game-view", "Use the game's field of view"))
                 _settings.OverrideFieldOfView = false;
@@ -384,11 +390,11 @@ internal static class TripleScreen
         return changed;
     }
 
-    internal static void Save()
+    internal static bool Save()
     {
-        if (_settings == null || _modEntry == null) return;
-        try { _settings.Save(_modEntry); }
-        catch (Exception exception) { _modEntry.Logger.Warning("Triple screens: could not save settings: " + exception.Message); }
+        if (_settings == null || _modEntry == null) return false;
+        try { _settings.Save(_modEntry); return true; }
+        catch (Exception exception) { _modEntry.Logger.Warning("Triple screens: could not save settings: " + exception.Message); return false; }
     }
 
     internal static void Toggle(bool value)
