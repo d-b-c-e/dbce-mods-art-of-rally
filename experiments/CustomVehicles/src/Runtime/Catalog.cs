@@ -30,7 +30,19 @@ namespace RallyCustomVehicles
         private static readonly List<Car> customCars = new List<Car>();
         private static readonly List<CarMenuDisplay> customDisplays = new List<CarMenuDisplay>();
         private static Registration launched;   // the custom car Free Roam last started with; the menu returns to Custom
-        private static bool InCustomMenu => Registered && GameModeManager.GameMode == GameModeManager.GAME_MODES.FREEROAM;
+        // Free Roam, Time Attack and Custom Rally pick a class from a list; Career, Daily and Weekly fix the class.
+        private static bool InCustomMenu => Registered && (GameModeManager.GameMode == GameModeManager.GAME_MODES.FREEROAM ||
+            GameModeManager.GameMode == GameModeManager.GAME_MODES.TIME_ATTACK || GameModeManager.GameMode == GameModeManager.GAME_MODES.CUSTOM);
+        // Custom Rally lists only Group 2 to Group A, so "custom" is its seventh entry; the other lists have all ten.
+        private static int CustomPosition => GameModeManager.GameMode == GameModeManager.GAME_MODES.CUSTOM ? 6 : (int)CustomClass;
+        // The class the game should see for a season on Custom: the picked car's donor.
+        private static Car.CarClass NativeClass(Season season)
+        {
+            Registration item = null;
+            if (season != null && selections.TryGetValue(season, out var choice)) item = choice.Item;
+            item = item != null && item.Active ? item : At(SaveGame.GetInt(CustomClass.ToString()));
+            return item?.Donor.carClass ?? Car.CarClass.GROUP_2;
+        }
         private static Registration At(int slot) => entries.FirstOrDefault(e => e.Active && e.Slot == slot);
         private static List<string> CurrentIds() => entries.Where(e => e.Active).OrderBy(e => e.Slot).Select(e => e.Package.Manifest.id).ToList();
         internal static VehiclePackage Selected
@@ -244,21 +256,61 @@ namespace RallyCustomVehicles
             }
         }
 
-        // Free Roam's class list gains "custom" while custom cars are registered.
+        // The class lists gain "custom" while custom cars are registered (Free Roam and Time Attack use the full list,
+        // Custom Rally its own shorter one).
         [HarmonyPatch(typeof(CarManager), "GetClassStrings")]
         private static class ClassStringsPatch
         {
-            [HarmonyPostfix] private static void After(List<string> __result) { if (InCustomMenu) __result.Add("custom"); }
+            [HarmonyPostfix] private static void After(List<string> __result)
+            { if (InCustomMenu && GameModeManager.GameMode != GameModeManager.GAME_MODES.CUSTOM) __result.Add("custom"); }
+        }
+        [HarmonyPatch(typeof(CarManager), "GetClassStringsForCustomRally")]
+        private static class RallyClassStringsPatch
+        {
+            [HarmonyPostfix] private static void After(List<string> __result)
+            { if (InCustomMenu && GameModeManager.GameMode == GameModeManager.GAME_MODES.CUSTOM) __result.Add("custom"); }
         }
         [HarmonyPatch(typeof(CarManager), "SetChosenClass", new[] { typeof(int) })]
         private static class ChooseClassPatch
         {
             [HarmonyPrefix] private static bool Before(int index)
             {
-                if (index != (int)CustomClass || !InCustomMenu) { launched = null; return true; }
+                if (index != CustomPosition || !InCustomMenu) { launched = null; return true; }
                 GameModeManager.GetSeasonDataCurrentGameMode().CarClass = CustomClass;
                 return false;
             }
+        }
+        // The class button shows (int)CarClass as its list position; on Custom Rally's shorter list that is past the end.
+        [HarmonyPatch(typeof(CustomButtonCars), "Init")]
+        private static class ClassButtonPatch
+        {
+            [HarmonyPostfix] private static void After(object __instance)   // object: its UI base type is not referenced here
+            {
+                var button = Traverse.Create(__instance);
+                if (button.Field("settingsType").GetValue()?.ToString() != "Class" || GameModeManager.GetSeasonDataCurrentGameMode()?.CarClass != CustomClass) return;
+                if (button.Field<int>("index").Value == CustomPosition) return;
+                button.Field<int>("index").Value = CustomPosition;
+                button.Method("UpdateOptionTextAndArrows").GetValue();
+            }
+        }
+        // Safety net: leaderboard names exist only for the stock classes; a season still on Custom names its donor's.
+        [HarmonyPatch(typeof(LeaderboardStringBuilder), "BuildLeaderboardString")]
+        private static class LeaderboardNamePatch
+        {
+            [HarmonyPrefix] private static void Before(ref Car.CarClass carClass)
+            { if (carClass == CustomClass) carClass = NativeClass(GameModeManager.GetSeasonDataCurrentGameMode()); }
+        }
+        // Custom Rally's season is saved to disk: never write the menu-only class into it (the game without this mod
+        // could not load it). The donor's class is written and the menu value restored afterwards.
+        [HarmonyPatch(typeof(SaveManager), "SaveSeasonData")]
+        private static class SeasonSavePatch
+        {
+            [HarmonyPrefix, HarmonyPriority(Priority.First)] private static void Before(Season seasonData, ref bool __state)
+            {
+                __state = seasonData != null && seasonData.CarClass == CustomClass;
+                if (__state) seasonData.CarClass = NativeClass(seasonData);
+            }
+            [HarmonyPostfix] private static void After(Season seasonData, bool __state) { if (__state) seasonData.CarClass = CustomClass; }
         }
         [HarmonyPatch(typeof(CarManager), "GetCurrentCarsListForClass")]
         private static class CarsListPatch
@@ -344,23 +396,30 @@ namespace RallyCustomVehicles
 
         // Starting Free Roam from the Custom class: the game gets the donor's class and car (its own data, saves and
         // physics path), and the custom choice rides along as the selection. Coming back, the menu shows Custom again.
+        private static void StartFromCustom()
+        {
+            var season = GameModeManager.GetSeasonDataCurrentGameMode();
+            if (season == null || season.CarClass != CustomClass) return;
+            Registration item = null;
+            if (selections.TryGetValue(season, out var choice)) item = choice.Item;
+            item = item != null && item.Active ? item : At(SaveGame.GetInt(CustomClass.ToString()));
+            if (item == null) { season.CarClass = Car.CarClass.GROUP_2; season.SelectedCar = CarManager.GetCurrentCarsListForClass(Car.CarClass.GROUP_2)[0]; return; }
+            season.CarClass = item.Donor.carClass;
+            season.SelectedCar = item.Donor;
+            selections.GetValue(season, s => new Choice()).Item = item;
+            launched = item;
+            Main.Log(GameModeManager.GameMode + " with " + item.Package.Manifest.id + " (Custom class); native season: " + item.Donor.carClass + " " + item.Donor.prefabName + ".");
+        }
         [HarmonyPatch(typeof(FreeroamManager), "LoadFreeRoam")]
         private static class StartPatch
         {
-            [HarmonyPrefix] private static void Before()
-            {
-                var season = GameModeManager.GetSeasonDataCurrentGameMode();
-                if (season == null || season.CarClass != CustomClass) return;
-                Registration item = null;
-                if (selections.TryGetValue(season, out var choice)) item = choice.Item;
-                item = item != null && item.Active ? item : At(SaveGame.GetInt(CustomClass.ToString()));
-                if (item == null) { season.CarClass = Car.CarClass.GROUP_2; season.SelectedCar = CarManager.GetCurrentCarsListForClass(Car.CarClass.GROUP_2)[0]; return; }
-                season.CarClass = item.Donor.carClass;
-                season.SelectedCar = item.Donor;
-                selections.GetValue(season, s => new Choice()).Item = item;
-                launched = item;
-                Main.Log("Free Roam with " + item.Package.Manifest.id + " (Custom class); native season: " + item.Donor.carClass + " " + item.Donor.prefabName + ".");
-            }
+            [HarmonyPrefix] private static void Before() => StartFromCustom();
+        }
+        // Time Attack and Custom Rally: before the stage leaderboard names and AI field are built from the class.
+        [HarmonyPatch(typeof(RallyManager), "LoadFirstStage")]
+        private static class RallyStartPatch
+        {
+            [HarmonyPrefix] private static void Before() => StartFromCustom();
         }
         [HarmonyPatch(typeof(CustomButtonCars), "Init")]
         private static class ReturnPatch

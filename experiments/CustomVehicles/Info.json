@@ -2,7 +2,7 @@
   "Id": "ArtOfSimRally.CustomVehicles",
   "DisplayName": "Custom Vehicles (development)",
   "Author": "d-b-c-e",
-  "Version": "0.3.0",
+  "Version": "0.4.0",
   "ManagerVersion": "0.27.0",
   "AssemblyName": "ArtOfSimRally.CustomVehicles.Experimental.dll",
   "EntryMethod": "RallyCustomVehicles.Main.Load"

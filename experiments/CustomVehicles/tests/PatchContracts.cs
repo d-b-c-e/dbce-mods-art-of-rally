@@ -61,14 +61,16 @@ internal static class PatchContracts
             foreach(var p in method.GetParameters())
             {
                 Type expected=null;
-                if(p.Name=="__originalMethod" || p.Name=="__args") continue;
+                if(p.Name=="__originalMethod" || p.Name=="__args" || p.Name=="__state") continue;   // __state: Harmony's prefix-to-postfix value
                 if(p.Name=="__instance") expected=original.DeclaringType;
                 else if(p.Name=="__result") expected=((MethodInfo)original).ReturnType;
                 else expected=original.GetParameters().FirstOrDefault(x=>x.Name==p.Name)?.ParameterType;
                 if(expected==null) throw new Exception("Unknown injected parameter "+patch.Name+"."+p.Name+" for "+original);
                 if(expected.IsByRef) expected=expected.GetElementType();
                 var actual=p.ParameterType.IsByRef ? p.ParameterType.GetElementType() : p.ParameterType;
-                if(actual!=expected) throw new Exception("Injected parameter type mismatch: "+method+" -> "+original);
+                // __instance may be a base type (Harmony passes the object; object avoids referencing UI assemblies).
+                bool ok=p.Name=="__instance" ? actual.IsAssignableFrom(expected) : actual==expected;
+                if(!ok) throw new Exception("Injected parameter type mismatch: "+method+" -> "+original);
             }
     }
     private static void CheckGuards(Assembly plugin)

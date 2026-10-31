@@ -29,13 +29,16 @@ namespace RallyCustomVehicles
         [HarmonyPrefix, HarmonyPriority(Priority.First)]
         private static bool Before(MethodBase __originalMethod, object[] __args)
         {
-            if (Main.Policy.CanUpload) return true;
-            Main.Log("Blocked online upload after custom physics: " + __originalMethod.Name);
+            // Online times are never posted with a custom car (owner 2026-10-31), even with its donor's handling; local
+            // results, ghosts and progress still save. After custom physics nothing is posted until restart.
+            bool customCar = Catalog.Selected != null;
+            if (Main.Policy.CanUpload && !customCar) return true;
+            Main.Log("Blocked online upload (" + (customCar ? "custom car" : "after custom physics") + "): " + __originalMethod.Name);
             // Report failure, never a fake successful upload. Both stage time and
             // replay callbacks are notified; request code is never executed.
             foreach (var callback in __args.OfType<PlatformAPIFailed>())
             {
-                try { callback("Custom vehicle physics: online times are disabled until restart."); }
+                try { callback(customCar ? "Custom car: online times are not posted." : "Custom vehicle physics: online times are disabled until restart."); }
                 catch (Exception ex) { Main.LogError(ex); }
             }
             return false;
