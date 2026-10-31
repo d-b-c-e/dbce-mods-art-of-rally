@@ -162,7 +162,11 @@ function Invoke-Launch {
             else {
                 try {
                     Restore-State $state $StateDir
-                    $result.ownerStateRestored = (Compare-State $state $StateDir).Count -eq 0
+                    $diffs = @(Compare-State $state $StateDir)
+                    # OwnerWaived: Steam may sync the cloud cache (compare-only, never restored); report it, do not fail on it.
+                    $cache = if ($CloudProtection -eq 'OwnerWaived') { @($diffs | Where-Object { $_ -match '^steamcloud ' }) } else { @() }
+                    if ($cache.Count) { $result.steamCacheChanged = $cache; Note "Steam cloud cache changed (not restored, owner waived): $($cache -join '; ')" }
+                    $result.ownerStateRestored = @($diffs | Where-Object { $cache -notcontains $_ }).Count -eq 0
                 }
                 catch { Note "RESTORE FAILED: $($_.Exception.Message); backup kept at $StateDir" }
             }
