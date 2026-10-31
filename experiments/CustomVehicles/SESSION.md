@@ -88,3 +88,7 @@ Owner: one combined mod (standalone Turtle Van removed from the install) and a C
 ## 2026-10-31 - 0.4.0 Custom class in Time Attack and Custom Rally
 
 Owner: the Scout worked from Free Roam's Custom class; wants every mode, online uploads may be blocked. 0.4.0 (eb262eb) adds Custom to Time Attack and Custom Rally (Career, Daily, Weekly fix their class), blocks online uploads while a custom car is in the stage (local results still save) and keeps Custom Rally's saved season on the donor's class. Installed file-only, 13/13 match; 0.3.0 backup at `E:\Source\temp\customvehicles-0.4.0\backup-installed-0.3.0`. Not run in game.
+
+## 2026-10-31 - 0.4.2 installed (Custom Rally preview fix, Turtle Van on Das Speedvan)
+
+0.4.1 (92a5490): arriving on Custom in Custom Rally showed a stock van (the class button's position 6 is Vans as a class). 0.4.2 (4fd777c): Turtle Van donor Car_Kei -> Bonus_LtVanLow for the deeper van engine (owner played the Speedvan: good match); own engine 100 kW / 210 Nm for step 2. Installed file-only, 13/13 match; 0.4.0 backup at `E:\Source\temp\customvehicles-0.4.2\backup-installed-0.4.0`. Not run in game.
