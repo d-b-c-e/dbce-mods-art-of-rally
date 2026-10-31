@@ -298,6 +298,20 @@ namespace RallyCustomVehicles
                 button.Method("UpdateOptionTextAndArrows").GetValue();
             }
         }
+        // The class button shows the car before it saves the class (UpdateTextures: SelectCarInClass, then Save), so on
+        // arrival the season still holds the previous class. Custom Rally's "custom" position needs the season on Custom
+        // first, or position 6 shows the stock Vans (owner report 2026-10-31, after 0.4.1).
+        [HarmonyPatch(typeof(CustomButtonCars), "UpdateTextures")]
+        private static class ClassArrivalPatch
+        {
+            [HarmonyPrefix] private static void Before(object __instance)
+            {
+                if (!InCustomMenu || GameModeManager.GameMode != GameModeManager.GAME_MODES.CUSTOM) return;
+                var button = Traverse.Create(__instance);
+                if (button.Field("settingsType").GetValue()?.ToString() != "Class" || button.Field<int>("index").Value != CustomPosition) return;
+                GameModeManager.GetSeasonDataCurrentGameMode().CarClass = CustomClass;
+            }
+        }
         // Safety net: leaderboard names exist only for the stock classes; a season still on Custom names its donor's.
         [HarmonyPatch(typeof(LeaderboardStringBuilder), "BuildLeaderboardString")]
         private static class LeaderboardNamePatch
