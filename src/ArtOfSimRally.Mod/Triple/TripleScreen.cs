@@ -119,6 +119,27 @@ internal static class TripleScreen
         _noticeUntil = Time.unscaledTime + 2.5f;
     }
 
+    // The camera overlay (CameraOverlay): on every camera change and at the start of each stage.
+    private static object _lastAngle;
+    private static BonnetCamera.View _lastView;
+    private static bool _wasInStage;
+
+    private static void AnnounceCameraChange()
+    {
+        var camera = Camera.main;
+        var rig = camera == null || camera.transform.parent == null ? null : camera.transform.parent.GetComponent<CarCameras>();
+        if (rig == null || camera.name != "Camera Main" || Main.Settings == null) { _wasInStage = false; _lastAngle = null; return; }
+        var view = BonnetCamera.ActiveView(rig);
+        var angle = rig.CurrentCameraAngle;
+        if (_wasInStage && view == _lastView && ReferenceEquals(angle, _lastAngle)) return;
+        _wasInStage = true; _lastView = view; _lastAngle = angle;
+        var cfg = Main.Settings;
+        var kind = view == BonnetCamera.View.Bonnet ? CameraOverlay.Kind.Bonnet : view == BonnetCamera.View.Bumper ? CameraOverlay.Kind.Bumper : CameraOverlay.Kind.Game;
+        Notify(CameraOverlay.Text(kind, kind == CameraOverlay.Kind.Bumper ? cfg.BumperFOV : cfg.BonnetFOV,
+            _settings.EnableThreeViewPrototype || _settings.EnableSeparateDisplayPrototype, _settings.OverrideFieldOfView,
+            cfg.CameraTuningKeys, CameraKeys.Name(cfg.KeyFovUp), CameraKeys.Name(cfg.KeyFovDown)));
+    }
+
     private static void ToggleRealistic()
     {
         if (!ProjectionController.InStage()) { Notify("Field of view: switch while driving"); return; }
@@ -171,6 +192,11 @@ internal static class TripleScreen
     {
         if (_settings == null) return;
         _frame++;
+        if (_enabled)
+        {
+            try { AnnounceCameraChange(); }
+            catch (Exception exception) { _wasInStage = true; _modEntry.Logger.Warning("Camera overlay skipped: " + exception.Message); }
+        }
         if (_enabled && Application.isFocused && !SettingsPanel.Editing && Input.GetKeyDown(KeyCode.F7)
             && (_settings.EnableThreeViewPrototype || _settings.EnableSeparateDisplayPrototype))
         {
