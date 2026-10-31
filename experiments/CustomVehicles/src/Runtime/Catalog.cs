@@ -36,6 +36,11 @@ namespace RallyCustomVehicles
         // Custom Rally lists only Group 2 to Group A, so "custom" is its seventh entry; the other lists have all ten.
         private static int CustomPosition => GameModeManager.GameMode == GameModeManager.GAME_MODES.CUSTOM ? 6 : (int)CustomClass;
         // The class the game should see for a season on Custom: the picked car's donor.
+        // The class button turns its list position straight into a class ((Car.CarClass)index). On Custom Rally's list
+        // "custom" is position 6, which as a class is Vans: while the season is on Custom, that request means Custom.
+        private static bool MeansCustom(int requested) =>
+            requested == (int)CustomClass || (requested == CustomPosition && GameModeManager.GameMode == GameModeManager.GAME_MODES.CUSTOM &&
+                GameModeManager.GetSeasonDataCurrentGameMode()?.CarClass == CustomClass);
         private static Car.CarClass NativeClass(Season season)
         {
             Registration item = null;
@@ -356,7 +361,9 @@ namespace RallyCustomVehicles
         {
             [HarmonyPrefix] private static bool Before(CarChooserManager __instance, ref Car.CarClass carClass, int index, ref CarMenuDisplay __result)
             {
-                if (carClass != CustomClass) return true;
+                if (!MeansCustom((int)carClass)) return true;
+                // A Vans-numbered request came with Vans' saved car index; Custom's pick is its own.
+                if (carClass != CustomClass) { carClass = CustomClass; index = SaveGame.GetInt(CustomClass.ToString()); }
                 if (customDisplays.Count == 0) { carClass = Car.CarClass.GROUP_2; return true; }
                 __instance.DisableAllCars();
                 DeselectAll.Invoke(__instance, null);
@@ -382,7 +389,7 @@ namespace RallyCustomVehicles
         {
             [HarmonyPrefix] private static bool Before(CarChooserManager __instance, int carClass)
             {
-                if (carClass != (int)CustomClass) return true;
+                if (!MeansCustom(carClass)) return true;
                 __instance.DisableAllCars();
                 if (customDisplays.Count > 0) ShowOne.Invoke(__instance, new object[] { customDisplays, 0 });
                 return false;
