@@ -1,6 +1,21 @@
 # Local deployment
 
-## Current installation — 0.4.4-rc.11 (October 30, owner test)
+## Current installation — 0.4.4-rc.12 (October 31, owner test)
+
+Owner report 10-31: no FFB after a Wheelkit Apply (the saved Off from the earlier session was kept) and switching
+FFB on in F6 mid-race did nothing (the reconnect refused while the stage was underway). rc.12: an open F6 counts as
+not driving for the reconnect, so FFB starts there; each stage that starts with FFB off shows the off notice once.
+Source `58839ea`, ZIP `ArtOfSimRally-0.4.4-rc.12-shared-input.zip` SHA-256
+`095701954B441C8C20E74F51CC3D109024266E140DDEA4FE0152CECFFA699D92`; installed `ArtOfSimRally.Mod.dll`
+`066535BB5E8CEF919EB71963469785A7B5F6C76B10C1E005A5FB39DB5A06808E`. Installer 70, SettingsUi 3428, WheelInput 620,
+Regression, ForceLifecycle 23, CameraTuning 385, Triple 1357 passed. Game closed, lease held and released; payload
+9/9; Settings.xml (FFB now on, saved by the owner 17:01), TripleScreen.xml, dbce-controls.ini, Params.xml
+byte-identical. Rollback copy of rc.11: `E:\Source\temp\art-0.4.4-rc.12\backup-installed-rc.11`.
+Owner request: the standalone Turtle Van mod (`Mods\ArtOfSimRally.TurtleVan`, 0.1.4) was removed; Custom Vehicles
+carries the van (`dbce.turtle-van`) and refused to load beside it. Hash-verified copy:
+`E:\Source\temp\art-0.4.4-rc.12\removed-TurtleVan-mod`.
+
+## Previous installation — 0.4.4-rc.11 (October 30, owner test)
 
 guna offline request 483604, file-only, no launch. rc.10 plus ISS-0014 (separate displays: F7 Original renders
 all three as one flat plane at the game's framing instead of releasing, which froze the side displays) and

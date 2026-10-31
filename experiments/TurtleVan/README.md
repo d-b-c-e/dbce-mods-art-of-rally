@@ -1,3 +1,6 @@
+> **Retired 2026-10-31 (owner):** the van ships only as a Custom Vehicles package (`experiments/CustomVehicles`,
+> `dbce.turtle-van`). This standalone plugin was removed from the owner install; do not install it again.
+
 # Turtle Van — experimental art of rally vehicle
 
 An original modeled recreation of the user's yellow/green Turtle Van reference,
