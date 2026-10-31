@@ -84,3 +84,7 @@ Re-enable from the UMM panel or by setting `Enabled="true"` with the game closed
 ## 2026-10-31 - 0.3.0 Custom class installed (owner request)
 
 Owner: one combined mod (standalone Turtle Van removed from the install) and a Custom car category. 0.3.0 (99ded57) lists both packages as the last Free Roam class, `custom`; it is menu-only and Free Roam starts with the donor's class and car. Handling unchanged (donor physics; own handling still locked; next step after the owner's light test). Installed file-only with the game closed; 13/13 files match the package; `State` kept; 0.2.0 backup at `E:\Source\temp\customvehicles-0.3.0\backup-installed-0.2.0`. Not run in game.
+
+## 2026-10-31 - 0.4.0 Custom class in Time Attack and Custom Rally
+
+Owner: the Scout worked from Free Roam's Custom class; wants every mode, online uploads may be blocked. 0.4.0 (eb262eb) adds Custom to Time Attack and Custom Rally (Career, Daily, Weekly fix their class), blocks online uploads while a custom car is in the stage (local results still save) and keeps Custom Rally's saved season on the donor's class. Installed file-only, 13/13 match; 0.3.0 backup at `E:\Source\temp\customvehicles-0.4.0\backup-installed-0.3.0`. Not run in game.
