@@ -197,33 +197,38 @@ static class Program
         Ui.Instance.ToggleWindow(false);Host.TickSettingsUi();SettingsPanel.HasDraft=false;
         Host.ToggleSettings();Host.CloseSettings();Check(!Ui.Instance.Opened&&!DraftCloseGuard.Warned,"without a draft the first close did not close");
     }
-    // F7 saves through Triple.Settings.Save: the pick reaches disk with the other values, a pre-update file loads with no
-    // pick, and a failed write throws and leaves the last good file.
+    // F7 writes only <F7View> (SettingsPersistence.WriteElement): a pre-update file loads with no pick; each pick survives a
+    // restart while unknown elements, attributes, comments and absent fields stay as they were; malformed XML and a failed
+    // replacement throw and leave the file byte-identical with no temp file.
     static void TripleSave()
     {
         var dir=Path.Combine(Path.GetTempPath(),"art-triple-save-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(dir);
         var file=Path.Combine(dir,"TripleScreen.xml");
         var xml=new System.Xml.Serialization.XmlSerializer(typeof(ArtOfSimRally.Mod.Triple.Settings));
         ArtOfSimRally.Mod.Triple.Settings Read(){using var s=File.OpenRead(file);return (ArtOfSimRally.Mod.Triple.Settings)xml.Deserialize(s);}
+        bool Throws(Action a){try{a();return false;}catch(Exception){return true;}}
         try
         {
-            var entry=new UnityModManagerNet.UnityModManager.ModEntry{Path=dir};
-            File.WriteAllText(file,"<?xml version=\"1.0\" encoding=\"utf-8\"?><Settings><CurveRadiusMm>1500</CurveRadiusMm><OverrideFieldOfView>true</OverrideFieldOfView></Settings>");
-            var loaded=Read();
-            Check(loaded.F7View==0&&loaded.CurveRadiusMm==1500f&&loaded.OverrideFieldOfView,"a pre-update TripleScreen.xml did not load with no pick and its values");
+            File.WriteAllText(file,"<?xml version=\"1.0\" encoding=\"utf-8\"?>\r\n<Settings note=\"owner\">\r\n  <!-- kept -->\r\n  <CurveRadiusMm>1500</CurveRadiusMm>\r\n  <OverrideFieldOfView>true</OverrideFieldOfView>\r\n  <FutureKey>x</FutureKey>\r\n</Settings>");
+            Check(Read().F7View==0,"a pre-update TripleScreen.xml did not load with no pick");
             foreach(var pick in new[]{1,2,3})
             {
-                loaded.F7View=pick;loaded.Save(entry);var back=Read();
+                SettingsPersistence.WriteElement(file,"F7View",pick.ToString());
+                var back=Read();var text=File.ReadAllText(file);
                 Check(back.F7View==pick&&back.CurveRadiusMm==1500f&&back.OverrideFieldOfView,"F7 pick "+pick+" did not survive a restart with radius and framing intact");
+                Check(text.Contains("<FutureKey>x</FutureKey>")&&text.Contains("<!-- kept -->")&&text.Contains("note=\"owner\"")
+                    &&!text.Contains("ViewWidthScale")&&text.Split("<F7View>").Length==2,"F7 changed more than its own element");
             }
-            Check(!File.Exists(file+".tmp"),"a successful save left its temp file");
+            Check(Directory.GetFiles(dir,"*.tmp").Length==0,"a successful F7 save left a temp file");
             var good=File.ReadAllBytes(file);
             File.SetAttributes(file,FileAttributes.ReadOnly);
-            loaded.F7View=1;var threw=false;
-            try{loaded.Save(entry);}catch(Exception){threw=true;}
+            var failed=Throws(()=>SettingsPersistence.WriteElement(file,"F7View","1"));
             File.SetAttributes(file,FileAttributes.Normal);
-            Check(threw,"a failed save did not throw");
-            Check(File.ReadAllBytes(file).AsSpan().SequenceEqual(good)&&!File.Exists(file+".tmp"),"a failed save changed the last good file or left a temp file");
+            Check(failed&&File.ReadAllBytes(file).AsSpan().SequenceEqual(good)&&Directory.GetFiles(dir,"*.tmp").Length==0,
+                "a failed replacement did not throw, changed the last good file or left a temp file");
+            File.WriteAllText(file,"<Settings><CurveRadiusMm>1500");good=File.ReadAllBytes(file);
+            Check(Throws(()=>SettingsPersistence.WriteElement(file,"F7View","2"))&&File.ReadAllBytes(file).AsSpan().SequenceEqual(good),
+                "malformed XML was rewritten");
         }
         finally{Directory.Delete(dir,true);}
     }

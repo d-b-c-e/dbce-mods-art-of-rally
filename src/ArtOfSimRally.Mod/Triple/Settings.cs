@@ -1,5 +1,4 @@
 using System.IO;
-using System.Xml.Serialization;
 using UnityModManagerNet;
 
 namespace ArtOfSimRally.Mod.Triple;
@@ -10,24 +9,6 @@ public sealed class Settings : UnityModManager.ModSettings
     // so the old standalone mod's Settings.xml loads unchanged.
     public override string GetPath(UnityModManager.ModEntry modEntry) =>
         Path.Combine(modEntry.Path, "TripleScreen.xml");
-
-    // UMM's Save truncates the file before writing and swallows errors; write a temp file and swap it in, so a failure
-    // throws (F7 reports it) and the last good file stays.
-    public override void Save(UnityModManager.ModEntry modEntry)
-    {
-        var path = GetPath(modEntry);
-        var temp = path + ".tmp";
-        try
-        {
-            using (var writer = new StreamWriter(temp)) new XmlSerializer(typeof(Settings)).Serialize(writer, this);
-            if (File.Exists(path)) File.Replace(temp, path, null);
-            else File.Move(temp, path);
-        }
-        finally
-        {
-            if (File.Exists(temp)) File.Delete(temp);
-        }
-    }
 
     // Deliberately off until the attended center-panel experiment is performed.
     public bool EnableCenterPanelPreview;

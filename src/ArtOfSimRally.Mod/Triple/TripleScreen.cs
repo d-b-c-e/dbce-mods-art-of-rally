@@ -126,10 +126,7 @@ internal static class TripleScreen
         var curveAvailable = ProjectionController.CurveAvailable(_settings);
         SessionStep = F7Comparison.Next(F7Comparison.Current(SessionStep, Projection.CurveActive), curveAvailable);
         _sessionKey = SessionKey();
-        var previous = _settings.F7View;
-        _settings.F7View = (int)SessionStep.Value;
-        var saved = Save();
-        if (!saved) _settings.F7View = previous; // a later F6 save must not write a pick the player was told failed
+        var saved = SaveF7View((int)SessionStep.Value);
         var measured = !FovPreference.ShowsGameFov(_settings.OverrideFieldOfView, ProjectionController.LastChaseView, _settings.ChaseUsesGameFov);
         Notify(F7Comparison.Label(SessionStep.Value, measured, curveAvailable, saved));
         var eye = EffectiveLayout.Resolve(Layout.Current, _settings).Document?.Geometry?.EyeDistanceMm / Projection.ActiveViewWidthScale;
@@ -251,7 +248,9 @@ internal static class TripleScreen
             if (SessionStep.HasValue)
                 w.Help("F7 comparison is showing: " + (SessionStep == ComparisonStep.Original ? "original game view"
                     : SessionStep == ComparisonStep.Angle ? "angle correction" : "angle + curve correction") +
-                    " (picked with F7, kept next time; press F7 while driving to change it).");
+                    (F7Comparison.FromSaved(_settings.F7View) == SessionStep
+                        ? " (picked with F7, kept next time; press F7 while driving to change it)."
+                        : " for now; next time starts from your saved choice."));
             if (!seat && w.Command("triple-match-seat", "Use measured perspective")) MatchSeat(_settings);
             if (_settings.OverrideFieldOfView && w.Command("triple-game-view", "Use the game's field of view"))
                 _settings.OverrideFieldOfView = false;
@@ -390,11 +389,27 @@ internal static class TripleScreen
         return changed;
     }
 
-    internal static bool Save()
+    internal static void Save()
     {
-        if (_settings == null || _modEntry == null) return false;
-        try { _settings.Save(_modEntry); return true; }
-        catch (Exception exception) { _modEntry.Logger.Warning("Triple screens: could not save settings: " + exception.Message); return false; }
+        if (_settings == null || _modEntry == null) return;
+        try { _settings.Save(_modEntry); }
+        catch (Exception exception) { _modEntry.Logger.Warning("Triple screens: could not save settings: " + exception.Message); }
+    }
+
+    // F7 changes only <F7View> in TripleScreen.xml (the rest of the file is kept); memory follows only a saved pick.
+    private static bool SaveF7View(int view)
+    {
+        try
+        {
+            SettingsPersistence.WriteElement(_settings.GetPath(_modEntry), "F7View", view.ToString());
+            _settings.F7View = view;
+            return true;
+        }
+        catch (Exception exception)
+        {
+            _modEntry.Logger.Warning("F7 comparison: could not save the view: " + exception.Message);
+            return false;
+        }
     }
 
     internal static void Toggle(bool value)
