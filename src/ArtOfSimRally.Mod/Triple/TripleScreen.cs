@@ -1,4 +1,5 @@
 using System;
+using HarmonyLib;
 using System.IO;
 using Dbce.TripleScreen.Protocol;
 using UnityEngine;
@@ -119,10 +120,38 @@ internal static class TripleScreen
         _noticeUntil = Time.unscaledTime + 2.5f;
     }
 
-    // The camera overlay (CameraOverlay): on every camera change and at the start of each stage.
+    // The camera overlay (CameraOverlay): on every camera change, at the start of each stage and after F7.
     private static object _lastAngle;
     private static BonnetCamera.View _lastView;
     private static bool _wasInStage;
+    private static string _cameraName, _cameraHint;
+    private static float _cameraUntil;
+    private static GUIStyle _cameraStyle, _hintStyle;
+    private static readonly AccessTools.FieldRef<CarCameras, System.Collections.Generic.List<CameraAngle>> s_angles =
+        AccessTools.FieldRefAccess<CarCameras, System.Collections.Generic.List<CameraAngle>>("CameraAnglesList");
+
+    // Custom Vehicles adds its cockpit as one more camera angle; read it by name so this mod does not depend on it. That
+    // mod loads after this one, so the lookup waits until a stage asks.
+    private static System.Reflection.FieldInfo s_customCockpit;
+    private static bool s_customCockpitLooked;
+    internal static bool IsCustomCockpit(CarCameras rig)
+    {
+        if (rig == null || rig.CurrentCameraAngle == null) return false;
+        if (!s_customCockpitLooked)
+        {
+            s_customCockpitLooked = true;
+            var type = AccessTools.TypeByName("RallyCustomVehicles.Main");
+            s_customCockpit = type == null ? null : AccessTools.Field(type, "cockpit");
+        }
+        return s_customCockpit != null && ReferenceEquals(rig.CurrentCameraAngle, s_customCockpit.GetValue(null));
+    }
+
+    internal static CameraOverlay.Kind CameraKind(CarCameras rig)
+    {
+        var view = BonnetCamera.ActiveView(rig);
+        return view == BonnetCamera.View.Bonnet ? CameraOverlay.Kind.Bonnet : view == BonnetCamera.View.Bumper ? CameraOverlay.Kind.Bumper
+            : IsCustomCockpit(rig) ? CameraOverlay.Kind.Cockpit : CameraOverlay.Kind.Chase;
+    }
 
     private static void AnnounceCameraChange()
     {
@@ -133,11 +162,35 @@ internal static class TripleScreen
         var angle = rig.CurrentCameraAngle;
         if (_wasInStage && view == _lastView && ReferenceEquals(angle, _lastAngle)) return;
         _wasInStage = true; _lastView = view; _lastAngle = angle;
-        var cfg = Main.Settings;
-        var kind = view == BonnetCamera.View.Bonnet ? CameraOverlay.Kind.Bonnet : view == BonnetCamera.View.Bumper ? CameraOverlay.Kind.Bumper : CameraOverlay.Kind.Game;
-        Notify(CameraOverlay.Text(kind, kind == CameraOverlay.Kind.Bumper ? cfg.BumperFOV : cfg.BonnetFOV,
-            _settings.EnableThreeViewPrototype || _settings.EnableSeparateDisplayPrototype, _settings.OverrideFieldOfView,
-            cfg.CameraTuningKeys, CameraKeys.Name(cfg.KeyFovUp), CameraKeys.Name(cfg.KeyFovDown)));
+        var kind = CameraKind(rig);
+        var angles = s_angles(rig);
+        var chase = angles == null || angle == null ? 1 : angles.IndexOf(angle) + 1;
+        bool triples = _settings.EnableThreeViewPrototype || _settings.EnableSeparateDisplayPrototype;
+        bool realistic = triples && _settings.OverrideFieldOfView && CameraOverlay.Mounted(kind);
+        _cameraName = CameraOverlay.Name(kind, chase, realistic);
+        _cameraHint = CameraOverlay.Hint(kind, triples, realistic, Main.Settings.CameraTuningKeys);
+        _cameraUntil = Time.unscaledTime + 3f;
+    }
+
+    /// <summary>The camera name near the bottom of the center screen, with the key reminder under it.</summary>
+    internal static void DrawCameraLabel()
+    {
+        if (_cameraName == null || Time.unscaledTime > _cameraUntil || Event.current == null || Event.current.type != EventType.Repaint) return;
+        if (_cameraStyle == null)
+        {
+            _cameraStyle = new GUIStyle(GUI.skin.label) { fontSize = Mathf.Max(18, Screen.height / 36), alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
+            _hintStyle = new GUIStyle(GUI.skin.label) { fontSize = Mathf.Max(14, Screen.height / 60), alignment = TextAnchor.MiddleCenter };
+        }
+        var center = Screen.width / 2f;
+        var height = _cameraStyle.fontSize * 1.8f + (string.IsNullOrEmpty(_cameraHint) ? 0f : _hintStyle.fontSize * 1.6f);
+        var rect = new Rect(center - 360f, Screen.height * 0.80f - height / 2f, 720f, height);
+        var old = GUI.color;
+        GUI.color = new Color(0f, 0f, 0f, 0.55f); GUI.DrawTexture(rect, Texture2D.whiteTexture);
+        GUI.color = Color.white;
+        GUI.Label(new Rect(rect.x, rect.y, rect.width, _cameraStyle.fontSize * 1.8f), _cameraName, _cameraStyle);
+        if (!string.IsNullOrEmpty(_cameraHint))
+            GUI.Label(new Rect(rect.x, rect.y + _cameraStyle.fontSize * 1.6f, rect.width, _hintStyle.fontSize * 1.6f), _cameraHint, _hintStyle);
+        GUI.color = old;
     }
 
     private static void ToggleRealistic()
@@ -145,10 +198,11 @@ internal static class TripleScreen
         if (!ProjectionController.InStage()) { Notify("Field of view: switch while driving"); return; }
         var realistic = !_settings.OverrideFieldOfView;
         var saved = SaveRealistic(realistic);
-        var label = (_settings.OverrideFieldOfView ? "Field of view: realistic (your seat)" : "Field of view: game · numpad +/- adjusts") +
-            (ProjectionController.LastChaseView ? " · chase views always use the game's" : "") + (saved ? "" : " · Couldn't save view");
-        Notify(label);
-        _modEntry.Logger.Log("F7: " + label + ".");
+        _wasInStage = false;   // the camera label shows the new field of view
+        var label = (_settings.OverrideFieldOfView ? "Field of view: realistic (your seat)" : "Field of view: game") +
+            (ProjectionController.LastChaseView ? " (bonnet, bumper and cockpit views; chase views always use the game's)" : "");
+        if (!saved) Notify(label + " · Couldn't save view");
+        _modEntry.Logger.Log("F7: " + label + (saved ? "." : "; could not save."));
     }
 
     private static void ToggleSessionView()

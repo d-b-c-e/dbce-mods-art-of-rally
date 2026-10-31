@@ -1,18 +1,25 @@
 namespace ArtOfSimRally.Mod.Triple;
 
-// Owner 2026-10-31: whenever the camera changes, say which camera it is, its field of view and the keys that change it.
+// Owner 2026-10-31: on every camera change, a short name near the bottom ("Bonnet Camera - Game FOV", "Cockpit",
+// "Chase 2") and a small reminder of the keys that change the field of view.
 internal static class CameraOverlay
 {
-    internal enum Kind { Game, Bonnet, Bumper }
+    internal enum Kind { Chase, Bonnet, Bumper, Cockpit }
 
-    internal static string Text(Kind kind, float fovDegrees, bool triples, bool realistic, bool tuningKeys, string fovUp, string fovDown)
+    internal static bool Mounted(Kind kind) => kind != Kind.Chase;
+
+    internal static string Name(Kind kind, int chaseNumber, bool realistic)
     {
-        if (kind == Kind.Game) return "Game camera · the game's field of view";
-        var name = kind == Kind.Bonnet ? "Bonnet camera" : "Bumper camera";
-        bool seat = triples && realistic;
-        var text = name + " · field of view " + (seat ? "realistic (your seat)" : fovDegrees.ToString("0") + "°");
-        if (tuningKeys && !seat) text += " · " + fovUp + " / " + fovDown + " adjust";
-        if (triples) text += " · F7 " + (seat ? "game" : "realistic");
-        return text;
+        if (kind == Kind.Chase) return "Chase " + chaseNumber;
+        var name = kind == Kind.Bonnet ? "Bonnet Camera" : kind == Kind.Bumper ? "Bumper Camera" : "Cockpit";
+        return name + (realistic ? " - Realistic" : " - Game FOV");
+    }
+
+    internal static string Hint(Kind kind, bool triples, bool realistic, bool tuningKeys)
+    {
+        if (!Mounted(kind)) return "";
+        var hint = tuningKeys && !realistic ? "Numpad + / - field of view" : "";
+        if (triples) hint += (hint.Length > 0 ? " · " : "") + "F7 " + (realistic ? "game FOV" : "realistic");
+        return hint;
     }
 }

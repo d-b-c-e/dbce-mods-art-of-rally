@@ -669,15 +669,15 @@ internal static class Program
             && Near(original[0].LowerRight, original[1].LowerLeft) && Near(original[1].LowerRight, original[2].LowerLeft),
             "Original on separate displays is one flat contiguous plane");
 
-        // Camera overlay: camera, field of view and the keys that change it.
-        Check(ArtOfSimRally.Mod.Triple.CameraOverlay.Text(ArtOfSimRally.Mod.Triple.CameraOverlay.Kind.Bonnet, 75f, true, false, true, "Numpad Plus", "Numpad Minus")
-            == "Bonnet camera · field of view 75° · Numpad Plus / Numpad Minus adjust · F7 realistic", "bonnet overlay names the field of view and keys");
-        Check(ArtOfSimRally.Mod.Triple.CameraOverlay.Text(ArtOfSimRally.Mod.Triple.CameraOverlay.Kind.Bumper, 80f, true, true, true, "+", "-")
-            == "Bumper camera · field of view realistic (your seat) · F7 game", "realistic overlay offers F7 back to game, no adjust keys");
-        Check(ArtOfSimRally.Mod.Triple.CameraOverlay.Text(ArtOfSimRally.Mod.Triple.CameraOverlay.Kind.Bonnet, 75f, false, true, true, "+", "-")
-            == "Bonnet camera · field of view 75° · + / - adjust", "single screen: no realistic, no F7");
-        Check(ArtOfSimRally.Mod.Triple.CameraOverlay.Text(ArtOfSimRally.Mod.Triple.CameraOverlay.Kind.Game, 0f, true, true, true, "+", "-")
-            == "Game camera · the game's field of view", "game cameras always use the game's field of view");
+        // Camera overlay: a short name near the bottom and a key reminder (owner 2026-10-31).
+        Check(ArtOfSimRally.Mod.Triple.CameraOverlay.Name(ArtOfSimRally.Mod.Triple.CameraOverlay.Kind.Bonnet, 0, false) == "Bonnet Camera - Game FOV"
+            && ArtOfSimRally.Mod.Triple.CameraOverlay.Name(ArtOfSimRally.Mod.Triple.CameraOverlay.Kind.Bonnet, 0, true) == "Bonnet Camera - Realistic"
+            && ArtOfSimRally.Mod.Triple.CameraOverlay.Name(ArtOfSimRally.Mod.Triple.CameraOverlay.Kind.Cockpit, 0, false) == "Cockpit - Game FOV"
+            && ArtOfSimRally.Mod.Triple.CameraOverlay.Name(ArtOfSimRally.Mod.Triple.CameraOverlay.Kind.Chase, 2, true) == "Chase 2", "camera names");
+        Check(ArtOfSimRally.Mod.Triple.CameraOverlay.Hint(ArtOfSimRally.Mod.Triple.CameraOverlay.Kind.Bumper, true, false, true) == "Numpad + / - field of view · F7 realistic"
+            && ArtOfSimRally.Mod.Triple.CameraOverlay.Hint(ArtOfSimRally.Mod.Triple.CameraOverlay.Kind.Bumper, true, true, true) == "F7 game FOV"
+            && ArtOfSimRally.Mod.Triple.CameraOverlay.Hint(ArtOfSimRally.Mod.Triple.CameraOverlay.Kind.Bonnet, false, false, true) == "Numpad + / - field of view"
+            && ArtOfSimRally.Mod.Triple.CameraOverlay.Hint(ArtOfSimRally.Mod.Triple.CameraOverlay.Kind.Chase, true, false, true) == "", "key reminders");
 
         // Shift+F7 developer comparison: session only; with no step the normal view is angle + curve when a curve works.
         Check(ArtOfSimRally.Mod.Triple.F7Comparison.Current(null, curveActive: true)

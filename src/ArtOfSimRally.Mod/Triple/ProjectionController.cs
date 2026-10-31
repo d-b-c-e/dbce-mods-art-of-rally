@@ -449,7 +449,13 @@ internal sealed class ProjectionController
             if (definition.CurveRadiusMm != radius)
                 throw new InvalidOperationException("the radius must be at least half the panel width, with the eyes in front of the curve.");
             if (!CurvedPanelPresenter.Available) throw new InvalidOperationException("Unity's copy shader is unavailable.");
-            return surfaces.Select(s => CurvedPanelWarp.Create(s, new Vector3d(0d, 0d, 0d), radius)).ToArray();
+            // The warp is computed for the real eye (the measured rig); the views may render from a virtual eye for the
+            // game's field of view (ActiveViewWidthScale). A warp for the virtual eye bowed straight edges on 1500R.
+            var seat = ActiveViewWidthScale == 1d ? surfaces : TripleRigBuilder.Build(new TripleRigDefinition(
+                definition.PanelWidthMm, definition.PanelHeightMm, definition.EyeDistanceMm * ActiveViewWidthScale,
+                definition.LeftAngleDegrees, definition.RightAngleDegrees, definition.EyeHeightAbovePanelCenterMm,
+                definition.BezelGapMm, definition.CurveRadiusMm));
+            return surfaces.Select((s, i) => CurvedPanelWarp.Create(seat[i], new Vector3d(0d, 0d, 0d), radius).WithSourceOn(s)).ToArray();
         });
         configure(warps);
         if (warps == null || _separateDriver.CurveFailure == null) return;
@@ -520,7 +526,8 @@ internal sealed class ProjectionController
     {
         // Stock camera angles are chase views (the cars have no interiors); the mod's bonnet and bumper are mounted.
         var rig = camera.transform.parent != null ? camera.transform.parent.GetComponent<CarCameras>() : null;
-        var chase = rig != null && BonnetCamera.ActiveView(rig) == BonnetCamera.View.None;
+        // A Custom Vehicles cockpit is a mounted view too (its own field of view, Realistic and F7 apply).
+        var chase = rig != null && BonnetCamera.ActiveView(rig) == BonnetCamera.View.None && !TripleScreen.IsCustomCockpit(rig);
         LastChaseView = chase;
         // Simplified framing (owner 2026-10-31): chase views always use the game's field of view; bonnet and bumper
         // views use the camera's own field of view (numpad +/-) unless Realistic is on, which is the measured seat

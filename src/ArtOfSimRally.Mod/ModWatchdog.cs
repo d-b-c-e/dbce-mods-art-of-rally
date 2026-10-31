@@ -146,6 +146,7 @@ namespace ArtOfSimRally.Mod
         {
             DrawFrameRate();
             Triple.TripleScreen.DrawNotice();
+            Triple.TripleScreen.DrawCameraLabel();
         }
 
         private void OnApplicationQuit()

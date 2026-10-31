@@ -65,6 +65,23 @@ public sealed class CurvedPanelWarp
         return new CurvedPanelWarp(panel, eye, radiusMm, source, minX, minY, maxX - minX, maxY - minY);
     }
 
+    /// <summary>
+    /// The same correction with its source rectangle placed on <paramref name="panel"/>: the same-size panel of a rig whose
+    /// virtual eye is nearer or farther than the seat (the game's or a chosen field of view). The mapping stays computed
+    /// from the real eye, so a straight edge in that flat perspective view still looks straight from the seat; a warp
+    /// computed for the virtual eye instead bows it (owner report 2026-10-31, game field of view on 1500R).
+    /// </summary>
+    public CurvedPanelWarp WithSourceOn(DisplaySurface panel)
+    {
+        if (panel is null) throw new ArgumentNullException(nameof(panel));
+        if (Math.Abs(panel.Width - Panel.Width) > 1e-6 || Math.Abs(panel.Height - Panel.Height) > 1e-6)
+            throw new ArgumentException("The panel must be the same size as the warp's panel.", nameof(panel));
+        if (IsFlat) return new CurvedPanelWarp(Panel, Eye, 0d, panel, 0d, 0d, panel.Width, panel.Height);
+        var origin = panel.LowerLeft + (panel.Right * _minX) + (panel.Up * _minY);
+        var source = new DisplaySurface(panel.Id + "-source", origin, origin + (panel.Right * _spanX), origin + (panel.Up * _spanY));
+        return new CurvedPanelWarp(Panel, Eye, RadiusMm, source, _minX, _minY, _spanX, _spanY);
+    }
+
     /// <summary>The physical point at panel UV (0,0 lower-left), as the native <c>panel_point</c>.</summary>
     public static Vector3d PanelPoint(DisplaySurface panel, double radiusMm, double u, double v)
     {
