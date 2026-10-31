@@ -80,3 +80,7 @@ pinned with 0.4.3 as the shipped baseline: CustomVehicles disabled in UMM
 (`Enabled="false"`), files left installed. Backup of the previous Params.xml:
 `artofrally_Data\Managed\UnityModManager\Params.xml.before-disable-customvehicles-20261027`.
 Re-enable from the UMM panel or by setting `Enabled="true"` with the game closed.
+
+## 2026-10-31 - 0.3.0 Custom class installed (owner request)
+
+Owner: one combined mod (standalone Turtle Van removed from the install) and a Custom car category. 0.3.0 (99ded57) lists both packages as the last Free Roam class, `custom`; it is menu-only and Free Roam starts with the donor's class and car. Handling unchanged (donor physics; own handling still locked; next step after the owner's light test). Installed file-only with the game closed; 13/13 files match the package; `State` kept; 0.2.0 backup at `E:\Source\temp\customvehicles-0.3.0\backup-installed-0.2.0`. Not run in game.
