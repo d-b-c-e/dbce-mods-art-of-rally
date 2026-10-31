@@ -31,7 +31,7 @@ precede unlocking this path. The example handling values are proposals, not tune
 
 | Vehicle | Donor / native class | Triangles | Indexed vertices | Parts |
 |---|---|---:|---:|---:|
-| Turtle Van | `Car_Kei`, Group 2, Australia DLC | 82,804 | 133,133 | 31 |
+| Turtle Van | `Bonus_LtVanLow` (Das Speedvan), Vans bonus unlock | 82,804 | 133,133 | 31 |
 | Trail Scout | `Car_Mini`, Group 2 | 26,336 | 49,006 | 29 |
 
 Both have open interiors and authored window openings. Wheels are separate groups.
