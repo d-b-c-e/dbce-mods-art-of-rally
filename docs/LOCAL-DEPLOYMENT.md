@@ -1,6 +1,18 @@
 # Local deployment
 
-## Current installation — 0.4.4-rc.14 (October 31, owner test)
+## Current installation — 0.4.4-rc.15 (October 31, owner test)
+
+rc.14 plus: the 1500R curve warp is computed from the real eye at the game's field of view (owner saw a fishbowl on
+straight dash edges; the warp used the 313 mm virtual eye; toolkit 7af26cd WithSourceOn, vendored); the camera name
+near the bottom ("Bonnet Camera - Game FOV", "Cockpit - Realistic", "Chase 2") with a key reminder; a Custom Vehicles
+cockpit counts as a mounted view (Realistic and F7 apply). Source `98678d0`, ZIP SHA-256
+`D1FC6FC6B4DC7C73C7F1E17F0F675FE4B4AC75FBD0267D5454B4FBFB4C9A70C3`; installed `ArtOfSimRally.Mod.dll`
+`92B99690C82C594108F41133A3736E061F1F73C5418BB51F21DBAF86C3DA218F`. Installer 70, Triple 1355, SettingsUi 3412,
+CameraTuning 386, toolkit 25 passed. Game closed; payload 9/9; owner settings byte-identical. Rollback copy of rc.14:
+`E:\Source\temp\art-0.4.4-rc.15\backup-installed-rc.14`. Custom Vehicles 0.5.0 (7ea3aba: numpad cockpit view saved
+per car) installed alongside, 13/13 match; 0.4.3 backup at `E:\Source\temp\customvehicles-0.5.0\backup-installed-0.4.3`.
+
+## Previous installation — 0.4.4-rc.14 (October 31, owner test)
 
 rc.13 plus: numpad camera tuning no longer stays blocked while an H-pattern shifter is in gear (the release wait
 counted joystick buttons; owner report) and a camera overlay on every camera change (camera, field of view, keys).

@@ -92,3 +92,7 @@ Owner: the Scout worked from Free Roam's Custom class; wants every mode, online 
 ## 2026-10-31 - 0.4.2 installed (Custom Rally preview fix, Turtle Van on Das Speedvan)
 
 0.4.1 (92a5490): arriving on Custom in Custom Rally showed a stock van (the class button's position 6 is Vans as a class). 0.4.2 (4fd777c): Turtle Van donor Car_Kei -> Bonus_LtVanLow for the deeper van engine (owner played the Speedvan: good match); own engine 100 kW / 210 Nm for step 2. Installed file-only, 13/13 match; 0.4.0 backup at `E:\Source\temp\customvehicles-0.4.2\backup-installed-0.4.0`. Not run in game.
+
+## 2026-10-31 - 0.5.0 installed; banked: mirrors
+
+0.5.0 (7ea3aba): cockpit view adjustable with the numpad, saved per car (State/cockpit-views.json). Banked (owner): the side mirrors float beside the body instead of attaching to a modelled part. Camera feel: the cockpit camera is rigid to the car body, so body rocking shows (the Speedvan donor rocks more); the game itself only shakes the camera on gear shifts.
