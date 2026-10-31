@@ -138,6 +138,7 @@ namespace ArtOfSimRally.Mod
             // Rendering only; it cannot affect wheel, FFB or telemetry.
             try { TripleScreen.Load(modEntry); }
             catch (Exception ex) { ModLog.Warning("Triple screens failed to load: " + ex.Message); }
+            ReportFeedbackOff = message => { ModLog.Info(message + "."); TripleScreen.Notify(message); };
 
             ModLog.Info(
                 $"Loaded - directSteering={Settings.DirectSteering}, " +

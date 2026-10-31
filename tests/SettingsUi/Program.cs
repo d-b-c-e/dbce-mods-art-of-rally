@@ -142,13 +142,16 @@ static class Program
     {
         Host.ResetFixture();Ui.Instance=new();FfbNative.Ready=true;FfbNative.Stops=FfbNative.Shutdowns=0;
         ArtOfSimRally.Mod.Application.isFocused=true;GameState.IsDriving=true;Input.Down.Clear();
+        var offNotices=new List<string>();Host.ReportFeedbackOff=offNotices.Add;
         Input.Down.Add(KeyCode.F8);Host.TickSettingsUi();Input.Down.Clear();
         Check(!Host.Settings.ForceFeedbackEnabled&&FfbNative.Stops==1&&Host.Saves==1&&Host.Cancels==1,"F8 did not stop before saved Off");
         for(int i=0;i<10;i++)Host.TickSettingsUi();Check(!Host.Settings.ForceFeedbackEnabled&&Host.Requests==0,"panic auto-resumed");
+        Check(offNotices.Count==1&&offNotices[0]==Host.FeedbackOffNotice,"F8 switched force feedback off without telling the player (ISS-0015)");
         SettingsViewPolicy.Select(Host.Settings,true,1,false);Host.TickSettingsUi();Check(FfbNative.Stops==1&&!Host.Settings.ForceFeedbackEnabled,"view switch affected FFB");
         FfbNative.Ready=false;Host.SelectForceDevice();Check(Host.Requests==0&&!Host.Settings.ForceFeedbackEnabled,"picker cleared Off");
         Host.SetFeedbackEnabled(true);Check(Host.Requests==1&&Host.Settings.ForceFeedbackEnabled,"explicit On cannot resume");
         WheelInput.Pressed.Add(WheelInput.Channel.StopFfbButton);Host.TickSettingsUi();Check(!Host.Settings.ForceFeedbackEnabled,"USB stop failed to save Off");
+        Check(offNotices.Count==2,"the wheel Stop button switched force feedback off silently");Host.StopFeedback();Check(offNotices.Count==2,"an already-off stop was reported again");
         WheelInput.Pressed.Add(WheelInput.Channel.SettingsButton);Host.TickSettingsUi();Check(Ui.Instance.Opened,"USB Settings did not open same UI");Host.CloseSettings();
         Host.ToggleSettings();Check(Ui.Instance.Opened&&Ui.Instance.Selected==0&&Ui.Instance.Filter=="fixture","F6 route did not select same mod panel");
         SettingsPanel.Editing=true;Host.CloseSettings();Check(Ui.Instance.Opened&&!SettingsPanel.Editing,"close did not cancel first");

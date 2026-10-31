@@ -26,9 +26,14 @@ namespace ArtOfSimRally.Mod
             _uiSaveAt = Time.realtimeSinceStartup + 5;
             SaveSettings();
         }
+        // ISS-0015: F8 (beside F7) or the F6 toggle switched force feedback off silently, and it stayed off after a
+        // restart. Every switch-off is now logged and shown on screen (wired in Load).
+        internal const string FeedbackOffNotice = "Force feedback off. It stays off until you turn it on in F6 > FFB";
+        internal static Action<string> ReportFeedbackOff = _ => { };
         internal static void SetFeedbackEnabled(bool enabled)
         {
             if (Settings == null) return;
+            if (Settings.ForceFeedbackEnabled && !enabled) ReportFeedbackOff(FeedbackOffNotice);
             Settings.ForceFeedbackEnabled = enabled;
             FfbNative.StopOutputs();
             if (!enabled) CancelForceRecovery();

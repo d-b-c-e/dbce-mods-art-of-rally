@@ -114,7 +114,7 @@ internal static class TripleScreen
     private static string SessionKey() => string.Join("|", _settings.OverrideFieldOfView, _settings.ViewWidthScale,
         _settings.ChaseUsesGameFov, _settings.CurveRadiusMm, _settings.EnableThreeViewPrototype, _settings.EnableSeparateDisplayPrototype);
 
-    private static void Notify(string text)
+    internal static void Notify(string text)
     {
         _notice = text;
         _noticeUntil = Time.unscaledTime + 2.5f;
@@ -188,7 +188,7 @@ internal static class TripleScreen
             {
                 if (_sessionKey != SessionKey()) { SessionStep = F7Comparison.FromSaved(_settings.F7View); _sessionKey = SessionKey(); }
                 Projection.LandingOwnsOutputResize = Landing.BlocksOutputResize;
-                if (SessionStep == ComparisonStep.Original)
+                if (SessionStep == ComparisonStep.Original && !_settings.EnableSeparateDisplayPrototype)
                 {
                     Projection.Release();
                     outcome = ProjectionOutcome.Inactive(layout, "F7_ORIGINAL_VIEW", "Original game view (picked with F7); stock rendering.");

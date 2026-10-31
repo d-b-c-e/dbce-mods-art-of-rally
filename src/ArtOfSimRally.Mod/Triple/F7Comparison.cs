@@ -25,6 +25,6 @@ internal static class F7Comparison
         var name = step == ComparisonStep.Original ? "Original game view"
             : step == ComparisonStep.Angle ? "Angle correction" : "Angle + curve correction";
         var framing = step == ComparisonStep.Original ? "" : measured ? " · Measured FOV" : " · Game FOV";
-        return name + framing + " · " + (int)step + "/" + (curveAvailable ? 3 : 2) + (saved ? "" : " · Could not save");
+        return name + framing + " · " + (int)step + "/" + (curveAvailable ? 3 : 2) + (saved ? "" : " · Couldn't save view");
     }
 }

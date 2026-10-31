@@ -659,7 +659,15 @@ internal static class Program
         Check(ArtOfSimRally.Mod.Triple.F7Comparison.Label(ArtOfSimRally.Mod.Triple.ComparisonStep.Original, true, true) ==
             "Original game view · 1/3", "original view carries no framing");
         Check(ArtOfSimRally.Mod.Triple.F7Comparison.Label(ArtOfSimRally.Mod.Triple.ComparisonStep.Angle, false, true, saved: false) ==
-            "Angle correction · Game FOV · 2/3 · Could not save", "only a failed save is reported");
+            "Angle correction · Game FOV · 2/3 · Couldn't save view", "only a failed save is reported");
+
+        // ISS-0014: on separate displays "Original" renders all three (side displays cannot be switched off) as the rig
+        // with no side angle, bezel gap or curve: one flat contiguous plane, the stock wide view.
+        var original = TripleRigBuilder.Build(new TripleRigDefinition(597.7d, 336.2d, 650d, 0d, 0d, 0d, 0d, 0d));
+        bool Near(Vector3d a, Vector3d b) => Math.Abs(a.X - b.X) < 1e-9 && Math.Abs(a.Y - b.Y) < 1e-9 && Math.Abs(a.Z - b.Z) < 1e-9;
+        Check(original.All(s => Math.Abs(s.LowerLeft.Z - original[1].LowerLeft.Z) < 1e-9 && Math.Abs(s.LowerRight.Z - original[1].LowerLeft.Z) < 1e-9)
+            && Near(original[0].LowerRight, original[1].LowerLeft) && Near(original[1].LowerRight, original[2].LowerLeft),
+            "Original on separate displays is one flat contiguous plane");
 
         // The pick is saved (Settings.F7View) and restored at launch; a missing or unknown value keeps the old startup.
         foreach (var step in new[] { ArtOfSimRally.Mod.Triple.ComparisonStep.Original, ArtOfSimRally.Mod.Triple.ComparisonStep.Angle,
