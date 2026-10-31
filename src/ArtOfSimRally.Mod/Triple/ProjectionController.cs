@@ -522,19 +522,20 @@ internal sealed class ProjectionController
         var rig = camera.transform.parent != null ? camera.transform.parent.GetComponent<CarCameras>() : null;
         var chase = rig != null && BonnetCamera.ActiveView(rig) == BonnetCamera.View.None;
         LastChaseView = chase;
-        return FovPreference.ResolveScale(settings.OverrideFieldOfView && !Original,
-            SafeViewWidthScale(settings.ViewWidthScale), () => FovPreference.ScaleForGameDegrees(panel.PhysicalHeightMm,
+        // Simplified framing (owner 2026-10-31): chase views always use the game's field of view; bonnet and bumper
+        // views use the camera's own field of view (numpad +/-) unless Realistic is on, which is the measured seat
+        // (scale 1). The old widened-measured slider and chase opt-out are retired.
+        return FovPreference.ResolveScale(Realistic(settings), 1d, () => FovPreference.ScaleForGameDegrees(panel.PhysicalHeightMm,
                 geometry.EyeDistanceMm, geometry.EyeHeightAbovePanelCenterMm, camera.fieldOfView),
-            chase, settings.ChaseUsesGameFov);
+            chase, chaseUsesGameFov: true);
     }
 
-    private string FovDescription(Settings settings, Camera camera)
-    {
-        if (FovPreference.ShowsGameFov(settings.OverrideFieldOfView && !Original, LastChaseView, settings.ChaseUsesGameFov))
-            return $"the game's {camera.fieldOfView:0}° camera FOV across all views" + (settings.OverrideFieldOfView ? " (chase view)" : "");
-        if (TripleScreen.MatchesSeat(settings)) return "the measured perspective";
-        return $"custom {CenterVerticalFovDegrees:0}° center FOV";
-    }
+    internal static bool Realistic(Settings settings) => settings.OverrideFieldOfView && !Original;
+
+    private string FovDescription(Settings settings, Camera camera) =>
+        FovPreference.ShowsGameFov(Realistic(settings), LastChaseView, chaseUsesGameFov: true)
+            ? $"the game's {camera.fieldOfView:0}° camera field of view" + (LastChaseView ? " (chase view)" : "")
+            : "the realistic field of view from your seat";
 
     // The racing-row prediction, refreshed at most once a second until activation starts.
     private static SideDisplaySelector.Result SelectSideDisplays(PanelDocument panel)

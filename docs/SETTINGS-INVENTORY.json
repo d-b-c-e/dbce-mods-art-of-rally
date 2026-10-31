@@ -2130,7 +2130,10 @@
       "key": "OverrideFieldOfView",
       "source": "src/ArtOfSimRally.Mod/Triple/Settings.cs",
       "page": "Cameras",
-      "label": "Use the game's field of view (Advanced; inverted, true = measured perspective)",
+      "label": [
+        "Use the realistic field of view",
+        "Use the game's field of view"
+      ],
       "type": "bool",
       "displayUnit": null,
       "scale": 1,
@@ -2139,8 +2142,8 @@
       "step": null,
       "default": false,
       "classification": "editable",
-      "visibility": "Triple screens enabled",
-      "reason": "Player screen geometry/setup decision."
+      "visibility": "Triple screens enabled; button on the Cameras page; F7 while driving",
+      "reason": "The one framing choice (2026-10-31): true = realistic (measured seat) for bonnet and bumper views; chase views always use the game field of view."
     },
     {
       "kind": "field",
@@ -2149,7 +2152,7 @@
       "key": "ViewWidthScale",
       "source": "src/ArtOfSimRally.Mod/Triple/Settings.cs",
       "page": "Cameras",
-      "label": "Field of view",
+      "label": null,
       "type": "float",
       "displayUnit": "° vertical",
       "scale": "FovPreference.VerticalDegrees(panelHeightMm, eyeDistanceMm, eyeHeightMm, stored scale)",
@@ -2157,10 +2160,9 @@
       "max": 2,
       "step": 1,
       "default": 1.0,
-      "classification": "editable",
-      "visibility": "Triple screens enabled; override enabled; valid effective layout",
-      "reason": "Player screen geometry/setup decision.",
-      "stepMeaning": "1 degree displayed; bounds are stored scale; degree limits/default depend on effective geometry; default is FovAtScale(layout, 1)."
+      "classification": "excluded/unused",
+      "visibility": "Not shown",
+      "reason": "Retired by the simplified framing (2026-10-31): chase views always use the game field of view; Realistic is the measured seat unscaled. Kept so older files load."
     },
     {
       "kind": "field",
@@ -2169,7 +2171,7 @@
       "key": "ChaseUsesGameFov",
       "source": "src/ArtOfSimRally.Mod/Triple/Settings.cs",
       "page": "Cameras",
-      "label": "Chase views use the game's framing",
+      "label": null,
       "type": "bool",
       "displayUnit": null,
       "scale": 1,
@@ -2177,10 +2179,9 @@
       "max": null,
       "step": null,
       "default": true,
-      "classification": "editable",
-      "visibility": "Triple screens enabled; Advanced",
-      "reason": "Framing policy: stock chase views keep the game's field of view on all three panels; mounted bonnet/bumper views stay measured. F7 overrides for the session.",
-      "stepMeaning": "On (default) keeps the game's chase composition; off uses the saved field-of-view policy for chase views too."
+      "classification": "excluded/unused",
+      "visibility": "Not shown",
+      "reason": "Retired by the simplified framing (2026-10-31): chase views always use the game field of view; Realistic is the measured seat unscaled. Kept so older files load."
     },
     {
       "kind": "field",
@@ -2201,25 +2202,6 @@
       "visibility": "Triple screens enabled; Advanced; Use measurements entered here",
       "reason": "Player screen geometry: curved-panel correction, opt-in; 0 keeps the flat render path.",
       "stepMeaning": "Radius of a curved monitor (1500 for 1500R); must be at least half the visible panel width, otherwise correction stays off with the reason in Status."
-    },
-    {
-      "kind": "field",
-      "settingsType": "ArtOfSimRally.Mod.Triple.Settings",
-      "file": "Mods/ArtOfSimRally/TripleScreen.xml",
-      "key": "F7View",
-      "source": "src/ArtOfSimRally.Mod/Triple/Settings.cs",
-      "page": "Cameras",
-      "label": null,
-      "type": "int",
-      "displayUnit": null,
-      "scale": 1,
-      "min": 0,
-      "max": 3,
-      "step": null,
-      "default": 0,
-      "classification": "F6 presentation state",
-      "visibility": "Not shown; set by F7 while driving",
-      "reason": "Last F7 comparison pick (1 original, 2 angle, 3 angle + curve), restored at launch; 0 keeps the saved settings view. Framing, radius and geometry are not touched."
     },
     {
       "kind": "field",

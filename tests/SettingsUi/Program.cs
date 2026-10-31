@@ -200,7 +200,7 @@ static class Program
         Ui.Instance.ToggleWindow(false);Host.TickSettingsUi();SettingsPanel.HasDraft=false;
         Host.ToggleSettings();Host.CloseSettings();Check(!Ui.Instance.Opened&&!DraftCloseGuard.Warned,"without a draft the first close did not close");
     }
-    // F7 writes only <F7View> (SettingsPersistence.WriteElement): a pre-update file loads with no pick; each pick survives a
+    // F7 writes only <OverrideFieldOfView> (SettingsPersistence.WriteElement): each choice survives a
     // restart while unknown elements, attributes, comments and absent fields stay as they were; malformed XML and a failed
     // replacement throw and leave the file byte-identical with no temp file.
     static void TripleSave()
@@ -213,24 +213,24 @@ static class Program
         try
         {
             File.WriteAllText(file,"<?xml version=\"1.0\" encoding=\"utf-8\"?>\r\n<Settings note=\"owner\">\r\n  <!-- kept -->\r\n  <CurveRadiusMm>1500</CurveRadiusMm>\r\n  <OverrideFieldOfView>true</OverrideFieldOfView>\r\n  <FutureKey>x</FutureKey>\r\n</Settings>");
-            Check(Read().F7View==0,"a pre-update TripleScreen.xml did not load with no pick");
-            foreach(var pick in new[]{1,2,3})
+            Check(Read().OverrideFieldOfView,"the fixture starts realistic");
+            foreach(var pick in new[]{false,true,false})
             {
-                SettingsPersistence.WriteElement(file,"F7View",pick.ToString());
+                SettingsPersistence.WriteElement(file,"OverrideFieldOfView",pick?"true":"false");
                 var back=Read();var text=File.ReadAllText(file);
-                Check(back.F7View==pick&&back.CurveRadiusMm==1500f&&back.OverrideFieldOfView,"F7 pick "+pick+" did not survive a restart with radius and framing intact");
+                Check(back.OverrideFieldOfView==pick&&back.CurveRadiusMm==1500f,"F7 realistic="+pick+" did not survive a restart with the radius intact");
                 Check(text.Contains("<FutureKey>x</FutureKey>")&&text.Contains("<!-- kept -->")&&text.Contains("note=\"owner\"")
-                    &&!text.Contains("ViewWidthScale")&&text.Split("<F7View>").Length==2,"F7 changed more than its own element");
+                    &&!text.Contains("ViewWidthScale")&&text.Split("<OverrideFieldOfView>").Length==2,"F7 changed more than its own element");
             }
             Check(Directory.GetFiles(dir,"*.tmp").Length==0,"a successful F7 save left a temp file");
             var good=File.ReadAllBytes(file);
             File.SetAttributes(file,FileAttributes.ReadOnly);
-            var failed=Throws(()=>SettingsPersistence.WriteElement(file,"F7View","1"));
+            var failed=Throws(()=>SettingsPersistence.WriteElement(file,"OverrideFieldOfView","false"));
             File.SetAttributes(file,FileAttributes.Normal);
             Check(failed&&File.ReadAllBytes(file).AsSpan().SequenceEqual(good)&&Directory.GetFiles(dir,"*.tmp").Length==0,
                 "a failed replacement did not throw, changed the last good file or left a temp file");
             File.WriteAllText(file,"<Settings><CurveRadiusMm>1500");good=File.ReadAllBytes(file);
-            Check(Throws(()=>SettingsPersistence.WriteElement(file,"F7View","2"))&&File.ReadAllBytes(file).AsSpan().SequenceEqual(good),
+            Check(Throws(()=>SettingsPersistence.WriteElement(file,"OverrideFieldOfView","true"))&&File.ReadAllBytes(file).AsSpan().SequenceEqual(good),
                 "malformed XML was rewritten");
         }
         finally{Directory.Delete(dir,true);}

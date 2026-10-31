@@ -44,7 +44,6 @@ internal static class TripleScreen
             modEntry.Logger.Warning("Triple screens: could not load settings; safe defaults are active: " + exception.Message);
             _settings = new Settings();
         }
-        SessionStep = F7Comparison.FromSaved(_settings.F7View);
 
         _status = new StatusPublisher(modEntry.Logger);
         _renderDiagnostics = new RenderDiagnostics(modEntry.Logger);
@@ -102,22 +101,33 @@ internal static class TripleScreen
         modEntry.Logger.Log("Triple screens: migrated " + Path.GetFileName(from) + " from " + Path.GetDirectoryName(from) + ".");
     }
 
-    // F7 comparison, saved as Settings.F7View and restored at load: null (never pressed) follows the saved choice. Steps
-    // change the scene correction (original / angle / angle + curve); framing, radius and geometry stay. A saved framing
-    // or output change returns to the saved pick (clearing a renderer fallback, which is never saved).
+    // F7 (owner 2026-10-31, simplified framing): toggles Realistic for bonnet and bumper views, saved. Shift+F7 is the
+    // developer comparison (original / angle / angle + curve): this session only, never saved; null is the normal view
+    // (angle correction, plus the curve when a radius is set). A settings or output change ends the comparison.
     internal static ComparisonStep? SessionStep;
     private static string _sessionKey;
     private static string _notice;
     private static float _noticeUntil;
     private static GUIStyle _noticeStyle;
 
-    private static string SessionKey() => string.Join("|", _settings.OverrideFieldOfView, _settings.ViewWidthScale,
-        _settings.ChaseUsesGameFov, _settings.CurveRadiusMm, _settings.EnableThreeViewPrototype, _settings.EnableSeparateDisplayPrototype);
+    private static string SessionKey() => string.Join("|", _settings.OverrideFieldOfView,
+        _settings.CurveRadiusMm, _settings.EnableThreeViewPrototype, _settings.EnableSeparateDisplayPrototype);
 
     internal static void Notify(string text)
     {
         _notice = text;
         _noticeUntil = Time.unscaledTime + 2.5f;
+    }
+
+    private static void ToggleRealistic()
+    {
+        if (!ProjectionController.InStage()) { Notify("Field of view: switch while driving"); return; }
+        var realistic = !_settings.OverrideFieldOfView;
+        var saved = SaveRealistic(realistic);
+        var label = (_settings.OverrideFieldOfView ? "Field of view: realistic (your seat)" : "Field of view: game · numpad +/- adjusts") +
+            (ProjectionController.LastChaseView ? " · chase views always use the game's" : "") + (saved ? "" : " · Couldn't save view");
+        Notify(label);
+        _modEntry.Logger.Log("F7: " + label + ".");
     }
 
     private static void ToggleSessionView()
@@ -126,9 +136,8 @@ internal static class TripleScreen
         var curveAvailable = ProjectionController.CurveAvailable(_settings);
         SessionStep = F7Comparison.Next(F7Comparison.Current(SessionStep, Projection.CurveActive), curveAvailable);
         _sessionKey = SessionKey();
-        var saved = SaveF7View((int)SessionStep.Value);
-        var measured = !FovPreference.ShowsGameFov(_settings.OverrideFieldOfView, ProjectionController.LastChaseView, _settings.ChaseUsesGameFov);
-        Notify(F7Comparison.Label(SessionStep.Value, measured, curveAvailable, saved));
+        var measured = !FovPreference.ShowsGameFov(ProjectionController.Realistic(_settings), ProjectionController.LastChaseView, chaseUsesGameFov: true);
+        Notify(F7Comparison.Label(SessionStep.Value, measured, curveAvailable) + " · developer comparison");
         var eye = EffectiveLayout.Resolve(Layout.Current, _settings).Document?.Geometry?.EyeDistanceMm / Projection.ActiveViewWidthScale;
         _modEntry.Logger.Log("F7 comparison: " + _notice + "; camera " + (ProjectionController.LastChaseView ? "chase" : "mounted") +
             ", framing " + (measured ? "measured" : "game") + ", effective eye " + (eye.HasValue ? eye.Value.ToString("0") + " mm" : "unknown") +
@@ -162,9 +171,14 @@ internal static class TripleScreen
     {
         if (_settings == null) return;
         _frame++;
-        if (_enabled && Application.isFocused && !SettingsPanel.Editing && !CameraKeys.ModifierHeld() && Input.GetKeyDown(KeyCode.F7)
+        if (_enabled && Application.isFocused && !SettingsPanel.Editing && Input.GetKeyDown(KeyCode.F7)
             && (_settings.EnableThreeViewPrototype || _settings.EnableSeparateDisplayPrototype))
-            ToggleSessionView();
+        {
+            bool shift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+            bool otherModifier = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl) ||
+                Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt) || Input.GetKey(KeyCode.AltGr);
+            if (!otherModifier) { if (shift) ToggleSessionView(); else ToggleRealistic(); }
+        }
 
         try
         {
@@ -186,7 +200,7 @@ internal static class TripleScreen
             }
             else
             {
-                if (_sessionKey != SessionKey()) { SessionStep = F7Comparison.FromSaved(_settings.F7View); _sessionKey = SessionKey(); }
+                if (_sessionKey != SessionKey()) { SessionStep = null; _sessionKey = SessionKey(); }
                 Projection.LandingOwnsOutputResize = Landing.BlocksOutputResize;
                 if (SessionStep == ComparisonStep.Original && !_settings.EnableSeparateDisplayPrototype)
                 {
@@ -236,19 +250,19 @@ internal static class TripleScreen
         var layout = EffectiveLayout.Resolve(Layout.Current, _settings);
         var panel = layout.Document?.Panel;
         var geometry = layout.Document?.Geometry;
-        // The game's field of view is the default framing (owner policy, ISS-0005); the measured perspective is one
-        // press away and one press back. Nothing is reset on load.
+        // Simplified framing (owner 2026-10-31): the screens are always corrected for their angle (and curve); the only
+        // choice is the field of view of bonnet and bumper views. Chase views always use the game's.
         if (mode != 0)
         {
-            var seat = MatchesSeat(_settings);
-            w.Help(!_settings.OverrideFieldOfView ? "View: the game's field of view on all three screens."
-                : seat ? "View: measured perspective from your seat" +
-                    (_settings.ChaseUsesGameFov ? " in bonnet and bumper views; chase views keep the game's framing." : ".")
-                : "View: widened measured perspective (Advanced).");
-            w.Help("While driving, F7 switches the view (original / angle / angle + curve) and saves it.");
-            if (!seat && w.Command("triple-match-seat", "Use measured perspective")) MatchSeat(_settings);
-            if (_settings.OverrideFieldOfView && w.Command("triple-game-view", "Use the game's field of view"))
-                _settings.OverrideFieldOfView = false;
+            w.Help(_settings.OverrideFieldOfView
+                ? "Field of view: realistic, true to your seat (bonnet and bumper views). Chase views use the game's."
+                : "Field of view: the game's. In bonnet and bumper views, numpad + and - adjust it while driving.");
+            w.Help("While driving, F7 switches bonnet and bumper views between the game's and the realistic field of view.");
+            if (w.Command("triple-fov-choice", _settings.OverrideFieldOfView ? "Use the game's field of view" : "Use the realistic field of view"))
+            {
+                if (_settings.OverrideFieldOfView) _settings.OverrideFieldOfView = false;
+                else MatchSeat(_settings);
+            }
         }
 
         if (_lastOutcome != null && mode != 0)
@@ -256,37 +270,10 @@ internal static class TripleScreen
         if (w.Command("triple-advanced", (_showAdvanced ? "Hide" : "Show") + " advanced setup and diagnostics")) _showAdvanced = !_showAdvanced;
         if (!_showAdvanced) return;
 
-        if (mode != 0)
-        {
-            w.Caption("Field of view");
-            _settings.OverrideFieldOfView = !w.ToggleRow("triple-game-fov", "Use the game's field of view",
-                "Wider, but not matched to your seat.", !_settings.OverrideFieldOfView, true);
-            _settings.ChaseUsesGameFov = w.ToggleRow("triple-chase-game-fov", "Chase views use the game's framing",
-                "Bonnet and bumper views stay matched to your seat.", _settings.ChaseUsesGameFov, true);
-        }
-        if (mode != 0 && !_settings.OverrideFieldOfView)
-        {
-            w.Help("Following the game's camera field of view on all three screens.");
-            if (_lastOutcome != null && Projection.CenterVerticalFovDegrees.HasValue)
-                w.Help($"Current center field of view: {Projection.CenterVerticalFovDegrees.Value:0}°");
-        }
-        else if (mode != 0 && panel != null && geometry != null)
-        {
-            var minimum = FovAtScale(layout, FovPreference.MinimumSliderScale);
-            var maximum = FovAtScale(layout, FovPreference.MaximumSliderScale);
-            var current = FovAtScale(layout, Mathf.Clamp(_settings.ViewWidthScale,
-                (float)FovPreference.MinimumSliderScale, (float)FovPreference.MaximumSliderScale));
-            // Default is the unscaled view (ViewWidthScale 1, the former "Reset field of view"). Only an edit writes the
-            // scale; a draw without input leaves the saved value exactly as it is.
-            var standard = FovAtScale(layout, 1);
-            var proposed = w.NumberRow("triple-fov", "Field of view", "Lower is narrower, higher is wider.", current, minimum, maximum,
-                1, "0", "°", true, standard);
-            if (proposed == standard && proposed != current) _settings.ViewWidthScale = 1f;
-            else if (proposed != current && !double.IsNaN(proposed) && !double.IsInfinity(proposed))
-                _settings.ViewWidthScale = ScaleForFov(layout, (float)proposed);
-        }
-        else if (mode != 0)
-            w.Help("Enter your screen measurements below to enable field of view.");
+        if (mode != 0 && _lastOutcome != null && Projection.CenterVerticalFovDegrees.HasValue)
+            w.Help($"Current center field of view: {Projection.CenterVerticalFovDegrees.Value:0}°. Shift+F7 while driving: developer comparison (original / angle / angle + curve, not saved).");
+        if (mode != 0 && _settings.OverrideFieldOfView && (panel == null || geometry == null))
+            w.Help("Enter your screen measurements below for the realistic field of view.");
 
         w.Caption("Screen measurements");
         var imported = Layout.Current.IsSuccess;
@@ -391,18 +378,18 @@ internal static class TripleScreen
         catch (Exception exception) { _modEntry.Logger.Warning("Triple screens: could not save settings: " + exception.Message); }
     }
 
-    // F7 changes only <F7View> in TripleScreen.xml (the rest of the file is kept); memory follows only a saved pick.
-    private static bool SaveF7View(int view)
+    // F7 changes only <OverrideFieldOfView> in TripleScreen.xml (the rest of the file is kept); memory follows only a save.
+    private static bool SaveRealistic(bool realistic)
     {
         try
         {
-            SettingsPersistence.WriteElement(_settings.GetPath(_modEntry), "F7View", view.ToString());
-            _settings.F7View = view;
+            SettingsPersistence.WriteElement(_settings.GetPath(_modEntry), "OverrideFieldOfView", realistic ? "true" : "false");
+            _settings.OverrideFieldOfView = realistic;
             return true;
         }
         catch (Exception exception)
         {
-            _modEntry.Logger.Warning("F7 comparison: could not save the view: " + exception.Message);
+            _modEntry.Logger.Warning("F7: could not save the field of view choice: " + exception.Message);
             return false;
         }
     }

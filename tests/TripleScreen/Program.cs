@@ -669,14 +669,9 @@ internal static class Program
             && Near(original[0].LowerRight, original[1].LowerLeft) && Near(original[1].LowerRight, original[2].LowerLeft),
             "Original on separate displays is one flat contiguous plane");
 
-        // The pick is saved (Settings.F7View) and restored at launch; a missing or unknown value keeps the old startup.
-        foreach (var step in new[] { ArtOfSimRally.Mod.Triple.ComparisonStep.Original, ArtOfSimRally.Mod.Triple.ComparisonStep.Angle,
-                                     ArtOfSimRally.Mod.Triple.ComparisonStep.AngleCurve })
-            Check(ArtOfSimRally.Mod.Triple.F7Comparison.FromSaved((int)step) == step, "saved " + step + " restores after a restart");
-        Check(ArtOfSimRally.Mod.Triple.F7Comparison.FromSaved(0) == null && ArtOfSimRally.Mod.Triple.F7Comparison.FromSaved(4) == null
-            && ArtOfSimRally.Mod.Triple.F7Comparison.FromSaved(-1) == null, "missing or unknown pick follows the saved settings");
-        Check(ArtOfSimRally.Mod.Triple.F7Comparison.Current(ArtOfSimRally.Mod.Triple.F7Comparison.FromSaved(0), curveActive: true)
-            == ArtOfSimRally.Mod.Triple.ComparisonStep.AngleCurve, "no pick: a working curve shows curved, as before");
+        // Shift+F7 developer comparison: session only; with no step the normal view is angle + curve when a curve works.
+        Check(ArtOfSimRally.Mod.Triple.F7Comparison.Current(null, curveActive: true)
+            == ArtOfSimRally.Mod.Triple.ComparisonStep.AngleCurve, "no comparison: a working curve shows curved");
         Check(ArtOfSimRally.Mod.Triple.F7Comparison.Next(ArtOfSimRally.Mod.Triple.ComparisonStep.AngleCurve, curveAvailable: false)
             == ArtOfSimRally.Mod.Triple.ComparisonStep.Original, "a saved curve pick on a now-flat rig moves on without a curve step");    }
 
