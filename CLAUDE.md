@@ -39,11 +39,12 @@ third-party binaries, nothing that would force the repo private.
 | `docs/DEVELOPMENT-CAPTURE.md` | Separate probe schema, motion/contact units, standalone analysis and interpretation limits. |
 | `docs/` | FINDINGS, FORCE-FEEDBACK, TELEMETRY, CONTROLS, CAMERA, ROADMAP, RELEASING |
 
-## Status (2026-10-30) — paused, 0.4.4-rc.10 installed for owner test
+## Status (2026-10-30) — paused, 0.4.4-rc.11 installed for owner test
 
-Public baseline stays **0.4.3** (GitHub release). Installed on the rig: **0.4.4-rc.10** (source `1dabcb4`,
-ZIP SHA-256 `45669609…EB9F`, Mod.dll `B8D0F93F…6B8E`; rollback copy of rc.9 and details in
-`docs/LOCAL-DEPLOYMENT.md`). rc.10 saves the F7 view (`F7View`, narrow XML write) and restores it at launch;
+Public baseline stays **0.4.3** (GitHub release). Installed on the rig: **0.4.4-rc.11** (source `653995d`,
+ZIP SHA-256 `3631B2D8…8D60`, Mod.dll `3D9CBCEA…6724`; rollback copy of rc.10 and details in
+`docs/LOCAL-DEPLOYMENT.md`). rc.11 fixes ISS-0014 (separate-display Original in sync) and shows every FFB
+switch-off (ISS-0015; the owner's FFB is still off in Settings.xml). rc.10 saves the F7 view (`F7View`, narrow XML write) and restores it at launch;
 rc.9 added the F7 cycle and game-FOV default (ISS-0005). Main is pushed; no tag or release for 0.4.4 yet.
 
 Since 0.4.3 (all offline-tested, **none driven in game yet**): "Match my seat" + F6 seat line, F7

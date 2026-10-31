@@ -1,6 +1,19 @@
 # Local deployment
 
-## Current installation — 0.4.4-rc.10 (October 30, owner test)
+## Current installation — 0.4.4-rc.11 (October 30, owner test)
+
+guna offline request 483604, file-only, no launch. rc.10 plus ISS-0014 (separate displays: F7 Original renders
+all three as one flat plane at the game's framing instead of releasing, which froze the side displays) and
+ISS-0015 (every force feedback switch-off, F8 / wheel Stop / F6 toggle, is logged and shown on screen; the owner's
+FFB is off in Settings.xml from the 20:37 session and stays off until turned on in F6 > FFB). Source `653995d`,
+ZIP `ArtOfSimRally-0.4.4-rc.11-shared-input.zip` SHA-256
+`3631B2D887A6761A1715FBA0F6F7C81295A533327FB63F849FF416AE11A88D60`; installed `ArtOfSimRally.Mod.dll`
+`3D9CBCEAF46EFFDD881F80E5EA84CE85A496A0A5180B315D61EC71F07B296724`. Installer 70, SettingsUi 3428, Triple 1357,
+WheelInput 620, Regression, CameraTuning 385, ForceLifecycle 23 passed. Game closed, lease held and released;
+payload 9/9; Settings.xml, TripleScreen.xml, dbce-controls.ini, Params.xml byte-identical. Rollback copy of rc.10:
+`E:\Source\temp\art-0.4.4-rc.11\backup-installed-rc.10`.
+
+## Previous installation — 0.4.4-rc.10 (October 30, owner test)
 
 guna "finish rc10 package/install" (482367), file-only. rc.9 plus saved F7 (camera policy rev 3, toolkit 398a85d):
 the F7 pick (Original / Angle / Angle + curve) is written as `<F7View>` only (narrow XML update, atomic replace,
