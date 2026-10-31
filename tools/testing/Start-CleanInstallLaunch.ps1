@@ -4,7 +4,8 @@
 # mod-free recipe and install the candidate into it first.
 #
 # Steam Cloud: the game's saves are Steam Auto-Cloud. A first run from empty saves while Steam syncs could delete the
-# owner's cloud saves, so the run refuses unless the operator states which protection is in place.
+# owner's cloud saves, so the run refuses unless the operator states which protection is in place. OwnerWaived: the
+# owner does not care about save games and authorized Phase B without cloud protection (2026-10-31, via guna 485552).
 #
 # Success needs all of: the launched copy seen at its own path, a clean exit before the time limit, no other
 # art of rally process at any point, owner state restored and equal, installed mod unchanged. This script stops only
@@ -15,10 +16,13 @@
 param(
     [string]$Copy,
     [string]$StateDir,
-    [ValidateSet('SteamExited', 'CloudDisabledForArt')][string]$CloudProtection,
+    [ValidateSet('SteamExited', 'CloudDisabledForArt', 'OwnerWaived')][string]$CloudProtection,
     [string]$Installed = 'D:\Program Files (x86)\Steam\steamapps\common\artofrally',
     [int]$MaxSeconds = 1800,
     [int]$ConflictWaitSeconds = 600,
+    # Unattended runs: once the copy is seen at its own path for this long, ask its window to close (what clicking X
+    # does; the game rejects injected input). 0 = wait for a person to quit the game.
+    [int]$CloseAfterSeconds = 0,
     [switch]$SelfTest,
     # Self-test plumbing only.
     [string]$ThrowawayRoot,
@@ -57,7 +61,7 @@ function Invoke-Launch {
         throw 'The copy or state directory overlaps the installed game.'
     }
     if (-not $throwaway) {
-        if (-not $CloudProtection) { throw 'State -CloudProtection SteamExited or CloudDisabledForArt.' }
+        if (-not $CloudProtection) { throw 'State -CloudProtection SteamExited, CloudDisabledForArt or OwnerWaived.' }
         if ($CloudProtection -eq 'SteamExited' -and (Get-Process steam -ErrorAction SilentlyContinue)) { throw 'Steam is running.' }
         # steam_appid.txt makes SteamAPI_RestartAppIfNecessary return false, so Steam does not start the installed
         # game instead; the process watch below proves it. Written into the copy only.
@@ -92,7 +96,7 @@ function Invoke-Launch {
         Note "launched pid $($launched.Id)"
         if ($FailAt -eq 'launch') { throw 'injected failure after launch' }
 
-        $deadline = (Get-Date).AddSeconds($MaxSeconds)
+        $deadline = (Get-Date).AddSeconds($MaxSeconds); $closeAsked = $false; $seenAt = $null
         function Foreign { @(Get-Process artofrally -ErrorAction SilentlyContinue | Where-Object { $_.Id -ne $launched.Id -or $_.StartTime -ne $launchedStart }) }
         function Record($processes) {
             foreach ($p in $processes) {
@@ -108,8 +112,12 @@ function Invoke-Launch {
             $launched.Refresh()
             if (-not $launched.HasExited) {
                 $path = try { $launched.Path } catch { $null }
-                if ($path -and [IO.Path]::GetFullPath($path) -ieq $exe) { if (-not $result.seenCopy) { Note "copy running at its own path" }; $result.seenCopy = $true }
+                if ($path -and [IO.Path]::GetFullPath($path) -ieq $exe) { if (-not $result.seenCopy) { Note "copy running at its own path"; $seenAt = Get-Date }; $result.seenCopy = $true }
                 elseif (-not $result.seenCopy) { Note "launched process path not confirmed: [$path]" }
+                if ($CloseAfterSeconds -gt 0 -and $result.seenCopy -and -not $closeAsked -and ((Get-Date) - $seenAt).TotalSeconds -ge $CloseAfterSeconds) {
+                    # Until the game window exists CloseMainWindow returns false; ask again on the next poll.
+                    if ($launched.CloseMainWindow()) { $closeAsked = $true; Note "asked the copy's window to close (-CloseAfterSeconds $CloseAfterSeconds)" }
+                }
                 continue
             }
             # A Steam relaunch quits the copy first and starts another game process a moment later: keep watching.
@@ -200,6 +208,12 @@ function Invoke-LaunchSelfTest {
     }
     try {
         Scenario 'clean-exit' 0 @{ args = @('-GameArgs', '-n 3 127.0.0.1') } $null { param($r) $r.seenCopy -and $r.exited }
+        # -CloseAfterSeconds on a windowed stand-in (a transparent form that exits 0 when asked to close, as Unity does).
+        $form = Join-Path $base 'form.cs'
+        Set-Content $form 'class F { static void Main() { var f = new System.Windows.Forms.Form { Opacity = 0, StartPosition = System.Windows.Forms.FormStartPosition.Manual, Location = new System.Drawing.Point(-32000, -32000) }; System.Windows.Forms.Application.Run(f); } }'
+        & "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /target:winexe /r:System.Windows.Forms.dll /r:System.Drawing.dll "/out:$(Join-Path $copy 'artofrally.exe')" $form | Out-Null
+        Scenario 'close-after' 0 @{ args = @('-CloseAfterSeconds', '2', '-MaxSeconds', '30') } $null { param($r) $r.seenCopy -and $r.exited -and ($r.log -match 'asked the copy') }
+        Copy-Item "$env:WINDIR\System32\PING.EXE" (Join-Path $copy 'artofrally.exe') -Force
         Scenario 'fail-during-isolation' 1 @{ args = @('-FailAt', 'isolate', '-GameArgs', '-n 2 127.0.0.1') } $null { param($r) $r.ownerStateRestored -and -not $r.seenCopy }
         Scenario 'fail-after-launch' 1 @{ args = @('-FailAt', 'launch', '-GameArgs', '-n 30 127.0.0.1') } $null { param($r) $r.ownerStateRestored -and -not $r.exited }
         Scenario 'time-limit' 1 @{ args = @('-MaxSeconds', '4', '-GameArgs', '-n 60 127.0.0.1') } $null { param($r) $r.timedOut -and $r.ownerStateRestored }
