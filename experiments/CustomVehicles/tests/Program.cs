@@ -143,6 +143,13 @@ internal static class Program
         Check(SelectionResolver.Resolve("test.b",3,reordered)==12,"package reorder resolves current slot");
         Check(SelectionResolver.Resolve("test.b",3,catalog.Take(1))==3,"removed or failed preview falls back to donor");
         Check(SelectionResolver.Resolve("test.b",2,catalog)==2,"new native donor selection takes precedence");
+        var viewPath=Path.Combine(temp,"cockpit-views.json"); var views=new CockpitViewStore(viewPath);
+        Check(views.Get("dbce.trail-scout").SequenceEqual(CockpitViewStore.Default),"an unsaved car gets the default cockpit view");
+        views.Set("dbce.trail-scout",new[]{0f,.1f,.9f,6f,200f}); var reloaded=new CockpitViewStore(viewPath); reloaded.Load();
+        Check(reloaded.Get("dbce.trail-scout").SequenceEqual(new[]{0f,.1f,.4f,6f,95f}),"a cockpit view survives a restart, clamped");
+        Check(reloaded.Get("dbce.turtle-van").SequenceEqual(CockpitViewStore.Default),"each car keeps its own view");
+        File.WriteAllText(viewPath,"{\"dbce.trail-scout\":[1,2]}"); bool refused=false; try{new CockpitViewStore(viewPath).Load();}catch(InvalidDataException){refused=true;}
+        Check(refused,"a damaged cockpit view file is refused");
         var customIds=new List<string>{"dbce.trail-scout","dbce.turtle-van"};
         Check(CustomClassMenu.SlotFor("dbce.turtle-van",0,customIds)==1,"Custom class remembers its pick by package id");
         Check(CustomClassMenu.SlotFor("removed.car",1,customIds)==1 && CustomClassMenu.SlotFor("removed.car",7,customIds)==0,"a removed pick keeps a valid slot, else the first car");

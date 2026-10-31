@@ -44,6 +44,8 @@ namespace RallyCustomVehicles
         private static Quaternion savedRotation;
         private static Vector3 eyeAdjustment;
         private static float pitch = 6f, fov = 65f;
+        internal static CockpitViewStore CockpitViews;
+        private static string viewFor;   // the package whose saved cockpit view is loaded
         private static string status = "Select an installed custom vehicle in the car chooser.";
 
         private static EventManager Manager => ManagerField?.GetValue(null) as EventManager;
@@ -62,6 +64,8 @@ namespace RallyCustomVehicles
             entry = mod;
             Selections = new SelectionStore(Path.Combine(entry.Path, "State", "selections.json"));
             try { Selections.Load(); } catch (Exception ex) { Log("Custom selection history ignored: " + ex.Message); }
+            CockpitViews = new CockpitViewStore(Path.Combine(entry.Path, "State", "cockpit-views.json"));
+            try { CockpitViews.Load(); } catch (Exception ex) { Log("Saved cockpit views ignored: " + ex.Message); }
             try
             {
                 Packages = VehiclePackage.Discover(Path.Combine(entry.Path,"Vehicles"), message => entry.Logger.Error(message));
@@ -125,6 +129,7 @@ namespace RallyCustomVehicles
             eyeAdjustment.y = Mathf.Clamp(eyeAdjustment.y, -.3f, .3f);
             eyeAdjustment.z = Mathf.Clamp(eyeAdjustment.z, -.4f, .4f);
             if (GUILayout.Button("Reset driver view")) { eyeAdjustment = Vector3.zero; pitch = 6; fov = 65; }
+            SaveView();
         }
         private static void Row(string label, ref float value, float step)
         {
@@ -147,6 +152,7 @@ namespace RallyCustomVehicles
                 var chosen = active?.GetComponent<VehicleInstance>()?.Package;
                 if (chosen == null) { if (visual != null) Detach(); return; }
                 if (activePackage != chosen) { Detach(); activePackage = chosen; asset = chosen.Model; }
+                if (viewFor != chosen.Manifest.id) LoadView(chosen.Manifest.id);
                 if (active != car || (visual != null && active == null)) { Detach(); activePackage = chosen; asset = chosen.Model; }
                 if (active == null || m.IsRestartingStage()) { ReleaseCamera(false); return; }
                 if (visual == null) Attach(active); // Include intro/finish cinematics once native wheels are ready.
@@ -286,11 +292,41 @@ namespace RallyCustomVehicles
                     ReleaseCamera(false); camera=cam; savedNear=cam.nearClipPlane; savedFov=cam.fieldOfView;
                     savedPosition=cam.transform.localPosition; savedRotation=cam.transform.localRotation;
                 }
+                TuneCockpit();
                 cam.transform.position=visual.transform.TransformPoint(V(asset.camera)+eyeAdjustment);
                 cam.transform.rotation=car.transform.rotation*Quaternion.Euler(pitch,0,0);
                 cam.nearClipPlane=.025f; cam.fieldOfView=fov;
             }
             catch(Exception ex) { failed=true; Detach(); status="Camera/model stopped after error; see UMM log."; entry.Logger.Error(ex.ToString()); }
+        }
+        private static void LoadView(string id)
+        {
+            var v = CockpitViews?.Get(id) ?? CockpitViewStore.Default;
+            eyeAdjustment = new Vector3(v[0], v[1], v[2]); pitch = v[3]; fov = v[4]; viewFor = id;
+        }
+        private static void SaveView()
+        {
+            if (viewFor == null || CockpitViews == null) return;
+            var clamped = CockpitViewStore.Clamp(new[] { eyeAdjustment.x, eyeAdjustment.y, eyeAdjustment.z, pitch, fov });
+            eyeAdjustment = new Vector3(clamped[0], clamped[1], clamped[2]); pitch = clamped[3]; fov = clamped[4];
+            try { CockpitViews.Set(viewFor, clamped); } catch (Exception ex) { Log("Cockpit view not saved: " + ex.Message); }
+        }
+        // The same numpad keys as art of sim rally's bonnet camera (8/2 forward/back, 4/6 left/right, 9/3 up/down, 7/1 look
+        // down/up, +/- field of view, 5 reset), one step per press; saved per car. Not while a modifier is held or a panel is open.
+        private static void TuneCockpit()
+        {
+            if (!Application.isFocused || UnityModManager.UI.Instance != null && UnityModManager.UI.Instance.Opened) return;
+            if (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl) || Input.GetKey(KeyCode.LeftAlt) ||
+                Input.GetKey(KeyCode.RightAlt) || Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) return;
+            bool changed = false;
+            void Step(KeyCode key, ref float value, float delta) { if (Input.GetKeyDown(key)) { value += delta; changed = true; } }
+            Step(KeyCode.Keypad8, ref eyeAdjustment.z, .02f); Step(KeyCode.Keypad2, ref eyeAdjustment.z, -.02f);
+            Step(KeyCode.Keypad6, ref eyeAdjustment.x, .02f); Step(KeyCode.Keypad4, ref eyeAdjustment.x, -.02f);
+            Step(KeyCode.Keypad9, ref eyeAdjustment.y, .02f); Step(KeyCode.Keypad3, ref eyeAdjustment.y, -.02f);
+            Step(KeyCode.Keypad7, ref pitch, 1f); Step(KeyCode.Keypad1, ref pitch, -1f);
+            Step(KeyCode.KeypadPlus, ref fov, 2f); Step(KeyCode.KeypadMinus, ref fov, -2f);
+            if (Input.GetKeyDown(KeyCode.Keypad5)) { var d = CockpitViewStore.Default; eyeAdjustment = new Vector3(d[0], d[1], d[2]); pitch = d[3]; fov = d[4]; changed = true; }
+            if (changed) SaveView();
         }
         private static void ReleaseCamera(bool snap)
         {
