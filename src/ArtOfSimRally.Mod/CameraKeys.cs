@@ -83,6 +83,9 @@ namespace ArtOfSimRally.Mod
         internal static bool Held(int index) => Input.GetKey(Bindings[index].Get(Main.Settings)) ||
             WheelInput.Value(WheelInput.CameraChannel(index)) > .5f;
         internal static bool AnyButtonHeld { get { for (int i = 0; i < Bindings.Length; i++) if (WheelInput.Value(WheelInput.CameraChannel(i)) > .5f) return true; return false; } }
+        // Only the camera bindings (keys and wheel buttons). Input.anyKey also counts joystick buttons, and an H-pattern
+        // shifter in gear or a latched wheel switch holds one indefinitely (owner report 2026-10-31: keys stopped working).
+        internal static bool AnyHeld { get { for (int i = 0; i < Bindings.Length; i++) if (Held(i)) return true; return false; } }
         public static string Name(KeyCode key) => key == KeyCode.None ? "Unbound" : key.ToString().Replace("Keypad", "Numpad ");
 
         public static void Begin(int index)

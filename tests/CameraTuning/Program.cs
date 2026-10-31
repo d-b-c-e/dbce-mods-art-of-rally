@@ -270,6 +270,12 @@ static class Program
         Check(cfg.BonnetHeight == height, "disabled mod moved mount");
         Host.Enabled = true; CameraTuner.Update(BonnetCamera.View.Bonnet);
         Check(cfg.BonnetHeight > height, "released then re-pressed key never resumed tuning");
+        // An H-pattern shifter in gear holds a joystick button indefinitely; it must not keep camera keys blocked.
+        height = cfg.BonnetHeight;
+        CameraTuner.SuppressUntilRelease(); Keys.Release(); Keys.Held.Add(KeyCode.JoystickButton3);
+        CameraTuner.Update(BonnetCamera.View.Bonnet); Keys.Held.Add(KeyCode.Z); CameraTuner.Update(BonnetCamera.View.Bonnet);
+        Check(cfg.BonnetHeight > height, "a held shifter gear button kept the camera keys blocked");
+        Keys.Release(); CameraTuner.Update(BonnetCamera.View.Bonnet);
         height = cfg.BonnetHeight;
         Keys.Held.Add(KeyCode.LeftControl); CameraTuner.Update(BonnetCamera.View.Bonnet);
         Check(cfg.BonnetHeight == height, "Ctrl chord activated a single-key binding");

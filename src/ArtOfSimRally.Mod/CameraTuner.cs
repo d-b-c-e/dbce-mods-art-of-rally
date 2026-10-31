@@ -90,7 +90,7 @@ namespace ArtOfSimRally.Mod
             // before it can adjust/reset a mount on the next LateUpdate.
             if (_waitForRelease)
             {
-                if (Input.anyKey || CameraKeys.AnyButtonHeld) return;
+                if (CameraKeys.AnyHeld) return;
                 _waitForRelease = false;
             }
 
