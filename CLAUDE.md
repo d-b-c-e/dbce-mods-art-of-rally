@@ -39,11 +39,12 @@ third-party binaries, nothing that would force the repo private.
 | `docs/DEVELOPMENT-CAPTURE.md` | Separate probe schema, motion/contact units, standalone analysis and interpretation limits. |
 | `docs/` | FINDINGS, FORCE-FEEDBACK, TELEMETRY, CONTROLS, CAMERA, ROADMAP, RELEASING |
 
-## Status (2026-10-29) — paused, 0.4.4-rc.7 installed for owner test
+## Status (2026-10-30) — paused, 0.4.4-rc.9 installed for owner test
 
-Public baseline stays **0.4.3** (GitHub release). Installed on the rig: **0.4.4-rc.7** (source `e41c62a`,
-ZIP SHA-256 `CF4A7AA0…166E`, Mod.dll `13B24EFB…1C67`; details and rollback copy of rc.6 in
-`docs/LOCAL-DEPLOYMENT.md`). Main is pushed; no tag or release for 0.4.4 yet.
+Public baseline stays **0.4.3** (GitHub release). Installed on the rig: **0.4.4-rc.9** (source `9cfd798`,
+ZIP SHA-256 `85C2006B…3F57`, Mod.dll `6DFC735A…0C52C`; rollback copy of rc.8 and details in
+`docs/LOCAL-DEPLOYMENT.md`). rc.9 adds the F7 cycle (Original / Angle / Angle + curve) and game-FOV default
+(ISS-0005, marked fixed for owner validation). Main is pushed; no tag or release for 0.4.4 yet.
 
 Since 0.4.3 (all offline-tested, **none driven in game yet**): "Match my seat" + F6 seat line, F7
 session A/B (measured vs game FOV), chase views keep game framing (`ChaseUsesGameFov`), opt-in curved
