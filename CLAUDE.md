@@ -39,11 +39,11 @@ third-party binaries, nothing that would force the repo private.
 | `docs/DEVELOPMENT-CAPTURE.md` | Separate probe schema, motion/contact units, standalone analysis and interpretation limits. |
 | `docs/` | FINDINGS, FORCE-FEEDBACK, TELEMETRY, CONTROLS, CAMERA, ROADMAP, RELEASING |
 
-## Status (2026-10-30) — paused, 0.4.4-rc.12 installed for owner test
+## Status (2026-10-30) — paused, 0.4.4-rc.13 installed for owner test
 
-Public baseline stays **0.4.3** (GitHub release). Installed on the rig: **0.4.4-rc.12** (source `58839ea`,
-ZIP SHA-256 `09570195…9D92`, Mod.dll `066535BB…808E`; rollback copy of rc.11 and details in
-`docs/LOCAL-DEPLOYMENT.md`). rc.12: FFB switched on in F6 mid-stage starts at once; a stage started with FFB
+Public baseline stays **0.4.3** (GitHub release). Installed on the rig: **0.4.4-rc.13** (source `0da187b`; details and rollback in `docs/LOCAL-DEPLOYMENT.md`).
+rc.13: simplified triple framing (always corrected; chase = game FOV; F7 = Game/Realistic for bonnet/bumper; Shift+F7
+developer comparison). rc.12: FFB switched on in F6 mid-stage starts at once; a stage started with FFB
 off says so. Standalone Turtle Van mod removed (Custom Vehicles carries the van). rc.11 fixes ISS-0014 (separate-display Original in sync) and shows every FFB
 switch-off (ISS-0015; the owner's FFB is still off in Settings.xml). rc.10 saves the F7 view (`F7View`, narrow XML write) and restores it at launch;
 rc.9 added the F7 cycle and game-FOV default (ISS-0005). Main is pushed; no tag or release for 0.4.4 yet.

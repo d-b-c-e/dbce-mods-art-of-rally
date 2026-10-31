@@ -1,6 +1,19 @@
 # Local deployment
 
-## Current installation — 0.4.4-rc.12 (October 31, owner test)
+## Current installation — 0.4.4-rc.13 (October 31, owner test)
+
+Owner 10-31: simplify triple-screen framing (Art first, then the portfolio if it works). rc.13: always angle (and
+curve) corrected; chase views always the game's field of view; bonnet/bumper use the camera's own field of view
+(numpad +/-) or Realistic (measured seat); F7 toggles Game/Realistic (saves only OverrideFieldOfView); Shift+F7 is
+the developer comparison (session only). Retired: ViewWidthScale slider, ChaseUsesGameFov toggle, saved F7View.
+Source `0da187b`, ZIP `ArtOfSimRally-0.4.4-rc.13-shared-input.zip` SHA-256
+`453D72EC1373B4E6586E384E013948B025463CED6D4099BC279384158280106F`; installed `ArtOfSimRally.Mod.dll`
+`B334E931E406082734787D37109F8AA465C03B5F9DBB8790C3EED5557407FF38`. Installer 70, SettingsUi 3412, Triple 1353,
+WheelInput 620, Regression, CameraTuning 385, ForceLifecycle 23 passed. Game closed; payload 9/9; Settings.xml,
+TripleScreen.xml (OverrideFieldOfView=true, so Realistic starts on; the saved F7View=1 is now ignored),
+dbce-controls.ini, Params.xml byte-identical. Rollback copy of rc.12: `E:\Source\temp\art-0.4.4-rc.13\backup-installed-rc.12`.
+
+## Previous installation — 0.4.4-rc.12 (October 31, owner test)
 
 Owner report 10-31: no FFB after a Wheelkit Apply (the saved Off from the earlier session was kept) and switching
 FFB on in F6 mid-race did nothing (the reconnect refused while the stage was underway). rc.12: an open F6 counts as
