@@ -1,6 +1,21 @@
 # Local deployment
 
-## Current installation — 0.4.4-rc.9 (October 30, owner test)
+## Current installation — 0.4.4-rc.10 (October 30, owner test)
+
+guna "finish rc10 package/install" (482367), file-only. rc.9 plus saved F7 (camera policy rev 3, toolkit 398a85d):
+the F7 pick (Original / Angle / Angle + curve) is written as `<F7View>` only (narrow XML update, atomic replace,
+unknown settings kept) and restored at launch; no "Not saved"; only a failed save shows "Could not save"; menus
+and the curve fallback never write. F6 shows one static F7 line. lulu reviewed 16bb310/e4767ec. Source `1dabcb4`,
+ZIP `ArtOfSimRally-0.4.4-rc.10-shared-input.zip` SHA-256
+`4566960935E03FDD519D2D5368A7EDEFE862473E55A4A2F076486EDAECA5EB9F`; installed `ArtOfSimRally.Mod.dll`
+`B8D0F93F7FDDE442FA8BB07F512B8BF1E3E9760D55B7DA355C102DBF272B6B8E`. Installer test 70 passed; SettingsUi 3425,
+Triple 1356, Regression, CameraTuning 385, WheelInput 620 passed (the full Test-Rc gate needs stale shim paths
+and a Lifecycle project fix; not run, same as rc.9). Game closed, lease held and released; payload 9/9 match;
+Settings.xml, TripleScreen.xml (no F7View yet, so startup is unchanged until the first F7), dbce-controls.ini and
+UMM Params.xml byte-identical. Verified rollback copy of rc.9: `E:\Source\temp\art-0.4.4-rc.10\backup-installed-rc.9`.
+No game launch. Owner check: drive, press F7 to a view, restart, drive: the same view returns.
+
+## Previous installation — 0.4.4-rc.9 (October 30, owner test)
 
 guna GO 479018, file-only. rc.8 plus the camera policy rev 2 F7 comparison (toolkit 7319e71): Original game
 view → Angle correction → Angle + curve correction, framing follows the saved choice, centered 2.5 s label with
