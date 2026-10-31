@@ -61,3 +61,20 @@ unless the operator states `-CloudProtection SteamExited` (Steam fully closed) o
 5. Remove the copy; keep the state directories until the owner confirms their game.
 
 No force output is expected: a fresh Settings.xml has no FFB device until one is picked in F6.
+
+## Run — 2026-10-31 04:38-04:40 (vemi, guna GO 486471, lulu review PASS 6477d9e/32ab591)
+
+Owner decision 10-31: saves do not matter, Phase B authorized without cloud protection (`-CloudProtection OwnerWaived`);
+state still backed up and restored. Copy: mod-free robocopy of the installed game plus the 0.4.4-rc.11 installer
+(which also installed Unity Mod Manager; all files matched rc.11), under `E:\Source\temp\art-phaseB\copy-20261031`.
+Test-only `Settings.xml` held just `ForceFeedbackEnabled=false` (owner: force off in automated sessions); nothing
+else pre-set. No input: `-CloseAfterSeconds 90 -MaxSeconds 300`.
+
+**PASS (script exit 0).** Copy ran at its own path with no other art of rally process (no Steam relaunch, no Steam
+prompt); its window was asked to close after 90 s and it exited 0. Copy UMM log: `Triple screens: loaded v0.3.12`,
+`Loaded - directSteering=True, ffb=False, telemetry=True`, no errors. Owner state restored and equal (registry key,
+LocalLow, ArtOfSimRally, triple status); installed mod unchanged. Steam's `remotecache.vdf` changed (compare-only,
+not restored, as the owner waived). State backup and the copy's logs kept at `E:\Source\temp\art-phaseB\state-20261031`
+until the owner confirms their game; the copy was removed.
+
+Not covered: first-run F6 setup, a driven stage and a second (non-isolated) launch, which need a person.
