@@ -23,7 +23,12 @@ namespace ArtOfSimRally.Mod
             else document.AppendChild(document.CreateElement("Settings"));
             var root = document.DocumentElement;
             if (root == null || root.Name != "Settings") throw new InvalidDataException(path + " has no <Settings> root.");
-            var element = root[name] ?? (XmlElement)root.AppendChild(document.CreateElement(name));
+            var element = root[name];
+            if (element == null)
+            {
+                element = document.CreateElement(name);
+                root.AppendChild(element);
+            }
             element.InnerText = value;
             Replace(path, writer => document.Save(writer));
         }
