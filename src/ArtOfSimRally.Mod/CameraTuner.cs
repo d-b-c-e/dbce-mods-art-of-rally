@@ -99,7 +99,7 @@ namespace ArtOfSimRally.Mod
             float tilt = CameraRepeat.Bounded(cfg.CameraTiltStep, .1f, 10f, 1f);
             float fov  = CameraRepeat.Bounded(cfg.CameraFovStep, .5f, 10f, 2f);
 
-            bool changed = false;
+            bool changed = false, fovChanged = false;
             bool bumper = view == BonnetCamera.View.Bumper;
 
             if (bumper)
@@ -108,7 +108,7 @@ namespace ArtOfSimRally.Mod
                 changed |= Nudge(ref cfg.BumperForward, 2, 3, move, now);
                 changed |= Nudge(ref cfg.BumperSide, 5, 4, move, now);
                 changed |= Nudge(ref cfg.BumperPitch, 6, 7, tilt, now);
-                changed |= Nudge(ref cfg.BumperFOV, 8, 9, fov, now);
+                fovChanged = Nudge(ref cfg.BumperFOV, 8, 9, fov, now);
             }
             else
             {
@@ -116,17 +116,19 @@ namespace ArtOfSimRally.Mod
                 changed |= Nudge(ref cfg.BonnetForward, 2, 3, move, now);
                 changed |= Nudge(ref cfg.BonnetSide, 5, 4, move, now);
                 changed |= Nudge(ref cfg.BonnetPitch, 6, 7, tilt, now);
-                changed |= Nudge(ref cfg.BonnetFOV, 8, 9, fov, now);
+                fovChanged = Nudge(ref cfg.BonnetFOV, 8, 9, fov, now);
             }
             // The F6 sliders' range; the Realistic set can start near 34° on a 32-inch rig.
             cfg.BonnetFOV = Mathf.Clamp(cfg.BonnetFOV, 20f, 120f); cfg.BumperFOV = Mathf.Clamp(cfg.BumperFOV, 20f, 120f);
+            if (fovChanged) { changed = true; Triple.TripleScreen.ReannounceCamera(); }
 
             if (Input.GetKeyDown(cfg.KeyReset) || resetButton)
             {
                 // A fresh instance carries the field initialisers, which are the
                 // single source of truth for defaults now that there is no config
                 // framework holding them separately.
-                cfg.ResetCameraMount(bumper);
+                CameraMountMemory.Reset(cfg, bumper);
+                Triple.TripleScreen.ReannounceCamera((bumper ? "Bumper" : "Bonnet") + " camera reset · field of view reset for every car");
                 changed = true;
             }
 

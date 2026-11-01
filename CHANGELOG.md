@@ -9,6 +9,7 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed (source, not yet packaged)
 
+- art of rally 0.4.4-rc.25 (2026-11-01, owner design): bonnet and bumper cameras start from a placement calculated from each car's shape (bonnet: 10 cm ahead of the windscreen base, 8 cm above the bonnet; bumper: centre line, 5 cm ahead of the front, halfway up the front face), the same for the Game and Realistic sets. Tweaks are offsets on top: position per car and set, field of view per camera and set for every car. A camera tweaked into the body is moved back outside it. The label adds "(Custom)" when a set's field of view was changed; numpad 5 resets this car's position and the camera's field of view on every car (chase views: their field of view). The reference-car fit and its "tuned" flag are gone; adjusted sets from earlier builds keep their position, their field of view starts from stock.
 - art of rally 0.4.4-rc.12..rc.21 (2026-10-31/11-01, owner test builds):
   - FFB: switching it on in F6 mid-stage starts it at once; every switch-off and each stage started with FFB off shows "Force feedback off. It stays off until you turn it on in F6 > FFB".
   - Field of view: every camera keeps its own adjustments. Bonnet, bumper and the Custom Vehicles cockpit keep a Game and a Realistic set per car (F7 switches; Realistic starts at the seat's true field of view and stays adjustable with numpad +/- and F6); chase views use the game's field of view plus a saved per-view offset (numpad +/-). F6 field-of-view sliders 20-120°.

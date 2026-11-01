@@ -153,6 +153,12 @@ internal static class TripleScreen
             : IsCustomCockpit(rig) ? CameraOverlay.Kind.Cockpit : CameraOverlay.Kind.Chase;
     }
 
+    private static string _cameraNote;
+
+    /// <summary>Shows the camera label again on the next frame (after a field of view change or reset), optionally with a
+    /// note in place of the key reminder.</summary>
+    internal static void ReannounceCamera(string note = null) { _wasInStage = false; _cameraNote = note; }
+
     private static void AnnounceCameraChange()
     {
         var camera = Camera.main;
@@ -167,8 +173,11 @@ internal static class TripleScreen
         var chase = angles == null || angle == null ? 1 : angles.IndexOf(angle) + 1;
         bool triples = _settings.EnableThreeViewPrototype || _settings.EnableSeparateDisplayPrototype;
         bool realistic = triples && (kind == CameraOverlay.Kind.Cockpit ? _settings.CockpitRealistic : _settings.OverrideFieldOfView);
-        _cameraName = CameraOverlay.Name(kind, chase, realistic);
-        _cameraHint = CameraOverlay.Hint(kind, triples, realistic, Main.Settings.CameraTuningKeys);
+        bool custom = kind == CameraOverlay.Kind.Chase ? ChaseFov.Custom(Main.Settings, chase - 1, realistic)
+            : kind != CameraOverlay.Kind.Cockpit && CameraMountMemory.FovCustom(Main.Settings, kind == CameraOverlay.Kind.Bumper, realistic);
+        _cameraName = CameraOverlay.Name(kind, chase, realistic, custom);
+        _cameraHint = _cameraNote ?? CameraOverlay.Hint(kind, triples, realistic, Main.Settings.CameraTuningKeys);
+        _cameraNote = null;
         _cameraUntil = Time.unscaledTime + 3f;
         // Evidence for "remember the last camera" (owner 2026-10-31): the game's saved view and where it landed.
         _modEntry.Logger.Log("Camera: " + _cameraName + " (view " + chase + " of " + (angles?.Count ?? 0) + "; game's saved view " +

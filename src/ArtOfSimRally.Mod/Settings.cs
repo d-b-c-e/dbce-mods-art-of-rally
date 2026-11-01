@@ -183,8 +183,11 @@ namespace ArtOfSimRally.Mod
         public float BumperPitch = 2f;
         public float BumperFOV = 80f;
 
-        // The bonnet/bumper values above are the current car's; each tuned car keeps its own here (CameraMountMemory).
+        // The bonnet/bumper values above are the current car's: its calculated placement plus the player's offsets. Each
+        // adjusted car keeps its position offsets here; the field of view offsets are per camera, for every car
+        // (CameraMountMemory).
         public List<CameraMount> CameraMounts = new List<CameraMount>();
+        public float BonnetFovOffset = 0f, BumperFovOffset = 0f, BonnetFovRealisticOffset = 0f, BumperFovRealisticOffset = 0f;
 
         // Degrees added to the game's own field of view, per stock chase view (list position); numpad +/- while in it.
         public List<float> ChaseFovOffsets = new List<float>();
@@ -330,13 +333,15 @@ namespace ArtOfSimRally.Mod
             => SettingsPersistence.Write(this, GetPath(modEntry));
     }
 
-    /// <summary>One car's bonnet/bumper placement (CameraMountFit value order) and its measured size.</summary>
+    /// <summary>One car's bonnet/bumper position offsets from its calculated placement: side, height, forward, pitch for
+    /// the bonnet, then the bumper.</summary>
     public sealed class CameraMount
     {
         public string Car;
+        public float[] Offsets;
+        // Before 0.4.4-rc.25: absolute values (CameraMountFit order) and whether the player adjusted them; read once to
+        // migrate an adjusted set to offsets.
         public float[] Values;
-        public float[] Extent;
-        // True once the player adjusted this car's set; an untuned (fitted) set is fitted again each time it loads.
         public bool Tuned;
     }
 }

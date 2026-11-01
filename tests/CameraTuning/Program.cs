@@ -270,29 +270,22 @@ static class Program
         Check(cfg.BonnetHeight == height, "disabled mod moved mount");
         Host.Enabled = true; CameraTuner.Update(BonnetCamera.View.Bonnet);
         Check(cfg.BonnetHeight > height, "released then re-pressed key never resumed tuning");
-        // Per-car camera mounts: a new car starts from the last tuned one, moved to its size.
+        // Per-car camera mounts (owner 2026-11-01): calculated from the car's shape, kept outside the body.
         {
-            var tuned = new[] { .1f, .95f, 1.0f, 3f, 75f, 0f, .45f, 1.9f, 2f, 80f };
-            var mini = new[] { .2f, 1.4f, 1.8f, 1.5f };        // bottom, top, front, width
-            var van = new[] { .25f, 2.2f, 2.3f, 1.8f };
-            var fit = CameraMountFit.Fit(tuned, mini, van);
-            Check(Math.Abs(fit[1] - (2.2f - (1.4f - .95f))) < 1e-5 && Math.Abs(fit[2] - (2.3f - (1.8f - 1.0f))) < 1e-5,
-                "bonnet keeps its distance below the roof and behind the front");
-            Check(Math.Abs(fit[6] - (.25f + (.45f - .2f))) < 1e-5 && Math.Abs(fit[7] - (2.3f - (1.8f - 1.9f))) < 1e-5,
-                "bumper keeps its height above the ground and its distance from the front");
-            Check(Math.Abs(fit[0] - .12f) < 1e-5 && fit[3] == 3f && fit[4] == 75f && fit[8] == 2f && fit[9] == 80f, "side scales with width; pitch and FOV kept");
-            var same = CameraMountFit.Fit(tuned, mini, mini);
-            bool identity = true; for (int i = 0; i < 10; i++) identity &= Math.Abs(same[i] - tuned[i]) < 1e-5;
-            Check(identity, "the same car fits to its own values");
-            Check(!CameraMountFit.Valid(new[] { 1f, .5f, 1f, 1f }) && !CameraMountFit.Valid(null) && !CameraMountFit.Valid(new[] { 0f, 1f, 1f, float.NaN }), "bad extents are refused");
-            // Shape fit: the bonnet keeps its height above the bonnet and its distance from the windscreen base.
-            var miniShape = new[] { .2f, 1.4f, 1.8f, 1.5f, .9f, .6f };      // bonnet .9 m high, windscreen base at z .6
-            var vanShape = new[] { .25f, 2.2f, 2.3f, 1.8f, 1.1f, 1.7f };    // short nose: windscreen base far forward
-            var shaped = CameraMountFit.Fit(tuned, miniShape, vanShape);
-            Check(Math.Abs(shaped[1] - (1.1f + (.95f - .9f))) < 1e-5 && Math.Abs(shaped[2] - (1.7f + (1.0f - .6f))) < 1e-5,
-                "bonnet keeps its place relative to the bonnet surface and windscreen base");
-            var mixed = CameraMountFit.Fit(tuned, mini, vanShape);
-            Check(Math.Abs(mixed[1] - (2.2f - (1.4f - .95f))) < 1e-5, "without the shape on both cars the box fit is used");
+            var shape = new[] { .2f, 1.4f, 1.8f, 1.6f, .9f, .6f };   // bottom, top, front, width, bonnet height, windscreen base
+            var v = CameraMountFit.Base(shape, 75f, 80f, 3f, 2f);
+            Check(v[0] == 0f && Math.Abs(v[1] - (.9f + CameraMountFit.BonnetAbove)) < 1e-5 && Math.Abs(v[2] - (.6f + CameraMountFit.BonnetAhead)) < 1e-5 &&
+                v[3] == 3f && v[4] == 75f, "bonnet camera just above the bonnet, just ahead of the windscreen base");
+            Check(v[5] == 0f && Math.Abs(v[6] - .55f) < 1e-5 && Math.Abs(v[7] - (1.8f + CameraMountFit.BumperAhead)) < 1e-5 && v[8] == 2f && v[9] == 80f,
+                "bumper camera on the centre line, halfway up the front face, just ahead of the front");
+            var box = CameraMountFit.Base(new[] { .2f, 1.4f, 1.8f, 1.6f }, 75f, 80f, 3f, 2f);
+            Check(box != null && box[1] > .2f && box[1] < 1.4f && box[7] > 1.8f, "box-only measurement still gives a placement on the car");
+            Check(CameraMountFit.Base(null, 75f, 80f, 3f, 2f) == null, "no measurement gives no placement");
+            var inside = (float[])v.Clone(); inside[1] = .5f; inside[2] = .2f; inside[6] = .4f; inside[7] = 1.0f;
+            Check(CameraMountFit.KeepOutside(inside, shape) && inside[2] >= .6f && inside[1] >= .9f && inside[7] >= 1.8f,
+                "a camera tweaked into the body is moved outside it");
+            var outside = (float[])v.Clone();
+            Check(!CameraMountFit.KeepOutside(outside, shape) && outside.SequenceEqual(v), "a camera outside the body is left alone");
             Check(!CameraMountFit.Valid(new[] { .2f, 1.4f, 1.8f, 1.5f, 2f, .6f }) && !CameraMountFit.Valid(new[] { .2f, 1.4f, 1.8f, 1.5f, .9f, 2f }),
                 "a bonnet above the roof or a windscreen ahead of the front is refused");
             // Plausibility (owner logs 2026-11-01): the Eibenhammer measured 5.71 m wide with the bonnet below the car, the Turtle

@@ -5,16 +5,20 @@ using UnityEngine;
 
 namespace ArtOfSimRally.Mod
 {
-    // Remembers the bonnet/bumper placement per car (Settings.CameraMounts) and fits a starting placement for a car never
-    // tuned (CameraMountFit). Runs from the mounted camera only, so the stock views never pay for it.
+    // Bonnet/bumper placement per car (owner 2026-11-01): each car starts from the placement calculated from its own shape
+    // (CameraMountFit.Base), and the player's tweaks are kept as offsets on top - position per car and set
+    // (Settings.CameraMounts), field of view per camera and set for every car (Settings.*FovOffset). Reset clears both.
+    // Runs from the mounted camera only, so the stock views never pay for it.
     internal static class CameraMountMemory
     {
         private const string CustomVisual = "CustomVehicle_VisualOnly";
         private const string RealisticSuffix = "|realistic";
+        // Position indexes in the CameraMountFit value order (FOV, at 4 and 9, is kept per camera instead).
+        private static readonly int[] Positions = { 0, 1, 2, 3, 5, 6, 7, 8 };
         private static Transform _target, _root;
         private static bool _custom, _realistic;
         private static string _key;
-        private static float[] _extent, _loaded;
+        private static float[] _extent, _base, _loaded;
 
         // Each car keeps two sets, Game and Realistic (F7), stored separately (owner 2026-10-31: adjustments in one mode
         // must not carry into the other).
@@ -36,60 +40,84 @@ namespace ArtOfSimRally.Mod
 
         private static void Load(Settings cfg)
         {
-            string car = _root.name.Replace("(Clone)", "").Trim() + (_custom ? "+" + CustomId() : "");
-            _key = car + (_realistic ? RealisticSuffix : "");
+            _key = _root.name.Replace("(Clone)", "").Trim() + (_custom ? "+" + CustomId() : "") + (_realistic ? RealisticSuffix : "");
             _extent = Measure(_target);
-            var saved = cfg.CameraMounts.LastOrDefault(m => m.Car == _key && m.Values?.Length == CameraMountFit.Values);
-            string how;
-            // A set the player adjusted is kept as it is. A legacy entry (no Tuned flag) counts as adjusted only when its
-            // measurement is plausible; otherwise it came from a broken fit (owner 2026-11-01) and is fitted again.
-            if (saved != null && (saved.Tuned || CameraMountFit.Plausible(saved.Extent)))
+            _base = BaseFor(cfg);
+            var saved = cfg.CameraMounts.LastOrDefault(m => m.Car == _key);
+            var offsets = saved?.Offsets?.Length == Positions.Length ? saved.Offsets : null;
+            string how = "calculated";
+            // Migration: a set adjusted under the old absolute values keeps its position as an offset; FOV starts from stock.
+            if (offsets == null && saved != null && saved.Tuned && saved.Values?.Length == CameraMountFit.Values)
             {
-                Apply(cfg, saved.Values); how = "saved";
-                if (!saved.Tuned) saved.Tuned = true;
-                if (CameraMountFit.Plausible(_extent) && (saved.Extent == null || !CameraMountFit.Plausible(saved.Extent) || saved.Extent.Length < _extent.Length))
-                    saved.Extent = _extent;
+                offsets = Positions.Select(i => saved.Values[i] - _base[i]).ToArray();
+                Store(cfg, offsets); how = "calculated + migrated adjustment";
             }
-            else
-            {
-                // An untuned set starts from the last car the player adjusted in the same set, fitted to this car's measured
-                // shape. Without one: the Game set starts from the mod's defaults; the Realistic set from this car's Game
-                // set at the seat's true field of view. Never from whatever car happened to load last.
-                var reference = cfg.CameraMounts.LastOrDefault(m => m.Tuned && m.Values?.Length == CameraMountFit.Values &&
-                    CameraMountFit.Plausible(m.Extent) && m.Car.EndsWith(RealisticSuffix) == _realistic);
-                if (reference != null && CameraMountFit.Plausible(_extent))
-                { Apply(cfg, CameraMountFit.Fit(reference.Values, reference.Extent, _extent)); how = "fitted from " + reference.Car; }
-                else if (_realistic)
-                {
-                    var game = cfg.CameraMounts.LastOrDefault(m => m.Car == car && m.Values?.Length == CameraMountFit.Values);
-                    Apply(cfg, game?.Values ?? Defaults());
-                    how = game != null ? "this car's Game set" : "defaults";
-                    if (Triple.TripleScreen.RealisticStartDegrees is double seat)
-                    { cfg.BonnetFOV = cfg.BumperFOV = (float)Math.Round(seat, 1); how += ", realistic field of view " + seat.ToString("0") + "°"; }
-                }
-                else { Apply(cfg, Defaults()); how = "defaults"; }
-                Store(cfg, Snapshot(cfg), tuned: false);
-            }
+            else if (offsets == null && saved != null) cfg.CameraMounts.Remove(saved);   // an old fitted set, never adjusted
+            else if (offsets != null) how = "calculated + saved adjustment";
+            var v = (float[])_base.Clone();
+            if (offsets != null) for (int i = 0; i < Positions.Length; i++) v[Positions[i]] += offsets[i];
+            v[4] += FovOffset(cfg, false); v[9] += FovOffset(cfg, true);
+            CameraMountFit.KeepOutside(v, _extent);
+            Apply(cfg, v);
             _loaded = Snapshot(cfg);
-            ModLog.Info("Camera mounts for " + _key + ": " + how + ".");
+            ModLog.Info("Camera mounts for " + _key + ": " + how + (_extent == null ? " (no measurement: defaults)" : "") +
+                $"; bonnet {v[1]:0.00} m up, {v[2]:0.00} m forward; bumper {v[6]:0.00} up, {v[7]:0.00} forward.");
         }
 
-        private static float[] Defaults() => Snapshot(new Settings());
+        // The calculated placement for the current car and set; the mod's defaults when the car could not be measured. The
+        // Realistic set starts at the seat's true field of view, the Game set at the mod's 75°/80°.
+        private static float[] BaseFor(Settings cfg)
+        {
+            var d = Snapshot(new Settings());
+            float bonnetFov = d[4], bumperFov = d[9];
+            if (_realistic && Triple.TripleScreen.RealisticStartDegrees is double seat) bonnetFov = bumperFov = (float)Math.Round(seat, 1);
+            var v = CameraMountFit.Base(_extent, bonnetFov, bumperFov, d[3], d[8]) ?? d;
+            v[4] = bonnetFov; v[9] = bumperFov;
+            return v;
+        }
+
+        private static float FovOffset(Settings c, bool bumper) => _realistic
+            ? (bumper ? c.BumperFovRealisticOffset : c.BonnetFovRealisticOffset)
+            : (bumper ? c.BumperFovOffset : c.BonnetFovOffset);
+
+        private static void SetFovOffset(Settings c, bool bumper, float value)
+        {
+            if (_realistic) { if (bumper) c.BumperFovRealisticOffset = value; else c.BonnetFovRealisticOffset = value; }
+            else { if (bumper) c.BumperFovOffset = value; else c.BonnetFovOffset = value; }
+        }
+
+        /// <summary>Whether the current set's field of view was changed from stock (the overlay's "(Custom)").</summary>
+        internal static bool FovCustom(Settings c, bool bumper, bool realistic) => Math.Abs(realistic
+            ? (bumper ? c.BumperFovRealisticOffset : c.BonnetFovRealisticOffset)
+            : (bumper ? c.BumperFovOffset : c.BonnetFovOffset)) > .01f;
+
+        /// <summary>Reset key / F6 button: this car's position and this camera's field of view (every car) back to stock.</summary>
+        internal static void Reset(Settings cfg, bool bumper)
+        {
+            if (_key == null || _base == null) { cfg.ResetCameraMount(bumper); return; }
+            var v = Snapshot(cfg);
+            int from = bumper ? 5 : 0;
+            for (int i = from; i < from + 5; i++) v[i] = _base[i];
+            Apply(cfg, v);
+            Remember(cfg);
+            ModLog.Info("Camera mounts for " + _key + ": " + (bumper ? "bumper" : "bonnet") + " reset to the calculated placement.");
+        }
 
         private static void Remember(Settings cfg)
         {
             if (_key == null || _loaded == null) return;
             var now = Snapshot(cfg);
+            if (CameraMountFit.KeepOutside(now, _extent)) Apply(cfg, now);
             if (now.SequenceEqual(_loaded)) return;
             _loaded = now;
-            Store(cfg, now, tuned: true);
+            SetFovOffset(cfg, false, now[4] - _base[4]); SetFovOffset(cfg, true, now[9] - _base[9]);
+            Store(cfg, Positions.Select(i => now[i] - _base[i]).ToArray());
         }
 
-        // The latest adjusted set is the reference for the next untuned car in the same set.
-        private static void Store(Settings cfg, float[] values, bool tuned)
+        private static void Store(Settings cfg, float[] offsets)
         {
             cfg.CameraMounts.RemoveAll(m => m.Car == _key);
-            cfg.CameraMounts.Add(new CameraMount { Car = _key, Values = values, Extent = CameraMountFit.Plausible(_extent) ? _extent : null, Tuned = tuned });
+            if (offsets.Any(o => Math.Abs(o) > .0001f)) cfg.CameraMounts.Add(new CameraMount { Car = _key, Offsets = offsets });
             if (cfg.CameraMounts.Count > 128) cfg.CameraMounts.RemoveAt(0);
         }
 

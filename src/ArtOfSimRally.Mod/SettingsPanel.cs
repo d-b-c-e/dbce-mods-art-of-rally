@@ -447,7 +447,7 @@ namespace ArtOfSimRally.Mod
             { if (SettingsViewPolicy.CustomCamera(c) && LinkButton("Review custom camera tuning in Advanced >", 275)) Select(c, true, 2); return; }
             Heading("Camera adjustment");
             _mount = Segmented(_mount, new[] { "Bonnet pose", "Bumper pose" }, "Camera pose", 230);
-            if (RightButton("Reset " + (_mount == 0 ? "bonnet" : "bumper") + " view", 150)) { c.ResetCameraMount(_mount != 0); Main.MarkSettingsDirty(); }
+            if (RightButton("Reset " + (_mount == 0 ? "bonnet" : "bumper") + " view", 150)) { CameraMountMemory.Reset(c, _mount != 0); Main.MarkSettingsDirty(); }
             if (_mount == 0)
             {
                 c.BonnetHeight = Slider(c.BonnetHeight, -.5f, 3, .95f, "Height", 1, " m");

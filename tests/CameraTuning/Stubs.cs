@@ -25,6 +25,8 @@ namespace ArtOfSimRally.Mod
     internal static class Application { public static bool isFocused = true; }
     internal static class GameState { public static bool IsDriving = false; }
     internal static class BonnetCamera { public enum View { None, Bonnet, Bumper } }
+    // No car is tracked offline, so reset falls back to the defaults, as CameraMountMemory.Reset does without a car.
+    internal static class CameraMountMemory { public static void Reset(Settings c, bool bumper) => c.ResetCameraMount(bumper); }
     internal static class ModLog
     {
         public static readonly List<string> Messages = new();
@@ -43,4 +45,9 @@ namespace ArtOfSimRally.Mod
             catch (IOException) { return false; }
         }
     }
+}
+
+namespace ArtOfSimRally.Mod.Triple
+{
+    internal static class TripleScreen { public static void ReannounceCamera(string note = null) { } }
 }

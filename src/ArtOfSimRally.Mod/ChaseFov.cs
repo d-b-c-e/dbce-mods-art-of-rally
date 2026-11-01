@@ -22,6 +22,13 @@ namespace ArtOfSimRally.Mod
             [HarmonyPrefix] private static void Before() => Remove();
         }
 
+        /// <summary>Whether a chase view's field of view in the given set was changed from stock (the overlay's "(Custom)").</summary>
+        internal static bool Custom(Settings cfg, int index, bool realistic)
+        {
+            var offsets = realistic ? cfg.ChaseFovRealisticOffsets : cfg.ChaseFovOffsets;
+            return index >= 0 && index < offsets.Count && offsets[index] != 0f;
+        }
+
         internal static void Remove()
         {
             if (_camera != null && _applied != 0f) _camera.fieldOfView -= _applied;
@@ -45,10 +52,12 @@ namespace ArtOfSimRally.Mod
             {
                 float now = Time.unscaledTime, step = CameraRepeat.Bounded(cfg.CameraFovStep, .5f, 10f, 2f);
                 float delta = (Up.Tick(CameraKeys.Held(8), now) ? step : 0f) - (Down.Tick(CameraKeys.Held(9), now) ? step : 0f);
-                if (delta != 0f)
+                bool reset = Input.GetKeyDown(cfg.KeyReset) && offsets[index] != 0f;
+                if (delta != 0f || reset)
                 {
-                    offsets[index] = Mathf.Clamp(offsets[index] + delta, -40f, 40f);
+                    offsets[index] = reset ? 0f : Mathf.Clamp(offsets[index] + delta, -40f, 40f);
                     Main.MarkSettingsDirty();
+                    Triple.TripleScreen.ReannounceCamera(reset ? "Field of view reset" : null);
                 }
             }
             Remove();

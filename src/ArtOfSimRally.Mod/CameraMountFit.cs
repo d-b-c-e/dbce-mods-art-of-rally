@@ -2,33 +2,58 @@ using System;
 
 namespace ArtOfSimRally.Mod
 {
-    // Per-car bonnet/bumper placement (owner 2026-10-31: "it needs adjusting almost every time"). A car never tuned starts
-    // from the last tuned car, moved to this car's size: the bonnet keeps its distance below the roof and behind the
-    // front, the bumper its height above the ground and distance from the front; sideways offsets scale with width.
+    // Bonnet/bumper starting placement calculated from each car's own shape (owner 2026-11-01): the bonnet camera a few
+    // inches ahead of the windscreen base and just above the bonnet, the bumper camera on the centre line just ahead of
+    // the front, halfway up the front face. The player's tweaks are offsets on top; reset returns to this.
     // Values: bonnet side, height, forward, pitch, FOV, then the same five for the bumper. Extent: bottom, top, front,
-    // width of the visible car in its camera-target space (metres).
+    // width of the visible car in its camera-target space (metres), plus bonnet height and windscreen base when found.
     internal static class CameraMountFit
     {
         internal const int Values = 10, ExtentValues = 4;
-
-        // With the shape (extent values 5 and 6: bonnet surface height and windscreen base, from HoodProfile) the bonnet
-        // keeps its height above the bonnet and its distance from the windscreen base instead (owner 2026-10-31: fit from
-        // the car's shape, not only its box). Either car without the shape falls back to the box.
         internal const int ShapeExtentValues = 6;
 
-        internal static float[] Fit(float[] tuned, float[] from, float[] to)
+        internal const float BonnetAhead = .10f, BonnetAbove = .08f, BumperAhead = .05f;
+        // Clearance kept by KeepOutside so a tweak cannot put the camera inside the body.
+        internal const float Clearance = .03f;
+
+        /// <summary>The calculated placement, or null without a usable measurement (the caller uses the defaults).</summary>
+        internal static float[] Base(float[] extent, float bonnetFov, float bumperFov, float bonnetPitch, float bumperPitch)
         {
-            if (tuned == null || tuned.Length != Values || !Valid(from) || !Valid(to)) throw new ArgumentException("Invalid camera mount fit input.");
-            float width = to[3] / from[3];
-            bool shape = from.Length == ShapeExtentValues && to.Length == ShapeExtentValues;
+            if (!Valid(extent)) return null;
+            float bottom = extent[0], top = extent[1], front = extent[2];
+            bool shape = extent.Length == ShapeExtentValues;
+            // shortcut: without the bonnet shape the box gives typical proportions; upgrade if box-only cars start badly.
+            float hood = shape ? extent[4] : bottom + .58f * (top - bottom);
+            float glass = shape ? extent[5] : front - 1.2f;
             return new[]
             {
-                tuned[0] * width,
-                shape ? to[4] + (tuned[1] - from[4]) : to[1] - (from[1] - tuned[1]),
-                shape ? to[5] + (tuned[2] - from[5]) : to[2] - (from[2] - tuned[2]),
-                tuned[3], tuned[4],
-                tuned[5] * width, to[0] + (tuned[6] - from[0]), to[2] - (from[2] - tuned[7]), tuned[8], tuned[9]
+                0f, hood + BonnetAbove, glass + BonnetAhead, bonnetPitch, bonnetFov,
+                0f, (bottom + hood) / 2f, front + BumperAhead, bumperPitch, bumperFov
             };
+        }
+
+        /// <summary>Moves a placement to the nearest point outside the body: the bonnet camera stays ahead of the windscreen
+        /// base and above the bonnet, the bumper camera ahead of the front while below the bonnet line.</summary>
+        internal static bool KeepOutside(float[] v, float[] extent)
+        {
+            if (v == null || v.Length != Values || !Valid(extent)) return false;
+            bool moved = false;
+            if (extent.Length == ShapeExtentValues)
+            {
+                float hood = extent[4], glass = extent[5];
+                moved |= AtLeast(ref v[2], glass + Clearance);
+                if (v[2] <= extent[2]) moved |= AtLeast(ref v[1], hood + Clearance);
+                if (v[6] < hood) moved |= AtLeast(ref v[7], extent[2] + Clearance);
+            }
+            else moved |= AtLeast(ref v[7], extent[2] + Clearance);
+            return moved;
+        }
+
+        private static bool AtLeast(ref float value, float min)
+        {
+            if (value >= min) return false;
+            value = min;
+            return true;
         }
 
         internal static bool Valid(float[] extent)
@@ -41,7 +66,7 @@ namespace ArtOfSimRally.Mod
 
         // A measurement that can be a car body: 1.2-3.2 m wide, 0.8-3.6 m tall, a bonnet at least 25 cm above the bottom. A
         // helper collider made the owner's Eibenhammer measure 5.71 m wide with the bonnet below the car (2026-11-01), and
-        // the bonnet camera was fitted onto the ground; such a measurement is neither used nor used as a reference.
+        // the bonnet camera was fitted onto the ground; such a measurement is not used.
         internal static bool Plausible(float[] extent)
         {
             if (!Valid(extent)) return false;
