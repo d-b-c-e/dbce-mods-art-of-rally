@@ -9,6 +9,10 @@ docs/CAMERA.md "Triple-screen camera defaults"). ZIP SHA-256
 lease vemi; payload 9/9; owner settings byte-identical. Rollback copy of rc.27:
 `E:\Source\temp\art-0.4.4-rc.28\backup-installed-rc.27`. Custom Vehicles 0.6.3 unchanged.
 
+Full `tools/testing/Test-Rc.ps1` gate passes again at `28c711d` (run labelled rc.29; product source identical to rc.28,
+only tests/docs changed): Lifecycle stubs caught up, WheelInput shim tests default to the toolkit pin. Results
+`results/rc-0.4.4-rc.29-4b758fcd1b364b00ae340718cdb85dba`; attended checks pending.
+
 ## Previous installation — 0.4.4-rc.27 + Custom Vehicles 0.6.3 (November 1, owner test)
 
 rc.27 (source `c39acee`): camera tweaks have no position limits (`d5d6e5c`); the bumper view hides the car, shadow kept;
