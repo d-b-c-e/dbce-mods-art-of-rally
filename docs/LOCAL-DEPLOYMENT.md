@@ -1,6 +1,18 @@
 # Local deployment
 
-## Current installation — 0.4.4-rc.26 (November 1, owner test)
+## Current installation — 0.4.4-rc.27 + Custom Vehicles 0.6.3 (November 1, owner test)
+
+rc.27 (source `c39acee`): camera tweaks have no position limits (`d5d6e5c`); the bumper view hides the car, shadow kept;
+bonnet/bumper rotation smoothed over 0.06 s (`900edec`); F7 remembered per camera: OverrideFieldOfView = bonnet, new
+BumperRealistic/ChaseRealistic (`c39acee`; lili told for ISS-0023). ZIP SHA-256
+`58C4FA33F94D32315509E33EEF154B709287AED6E3A507B54DDA78E1C5FD5AEC`; Mod.dll
+`99D59DE6C80BA7D1251F0081FE58F0572067652E8D6BC8D127CC7C8DEB24A408`. Installer 70, CameraTuning 400, SettingsUi 3572,
+Triple 1355 passed. Custom Vehicles 0.6.3 (cockpit rotation smoothing; offline build 148 assertions, 57 Harmony targets),
+dll `00EF64D4C3F0A2BFFA4355ED495CD4F04096A43BE3F13E21E21857C2F6CA06CE`, 13/13, State files unchanged. Game closed,
+lease vemi; payload 9/9; owner settings byte-identical. Rollback: rc.26 at
+`E:\Source\temp\art-0.4.4-rc.27\backup-installed-rc.26`; CV 0.6.2 at `E:\Source\temp\customvehicles-0.6.3\backup-installed-0.6.2`.
+
+## Previous installation — 0.4.4-rc.26 (November 1, owner test)
 
 Owner screenshots 11-01 (Eibenhammer, camera settings cleared): the calculated bonnet camera sat inside the car (the
 front-quarter median took the low sloping nose, -0.10 m, for the bonnet), and after adjusting, the light pods were cut
