@@ -41,18 +41,32 @@ namespace UnityEngine
         public static Quaternion identity => new Quaternion { w=1 };
         public static Quaternion Euler(float x,float y,float z) => identity;
         public static Quaternion operator *(Quaternion a,Quaternion b) => a;
+        public static Quaternion Slerp(Quaternion a,Quaternion b,float t) => b;
+        public static float Angle(Quaternion a,Quaternion b) => 0f;
         public static Vector3 operator *(Quaternion a,Vector3 b) => b;
     }
-    public class Transform { public Vector3 position, localPosition; public Quaternion rotation, localRotation; }
-    public class Camera { public Transform transform = new Transform(); public float fieldOfView=60; }
+    public class Transform
+    {
+        public Vector3 position, localPosition; public Quaternion rotation, localRotation;
+        public T GetComponentInParent<T>() where T : class => null;
+        public T[] GetComponentsInChildren<T>() => new T[0];
+    }
+    public class Camera { public Transform transform = new Transform(); public float fieldOfView=60, nearClipPlane=.3f; }
+    public class Renderer { public Rendering.ShadowCastingMode shadowCastingMode; }
+    public class MeshRenderer : Renderer { }
+    public class SkinnedMeshRenderer : Renderer { }
     public static class Mathf
     {
         public static float Clamp(float v,float min,float max) => Math.Clamp(v,min,max);
         public static float Lerp(float a,float b,float t) => a+(b-a)*Math.Clamp(t,0,1);
+        public static float Exp(float v) => (float)Math.Exp(v);
+        public static float Max(float a,float b) => Math.Max(a,b);
+        public static float Min(float a,float b) => Math.Min(a,b);
     }
-    public static class Time { public static float realtimeSinceStartup, unscaledDeltaTime=.016f; public static int frameCount; }
+    public static class Time { public static float realtimeSinceStartup, unscaledDeltaTime=.016f, deltaTime=.016f; public static int frameCount; }
     public static class Application { public static string version="fixture", unityVersion="fixture"; public static bool isFocused=true; }
 }
+namespace UnityEngine.Rendering { public enum ShadowCastingMode { Off, On, TwoSided, ShadowsOnly } }
 public class CameraAngle
 {
     public enum CameraAngles { CAMERA1 }
@@ -70,7 +84,7 @@ public class CarCameras
     public void SetToWantedPositionImmediate() { Snaps++; }
 }
 public class CameraManager { }
-public class CarDynamics { public Axles axles; }
+public class CarDynamics { public Axles axles; public UnityEngine.Transform transform = new UnityEngine.Transform(); }
 public class Axles { public Axle frontAxle; }
 public class Axle { public Wheel leftWheel, rightWheel; }
 public class Wheel { public float slipAngle; }
@@ -88,7 +102,7 @@ namespace ArtOfSimRally.Mod
         public float BonnetLean=0, BonnetSide=0, BonnetHeight=1, BonnetForward=1, BonnetPitch=0, BonnetFOV=75;
         public float BumperSide=0, BumperHeight=1, BumperForward=1, BumperPitch=0, BumperFOV=75;
         public float FyReference=11500, GainFromStrength=1, Smoothing=0;
-        public bool Invert=false, DiagnosticLogging=false;
+        public bool Invert=false, DiagnosticLogging=false, ForceFeedbackEnabled=true;
     }
     internal static class Calls { public static List<string> Log = new List<string>(); }
     internal static class ShimStartup
@@ -110,9 +124,13 @@ namespace ArtOfSimRally.Mod
         public static bool SettingsVisible = false;
         public static void TickSettingsUi() { }
         public static bool HasFocus() => UnityEngine.Application.isFocused;
+        public const string FeedbackOffNotice = "Force feedback off.";
+        public static void ReportFeedbackOff(string notice) => Calls.Log.Add("ffb-off-notice");
     }
     internal static class GameState { public static bool IsDriving=false, IsPlayerView=true; }
-    internal static class ModLog { public static void Info(string value) { } }
+    internal static class ModLog { public static void Info(string value) { } public static void Warning(string value) { } }
+    internal static class CameraMountMemory { public static void Track(UnityEngine.Transform target, Settings cfg, bool bumper) { } }
+    internal static class ChaseFov { public static void Apply(CarCameras rig, Settings cfg) { } }
     internal static class CameraTuner
     {
         public static void Update(BonnetCamera.View view) { }
@@ -158,5 +176,15 @@ namespace ArtOfSimRally.Mod
     {
         public static void Close() => Calls.Log.Add("shifter-close");
         public static void FlushSelection(bool shutdown=false) => Calls.Log.Add("shifter-save");
+    }
+}
+
+namespace ArtOfSimRally.Mod.Triple
+{
+    internal static class TripleScreen
+    {
+        public static bool IsCustomCockpit(CarCameras rig) => false;
+        public static void DrawNotice() { }
+        public static void DrawCameraLabel() { }
     }
 }
