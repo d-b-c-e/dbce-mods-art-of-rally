@@ -1,6 +1,18 @@
 # Local deployment
 
-## Current installation — 0.4.4-rc.25 (November 1, owner test)
+## Current installation — 0.4.4-rc.26 (November 1, owner test)
+
+Owner screenshots 11-01 (Eibenhammer, camera settings cleared): the calculated bonnet camera sat inside the car (the
+front-quarter median took the low sloping nose, -0.10 m, for the bonnet), and after adjusting, the light pods were cut
+away. rc.26: windscreen found by its steepness from the roof forward, profile logged (`2d25a79`); bonnet/bumper views
+draw from 5 cm near clip, stock value restored on release (`b6388fd`). ZIP SHA-256
+`5B12BA2656B58FC3B1E87B29451A39A721485006F74DEEF11E5A12D1FDF4E83C`; Mod.dll
+`14E40615172C0873BC3B93E9CE7E1926323AA81E9BC197BDF047BA7DD8C77773`. Installer 70, CameraTuning 400, Triple 1355 passed.
+Game closed, lease vemi; payload 9/9; owner settings byte-identical. Rollback copy of rc.25:
+`E:\Source\temp\art-0.4.4-rc.26\backup-installed-rc.25`. Owner camera settings before the 11-01 clear:
+`E:\Source\temp\art-camera-reset-20261101`.
+
+## Previous installation — 0.4.4-rc.25 (November 1, owner test)
 
 Owner design 11-01 (4792659): bonnet/bumper start from a placement calculated from each car's shape (bonnet 10 cm ahead
 of the windscreen base, 8 cm above the bonnet; bumper centre line, 5 cm ahead of the front, halfway up the front face),
