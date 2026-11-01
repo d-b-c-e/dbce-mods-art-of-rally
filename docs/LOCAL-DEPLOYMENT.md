@@ -1,6 +1,19 @@
 # Local deployment
 
-## Current installation — 0.4.4-rc.21 (November 1, owner test)
+## Current installation — 0.4.4-rc.23 (November 1, owner test)
+
+Owner report 11-01 (Eibenhammer, Custom Rally): bonnet camera near the ground, F7 no change, 1st held at the start not
+engaged. rc.22 (`2ba82f2`, ZIP `B09FB3DA…C823`): camera fit uses body mesh colliders only, refuses non-car measurements
+(the car had measured 5.71 m wide, bonnet below it), refits untuned sets, starts the Game set from the defaults when no
+reference (the Game set had inherited the Turtle Van's Realistic values, so both sets were identical). rc.23 (`0ea8a71`):
+the log showed the game already in 1st and the shared input reading the held 1st as neutral; the mod no longer shifts
+out of gear on a first neutral reading. ZIP SHA-256 `FA9D4826607D61E457C29A77CE1AA55830F6704FEBD37BFF5F7DA1ADFC366A34`;
+Mod.dll `BC4E2FCF54B862ECC79128F8A7671F9076C940C104A64DFFB58667D5E84395B7`. Installer 70, ShimInput 12360,
+CameraTuning 399, SettingsUi 3444, WheelInput 620 passed. Game closed, lease vemi; payload 9/9; owner settings
+byte-identical. Rollback copies: rc.21 at `E:\Source\temp\art-0.4.4-rc.22\backup-installed-rc.21`, rc.22 at
+`E:\Source\temp\art-0.4.4-rc.23\backup-installed-rc.22`.
+
+## Previous installation — 0.4.4-rc.21 (November 1, owner test)
 
 guna GO 488089, file-only, no launch. rc.20 plus the `artFovSets` receipt marker in Info.json (e94836e) that Wheelkit
 admission needs (dbce-wheelkit docs/ART-STANDARDS-FOR-WHEELKIT.md). ZIP SHA-256
