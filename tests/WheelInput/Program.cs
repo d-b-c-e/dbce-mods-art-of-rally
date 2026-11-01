@@ -445,10 +445,18 @@ static class Program
     // The opt-in ordinary startup: every preflight refusal keeps Art's bindings, qualification waits for
     // the menus and ready readers, and a refusal during qualification (here: the real dbce_shim with no
     // loaded WheelFfb owner) stops Core, leaves no Rewired subscription and hands Art's shifter back.
+    // The toolkit pin the package ships (lib/toolkit/shim). The defaults used to be October evidence worktrees, which the
+    // weekly cleanup removed; ART_SHIM_DLL / ART_LATCHED_SHIM_DLL still override.
+    static string PinnedShim()
+    {
+        for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir != null; dir = dir.Parent)
+            if (File.Exists(Path.Combine(dir.FullName, "ArtOfSimRally.sln"))) return Path.Combine(dir.FullName, "lib", "toolkit", "shim", "dbce_shim.dll");
+        return "dbce_shim.dll";
+    }
     static void SharedStartupPaths()
     {
         // The qualified copied-provider build (7DDC9621), preserved with the October 12 Apply evidence.
-        string dll = Environment.GetEnvironmentVariable("ART_SHIM_DLL") ?? @"E:\Source\games\.worktrees\art-shim-probe-evidence\apply-20261012-021108\dbce_shim.dll";
+        string dll = Environment.GetEnvironmentVariable("ART_SHIM_DLL") ?? PinnedShim();
         Check(File.Exists(dll), "candidate dbce_shim.dll unavailable for the startup test: " + dll);
         var mod = Path.Combine(Path.GetTempPath(), "art-shared-startup-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(mod);
         SharedInputStartup.RunRoot = Path.Combine(mod, "runs");
@@ -517,7 +525,7 @@ static class Program
     static void SharedForceSelection()
     {
         const string shared = "d71b8350-61b7-11f1-8001-444553540000", explicitId = "aaaaaaaa-0000-0000-0000-000000000001";
-        string dll = Environment.GetEnvironmentVariable("ART_SHIM_DLL") ?? @"E:\Source\games\.worktrees\art-shim-probe-evidence\apply-20261012-021108\dbce_shim.dll";
+        string dll = Environment.GetEnvironmentVariable("ART_SHIM_DLL") ?? PinnedShim();
         var mod = Path.Combine(Path.GetTempPath(), "art-shared-ffb-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(mod);
         File.Copy(dll, Path.Combine(mod, SharedInputStartup.ShimFileName));
         string profilePath = Path.Combine(mod, SharedInputStartup.ProfileFileName);
@@ -584,7 +592,7 @@ static class Program
     static void SharedLifecycle()
     {
         const ArtOfSimRally.Mod.Shim.ShimStatus L = ArtOfSimRally.Mod.Shim.ShimStatus.Live;
-        string dll = Environment.GetEnvironmentVariable("ART_SHIM_DLL") ?? @"E:\Source\games\.worktrees\art-shim-probe-evidence\apply-20261012-021108\dbce_shim.dll";
+        string dll = Environment.GetEnvironmentVariable("ART_SHIM_DLL") ?? PinnedShim();
         Check(File.Exists(dll), "candidate dbce_shim.dll unavailable for the lifecycle test: " + dll);
         var mod = Path.Combine(Path.GetTempPath(), "art-shared-lifecycle-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(mod);
         File.Copy(dll, Path.Combine(mod, SharedInputStartup.ShimFileName));
@@ -695,7 +703,7 @@ static class Program
     static void SharedTransportStop()
     {
         const ArtOfSimRally.Mod.Shim.ShimStatus L = ArtOfSimRally.Mod.Shim.ShimStatus.Live;
-        string dll = Environment.GetEnvironmentVariable("ART_SHIM_DLL") ?? @"E:\Source\games\.worktrees\art-shim-probe-evidence\apply-20261012-021108\dbce_shim.dll";
+        string dll = Environment.GetEnvironmentVariable("ART_SHIM_DLL") ?? PinnedShim();
         var mod = Path.Combine(Path.GetTempPath(), "art-shared-transport-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(mod);
         File.Copy(dll, Path.Combine(mod, SharedInputStartup.ShimFileName));
         File.WriteAllText(Path.Combine(mod, SharedInputStartup.ProfileFileName), "[Controls]\nSchema = 1\nProfile = Transport\n");
@@ -739,7 +747,7 @@ static class Program
     // GetRawMoveVector reads them (GetAxis plus GetNegativeButtonDown on the vertical action).
     static void LatchedMenu()
     {
-        string dll = Environment.GetEnvironmentVariable("ART_LATCHED_SHIM_DLL") ?? @"E:\Source\research\.worktrees\art-shim-bridge\build-art-bridge\windows\Release\dbce_shim.dll";
+        string dll = Environment.GetEnvironmentVariable("ART_LATCHED_SHIM_DLL") ?? PinnedShim();
         Check(File.Exists(dll), "latched dbce_shim.dll unavailable: " + dll);
         Setup(""); GameButtonCompatibility.Allowed = true; Clock.frameCount = 40000; WheelInput.Update();
         GameButtonInput.Observe(12, 13, 16, 17);
@@ -783,7 +791,7 @@ static class Program
     // sequential box takes the consumer's shift queue the way ShifterPatch does.
     static void DriveRealCore()
     {
-        string dll = Environment.GetEnvironmentVariable("ART_LATCHED_SHIM_DLL") ?? @"E:\Source\research\.worktrees\art-shim-bridge\build-art-bridge\windows\Release\dbce_shim.dll";
+        string dll = Environment.GetEnvironmentVariable("ART_LATCHED_SHIM_DLL") ?? PinnedShim();
         Check(File.Exists(dll), "latched dbce_shim.dll unavailable: " + dll);
         Setup(""); Clock.frameCount = 50000;
         Device.Devices = new[] { new Device.DeviceInfo { Name = "MOZA R12 Base", Index = 0 }, new Device.DeviceInfo { Name = "DS-8X Shifter", Index = 1 } };
