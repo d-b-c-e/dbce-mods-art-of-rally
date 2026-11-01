@@ -295,6 +295,13 @@ static class Program
             Check(Math.Abs(mixed[1] - (2.2f - (1.4f - .95f))) < 1e-5, "without the shape on both cars the box fit is used");
             Check(!CameraMountFit.Valid(new[] { .2f, 1.4f, 1.8f, 1.5f, 2f, .6f }) && !CameraMountFit.Valid(new[] { .2f, 1.4f, 1.8f, 1.5f, .9f, 2f }),
                 "a bonnet above the roof or a windscreen ahead of the front is refused");
+            // Plausibility (owner logs 2026-11-01): the Eibenhammer measured 5.71 m wide with the bonnet below the car, the Turtle
+            // Van 7.09 m wide; neither may be used. A real car passes.
+            Check(!CameraMountFit.Plausible(new[] { -.76f, .50f, 2.59f, 5.71f, -.16f, 1.27f }) && !CameraMountFit.Plausible(new[] { -1.10f, 2.88f, 3.33f, 7.09f, 1.28f, 1.49f }),
+                "helper-inflated measurements were accepted");
+            Check(CameraMountFit.Plausible(new[] { .2f, 1.4f, 1.8f, 1.6f, .9f, .6f }) && CameraMountFit.Plausible(new[] { .2f, 1.4f, 1.8f, 1.6f }),
+                "a real car was refused");
+            Check(!CameraMountFit.Plausible(new[] { .2f, 1.4f, 1.8f, 1.6f, .3f, .6f }), "a bonnet at the bottom of the car was accepted");
             // Profile: flat bonnet at .9 for the front third, then the windscreen rises; a flat roof-less profile has no step.
             var z = new float[40]; var h = new float[40];
             for (int i = 0; i < 40; i++) { z[i] = 2f - i * .1f; h[i] = i < 13 ? .9f + (i % 2) * .01f : 1.4f; }

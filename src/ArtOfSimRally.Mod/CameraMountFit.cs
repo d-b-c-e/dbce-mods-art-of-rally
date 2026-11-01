@@ -39,6 +39,17 @@ namespace ArtOfSimRally.Mod
             return extent.Length == ExtentValues || (extent[4] > extent[0] && extent[4] < extent[1] && extent[5] < extent[2]);
         }
 
+        // A measurement that can be a car body: 1.2-3.2 m wide, 0.8-3.6 m tall, a bonnet at least 25 cm above the bottom. A
+        // helper collider made the owner's Eibenhammer measure 5.71 m wide with the bonnet below the car (2026-11-01), and
+        // the bonnet camera was fitted onto the ground; such a measurement is neither used nor used as a reference.
+        internal static bool Plausible(float[] extent)
+        {
+            if (!Valid(extent)) return false;
+            float height = extent[1] - extent[0];
+            if (extent[3] < 1.2f || extent[3] > 3.2f || height < .8f || height > 3.6f) return false;
+            return extent.Length == ExtentValues || extent[4] > extent[0] + .25f;
+        }
+
         // The bonnet from a top-surface profile along the centre line, sampled from the front backwards (z falling,
         // NaN where nothing was found): the bonnet height is the median of the front quarter; the windscreen base is
         // the first sample past the front tenth that rises 12 cm above it. Null when the profile shows no such step.

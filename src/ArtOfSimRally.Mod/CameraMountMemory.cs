@@ -36,31 +36,45 @@ namespace ArtOfSimRally.Mod
 
         private static void Load(Settings cfg)
         {
-            _key = _root.name.Replace("(Clone)", "").Trim() + (_custom ? "+" + CustomId() : "") + (_realistic ? RealisticSuffix : "");
+            string car = _root.name.Replace("(Clone)", "").Trim() + (_custom ? "+" + CustomId() : "");
+            _key = car + (_realistic ? RealisticSuffix : "");
             _extent = Measure(_target);
             var saved = cfg.CameraMounts.LastOrDefault(m => m.Car == _key && m.Values?.Length == CameraMountFit.Values);
-            string how = "saved";
-            if (saved != null)
+            string how;
+            // A set the player adjusted is kept as it is. A legacy entry (no Tuned flag) counts as adjusted only when its
+            // measurement is plausible; otherwise it came from a broken fit (owner 2026-11-01) and is fitted again.
+            if (saved != null && (saved.Tuned || CameraMountFit.Plausible(saved.Extent)))
             {
-                Apply(cfg, saved.Values);
-                // A car saved before the shape was measured gains it (values unchanged) so it can guide shape fits.
-                if (CameraMountFit.Valid(_extent) && (saved.Extent == null || saved.Extent.Length < _extent.Length)) saved.Extent = _extent;
+                Apply(cfg, saved.Values); how = "saved";
+                if (!saved.Tuned) saved.Tuned = true;
+                if (CameraMountFit.Plausible(_extent) && (saved.Extent == null || !CameraMountFit.Plausible(saved.Extent) || saved.Extent.Length < _extent.Length))
+                    saved.Extent = _extent;
             }
             else
             {
-                // Start from the last tuned car in the same set, fitted to this car's size; the Realistic set otherwise starts
-                // from this car's Game values at the seat's true field of view.
-                var reference = cfg.CameraMounts.LastOrDefault(m => m.Values?.Length == CameraMountFit.Values && CameraMountFit.Valid(m.Extent)
-                    && m.Car.EndsWith(RealisticSuffix) == _realistic);
-                if (reference != null && CameraMountFit.Valid(_extent)) { Apply(cfg, CameraMountFit.Fit(reference.Values, reference.Extent, _extent)); how = "fitted from " + reference.Car; }
-                else how = "current values";
-                if (_realistic && reference == null && Triple.TripleScreen.RealisticStartDegrees is double seat)
-                { cfg.BonnetFOV = cfg.BumperFOV = (float)Math.Round(seat, 1); how += ", realistic field of view " + seat.ToString("0") + "°"; }
-                Store(cfg, Snapshot(cfg));
+                // An untuned set starts from the last car the player adjusted in the same set, fitted to this car's measured
+                // shape. Without one: the Game set starts from the mod's defaults; the Realistic set from this car's Game
+                // set at the seat's true field of view. Never from whatever car happened to load last.
+                var reference = cfg.CameraMounts.LastOrDefault(m => m.Tuned && m.Values?.Length == CameraMountFit.Values &&
+                    CameraMountFit.Plausible(m.Extent) && m.Car.EndsWith(RealisticSuffix) == _realistic);
+                if (reference != null && CameraMountFit.Plausible(_extent))
+                { Apply(cfg, CameraMountFit.Fit(reference.Values, reference.Extent, _extent)); how = "fitted from " + reference.Car; }
+                else if (_realistic)
+                {
+                    var game = cfg.CameraMounts.LastOrDefault(m => m.Car == car && m.Values?.Length == CameraMountFit.Values);
+                    Apply(cfg, game?.Values ?? Defaults());
+                    how = game != null ? "this car's Game set" : "defaults";
+                    if (Triple.TripleScreen.RealisticStartDegrees is double seat)
+                    { cfg.BonnetFOV = cfg.BumperFOV = (float)Math.Round(seat, 1); how += ", realistic field of view " + seat.ToString("0") + "°"; }
+                }
+                else { Apply(cfg, Defaults()); how = "defaults"; }
+                Store(cfg, Snapshot(cfg), tuned: false);
             }
             _loaded = Snapshot(cfg);
             ModLog.Info("Camera mounts for " + _key + ": " + how + ".");
         }
+
+        private static float[] Defaults() => Snapshot(new Settings());
 
         private static void Remember(Settings cfg)
         {
@@ -68,14 +82,14 @@ namespace ArtOfSimRally.Mod
             var now = Snapshot(cfg);
             if (now.SequenceEqual(_loaded)) return;
             _loaded = now;
-            Store(cfg, now);
+            Store(cfg, now, tuned: true);
         }
 
-        // The latest stored set is the reference for the next untuned car in the same set.
-        private static void Store(Settings cfg, float[] values)
+        // The latest adjusted set is the reference for the next untuned car in the same set.
+        private static void Store(Settings cfg, float[] values, bool tuned)
         {
             cfg.CameraMounts.RemoveAll(m => m.Car == _key);
-            cfg.CameraMounts.Add(new CameraMount { Car = _key, Values = values, Extent = CameraMountFit.Valid(_extent) ? _extent : null });
+            cfg.CameraMounts.Add(new CameraMount { Car = _key, Values = values, Extent = CameraMountFit.Plausible(_extent) ? _extent : null, Tuned = tuned });
             if (cfg.CameraMounts.Count > 128) cfg.CameraMounts.RemoveAt(0);
         }
 
@@ -87,6 +101,9 @@ namespace ArtOfSimRally.Mod
             c.BonnetSide = v[0]; c.BonnetHeight = v[1]; c.BonnetForward = v[2]; c.BonnetPitch = v[3]; c.BonnetFOV = v[4];
             c.BumperSide = v[5]; c.BumperHeight = v[6]; c.BumperForward = v[7]; c.BumperPitch = v[8]; c.BumperFOV = v[9];
         }
+
+        private static Collider[] BodyColliders() =>
+            _root.GetComponentsInChildren<Collider>().Where(c => c is MeshCollider && c.enabled && !c.isTrigger).ToArray();
 
         private static bool Visible(Renderer r) => (r is MeshRenderer || r is SkinnedMeshRenderer) && r.enabled && !r.forceRenderingOff &&
             r.name.IndexOf("shadow", StringComparison.OrdinalIgnoreCase) < 0;
@@ -100,8 +117,11 @@ namespace ArtOfSimRally.Mod
             var visual = _root.Find(CustomVisual);
             var boxes = visual != null
                 ? visual.GetComponentsInChildren<Renderer>().Where(Visible).Select(r => r.bounds).ToList()
-                : _root.GetComponentsInChildren<Collider>().Where(c => c.enabled && !c.isTrigger).Select(c => c.bounds).ToList();
-            if (boxes.Count == 0) boxes = _root.GetComponentsInChildren<Renderer>().Where(Visible).Select(r => r.bounds).ToList();
+                : BodyColliders().Select(c => c.bounds).ToList();
+            // Mesh colliders are the body; box helpers made a car 5.71 m wide (owner 2026-11-01). Last resort: meshes no
+            // wider than a car.
+            if (boxes.Count == 0) boxes = _root.GetComponentsInChildren<Renderer>().Where(Visible).Select(r => r.bounds)
+                .Where(b => b.size.x < 3.2f && b.size.z < 7f).ToList();
             bool any = false; float bottom = 0, top = 0, front = 0, back = 0, left = 0, right = 0;
             foreach (var b in boxes)
             {
@@ -118,9 +138,10 @@ namespace ArtOfSimRally.Mod
             var hood = CameraMountFit.HoodProfile(ProfileZ(front, back), MeshProfile(visual ?? _root, target, front, back, (right - left) / 4f))
                 ?? CameraMountFit.HoodProfile(ProfileZ(front, back), ColliderProfile(target, front, back, bottom, top));
             var shaped = hood == null ? box : new[] { bottom, top, front, right - left, hood[0], hood[1] };
+            if (!CameraMountFit.Plausible(box)) { ModLog.Info($"Camera mounts: {_root.name} measured {bottom:0.00}..{top:0.00} m high, {right - left:0.00} m wide: not a car body, no fit."); return null; }
             ModLog.Info($"Camera mounts: measured {_root.name}: bottom {bottom:0.00}, top {top:0.00}, front {front:0.00}, width {right - left:0.00}" +
                 (hood == null ? "; bonnet shape not found (box fit)." : $"; bonnet {hood[0]:0.00} m high, windscreen base at {hood[1]:0.00} m."));
-            return CameraMountFit.Valid(shaped) ? shaped : box;
+            return CameraMountFit.Plausible(shaped) ? shaped : box;
         }
 
         private const int Samples = 40;
@@ -165,7 +186,7 @@ namespace ArtOfSimRally.Mod
                 var origin = target.TransformPoint(new Vector3(0f, top + 1f, z[i]));
                 foreach (var hit in Physics.RaycastAll(origin, -target.up, reach, ~0, QueryTriggerInteraction.Ignore))
                 {
-                    if (hit.collider == null || !hit.collider.transform.IsChildOf(_root)) continue;
+                    if (!(hit.collider is MeshCollider) || !hit.collider.enabled || hit.collider.isTrigger || !hit.collider.transform.IsChildOf(_root)) continue;
                     float y = target.InverseTransformPoint(hit.point).y;
                     if (float.IsNaN(h[i]) || y > h[i]) h[i] = y;
                 }

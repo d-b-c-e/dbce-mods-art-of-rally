@@ -334,5 +334,7 @@ namespace ArtOfSimRally.Mod
         public string Car;
         public float[] Values;
         public float[] Extent;
+        // True once the player adjusted this car's set; an untuned (fitted) set is fitted again each time it loads.
+        public bool Tuned;
     }
 }
