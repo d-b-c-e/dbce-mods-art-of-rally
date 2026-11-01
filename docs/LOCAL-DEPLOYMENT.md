@@ -1,6 +1,20 @@
 # Local deployment
 
-## Current installation — 0.4.4-rc.24 (November 1, owner test)
+## Current installation — 0.4.4-rc.25 (November 1, owner test)
+
+Owner design 11-01 (4792659): bonnet/bumper start from a placement calculated from each car's shape (bonnet 10 cm ahead
+of the windscreen base, 8 cm above the bonnet; bumper centre line, 5 cm ahead of the front, halfway up the front face),
+the same for both sets; tweaks are offsets (position per car and set, FOV per camera and set for all cars); cameras kept
+outside the body; "(Custom)" label; numpad 5 resets. Reference-car fit removed; adjusted sets migrate (position kept,
+FOV from stock). ZIP SHA-256 `23304D18A849077267C6039FD5D675E8690A72D9957D81CD2A9CA1C263041C26`; Mod.dll
+`F4704FEECF23D7E08F1A90C2F5F11D2BC44F6DB47D93F593D2A99C75FDDB59F2`. Installer 70, CameraTuning 398, SettingsUi 3540,
+Triple 1355, shared-input startup 14 and drive trial 608 passed (the last two with `ART_SHIM_DLL`/`ART_LATCHED_SHIM_DLL`
+set to the shipped `dbce_shim.dll` BC9B030A: their default evidence paths under `E:\Source\games\.worktrees` and
+`E:\Source\research\.worktrees` were cleaned). The full `Test-Rc.ps1` gate does not build: the Lifecycle test's stubs
+lag rc.12+ (ForceFeedbackEnabled, FeedbackOffNotice, Triple, ChaseFov, CameraMountMemory). Game closed, lease vemi;
+payload 9/9; owner settings byte-identical. Rollback copy of rc.24: `E:\Source\temp\art-0.4.4-rc.25\backup-installed-rc.24`.
+
+## Previous installation — 0.4.4-rc.24 (November 1, owner test)
 
 rc.23 plus: camera fit measures each mesh's own (local) box (3a7ebd4; world-aligned bounds had made yawed cars 5.5-7 m
 wide); F7 on every camera with cockpit starting Realistic (`CockpitRealistic`, default true) and bonnet/bumper/chase
