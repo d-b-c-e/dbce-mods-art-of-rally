@@ -1,6 +1,15 @@
 # Local deployment
 
-## Current installation — 0.4.4-rc.27 + Custom Vehicles 0.6.3 (November 1, owner test)
+## Current installation — 0.4.4-rc.28 (November 1, owner test)
+
+rc.27 plus the bumper view starting Realistic on triples (`a56c9e4`; owner decision after the Assetto Corsa comparison,
+docs/CAMERA.md "Triple-screen camera defaults"). ZIP SHA-256
+`37E25D5311BBE724DB9AEFA2C67914F44733251EA3E689A761941439C5F53FC7`; Mod.dll
+`A0A9CAF42A165BC4A729CEF5C2CB1AF208E67DEF5598B19668FCE27EDEB240EC`. Installer 70, SettingsUi 3572 passed. Game closed,
+lease vemi; payload 9/9; owner settings byte-identical. Rollback copy of rc.27:
+`E:\Source\temp\art-0.4.4-rc.28\backup-installed-rc.27`. Custom Vehicles 0.6.3 unchanged.
+
+## Previous installation — 0.4.4-rc.27 + Custom Vehicles 0.6.3 (November 1, owner test)
 
 rc.27 (source `c39acee`): camera tweaks have no position limits (`d5d6e5c`); the bumper view hides the car, shadow kept;
 bonnet/bumper rotation smoothed over 0.06 s (`900edec`); F7 remembered per camera: OverrideFieldOfView = bonnet, new
