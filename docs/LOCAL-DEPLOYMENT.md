@@ -7,7 +7,7 @@ the car's colliders; bonnet height and windscreen base anchor the fit; box fallb
 ("Camera mounts: measured ..."). ZIP SHA-256 `7D4CD990CDAFAC8ADD10976275212B5E1F766BA7F6C77C685134B5B99DE78957`;
 Mod.dll `060AF510C0926B530CE83B7CD050C3C86A9B50E19025B9E89FB4D67EE337D95B`. Installer 70, CameraTuning 396, SettingsUi
 3444 passed. Game closed; payload 9/9; owner settings byte-identical. Rollback copy of rc.18:
-`E:\Source	emprt-0.4.4-rc.19ackup-installed-rc.18`.
+`E:\Source\temp\art-0.4.4-rc.19\backup-installed-rc.18`.
 
 ## Previous installation — 0.4.4-rc.18 (October 31, owner test)
 
