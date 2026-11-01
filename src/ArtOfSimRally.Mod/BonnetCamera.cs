@@ -293,7 +293,7 @@ namespace ArtOfSimRally.Mod
                 }
 
                 // Per-car placement: loads this car's saved mount, or fits one from the last tuned car (CameraMountMemory).
-                try { CameraMountMemory.Track(target, cfg); }
+                try { CameraMountMemory.Track(target, cfg, view == View.Bumper); }
                 catch (System.Exception ex) { ModLog.Warning("Camera mount memory skipped: " + ex.Message); }
 
                 bool bumper = view == View.Bumper;

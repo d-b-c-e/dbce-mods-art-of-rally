@@ -31,6 +31,11 @@ public sealed class Settings : UnityModManager.ModSettings
     // others (bonnet, bumper, chase: OverrideFieldOfView above) in the Game set.
     public bool CockpitRealistic = true;
 
+    // Owner 2026-11-01: each camera remembers its own F7 choice. OverrideFieldOfView above is the bonnet's; the bumper
+    // and chase views have their own. The F6 field-of-view button sets all three.
+    public bool BumperRealistic;
+    public bool ChaseRealistic;
+
     // 1 uses the measured eye distance. Larger values widen all three views
     // together; this is a visual preference, not a new physical measurement.
     public float ViewWidthScale = 1f;

@@ -22,9 +22,10 @@ namespace ArtOfSimRally.Mod
 
         // Each car keeps two sets, Game and Realistic (F7), stored separately (owner 2026-10-31: adjustments in one mode
         // must not carry into the other).
-        internal static void Track(Transform target, Settings cfg)
+        // The set follows the camera on screen: bonnet and bumper each keep their own F7 choice (owner 2026-11-01).
+        internal static void Track(Transform target, Settings cfg, bool bumper)
         {
-            bool realistic = Triple.TripleScreen.RealisticActive;
+            bool realistic = Triple.TripleScreen.RealisticFor(bumper ? Triple.CameraOverlay.Kind.Bumper : Triple.CameraOverlay.Kind.Bonnet);
             if (target != _target)
             {
                 _target = target;

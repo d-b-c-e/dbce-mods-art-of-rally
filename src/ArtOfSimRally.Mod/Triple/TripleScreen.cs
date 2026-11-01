@@ -111,7 +111,7 @@ internal static class TripleScreen
     private static float _noticeUntil;
     private static GUIStyle _noticeStyle;
 
-    private static string SessionKey() => string.Join("|", _settings.OverrideFieldOfView,
+    private static string SessionKey() => string.Join("|", _settings.OverrideFieldOfView, _settings.BumperRealistic, _settings.ChaseRealistic,
         _settings.CurveRadiusMm, _settings.EnableThreeViewPrototype, _settings.EnableSeparateDisplayPrototype);
 
     internal static void Notify(string text)
@@ -172,7 +172,7 @@ internal static class TripleScreen
         var angles = s_angles(rig);
         var chase = angles == null || angle == null ? 1 : angles.IndexOf(angle) + 1;
         bool triples = _settings.EnableThreeViewPrototype || _settings.EnableSeparateDisplayPrototype;
-        bool realistic = triples && (kind == CameraOverlay.Kind.Cockpit ? _settings.CockpitRealistic : _settings.OverrideFieldOfView);
+        bool realistic = RealisticFor(kind);
         bool custom = kind == CameraOverlay.Kind.Chase ? ChaseFov.Custom(Main.Settings, chase - 1, realistic)
             : kind != CameraOverlay.Kind.Cockpit && CameraMountMemory.FovCustom(Main.Settings, kind == CameraOverlay.Kind.Bumper, realistic);
         _cameraName = CameraOverlay.Name(kind, chase, realistic, custom);
@@ -207,7 +207,16 @@ internal static class TripleScreen
 
     /// <summary>Whether mounted cameras use their Realistic set (triples on and chosen with F7). Read by CameraMountMemory
     /// and, by name, by Custom Vehicles for its cockpit.</summary>
-    internal static bool RealisticActive => _settings != null && _settings.OverrideFieldOfView && TriplesOn;
+    internal static bool RealisticActive => RealisticFor(CameraOverlay.Kind.Bonnet);
+
+    /// <summary>Whether a camera uses its Realistic set: each camera keeps its own F7 choice (triples on).</summary>
+    internal static bool RealisticFor(CameraOverlay.Kind kind) => _settings != null && TriplesOn && kind switch
+    {
+        CameraOverlay.Kind.Cockpit => _settings.CockpitRealistic,
+        CameraOverlay.Kind.Bumper => _settings.BumperRealistic,
+        CameraOverlay.Kind.Chase => _settings.ChaseRealistic,
+        _ => _settings.OverrideFieldOfView,
+    };
 
     /// <summary>The cockpit's own Game/Realistic choice (starts Realistic). Read by name by Custom Vehicles.</summary>
     internal static bool CockpitRealisticActive => _settings != null && _settings.CockpitRealistic && TriplesOn;
@@ -223,12 +232,19 @@ internal static class TripleScreen
         if (!ProjectionController.InStage()) { Notify("Field of view: switch while driving"); return; }
         var camera = Camera.main;
         var rig = camera == null || camera.transform.parent == null ? null : camera.transform.parent.GetComponent<CarCameras>();
-        bool cockpit = IsCustomCockpit(rig);
-        var saved = cockpit ? SaveSet("CockpitRealistic", !_settings.CockpitRealistic, v => _settings.CockpitRealistic = v)
-                            : SaveSet("OverrideFieldOfView", !_settings.OverrideFieldOfView, v => _settings.OverrideFieldOfView = v);
+        if (rig == null) return;
+        var kind = CameraKind(rig);
+        bool now = !RealisticFor(kind);
+        bool saved;
+        switch (kind)
+        {
+            case CameraOverlay.Kind.Cockpit: saved = SaveSet("CockpitRealistic", now, v => _settings.CockpitRealistic = v); break;
+            case CameraOverlay.Kind.Bumper: saved = SaveSet("BumperRealistic", now, v => _settings.BumperRealistic = v); break;
+            case CameraOverlay.Kind.Chase: saved = SaveSet("ChaseRealistic", now, v => _settings.ChaseRealistic = v); break;
+            default: saved = SaveSet("OverrideFieldOfView", now, v => _settings.OverrideFieldOfView = v); break;
+        }
         _wasInStage = false;   // the camera label shows the new set
-        bool now = cockpit ? _settings.CockpitRealistic : _settings.OverrideFieldOfView;
-        var label = (now ? "Realistic set" : "Game set") + (cockpit ? " (cockpit)" : " (bonnet, bumper and chase)");
+        var label = (now ? "Realistic set" : "Game set") + " (" + kind.ToString().ToLowerInvariant() + ")";
         if (!saved) Notify(label + " · Couldn't save view");
         _modEntry.Logger.Log("F7: " + label + (saved ? "." : "; could not save."));
     }
@@ -369,7 +385,7 @@ internal static class TripleScreen
             w.Help("While driving, F7 switches between the Game and Realistic sets.");
             if (w.Command("triple-fov-choice", _settings.OverrideFieldOfView ? "Use the game's field of view" : "Use the realistic field of view"))
             {
-                if (_settings.OverrideFieldOfView) _settings.OverrideFieldOfView = false;
+                if (_settings.OverrideFieldOfView) _settings.OverrideFieldOfView = _settings.BumperRealistic = _settings.ChaseRealistic = false;
                 else MatchSeat(_settings);
             }
         }
@@ -433,7 +449,7 @@ internal static class TripleScreen
 
     internal static void MatchSeat(Settings s)
     {
-        s.OverrideFieldOfView = true;
+        s.OverrideFieldOfView = s.BumperRealistic = s.ChaseRealistic = true;
         s.ViewWidthScale = 1f;
     }
 

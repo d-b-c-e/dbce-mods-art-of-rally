@@ -44,7 +44,7 @@ namespace ArtOfSimRally.Mod
             int index = list.IndexOf(rig.CurrentCameraAngle);
             if (index < 0 || index > 31) return;
             // Realistic set: the seat's true field of view plus its own offsets, instead of the game's speed-based zoom.
-            var seat = Triple.TripleScreen.RealisticActive ? Triple.TripleScreen.RealisticStartDegrees : null;
+            var seat = Triple.TripleScreen.RealisticFor(Triple.CameraOverlay.Kind.Chase) ? Triple.TripleScreen.RealisticStartDegrees : null;
             var offsets = seat.HasValue ? cfg.ChaseFovRealisticOffsets : cfg.ChaseFovOffsets;
             while (offsets.Count <= index) offsets.Add(0f);
 
