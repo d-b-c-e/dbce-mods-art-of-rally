@@ -171,8 +171,13 @@ namespace ArtOfSimRally.Mod
             }
             if (!any) return null;
             var box = new[] { bottom, top, front, right - left };
-            var hood = CameraMountFit.HoodProfile(ProfileZ(front, back), MeshProfile(visual ?? _root, target, front, back, (right - left) / 4f))
-                ?? CameraMountFit.HoodProfile(ProfileZ(front, back), ColliderProfile(target, front, back, bottom, top));
+            var z = ProfileZ(front, back);
+            var profile = MeshProfile(visual ?? _root, target, front, back, (right - left) / 4f);
+            var hood = CameraMountFit.HoodProfile(z, profile);
+            if (hood == null) { profile = ColliderProfile(target, front, back, bottom, top); hood = CameraMountFit.HoodProfile(z, profile); }
+            // The centre-line heights front to back, so a wrong bonnet/windscreen can be checked from the log.
+            ModLog.Info("Camera mounts: profile " + _root.name + " z " + front.ToString("0.00") + ".." + back.ToString("0.00") + ": " +
+                string.Join(" ", profile.Select(h => float.IsNaN(h) ? "-" : h.ToString("0.00"))));
             var shaped = hood == null ? box : new[] { bottom, top, front, right - left, hood[0], hood[1] };
             if (!CameraMountFit.Plausible(box)) { ModLog.Info($"Camera mounts: {_root.name} measured {bottom:0.00}..{top:0.00} m high, {right - left:0.00} m wide: not a car body, no fit."); return null; }
             ModLog.Info($"Camera mounts: measured {_root.name}: bottom {bottom:0.00}, top {top:0.00}, front {front:0.00}, width {right - left:0.00}" +

@@ -75,21 +75,31 @@ namespace ArtOfSimRally.Mod
             return extent.Length == ExtentValues || extent[4] > extent[0] + .25f;
         }
 
+        // Steeper than this (rise per metre, about 19°) is windscreen; a bonnet or a sloping nose is shallower.
+        internal const float WindscreenSlope = .35f;
+
         // The bonnet from a top-surface profile along the centre line, sampled from the front backwards (z falling,
-        // NaN where nothing was found): the bonnet height is the median of the front quarter; the windscreen base is
-        // the first sample past the front tenth that rises 12 cm above it. Null when the profile shows no such step.
+        // NaN where nothing was found). From where the profile first reaches roof height (the front two thirds' highest,
+        // so a rear wing is ignored) it walks forward while the surface falls steeply: where that stops is the windscreen
+        // base, and its height is the bonnet. A median of the front quarter took the Eibenhammer's low sloping nose for
+        // the bonnet and the bonnet's rise for the windscreen, and put the camera inside the car (owner 2026-11-01).
+        // Null when there is no windscreen step or no bonnet ahead of it.
         internal static float[] HoodProfile(float[] z, float[] height)
         {
             if (z == null || height == null || z.Length != height.Length || z.Length < 8) return null;
-            int quarter = Math.Max(2, z.Length / 4), tenth = Math.Max(1, z.Length / 10);
-            var front = new System.Collections.Generic.List<float>();
-            for (int i = 0; i < quarter; i++) if (!float.IsNaN(height[i])) front.Add(height[i]);
-            if (front.Count < 2) return null;
-            front.Sort();
-            float hood = front[front.Count / 2];
-            for (int i = tenth; i < z.Length; i++)
-                if (!float.IsNaN(height[i]) && height[i] > hood + .12f) return new[] { hood, z[i] };
-            return null;
+            float roof = float.NaN;
+            for (int i = 0; i < z.Length * 2 / 3; i++) if (!float.IsNaN(height[i]) && !(height[i] <= roof)) roof = height[i];
+            if (float.IsNaN(roof)) return null;
+            int j = Array.FindIndex(height, h => !float.IsNaN(h) && h >= roof - .08f);
+            while (true)
+            {
+                int prev = j - 1;
+                while (prev >= 0 && float.IsNaN(height[prev])) prev--;
+                if (prev < 0) return null;   // steep all the way to the front: no bonnet
+                if ((height[j] - height[prev]) / (z[prev] - z[j]) < WindscreenSlope) break;
+                j = prev;
+            }
+            return roof - height[j] < .12f ? null : new[] { height[j], z[j] };
         }
     }
 }

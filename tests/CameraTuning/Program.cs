@@ -300,7 +300,16 @@ static class Program
             for (int i = 0; i < 40; i++) { z[i] = 2f - i * .1f; h[i] = i < 13 ? .9f + (i % 2) * .01f : 1.4f; }
             h[3] = float.NaN;
             var hood = CameraMountFit.HoodProfile(z, h);
-            Check(hood != null && Math.Abs(hood[0] - .9f) < .02f && Math.Abs(hood[1] - z[13]) < 1e-5, "bonnet height and windscreen base found");
+            Check(hood != null && Math.Abs(hood[0] - .9f) < .02f && Math.Abs(hood[1] - z[12]) < 1e-5, "bonnet height and windscreen base found");
+            // Eibenhammer-like (owner 2026-11-01): a low nose sloping gently up to the bonnet, a steep windscreen, a roof, a
+            // rear wing above the roof. The bonnet is the top of the gentle slope, not the nose.
+            var nose = new float[40];
+            for (int i = 0; i < 40; i++) nose[i] = i < 12 ? -.3f + i * .02f : i < 16 ? -.08f + (i - 11) * .12f : i < 34 ? .44f : .6f;
+            var sloped = CameraMountFit.HoodProfile(z, nose);
+            Check(sloped != null && Math.Abs(sloped[0] - (-.08f)) < 1e-4 && Math.Abs(sloped[1] - z[11]) < 1e-5,
+                "a sloping nose was taken for the bonnet: " + (sloped == null ? "null" : sloped[0] + " at " + sloped[1]));
+            var cabOver = new float[40]; for (int i = 0; i < 40; i++) cabOver[i] = Math.Min(1.4f, .2f + i * .3f);
+            Check(CameraMountFit.HoodProfile(z, cabOver) == null, "a front with no bonnet gave one");
             var flat = new float[40]; for (int i = 0; i < 40; i++) flat[i] = 1f;
             Check(CameraMountFit.HoodProfile(z, flat) == null && CameraMountFit.HoodProfile(z, new float[3]) == null, "no step or too few samples gives no shape");
 
