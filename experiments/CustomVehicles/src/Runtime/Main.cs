@@ -284,6 +284,10 @@ namespace RallyCustomVehicles
                     RemoveAngle(); rig=current;
                     cockpit=new CameraAngle(0,0,0,CameraAngle.CameraAngles.CAMERA1); Angles(rig).Add(cockpit);
                     entry.Logger.Log("Custom vehicle cockpit added to camera cycle.");
+                    // The game restores its saved view (SETTINGS_CAMERA_PRESET, a list position) before this view exists,
+                    // clamping a saved cockpit to the view before it. Restore it now (owner 2026-10-31: remember the camera).
+                    if(SaveGame.GetInt("SETTINGS_CAMERA_PRESET",3)==Angles(rig).Count-1 && !ReferenceEquals(rig.CurrentCameraAngle,cockpit))
+                    { rig.CurrentCameraAngle=cockpit; entry.Logger.Log("Cockpit restored as the last used camera."); }
                 }
                 if(!PlayerView || !ReferenceEquals(current.CurrentCameraAngle,cockpit)) { ReleaseCamera(true); return; }
                 var cam=UIManager.Instance?.PanelManager?.mainCamera; if(cam==null) return;
