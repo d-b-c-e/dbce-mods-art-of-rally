@@ -145,8 +145,8 @@ internal static class Program
         Check(SelectionResolver.Resolve("test.b",2,catalog)==2,"new native donor selection takes precedence");
         var viewPath=Path.Combine(temp,"cockpit-views.json"); var views=new CockpitViewStore(viewPath);
         Check(views.Get("dbce.trail-scout").SequenceEqual(CockpitViewStore.Default),"an unsaved car gets the default cockpit view");
-        views.Set("dbce.trail-scout",new[]{0f,.1f,.9f,6f,200f}); var reloaded=new CockpitViewStore(viewPath); reloaded.Load();
-        Check(reloaded.Get("dbce.trail-scout").SequenceEqual(new[]{0f,.1f,.4f,6f,95f}),"a cockpit view survives a restart, clamped");
+        views.Set("dbce.trail-scout",new[]{0f,.1f,1.9f,6f,200f}); var reloaded=new CockpitViewStore(viewPath); reloaded.Load();
+        Check(reloaded.Get("dbce.trail-scout").SequenceEqual(new[]{0f,.1f,1.5f,6f,120f}),"a cockpit view survives a restart, clamped");
         Check(reloaded.Get("dbce.turtle-van").SequenceEqual(CockpitViewStore.Default),"each car keeps its own view");
         File.WriteAllText(viewPath,"{\"dbce.trail-scout\":[1,2]}"); bool refused=false; try{new CockpitViewStore(viewPath).Load();}catch(InvalidDataException){refused=true;}
         Check(refused,"a damaged cockpit view file is refused");

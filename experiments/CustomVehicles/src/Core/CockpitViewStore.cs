@@ -14,11 +14,12 @@ namespace RallyCustomVehicles
         private Dictionary<string, float[]> views = new Dictionary<string, float[]>();
         public CockpitViewStore(string path) { this.path = path; }
 
+        public bool Has(string id) => id != null && views.ContainsKey(id);
         public float[] Get(string id) => id != null && views.TryGetValue(id, out var v) ? (float[])v.Clone() : (float[])Default.Clone();
 
         public static float[] Clamp(float[] v) => new[] {
-            Math.Max(-.4f, Math.Min(.4f, v[0])), Math.Max(-.3f, Math.Min(.3f, v[1])), Math.Max(-.4f, Math.Min(.4f, v[2])),
-            Math.Max(-25f, Math.Min(35f, v[3])), Math.Max(35f, Math.Min(95f, v[4])) };
+            Math.Max(-.8f, Math.Min(.8f, v[0])), Math.Max(-.6f, Math.Min(.8f, v[1])), Math.Max(-1.5f, Math.Min(1.5f, v[2])),
+            Math.Max(-25f, Math.Min(35f, v[3])), Math.Max(20f, Math.Min(120f, v[4])) };   // owner: the eye could not move back far enough
 
         public void Load()
         {

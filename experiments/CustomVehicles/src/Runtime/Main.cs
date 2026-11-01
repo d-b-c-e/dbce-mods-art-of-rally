@@ -124,10 +124,7 @@ namespace RallyCustomVehicles
             Row("Forward / back", ref eyeAdjustment.z, .02f);
             Row("Look down (degrees)", ref pitch, 1f);
             Row("Vertical field of view", ref fov, 2f);
-            pitch = Mathf.Clamp(pitch, -25, 35); fov = Mathf.Clamp(fov, 35, 95);
-            eyeAdjustment.x = Mathf.Clamp(eyeAdjustment.x, -.4f, .4f);
-            eyeAdjustment.y = Mathf.Clamp(eyeAdjustment.y, -.3f, .3f);
-            eyeAdjustment.z = Mathf.Clamp(eyeAdjustment.z, -.4f, .4f);
+            // Limits live in CockpitViewStore.Clamp (applied by SaveView).
             if (GUILayout.Button("Reset driver view")) { eyeAdjustment = Vector3.zero; pitch = 6; fov = 65; }
             SaveView();
         }
@@ -152,7 +149,8 @@ namespace RallyCustomVehicles
                 var chosen = active?.GetComponent<VehicleInstance>()?.Package;
                 if (chosen == null) { if (visual != null) Detach(); return; }
                 if (activePackage != chosen) { Detach(); activePackage = chosen; asset = chosen.Model; }
-                if (viewFor != chosen.Manifest.id) LoadView(chosen.Manifest.id);
+                var viewKey = chosen.Manifest.id + (ArtRealistic() ? "_realistic" : "");
+                if (viewFor != viewKey) { SaveView(); LoadView(chosen.Manifest.id, viewKey); }
                 if (active != car || (visual != null && active == null)) { Detach(); activePackage = chosen; asset = chosen.Model; }
                 if (active == null || m.IsRestartingStage()) { ReleaseCamera(false); return; }
                 if (visual == null) Attach(active); // Include intro/finish cinematics once native wheels are ready.
@@ -303,11 +301,25 @@ namespace RallyCustomVehicles
             }
             catch(Exception ex) { failed=true; Detach(); status="Camera/model stopped after error; see UMM log."; entry.Logger.Error(ex.ToString()); }
         }
-        private static void LoadView(string id)
+        // Game and Realistic (art of sim rally's F7) each keep their own cockpit view. A Realistic view never set starts
+        // from this car's Game view at the seat's true field of view.
+        private static void LoadView(string id, string key)
         {
-            var v = CockpitViews?.Get(id) ?? CockpitViewStore.Default;
-            eyeAdjustment = new Vector3(v[0], v[1], v[2]); pitch = v[3]; fov = v[4]; viewFor = id;
+            var v = CockpitViews?.Get(key) ?? (float[])CockpitViewStore.Default.Clone();
+            if (key != id && CockpitViews != null && !CockpitViews.Has(key))
+            {
+                v = CockpitViews.Get(id);
+                if (ArtRealisticDegrees() is double seat) v[4] = (float)Math.Round(seat, 1);
+            }
+            eyeAdjustment = new Vector3(v[0], v[1], v[2]); pitch = v[3]; fov = v[4]; viewFor = key;
+            SaveView();
         }
+        // art of sim rally's Realistic set and its starting field of view, by name (no dependency).
+        private static readonly Type ArtTriple = AccessTools.TypeByName("ArtOfSimRally.Mod.Triple.TripleScreen");
+        private static readonly PropertyInfo ArtRealisticActive = ArtTriple == null ? null : AccessTools.Property(ArtTriple, "RealisticActive");
+        private static readonly PropertyInfo ArtRealisticStart = ArtTriple == null ? null : AccessTools.Property(ArtTriple, "RealisticStartDegrees");
+        private static bool ArtRealistic() { try { return ArtRealisticActive != null && (bool)ArtRealisticActive.GetValue(null); } catch (Exception) { return false; } }
+        private static double? ArtRealisticDegrees() { try { return (double?)ArtRealisticStart?.GetValue(null); } catch (Exception) { return null; } }
         private static void SaveView()
         {
             if (viewFor == null || CockpitViews == null) return;
