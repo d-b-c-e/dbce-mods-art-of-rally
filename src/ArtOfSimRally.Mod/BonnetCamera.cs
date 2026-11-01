@@ -60,6 +60,47 @@ namespace ArtOfSimRally.Mod
         // metre ahead (owner 2026-11-01). Mounted views draw from 5 cm; the stock value is restored on release.
         private const float MountedNearClip = .05f;
 
+        // A rigid mount showed every tremor of the body at rest (owner 2026-11-01). The rotation follows the car through a
+        // short low-pass: roll and pitch through corners and bumps come through, a few-hertz tremor does not. Position
+        // stays rigid, so nothing lags at speed.
+        internal const float RotationSmoothing = .06f;
+        private static Quaternion _smoothRotation;
+        private static bool _smoothing;
+
+        // The bumper view hides the car (owner 2026-11-01): on triples the side screens look sideways, so a camera at the
+        // nose always saw the wings and wheel arches. The body keeps casting its shadow; effects are left alone.
+        private static readonly List<(Renderer, UnityEngine.Rendering.ShadowCastingMode)> _hidden = new List<(Renderer, UnityEngine.Rendering.ShadowCastingMode)>();
+        private static Transform _hiddenCar;
+
+        private static void HideCar(Transform car)
+        {
+            if (_hiddenCar == car) return;
+            ShowCar();
+            _hiddenCar = car;
+            foreach (var r in car.GetComponentsInChildren<Renderer>())
+            {
+                if (!(r is MeshRenderer || r is SkinnedMeshRenderer) || r.shadowCastingMode == UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly) continue;
+                _hidden.Add((r, r.shadowCastingMode));
+                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly;
+            }
+        }
+
+        private static void ShowCar()
+        {
+            foreach (var (r, mode) in _hidden) if (r != null) r.shadowCastingMode = mode;
+            _hidden.Clear();
+            _hiddenCar = null;
+        }
+
+        /// <summary>Exponential smoothing toward <paramref name="target"/>. The first call, or a jump of more than 20 degrees (a car
+        /// reset), snaps.</summary>
+        internal static Quaternion Smooth(ref Quaternion state, ref bool started, Quaternion target, float dt, float seconds)
+        {
+            if (!started || Quaternion.Angle(state, target) > 20f) { state = target; started = true; return state; }
+            state = Quaternion.Slerp(state, target, 1f - Mathf.Exp(-Mathf.Max(0f, dt) / seconds));
+            return state;
+        }
+
         // Release the actual child we changed, even if the game's current camera
         // has since changed or CarCameras has stopped receiving LateUpdate.
         internal static void Release(bool snapParent)
@@ -69,6 +110,8 @@ namespace ArtOfSimRally.Mod
             _ownedCamera = null;
             _ownedRig = null;
             _lateralOffset = 0f;
+            _smoothing = false;
+            ShowCar();
             if (camera == null) return;
             camera.transform.localPosition = Vector3.zero;
             camera.transform.localRotation = Quaternion.identity;
@@ -253,8 +296,11 @@ namespace ArtOfSimRally.Mod
                 try { CameraMountMemory.Track(target, cfg); }
                 catch (System.Exception ex) { ModLog.Warning("Camera mount memory skipped: " + ex.Message); }
 
-                // Mount in the car's own frame, so body roll and pitch come along.
-                var rot = target.rotation;
+                bool bumper = view == View.Bumper;
+                if (bumper) HideCar(target.GetComponentInParent<CarDynamics>()?.transform ?? target); else ShowCar();
+
+                // Mount in the car's own frame, so body roll and pitch come along (smoothed, see RotationSmoothing).
+                var rot = Smooth(ref _smoothRotation, ref _smoothing, target.rotation, Time.deltaTime, RotationSmoothing);
 
                 // A small lateral lean under cornering load is what sells a mounted
                 // camera, but it is also the first thing that makes people queasy,
@@ -268,7 +314,6 @@ namespace ArtOfSimRally.Mod
                     lean = _lateralOffset * cfg.BonnetLean;
                 }
 
-                bool bumper = view == View.Bumper;
                 var offset = new Vector3(
                     (bumper ? cfg.BumperSide : cfg.BonnetSide) + lean,
                     bumper ? cfg.BumperHeight : cfg.BonnetHeight,

@@ -42,6 +42,9 @@ namespace RallyCustomVehicles
         private static float savedNear, savedFov;
         private static Vector3 savedPosition;
         private static Quaternion savedRotation;
+        // The cockpit's rotation follows the car through a short low-pass so the body's tremor at rest does not shake the
+        // view (owner 2026-11-01); matches art of sim rally's mounted cameras. Position stays rigid.
+        private static Quaternion smoothRotation; private static bool smoothing;
         private static Vector3 eyeAdjustment;
         private static float pitch = 6f, fov = 65f;
         internal static CockpitViewStore CockpitViews;
@@ -296,7 +299,10 @@ namespace RallyCustomVehicles
                 }
                 TuneCockpit();
                 cam.transform.position=visual.transform.TransformPoint(V(asset.camera)+eyeAdjustment);
-                cam.transform.rotation=car.transform.rotation*Quaternion.Euler(pitch,0,0);
+                var carRotation=car.transform.rotation;
+                if(!smoothing || Quaternion.Angle(smoothRotation,carRotation)>20f) { smoothRotation=carRotation; smoothing=true; }
+                else smoothRotation=Quaternion.Slerp(smoothRotation,carRotation,1f-Mathf.Exp(-Mathf.Max(0f,Time.deltaTime)/.06f));
+                cam.transform.rotation=smoothRotation*Quaternion.Euler(pitch,0,0);
                 cam.nearClipPlane=.025f; cam.fieldOfView=fov;
             }
             catch(Exception ex) { failed=true; Detach(); status="Camera/model stopped after error; see UMM log."; entry.Logger.Error(ex.ToString()); }
@@ -364,6 +370,7 @@ namespace RallyCustomVehicles
         }
         private static void ReleaseCamera(bool snap)
         {
+            smoothing=false;
             if(camera==null) return;
             camera.transform.localPosition=savedPosition; camera.transform.localRotation=savedRotation;
             camera.nearClipPlane=savedNear; camera.fieldOfView=savedFov; camera=null;
