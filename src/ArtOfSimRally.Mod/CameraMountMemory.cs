@@ -40,7 +40,12 @@ namespace ArtOfSimRally.Mod
             _extent = Measure(_target);
             var saved = cfg.CameraMounts.LastOrDefault(m => m.Car == _key && m.Values?.Length == CameraMountFit.Values);
             string how = "saved";
-            if (saved != null) Apply(cfg, saved.Values);
+            if (saved != null)
+            {
+                Apply(cfg, saved.Values);
+                // A car saved before the shape was measured gains it (values unchanged) so it can guide shape fits.
+                if (CameraMountFit.Valid(_extent) && (saved.Extent == null || saved.Extent.Length < _extent.Length)) saved.Extent = _extent;
+            }
             else
             {
                 // Start from the last tuned car in the same set, fitted to this car's size; the Realistic set otherwise starts
@@ -83,24 +88,84 @@ namespace ArtOfSimRally.Mod
             c.BumperSide = v[5]; c.BumperHeight = v[6]; c.BumperForward = v[7]; c.BumperPitch = v[8]; c.BumperFOV = v[9];
         }
 
-        // Visible car meshes (a Custom Vehicles body hides the donor's), in the camera target's space.
+        private static bool Visible(Renderer r) => (r is MeshRenderer || r is SkinnedMeshRenderer) && r.enabled && !r.forceRenderingOff &&
+            r.name.IndexOf("shadow", StringComparison.OrdinalIgnoreCase) < 0;
+
+        // Visible car meshes (a Custom Vehicles body hides the donor's), in the camera target's space: the box (bottom,
+        // top, front, width) and, when its shape can be read, the bonnet height and windscreen base (CameraMountFit).
         private static float[] Measure(Transform target)
         {
-            bool any = false; float bottom = 0, top = 0, front = 0, left = 0, right = 0;
+            bool any = false; float bottom = 0, top = 0, front = 0, back = 0, left = 0, right = 0;
             foreach (var r in _root.GetComponentsInChildren<Renderer>())
             {
-                if (!(r is MeshRenderer || r is SkinnedMeshRenderer) || !r.enabled || r.forceRenderingOff ||
-                    r.name.IndexOf("shadow", StringComparison.OrdinalIgnoreCase) >= 0) continue;
+                if (!Visible(r)) continue;
                 var b = r.bounds;
                 for (int i = 0; i < 8; i++)
                 {
                     var p = target.InverseTransformPoint(new Vector3((i & 1) == 0 ? b.min.x : b.max.x, (i & 2) == 0 ? b.min.y : b.max.y, (i & 4) == 0 ? b.min.z : b.max.z));
-                    if (!any) { bottom = top = p.y; front = p.z; left = right = p.x; any = true; }
-                    bottom = Mathf.Min(bottom, p.y); top = Mathf.Max(top, p.y); front = Mathf.Max(front, p.z);
+                    if (!any) { bottom = top = p.y; front = back = p.z; left = right = p.x; any = true; }
+                    bottom = Mathf.Min(bottom, p.y); top = Mathf.Max(top, p.y); front = Mathf.Max(front, p.z); back = Mathf.Min(back, p.z);
                     left = Mathf.Min(left, p.x); right = Mathf.Max(right, p.x);
                 }
             }
-            return any ? new[] { bottom, top, front, right - left } : null;
+            if (!any) return null;
+            var box = new[] { bottom, top, front, right - left };
+            var hood = CameraMountFit.HoodProfile(ProfileZ(front, back), MeshProfile(target, front, back, (right - left) / 4f))
+                ?? CameraMountFit.HoodProfile(ProfileZ(front, back), ColliderProfile(target, front, back, bottom, top));
+            var shaped = hood == null ? box : new[] { bottom, top, front, right - left, hood[0], hood[1] };
+            ModLog.Info($"Camera mounts: measured {_root.name}: bottom {bottom:0.00}, top {top:0.00}, front {front:0.00}, width {right - left:0.00}" +
+                (hood == null ? "; bonnet shape not found (box fit)." : $"; bonnet {hood[0]:0.00} m high, windscreen base at {hood[1]:0.00} m."));
+            return CameraMountFit.Valid(shaped) ? shaped : box;
+        }
+
+        private const int Samples = 40;
+        private static float[] ProfileZ(float front, float back)
+        {
+            var z = new float[Samples];
+            for (int i = 0; i < Samples; i++) z[i] = front - (front - back) * i / (Samples - 1);
+            return z;
+        }
+
+        // Highest vertex per slice along a centre strip, from meshes the mod can read (Custom Vehicles bodies are; the
+        // game's own usually are not). NaN where nothing was found.
+        private static float[] MeshProfile(Transform target, float front, float back, float halfStrip)
+        {
+            var h = Enumerable.Repeat(float.NaN, Samples).ToArray();
+            float length = front - back; if (length <= .5f) return h;
+            foreach (var filter in _root.GetComponentsInChildren<MeshFilter>())
+            {
+                var mesh = filter.sharedMesh; var r = filter.GetComponent<Renderer>();
+                if (mesh == null || !mesh.isReadable || r == null || !Visible(r)) continue;
+                var toTarget = target.worldToLocalMatrix * filter.transform.localToWorldMatrix;
+                foreach (var v in mesh.vertices)
+                {
+                    var p = toTarget.MultiplyPoint3x4(v);
+                    if (Mathf.Abs(p.x) > halfStrip) continue;
+                    int i = Mathf.RoundToInt((front - p.z) / length * (Samples - 1));
+                    if (i < 0 || i >= Samples) continue;
+                    if (float.IsNaN(h[i]) || p.y > h[i]) h[i] = p.y;
+                }
+            }
+            return h;
+        }
+
+        // The car's own colliders probed from above along the centre line. NaN where nothing was hit.
+        private static float[] ColliderProfile(Transform target, float front, float back, float bottom, float top)
+        {
+            var h = Enumerable.Repeat(float.NaN, Samples).ToArray();
+            var z = ProfileZ(front, back);
+            float reach = top - bottom + 2f;
+            for (int i = 0; i < Samples; i++)
+            {
+                var origin = target.TransformPoint(new Vector3(0f, top + 1f, z[i]));
+                foreach (var hit in Physics.RaycastAll(origin, -target.up, reach, ~0, QueryTriggerInteraction.Ignore))
+                {
+                    if (hit.collider == null || !hit.collider.transform.IsChildOf(_root)) continue;
+                    float y = target.InverseTransformPoint(hit.point).y;
+                    if (float.IsNaN(h[i]) || y > h[i]) h[i] = y;
+                }
+            }
+            return h;
         }
 
         // Custom Vehicles' active package id, by name so this mod does not depend on it.

@@ -285,6 +285,25 @@ static class Program
             bool identity = true; for (int i = 0; i < 10; i++) identity &= Math.Abs(same[i] - tuned[i]) < 1e-5;
             Check(identity, "the same car fits to its own values");
             Check(!CameraMountFit.Valid(new[] { 1f, .5f, 1f, 1f }) && !CameraMountFit.Valid(null) && !CameraMountFit.Valid(new[] { 0f, 1f, 1f, float.NaN }), "bad extents are refused");
+            // Shape fit: the bonnet keeps its height above the bonnet and its distance from the windscreen base.
+            var miniShape = new[] { .2f, 1.4f, 1.8f, 1.5f, .9f, .6f };      // bonnet .9 m high, windscreen base at z .6
+            var vanShape = new[] { .25f, 2.2f, 2.3f, 1.8f, 1.1f, 1.7f };    // short nose: windscreen base far forward
+            var shaped = CameraMountFit.Fit(tuned, miniShape, vanShape);
+            Check(Math.Abs(shaped[1] - (1.1f + (.95f - .9f))) < 1e-5 && Math.Abs(shaped[2] - (1.7f + (1.0f - .6f))) < 1e-5,
+                "bonnet keeps its place relative to the bonnet surface and windscreen base");
+            var mixed = CameraMountFit.Fit(tuned, mini, vanShape);
+            Check(Math.Abs(mixed[1] - (2.2f - (1.4f - .95f))) < 1e-5, "without the shape on both cars the box fit is used");
+            Check(!CameraMountFit.Valid(new[] { .2f, 1.4f, 1.8f, 1.5f, 2f, .6f }) && !CameraMountFit.Valid(new[] { .2f, 1.4f, 1.8f, 1.5f, .9f, 2f }),
+                "a bonnet above the roof or a windscreen ahead of the front is refused");
+            // Profile: flat bonnet at .9 for the front third, then the windscreen rises; a flat roof-less profile has no step.
+            var z = new float[40]; var h = new float[40];
+            for (int i = 0; i < 40; i++) { z[i] = 2f - i * .1f; h[i] = i < 13 ? .9f + (i % 2) * .01f : 1.4f; }
+            h[3] = float.NaN;
+            var hood = CameraMountFit.HoodProfile(z, h);
+            Check(hood != null && Math.Abs(hood[0] - .9f) < .02f && Math.Abs(hood[1] - z[13]) < 1e-5, "bonnet height and windscreen base found");
+            var flat = new float[40]; for (int i = 0; i < 40; i++) flat[i] = 1f;
+            Check(CameraMountFit.HoodProfile(z, flat) == null && CameraMountFit.HoodProfile(z, new float[3]) == null, "no step or too few samples gives no shape");
+
         }
         // An H-pattern shifter in gear holds a joystick button indefinitely; it must not keep camera keys blocked.
         height = cfg.BonnetHeight;
