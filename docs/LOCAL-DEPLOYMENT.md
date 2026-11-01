@@ -1,6 +1,15 @@
 # Local deployment
 
-## Current installation — 0.4.4-rc.18 (October 31, owner test)
+## Current installation — 0.4.4-rc.19 (October 31, owner test)
+
+rc.18 plus the bonnet camera fitted from the car's shape (645e77c): centre-line profile from readable meshes or
+the car's colliders; bonnet height and windscreen base anchor the fit; box fallback; measurements logged per car
+("Camera mounts: measured ..."). ZIP SHA-256 `7D4CD990CDAFAC8ADD10976275212B5E1F766BA7F6C77C685134B5B99DE78957`;
+Mod.dll `060AF510C0926B530CE83B7CD050C3C86A9B50E19025B9E89FB4D67EE337D95B`. Installer 70, CameraTuning 396, SettingsUi
+3444 passed. Game closed; payload 9/9; owner settings byte-identical. Rollback copy of rc.18:
+`E:\Source	emprt-0.4.4-rc.19ackup-installed-rc.18`.
+
+## Previous installation — 0.4.4-rc.18 (October 31, owner test)
 
 rc.15 plus (rc.16 was packaged but never installed; its installer test only failed because the game was running):
 - per-car bonnet/bumper placement, a new car fitted from the last tuned one (06c283b);
