@@ -72,7 +72,8 @@ namespace ArtOfSimRally.Mod
             if (!sequential) consumer.ClearShifts();
             var gate = mode == Shim.ShimTransmission.Mode.HPattern ? Shim.ShimTransmission.Gate(consumer, UnityEngine.Time.frameCount) : null;
             int max = _drivetrain.gearRatios != null ? _drivetrain.gearRatios.Length - 1 : -1;
-            var target = Shim.ShimTransmission.Next(mode, _drivetrain.automatic, _drivetrain.gear, gate, ref _sharedApplied, step, Main.Settings.SkipNeutral, max);
+            var target = Shim.ShimTransmission.Next(mode, _drivetrain.automatic, _drivetrain.gear, gate, ref _sharedApplied, step, Main.Settings.SkipNeutral, max,
+                _drivetrain.changingGear);
             if (target.HasValue) _drivetrain.Shift(target.Value, true);
         }
     }

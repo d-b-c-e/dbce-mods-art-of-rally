@@ -46,16 +46,19 @@ namespace ArtOfSimRally.Mod.Shim
             transmission == "Sequential" ? Mode.Sequential : transmission == "H-pattern" ? Mode.HPattern : Mode.None;
 
         // The single gear change for one physics step, or null. An automatic gearbox, an Automatic or unknown
-        // profile, and the other mode's actions never shift. A gate applies once per change; a gear this car
-        // lacks is recorded as applied (not retried) and never clamped onto another gear.
-        internal static int? Next(Mode mode, bool automatic, int engaged, int? gate, ref int lastGate, int step, bool skipNeutral, int maxIndex)
+        // profile, and the other mode's actions never shift. A new gate applies at once; a gear this car lacks is
+        // recorded as applied (not retried) and never clamped onto another gear. An unchanged gate is applied again
+        // while the gearbox is not in it and no change is under way: the game refuses a shift during a change or with
+        // the clutch out, and resets to neutral at the start (owner 2026-10-31: 1st held at the start was ignored).
+        internal static int? Next(Mode mode, bool automatic, int engaged, int? gate, ref int lastGate, int step, bool skipNeutral, int maxIndex,
+            bool changing = false)
         {
             if (automatic || mode == Mode.None) { lastGate = int.MinValue; return null; }
             if (mode == Mode.HPattern)
             {
-                if (!gate.HasValue || gate.Value == lastGate) return null;
-                lastGate = gate.Value;
-                return Exists(gate.Value, maxIndex) ? gate : null;
+                if (!gate.HasValue) return null;
+                if (gate.Value != lastGate) { lastGate = gate.Value; return Exists(gate.Value, maxIndex) ? gate : null; }
+                return !changing && engaged != gate.Value && Exists(gate.Value, maxIndex) ? gate : null;
             }
             lastGate = int.MinValue;
             return Step(engaged, step, skipNeutral, maxIndex);

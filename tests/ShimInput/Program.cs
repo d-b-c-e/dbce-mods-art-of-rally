@@ -257,6 +257,9 @@ internal static class Program
         Check(ShimTransmission.Next(S, true, 2, null, ref last, 1, false, 6) == null, "automatic gearbox shifted by a press");
         Check(ShimTransmission.Next(H, false, 2, 4, ref last, 1, false, 6) == 4 && last == 4, "gate not applied, or step mixed in");
         Check(ShimTransmission.Next(H, false, 4, 4, ref last, 1, false, 6) == null, "unchanged gate reapplied or step mixed in");
+        // 1st held at the start: the game refused the first shift (clutch, change under way) or reset to neutral.
+        Check(ShimTransmission.Next(H, false, 0, 4, ref last, 0, false, 6) == 4, "a held gate the gearbox is not in was not applied again");
+        Check(ShimTransmission.Next(H, false, 0, 4, ref last, 0, false, 6, changing: true) == null, "a held gate interrupted a change under way");
         Check(ShimTransmission.Next(H, false, 4, 7, ref last, 0, false, 6) == null && last == 7, "missing gear clamped");
         Check(ShimTransmission.Next(H, false, 4, 7, ref last, 0, false, 6) == null, "missing gear retried");
         Check(ShimTransmission.Next(H, false, 4, null, ref last, 1, false, 6) == null, "stale gate or step shifted");
