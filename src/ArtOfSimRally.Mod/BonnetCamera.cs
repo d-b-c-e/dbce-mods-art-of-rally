@@ -55,7 +55,10 @@ namespace ArtOfSimRally.Mod
         // Tracks the moment we stop controlling, so the handback runs once.
         private static Camera _ownedCamera;
         private static CarCameras _ownedRig;
-        private static float _savedFov;
+        private static float _savedFov, _savedNear;
+        // The game's near clip suits a chase camera metres behind the car; at the bonnet it cut away the light pods half a
+        // metre ahead (owner 2026-11-01). Mounted views draw from 5 cm; the stock value is restored on release.
+        private const float MountedNearClip = .05f;
 
         // Release the actual child we changed, even if the game's current camera
         // has since changed or CarCameras has stopped receiving LateUpdate.
@@ -70,6 +73,7 @@ namespace ArtOfSimRally.Mod
             camera.transform.localPosition = Vector3.zero;
             camera.transform.localRotation = Quaternion.identity;
             camera.fieldOfView = _savedFov;
+            camera.nearClipPlane = _savedNear;
             if (snapParent && rig != null && rig.enabled && GameState.IsPlayerView)
             {
                 try
@@ -242,6 +246,7 @@ namespace ArtOfSimRally.Mod
                     _ownedCamera = cam;
                     _ownedRig = __instance;
                     _savedFov = cam.fieldOfView;
+                    _savedNear = cam.nearClipPlane;
                 }
 
                 // Per-car placement: loads this car's saved mount, or fits one from the last tuned car (CameraMountMemory).
@@ -275,6 +280,7 @@ namespace ArtOfSimRally.Mod
                 // The stock UpdateFOVAndPitch rewrites fieldOfView every frame for
                 // the chase camera, so set ours after it rather than once.
                 cam.fieldOfView = bumper ? cfg.BumperFOV : cfg.BonnetFOV;
+                cam.nearClipPlane = Mathf.Min(_savedNear, MountedNearClip);
 
                 // Polled here so the hotkeys are live only while looking through
                 // one of our views, and never while driving a stock view or in a menu.
