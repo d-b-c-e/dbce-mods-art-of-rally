@@ -24,6 +24,10 @@ namespace ArtOfSimRally.Mod
         private static Drivetrain _drivetrain;
 
         private static int _sharedApplied = int.MinValue;
+        // Start-of-stage evidence (owner 2026-10-31: 1st held at the start still not engaged on rc.19): what the shared
+        // lever and the gearbox look like, logged on change, at most 12 lines per stage.
+        private static int _diagLeft;
+        private static string _lastDiag;
 
         [HarmonyPostfix]
         private static void ApplyGear(CarDynamics __instance)
@@ -56,7 +60,7 @@ namespace ArtOfSimRally.Mod
         {
             var consumer = Shim.ShimInput.Consumer;
             if (!Main.Enabled || Main.Settings == null || !GameState.IsDriving)
-            { consumer.ClearShifts(); _sharedApplied = int.MinValue; return; }
+            { consumer.ClearShifts(); _sharedApplied = int.MinValue; _diagLeft = 12; _lastDiag = null; return; }
             if (!ReferenceEquals(_cachedFor, car))
             {
                 _cachedFor = car; _drivetrain = car.GetComponent<Drivetrain>();
@@ -75,6 +79,15 @@ namespace ArtOfSimRally.Mod
             var target = Shim.ShimTransmission.Next(mode, _drivetrain.automatic, _drivetrain.gear, gate, ref _sharedApplied, step, Main.Settings.SkipNeutral, max,
                 _drivetrain.changingGear);
             if (target.HasValue) _drivetrain.Shift(target.Value, true);
+            if (_diagLeft > 0 && mode == Shim.ShimTransmission.Mode.HPattern)
+            {
+                bool refused = target.HasValue && !_drivetrain.changingGear && _drivetrain.gear != target.Value;
+                float clutch = _drivetrain.clutch != null ? _drivetrain.clutch.GetClutchPosition() : -1f;
+                var line = "H-pattern at stage start: lever " + (gate.HasValue ? gate.Value.ToString() : "unread") + ", gearbox " + _drivetrain.gear +
+                    (_drivetrain.changingGear ? " (changing)" : "") + ", autoClutch " + _drivetrain.autoClutch + ", clutch " + clutch.ToString("0.00") +
+                    (target.HasValue ? ", shift to " + target.Value + (refused ? " refused" : " started") : "") + " (gears: reverse 0, neutral 1, first 2).";
+                if (line != _lastDiag) { ModLog.Info(line); _lastDiag = line; _diagLeft--; }
+            }
         }
     }
 }

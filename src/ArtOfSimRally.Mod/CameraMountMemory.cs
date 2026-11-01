@@ -95,11 +95,16 @@ namespace ArtOfSimRally.Mod
         // top, front, width) and, when its shape can be read, the bonnet height and windscreen base (CameraMountFit).
         private static float[] Measure(Transform target)
         {
+            // The body only: a Custom Vehicles body's own meshes, else the car's solid colliders (lights, glows and effect
+            // meshes made a van measure 7 m wide; owner log 2026-10-31), else every visible mesh.
+            var visual = _root.Find(CustomVisual);
+            var boxes = visual != null
+                ? visual.GetComponentsInChildren<Renderer>().Where(Visible).Select(r => r.bounds).ToList()
+                : _root.GetComponentsInChildren<Collider>().Where(c => c.enabled && !c.isTrigger).Select(c => c.bounds).ToList();
+            if (boxes.Count == 0) boxes = _root.GetComponentsInChildren<Renderer>().Where(Visible).Select(r => r.bounds).ToList();
             bool any = false; float bottom = 0, top = 0, front = 0, back = 0, left = 0, right = 0;
-            foreach (var r in _root.GetComponentsInChildren<Renderer>())
+            foreach (var b in boxes)
             {
-                if (!Visible(r)) continue;
-                var b = r.bounds;
                 for (int i = 0; i < 8; i++)
                 {
                     var p = target.InverseTransformPoint(new Vector3((i & 1) == 0 ? b.min.x : b.max.x, (i & 2) == 0 ? b.min.y : b.max.y, (i & 4) == 0 ? b.min.z : b.max.z));
@@ -110,7 +115,7 @@ namespace ArtOfSimRally.Mod
             }
             if (!any) return null;
             var box = new[] { bottom, top, front, right - left };
-            var hood = CameraMountFit.HoodProfile(ProfileZ(front, back), MeshProfile(target, front, back, (right - left) / 4f))
+            var hood = CameraMountFit.HoodProfile(ProfileZ(front, back), MeshProfile(visual ?? _root, target, front, back, (right - left) / 4f))
                 ?? CameraMountFit.HoodProfile(ProfileZ(front, back), ColliderProfile(target, front, back, bottom, top));
             var shaped = hood == null ? box : new[] { bottom, top, front, right - left, hood[0], hood[1] };
             ModLog.Info($"Camera mounts: measured {_root.name}: bottom {bottom:0.00}, top {top:0.00}, front {front:0.00}, width {right - left:0.00}" +
@@ -128,11 +133,11 @@ namespace ArtOfSimRally.Mod
 
         // Highest vertex per slice along a centre strip, from meshes the mod can read (Custom Vehicles bodies are; the
         // game's own usually are not). NaN where nothing was found.
-        private static float[] MeshProfile(Transform target, float front, float back, float halfStrip)
+        private static float[] MeshProfile(Transform scope, Transform target, float front, float back, float halfStrip)
         {
             var h = Enumerable.Repeat(float.NaN, Samples).ToArray();
             float length = front - back; if (length <= .5f) return h;
-            foreach (var filter in _root.GetComponentsInChildren<MeshFilter>())
+            foreach (var filter in scope.GetComponentsInChildren<MeshFilter>())
             {
                 var mesh = filter.sharedMesh; var r = filter.GetComponent<Renderer>();
                 if (mesh == null || !mesh.isReadable || r == null || !Visible(r)) continue;

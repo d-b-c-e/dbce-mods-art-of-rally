@@ -170,6 +170,9 @@ internal static class TripleScreen
         _cameraName = CameraOverlay.Name(kind, chase, realistic);
         _cameraHint = CameraOverlay.Hint(kind, triples, realistic, Main.Settings.CameraTuningKeys);
         _cameraUntil = Time.unscaledTime + 3f;
+        // Evidence for "remember the last camera" (owner 2026-10-31): the game's saved view and where it landed.
+        _modEntry.Logger.Log("Camera: " + _cameraName + " (view " + chase + " of " + (angles?.Count ?? 0) + "; game's saved view " +
+            (SaveGame.GetInt("SETTINGS_CAMERA_PRESET", 3) + 1) + ").");
     }
 
     /// <summary>The camera name near the bottom of the center screen, with the key reminder under it.</summary>
