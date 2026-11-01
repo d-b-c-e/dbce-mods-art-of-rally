@@ -1,6 +1,16 @@
 # Local deployment
 
-## Current installation — 0.4.4-rc.20 (October 31, owner test)
+## Current installation — 0.4.4-rc.21 (November 1, owner test)
+
+guna GO 488089, file-only, no launch. rc.20 plus the `artFovSets` receipt marker in Info.json (e94836e) that Wheelkit
+admission needs (dbce-wheelkit docs/ART-STANDARDS-FOR-WHEELKIT.md). ZIP SHA-256
+`7C3B2D989F1C47207DFF438473C6DCFCE9E05D5F557A10652C5A409579996B0D`; Mod.dll
+`7C653F3EADA3D7BD509050D20202E3854A1BFB04B1025EA87F05DB0BFBB7B8B7`. Installer 70. Game closed, lease vemi held and
+released; payload 9/9; Settings.xml, TripleScreen.xml, dbce-controls.ini, Params.xml byte-identical. Rollback copy of
+rc.20: `E:\Source\temp\art-0.4.4-rc.21\backup-installed-rc.20`. Custom Vehicles 0.6.1 (b85ba66: the cockpit uses Art's
+camera keys) installed alongside, 13/13; 0.6.0 backup at `E:\Source\temp\customvehicles-0.6.1\backup-installed-0.6.0`.
+
+## Previous installation — 0.4.4-rc.20 (October 31, owner test)
 
 rc.19 plus (82adf86): the camera fit measures the body only (the Turtle Van had measured 7.09 m wide); start-of-stage
 log lines for the H-pattern lever and gearbox ("H-pattern at stage start: ...") and for each camera change

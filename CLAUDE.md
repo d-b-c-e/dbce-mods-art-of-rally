@@ -39,9 +39,9 @@ third-party binaries, nothing that would force the repo private.
 | `docs/DEVELOPMENT-CAPTURE.md` | Separate probe schema, motion/contact units, standalone analysis and interpretation limits. |
 | `docs/` | FINDINGS, FORCE-FEEDBACK, TELEMETRY, CONTROLS, CAMERA, ROADMAP, RELEASING |
 
-## Status (2026-10-30) — paused, 0.4.4-rc.20 installed for owner test
+## Status (2026-10-30) — paused, 0.4.4-rc.21 installed for owner test
 
-Public baseline stays **0.4.3** (GitHub release). Installed on the rig: **0.4.4-rc.20** (source `82adf86`; details and rollback in `docs/LOCAL-DEPLOYMENT.md`).
+Public baseline stays **0.4.3** (GitHub release). Installed on the rig: **0.4.4-rc.21** (source `e94836e`; details and rollback in `docs/LOCAL-DEPLOYMENT.md`).
 rc.13: simplified triple framing (always corrected; chase = game FOV; F7 = Game/Realistic for bonnet/bumper; Shift+F7
 developer comparison). rc.12: FFB switched on in F6 mid-stage starts at once; a stage started with FFB
 off says so. Standalone Turtle Van mod removed (Custom Vehicles carries the van). rc.11 fixes ISS-0014 (separate-display Original in sync) and shows every FFB
