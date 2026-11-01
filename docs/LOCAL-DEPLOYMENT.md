@@ -1,6 +1,22 @@
 # Local deployment
 
-## Current installation — 0.4.4-rc.15 (October 31, owner test)
+## Current installation — 0.4.4-rc.18 (October 31, owner test)
+
+rc.15 plus (rc.16 was packaged but never installed; its installer test only failed because the game was running):
+- per-car bonnet/bumper placement, a new car fitted from the last tuned one (06c283b);
+- every camera keeps its own adjustments per Game/Realistic set; Realistic starts at the seat's true field of view
+  and stays adjustable; chase views get a saved field-of-view offset (6b53ea4);
+- an H-pattern gear held at the start engages (378da86).
+rc.17 (`6b53ea4`, ZIP `16F60987…5753`) was installed first; rc.18 replaces it. Source `378da86`, ZIP SHA-256
+`59B2959DD7A00BE8DB9DA5C005473D651F9F838B00EB68257D7A9B70B3A18B5B`; installed `ArtOfSimRally.Mod.dll`
+`5084948945648AE8473C9AA310C3A283E0F3A994493B0FCA2BDA7168ED34F39B`. Installer 70, ShimInput 12356, CameraTuning 391,
+Triple 1355, SettingsUi 3444, WheelInput 620, Regression passed. Game closed; payload 9/9; owner settings
+byte-identical. Rollback copies: rc.15 at `E:\Source\temp\art-0.4.4-rc.17\backup-installed-rc.15`, rc.17 at
+`E:\Source\temp\art-0.4.4-rc.18\backup-installed-rc.17`. Custom Vehicles 0.6.0 (43d4ee4: wider cockpit eye range, Game/
+Realistic cockpit views; 0.5.1 restores a saved cockpit view) installed, 13/13; 0.5.0 backup at
+`E:\Source\temp\customvehicles-0.6.0\backup-installed-0.5.0`.
+
+## Previous installation — 0.4.4-rc.15 (October 31, owner test)
 
 rc.14 plus: the 1500R curve warp is computed from the real eye at the game's field of view (owner saw a fishbowl on
 straight dash edges; the warp used the 313 mm virtual eye; toolkit 7af26cd WithSourceOn, vendored); the camera name
