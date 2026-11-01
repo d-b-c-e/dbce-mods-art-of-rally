@@ -27,6 +27,10 @@ public sealed class Settings : UnityModManager.ModSettings
     // measured perspective (true) is opt-in. Saved files keep their value.
     public bool OverrideFieldOfView;
 
+    // Owner 2026-11-01: F7 works on every camera; cockpit views start in the Realistic set (true = Realistic), the
+    // others (bonnet, bumper, chase: OverrideFieldOfView above) in the Game set.
+    public bool CockpitRealistic = true;
+
     // 1 uses the measured eye distance. Larger values widen all three views
     // together; this is a visual preference, not a new physical measurement.
     public float ViewWidthScale = 1f;

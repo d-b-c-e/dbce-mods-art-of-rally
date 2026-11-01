@@ -10,14 +10,12 @@ internal static class CameraOverlay
 
     internal static string Name(Kind kind, int chaseNumber, bool realistic)
     {
-        if (kind == Kind.Chase) return "Chase " + chaseNumber;
-        var name = kind == Kind.Bonnet ? "Bonnet Camera" : kind == Kind.Bumper ? "Bumper Camera" : "Cockpit";
+        var name = kind == Kind.Chase ? "Chase " + chaseNumber : kind == Kind.Bonnet ? "Bonnet Camera" : kind == Kind.Bumper ? "Bumper Camera" : "Cockpit";
         return name + (realistic ? " - Realistic" : " - Game FOV");
     }
 
     internal static string Hint(Kind kind, bool triples, bool realistic, bool tuningKeys)
     {
-        if (!Mounted(kind)) return tuningKeys ? "Numpad + / - field of view" : "";
         var hint = tuningKeys ? "Numpad + / - field of view" : "";
         if (triples) hint += (hint.Length > 0 ? " · " : "") + "F7 " + (realistic ? "Game set" : "Realistic set");
         return hint;

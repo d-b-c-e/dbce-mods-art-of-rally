@@ -36,7 +36,10 @@ namespace ArtOfSimRally.Mod
             if (cam == null || list == null || rig.CurrentCameraAngle == null) return;
             int index = list.IndexOf(rig.CurrentCameraAngle);
             if (index < 0 || index > 31) return;
-            while (cfg.ChaseFovOffsets.Count <= index) cfg.ChaseFovOffsets.Add(0f);
+            // Realistic set: the seat's true field of view plus its own offsets, instead of the game's speed-based zoom.
+            var seat = Triple.TripleScreen.RealisticActive ? Triple.TripleScreen.RealisticStartDegrees : null;
+            var offsets = seat.HasValue ? cfg.ChaseFovRealisticOffsets : cfg.ChaseFovOffsets;
+            while (offsets.Count <= index) offsets.Add(0f);
 
             if (cfg.CameraTuningKeys && Main.Enabled && !Main.SettingsVisible && Application.isFocused && !CameraKeys.ModifierHeld())
             {
@@ -44,13 +47,13 @@ namespace ArtOfSimRally.Mod
                 float delta = (Up.Tick(CameraKeys.Held(8), now) ? step : 0f) - (Down.Tick(CameraKeys.Held(9), now) ? step : 0f);
                 if (delta != 0f)
                 {
-                    cfg.ChaseFovOffsets[index] = Mathf.Clamp(cfg.ChaseFovOffsets[index] + delta, -40f, 40f);
+                    offsets[index] = Mathf.Clamp(offsets[index] + delta, -40f, 40f);
                     Main.MarkSettingsDirty();
                 }
             }
             Remove();
             _camera = cam;
-            _applied = cfg.ChaseFovOffsets[index];
+            _applied = seat.HasValue ? Mathf.Clamp((float)seat.Value + offsets[index], 20f, 120f) - cam.fieldOfView : offsets[index];
             cam.fieldOfView += _applied;
         }
     }

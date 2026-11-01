@@ -166,7 +166,7 @@ internal static class TripleScreen
         var angles = s_angles(rig);
         var chase = angles == null || angle == null ? 1 : angles.IndexOf(angle) + 1;
         bool triples = _settings.EnableThreeViewPrototype || _settings.EnableSeparateDisplayPrototype;
-        bool realistic = triples && _settings.OverrideFieldOfView && CameraOverlay.Mounted(kind);
+        bool realistic = triples && (kind == CameraOverlay.Kind.Cockpit ? _settings.CockpitRealistic : _settings.OverrideFieldOfView);
         _cameraName = CameraOverlay.Name(kind, chase, realistic);
         _cameraHint = CameraOverlay.Hint(kind, triples, realistic, Main.Settings.CameraTuningKeys);
         _cameraUntil = Time.unscaledTime + 3f;
@@ -198,8 +198,12 @@ internal static class TripleScreen
 
     /// <summary>Whether mounted cameras use their Realistic set (triples on and chosen with F7). Read by CameraMountMemory
     /// and, by name, by Custom Vehicles for its cockpit.</summary>
-    internal static bool RealisticActive => _settings != null && _settings.OverrideFieldOfView &&
-        (_settings.EnableThreeViewPrototype || _settings.EnableSeparateDisplayPrototype);
+    internal static bool RealisticActive => _settings != null && _settings.OverrideFieldOfView && TriplesOn;
+
+    /// <summary>The cockpit's own Game/Realistic choice (starts Realistic). Read by name by Custom Vehicles.</summary>
+    internal static bool CockpitRealisticActive => _settings != null && _settings.CockpitRealistic && TriplesOn;
+
+    private static bool TriplesOn => _settings.EnableThreeViewPrototype || _settings.EnableSeparateDisplayPrototype;
 
     /// <summary>The Realistic set's starting field of view: the seat's true vertical field of view (null without measurements).</summary>
     internal static double? RealisticStartDegrees => _settings == null || Layout == null ? null
@@ -208,11 +212,14 @@ internal static class TripleScreen
     private static void ToggleRealistic()
     {
         if (!ProjectionController.InStage()) { Notify("Field of view: switch while driving"); return; }
-        var realistic = !_settings.OverrideFieldOfView;
-        var saved = SaveRealistic(realistic);
-        _wasInStage = false;   // the camera label shows the new field of view
-        var label = (_settings.OverrideFieldOfView ? "Realistic set (starts true to your seat)" : "Game set") +
-            (ProjectionController.LastChaseView ? " (bonnet, bumper and cockpit views; chase views always use the game's)" : "");
+        var camera = Camera.main;
+        var rig = camera == null || camera.transform.parent == null ? null : camera.transform.parent.GetComponent<CarCameras>();
+        bool cockpit = IsCustomCockpit(rig);
+        var saved = cockpit ? SaveSet("CockpitRealistic", !_settings.CockpitRealistic, v => _settings.CockpitRealistic = v)
+                            : SaveSet("OverrideFieldOfView", !_settings.OverrideFieldOfView, v => _settings.OverrideFieldOfView = v);
+        _wasInStage = false;   // the camera label shows the new set
+        bool now = cockpit ? _settings.CockpitRealistic : _settings.OverrideFieldOfView;
+        var label = (now ? "Realistic set" : "Game set") + (cockpit ? " (cockpit)" : " (bonnet, bumper and chase)");
         if (!saved) Notify(label + " · Couldn't save view");
         _modEntry.Logger.Log("F7: " + label + (saved ? "." : "; could not save."));
     }
@@ -472,12 +479,12 @@ internal static class TripleScreen
     }
 
     // F7 changes only <OverrideFieldOfView> in TripleScreen.xml (the rest of the file is kept); memory follows only a save.
-    private static bool SaveRealistic(bool realistic)
+    private static bool SaveSet(string key, bool realistic, Action<bool> set)
     {
         try
         {
-            SettingsPersistence.WriteElement(_settings.GetPath(_modEntry), "OverrideFieldOfView", realistic ? "true" : "false");
-            _settings.OverrideFieldOfView = realistic;
+            SettingsPersistence.WriteElement(_settings.GetPath(_modEntry), key, realistic ? "true" : "false");
+            set(realistic);
             return true;
         }
         catch (Exception exception)

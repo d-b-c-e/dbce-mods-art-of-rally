@@ -188,6 +188,8 @@ namespace ArtOfSimRally.Mod
 
         // Degrees added to the game's own field of view, per stock chase view (list position); numpad +/- while in it.
         public List<float> ChaseFovOffsets = new List<float>();
+        // The Realistic set's per-view offsets, added to the seat's true field of view (F7 in a chase view).
+        public List<float> ChaseFovRealisticOffsets = new List<float>();
 
         public bool CameraTuningKeys = true;
 
