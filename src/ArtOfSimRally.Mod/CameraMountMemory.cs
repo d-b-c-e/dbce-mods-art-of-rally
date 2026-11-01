@@ -57,7 +57,8 @@ namespace ArtOfSimRally.Mod
             var v = (float[])_base.Clone();
             if (offsets != null) for (int i = 0; i < Positions.Length; i++) v[Positions[i]] += offsets[i];
             v[4] += FovOffset(cfg, false); v[9] += FovOffset(cfg, true);
-            CameraMountFit.KeepOutside(v, _extent);
+            // Only the calculated start is kept outside the body; the player's own tweaks may go anywhere (owner 2026-11-01).
+            if (offsets == null) CameraMountFit.KeepOutside(v, _extent);
             Apply(cfg, v);
             _loaded = Snapshot(cfg);
             ModLog.Info("Camera mounts for " + _key + ": " + how + (_extent == null ? " (no measurement: defaults)" : "") +
@@ -107,7 +108,6 @@ namespace ArtOfSimRally.Mod
         {
             if (_key == null || _loaded == null) return;
             var now = Snapshot(cfg);
-            if (CameraMountFit.KeepOutside(now, _extent)) Apply(cfg, now);
             if (now.SequenceEqual(_loaded)) return;
             _loaded = now;
             SetFovOffset(cfg, false, now[4] - _base[4]); SetFovOffset(cfg, true, now[9] - _base[9]);

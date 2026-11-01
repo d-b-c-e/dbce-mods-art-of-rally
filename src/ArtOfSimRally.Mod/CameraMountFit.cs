@@ -13,7 +13,7 @@ namespace ArtOfSimRally.Mod
         internal const int ShapeExtentValues = 6;
 
         internal const float BonnetAhead = .10f, BonnetAbove = .08f, BumperAhead = .05f;
-        // Clearance kept by KeepOutside so a tweak cannot put the camera inside the body.
+        // Clearance kept by KeepOutside so the calculated start is never inside the body (tweaks are not limited).
         internal const float Clearance = .03f;
 
         /// <summary>The calculated placement, or null without a usable measurement (the caller uses the defaults).</summary>
