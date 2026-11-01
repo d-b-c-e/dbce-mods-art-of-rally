@@ -242,6 +242,10 @@ namespace ArtOfSimRally.Mod
                     _savedFov = cam.fieldOfView;
                 }
 
+                // Per-car placement: loads this car's saved mount, or fits one from the last tuned car (CameraMountMemory).
+                try { CameraMountMemory.Track(target, cfg); }
+                catch (System.Exception ex) { ModLog.Warning("Camera mount memory skipped: " + ex.Message); }
+
                 // Mount in the car's own frame, so body roll and pitch come along.
                 var rot = target.rotation;
 

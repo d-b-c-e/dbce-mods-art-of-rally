@@ -6,6 +6,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../../src/ArtOfSimRally.Mod/CameraTuner.cs" Link="CameraTuner.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/CameraMountFit.cs" Link="CameraMountFit.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/CameraKeys.cs" Link="CameraKeys.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/NativeKeyboardBindings.cs" Link="NativeKeyboardBindings.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/DeferredSave.cs" Link="DeferredSave.cs" />

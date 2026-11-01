@@ -270,6 +270,22 @@ static class Program
         Check(cfg.BonnetHeight == height, "disabled mod moved mount");
         Host.Enabled = true; CameraTuner.Update(BonnetCamera.View.Bonnet);
         Check(cfg.BonnetHeight > height, "released then re-pressed key never resumed tuning");
+        // Per-car camera mounts: a new car starts from the last tuned one, moved to its size.
+        {
+            var tuned = new[] { .1f, .95f, 1.0f, 3f, 75f, 0f, .45f, 1.9f, 2f, 80f };
+            var mini = new[] { .2f, 1.4f, 1.8f, 1.5f };        // bottom, top, front, width
+            var van = new[] { .25f, 2.2f, 2.3f, 1.8f };
+            var fit = CameraMountFit.Fit(tuned, mini, van);
+            Check(Math.Abs(fit[1] - (2.2f - (1.4f - .95f))) < 1e-5 && Math.Abs(fit[2] - (2.3f - (1.8f - 1.0f))) < 1e-5,
+                "bonnet keeps its distance below the roof and behind the front");
+            Check(Math.Abs(fit[6] - (.25f + (.45f - .2f))) < 1e-5 && Math.Abs(fit[7] - (2.3f - (1.8f - 1.9f))) < 1e-5,
+                "bumper keeps its height above the ground and its distance from the front");
+            Check(Math.Abs(fit[0] - .12f) < 1e-5 && fit[3] == 3f && fit[4] == 75f && fit[8] == 2f && fit[9] == 80f, "side scales with width; pitch and FOV kept");
+            var same = CameraMountFit.Fit(tuned, mini, mini);
+            bool identity = true; for (int i = 0; i < 10; i++) identity &= Math.Abs(same[i] - tuned[i]) < 1e-5;
+            Check(identity, "the same car fits to its own values");
+            Check(!CameraMountFit.Valid(new[] { 1f, .5f, 1f, 1f }) && !CameraMountFit.Valid(null) && !CameraMountFit.Valid(new[] { 0f, 1f, 1f, float.NaN }), "bad extents are refused");
+        }
         // An H-pattern shifter in gear holds a joystick button indefinitely; it must not keep camera keys blocked.
         height = cfg.BonnetHeight;
         CameraTuner.SuppressUntilRelease(); Keys.Release(); Keys.Held.Add(KeyCode.JoystickButton3);
