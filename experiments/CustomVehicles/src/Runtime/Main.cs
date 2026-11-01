@@ -314,9 +314,9 @@ namespace RallyCustomVehicles
             eyeAdjustment = new Vector3(v[0], v[1], v[2]); pitch = v[3]; fov = v[4]; viewFor = key;
             SaveView();
         }
-        // art of sim rally's Realistic set and its starting field of view, by name (no dependency).
+        // art of sim rally's cockpit Game/Realistic choice (cockpits start Realistic) and its starting field of view, by name.
         private static readonly Type ArtTriple = AccessTools.TypeByName("ArtOfSimRally.Mod.Triple.TripleScreen");
-        private static readonly PropertyInfo ArtRealisticActive = ArtTriple == null ? null : AccessTools.Property(ArtTriple, "RealisticActive");
+        private static readonly PropertyInfo ArtRealisticActive = ArtTriple == null ? null : AccessTools.Property(ArtTriple, "CockpitRealisticActive") ?? AccessTools.Property(ArtTriple, "RealisticActive");
         private static readonly PropertyInfo ArtRealisticStart = ArtTriple == null ? null : AccessTools.Property(ArtTriple, "RealisticStartDegrees");
         private static bool ArtRealistic() { try { return ArtRealisticActive != null && (bool)ArtRealisticActive.GetValue(null); } catch (Exception) { return false; } }
         private static double? ArtRealisticDegrees() { try { return (double?)ArtRealisticStart?.GetValue(null); } catch (Exception) { return null; } }
