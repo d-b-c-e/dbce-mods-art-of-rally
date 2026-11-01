@@ -8,5 +8,6 @@
   "EntryMethod": "ArtOfSimRally.Mod.Main.Load",
   "HomePage": "https://github.com/d-b-c-e/dbce-mods-art-of-rally",
   "Repository": "https://github.com/d-b-c-e/dbce-mods-art-of-rally",
-  "artCurvedTriples": true
+  "artCurvedTriples": true,
+  "artFovSets": true
 }
