@@ -39,9 +39,9 @@ third-party binaries, nothing that would force the repo private.
 | `docs/DEVELOPMENT-CAPTURE.md` | Separate probe schema, motion/contact units, standalone analysis and interpretation limits. |
 | `docs/` | FINDINGS, FORCE-FEEDBACK, TELEMETRY, CONTROLS, CAMERA, ROADMAP, RELEASING |
 
-## Status (2026-11-01) — paused, 0.4.4-rc.23 + Custom Vehicles 0.6.1 installed for owner test
+## Status (2026-11-01) — paused, 0.4.4-rc.24 + Custom Vehicles 0.6.2 installed for owner test
 
-Public baseline stays **0.4.3** (GitHub release; no tag/release for 0.4.4). Installed on the rig: **0.4.4-rc.23** (rc.22/rc.23: camera fit fixes, held-gear cause; see LOCAL-DEPLOYMENT); rc.21 was
+Public baseline stays **0.4.3** (GitHub release; no tag/release for 0.4.4). Installed on the rig: **0.4.4-rc.24** (rc.24: oriented camera measurement, F7 on every camera, cockpit starts Realistic; rc.22/rc.23: camera fit fixes, held-gear cause; see LOCAL-DEPLOYMENT); rc.21 was
 (source `e94836e`, ZIP `7C3B2D98…6B0D`, Mod.dll `7C653F3E…B8B7`; rollback copy of rc.20 at
 `E:\Source\temp\art-0.4.4-rc.21\backup-installed-rc.20`; every rc's hashes and rollback in `docs/LOCAL-DEPLOYMENT.md`).
 Custom Vehicles **0.6.1** (`b85ba66`) installed; rollback `E:\Source\temp\customvehicles-0.6.1\backup-installed-0.6.0`.

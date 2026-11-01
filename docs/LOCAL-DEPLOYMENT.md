@@ -1,6 +1,18 @@
 # Local deployment
 
-## Current installation — 0.4.4-rc.23 (November 1, owner test)
+## Current installation — 0.4.4-rc.24 (November 1, owner test)
+
+rc.23 plus: camera fit measures each mesh's own (local) box (3a7ebd4; world-aligned bounds had made yawed cars 5.5-7 m
+wide); F7 on every camera with cockpit starting Realistic (`CockpitRealistic`, default true) and bonnet/bumper/chase
+starting Game, chase views gaining a Realistic set (07bc9b2). The owner's tuned Eibenhammer sets (Game bonnet 0.31 m
+high / 1.02 m forward; Realistic 0.29 / 0.48) gain their measured shape on the next drive and become the fit reference.
+ZIP SHA-256 `80C799F41CDE772597E0A6C80075487D9A3A1459F2AE6B95D9F0934981765CC1`; Mod.dll
+`857F39E1CC4AA0E44CCAC12BBFC95921D64E52E80D2CBBBB3A8D1226BF3FA381`. Installer 70, Triple 1355, SettingsUi 3476,
+CameraTuning 399 passed. Game closed, lease vemi; payload 9/9; owner settings byte-identical. Rollback copy of rc.23:
+`E:\Source\temp\art-0.4.4-rc.24\backup-installed-rc.23`. Custom Vehicles 0.6.2 (d81a424, cockpit follows the cockpit
+choice) installed, 13/13; 0.6.1 backup at `E:\Source\temp\customvehicles-0.6.2\backup-installed-0.6.1`.
+
+## Previous installation — 0.4.4-rc.23 (November 1, owner test)
 
 Owner report 11-01 (Eibenhammer, Custom Rally): bonnet camera near the ground, F7 no change, 1st held at the start not
 engaged. rc.22 (`2ba82f2`, ZIP `B09FB3DA…C823`): camera fit uses body mesh colliders only, refuses non-car measurements
