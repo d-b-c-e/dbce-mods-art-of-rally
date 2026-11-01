@@ -529,20 +529,25 @@ internal sealed class ProjectionController
         // A Custom Vehicles cockpit is a mounted view too (its own field of view, Realistic and F7 apply).
         var chase = rig != null && BonnetCamera.ActiveView(rig) == BonnetCamera.View.None && !TripleScreen.IsCustomCockpit(rig);
         LastChaseView = chase;
-        // Simplified framing (owner 2026-10-31): chase views always use the game's field of view; bonnet and bumper
-        // views use the camera's own field of view (numpad +/-) unless Realistic is on, which is the measured seat
-        // (scale 1). The old widened-measured slider and chase opt-out are retired.
-        return FovPreference.ResolveScale(Realistic(settings), 1d, () => FovPreference.ScaleForGameDegrees(panel.PhysicalHeightMm,
-                geometry.EyeDistanceMm, geometry.EyeHeightAbovePanelCenterMm, camera.fieldOfView),
-            chase, chaseUsesGameFov: true);
+        // Every view follows the camera's own field of view. Realistic is a saved set per camera (CameraMountMemory) that
+        // starts at the seat's true field of view (RealisticDegrees) and stays adjustable (owner 2026-10-31).
+        return FovPreference.ScaleForGameDegrees(panel.PhysicalHeightMm, geometry.EyeDistanceMm,
+            geometry.EyeHeightAbovePanelCenterMm, camera.fieldOfView);
+    }
+
+    /// <summary>The center screen's true vertical field of view from the measured seat (null without measurements).</summary>
+    internal static double? RealisticDegrees(LayoutLoadResult layout)
+    {
+        var panel = layout?.Document?.Panel; var geometry = layout?.Document?.Geometry;
+        if (panel == null || geometry == null) return null;
+        try { return FovPreference.VerticalDegrees(panel.PhysicalHeightMm, geometry.EyeDistanceMm, geometry.EyeHeightAbovePanelCenterMm, 1d); }
+        catch (ArgumentOutOfRangeException) { return null; }
     }
 
     internal static bool Realistic(Settings settings) => settings.OverrideFieldOfView && !Original;
 
     private string FovDescription(Settings settings, Camera camera) =>
-        FovPreference.ShowsGameFov(Realistic(settings), LastChaseView, chaseUsesGameFov: true)
-            ? $"the game's {camera.fieldOfView:0}° camera field of view" + (LastChaseView ? " (chase view)" : "")
-            : "the realistic field of view from your seat";
+        $"a {camera.fieldOfView:0}° camera field of view" + (LastChaseView ? " (chase view, the game's)" : Realistic(settings) ? " (Realistic set)" : " (Game set)");
 
     // The racing-row prediction, refreshed at most once a second until activation starts.
     private static SideDisplaySelector.Result SelectSideDisplays(PanelDocument panel)

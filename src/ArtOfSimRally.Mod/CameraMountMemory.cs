@@ -10,49 +10,68 @@ namespace ArtOfSimRally.Mod
     internal static class CameraMountMemory
     {
         private const string CustomVisual = "CustomVehicle_VisualOnly";
+        private const string RealisticSuffix = "|realistic";
         private static Transform _target, _root;
-        private static bool _custom;
+        private static bool _custom, _realistic;
         private static string _key;
         private static float[] _extent, _loaded;
 
+        // Each car keeps two sets, Game and Realistic (F7), stored separately (owner 2026-10-31: adjustments in one mode
+        // must not carry into the other).
         internal static void Track(Transform target, Settings cfg)
         {
+            bool realistic = Triple.TripleScreen.RealisticActive;
             if (target != _target)
             {
                 _target = target;
                 _root = target.GetComponentInParent<CarDynamics>()?.transform ?? target;
-                _custom = !_custom;   // force a load below
+                _key = null;
             }
             bool custom = _root.Find(CustomVisual) != null;
-            if (custom != _custom) { _custom = custom; Load(cfg); return; }
-            Remember(cfg);
+            if (_key != null && custom == _custom && realistic == _realistic) { Remember(cfg); return; }
+            if (_key != null) Remember(cfg);   // keep the set being left
+            _custom = custom; _realistic = realistic;
+            Load(cfg);
         }
 
         private static void Load(Settings cfg)
         {
-            _key = _root.name.Replace("(Clone)", "").Trim() + (_custom ? "+" + CustomId() : "");
+            _key = _root.name.Replace("(Clone)", "").Trim() + (_custom ? "+" + CustomId() : "") + (_realistic ? RealisticSuffix : "");
             _extent = Measure(_target);
             var saved = cfg.CameraMounts.LastOrDefault(m => m.Car == _key && m.Values?.Length == CameraMountFit.Values);
+            string how = "saved";
             if (saved != null) Apply(cfg, saved.Values);
             else
             {
-                var reference = cfg.CameraMounts.LastOrDefault(m => m.Values?.Length == CameraMountFit.Values && CameraMountFit.Valid(m.Extent));
-                if (reference != null && CameraMountFit.Valid(_extent)) Apply(cfg, CameraMountFit.Fit(reference.Values, reference.Extent, _extent));
+                // Start from the last tuned car in the same set, fitted to this car's size; the Realistic set otherwise starts
+                // from this car's Game values at the seat's true field of view.
+                var reference = cfg.CameraMounts.LastOrDefault(m => m.Values?.Length == CameraMountFit.Values && CameraMountFit.Valid(m.Extent)
+                    && m.Car.EndsWith(RealisticSuffix) == _realistic);
+                if (reference != null && CameraMountFit.Valid(_extent)) { Apply(cfg, CameraMountFit.Fit(reference.Values, reference.Extent, _extent)); how = "fitted from " + reference.Car; }
+                else how = "current values";
+                if (_realistic && reference == null && Triple.TripleScreen.RealisticStartDegrees is double seat)
+                { cfg.BonnetFOV = cfg.BumperFOV = (float)Math.Round(seat, 1); how += ", realistic field of view " + seat.ToString("0") + "°"; }
+                Store(cfg, Snapshot(cfg));
             }
             _loaded = Snapshot(cfg);
-            ModLog.Info("Camera mounts for " + _key + ": " + (saved != null ? "saved" : "fitted from the last tuned car or the current values") + ".");
+            ModLog.Info("Camera mounts for " + _key + ": " + how + ".");
         }
 
-        // Only a change the player made (numpad or F6) is stored, so a car never tuned keeps following the latest fit.
         private static void Remember(Settings cfg)
         {
             if (_key == null || _loaded == null) return;
             var now = Snapshot(cfg);
             if (now.SequenceEqual(_loaded)) return;
             _loaded = now;
+            Store(cfg, now);
+        }
+
+        // The latest stored set is the reference for the next untuned car in the same set.
+        private static void Store(Settings cfg, float[] values)
+        {
             cfg.CameraMounts.RemoveAll(m => m.Car == _key);
-            cfg.CameraMounts.Add(new CameraMount { Car = _key, Values = now, Extent = CameraMountFit.Valid(_extent) ? _extent : null });
-            if (cfg.CameraMounts.Count > 64) cfg.CameraMounts.RemoveAt(0);
+            cfg.CameraMounts.Add(new CameraMount { Car = _key, Values = values, Extent = CameraMountFit.Valid(_extent) ? _extent : null });
+            if (cfg.CameraMounts.Count > 128) cfg.CameraMounts.RemoveAt(0);
         }
 
         private static float[] Snapshot(Settings c) => new[] { c.BonnetSide, c.BonnetHeight, c.BonnetForward, c.BonnetPitch, c.BonnetFOV,

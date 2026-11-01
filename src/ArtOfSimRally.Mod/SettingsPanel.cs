@@ -454,7 +454,7 @@ namespace ArtOfSimRally.Mod
                 c.BonnetForward = Slider(c.BonnetForward, -3, 5, 1, "Forward", 1, " m");
                 c.BonnetSide = Slider(c.BonnetSide, -2, 2, 0, "Side", 1, " m");
                 c.BonnetPitch = Slider(c.BonnetPitch, -45, 45, 3, "Tilt", 1, "°");
-                c.BonnetFOV = Slider(c.BonnetFOV, 40, 120, 75, "Field of view", 1, "°");
+                c.BonnetFOV = Slider(c.BonnetFOV, 20, 120, 75, "Field of view", 1, "°");
             }
             else
             {
@@ -462,7 +462,7 @@ namespace ArtOfSimRally.Mod
                 c.BumperForward = Slider(c.BumperForward, -3, 5, 1.9f, "Forward", 1, " m");
                 c.BumperSide = Slider(c.BumperSide, -2, 2, 0, "Side", 1, " m");
                 c.BumperPitch = Slider(c.BumperPitch, -45, 45, 2, "Tilt", 1, "°");
-                c.BumperFOV = Slider(c.BumperFOV, 40, 120, 80, "Field of view", 1, "°");
+                c.BumperFOV = Slider(c.BumperFOV, 20, 120, 80, "Field of view", 1, "°");
             }
             c.BonnetLean = Slider(c.BonnetLean, 0, 1, .1f, "Corner lean (both views)", 100, "%");
             Help("Shortcut steps: one step per press; holding repeats about ten steps a second.");

@@ -226,6 +226,8 @@ namespace ArtOfSimRally.Mod
                 {
                     Release(true);
                     if (GameState.IsPlayerView && view != View.None) SelectStockView(__instance);
+                    if (Main.Enabled && GameState.IsPlayerView && view == View.None && !Triple.TripleScreen.IsCustomCockpit(__instance))
+                        ChaseFov.Apply(__instance, cfg);
                     return;
                 }
 

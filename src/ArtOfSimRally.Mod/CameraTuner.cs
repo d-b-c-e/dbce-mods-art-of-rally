@@ -118,6 +118,8 @@ namespace ArtOfSimRally.Mod
                 changed |= Nudge(ref cfg.BonnetPitch, 6, 7, tilt, now);
                 changed |= Nudge(ref cfg.BonnetFOV, 8, 9, fov, now);
             }
+            // The F6 sliders' range; the Realistic set can start near 34° on a 32-inch rig.
+            cfg.BonnetFOV = Mathf.Clamp(cfg.BonnetFOV, 20f, 120f); cfg.BumperFOV = Mathf.Clamp(cfg.BumperFOV, 20f, 120f);
 
             if (Input.GetKeyDown(cfg.KeyReset) || resetButton)
             {

@@ -186,6 +186,9 @@ namespace ArtOfSimRally.Mod
         // The bonnet/bumper values above are the current car's; each tuned car keeps its own here (CameraMountMemory).
         public List<CameraMount> CameraMounts = new List<CameraMount>();
 
+        // Degrees added to the game's own field of view, per stock chase view (list position); numpad +/- while in it.
+        public List<float> ChaseFovOffsets = new List<float>();
+
         public bool CameraTuningKeys = true;
 
         // Per-press shortcut steps (toolkit STD-006: 0.02 m, 1 deg tilt, 2 deg FOV).

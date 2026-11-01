@@ -193,13 +193,22 @@ internal static class TripleScreen
         GUI.color = old;
     }
 
+    /// <summary>Whether mounted cameras use their Realistic set (triples on and chosen with F7). Read by CameraMountMemory
+    /// and, by name, by Custom Vehicles for its cockpit.</summary>
+    internal static bool RealisticActive => _settings != null && _settings.OverrideFieldOfView &&
+        (_settings.EnableThreeViewPrototype || _settings.EnableSeparateDisplayPrototype);
+
+    /// <summary>The Realistic set's starting field of view: the seat's true vertical field of view (null without measurements).</summary>
+    internal static double? RealisticStartDegrees => _settings == null || Layout == null ? null
+        : ProjectionController.RealisticDegrees(EffectiveLayout.Resolve(Layout.Current, _settings));
+
     private static void ToggleRealistic()
     {
         if (!ProjectionController.InStage()) { Notify("Field of view: switch while driving"); return; }
         var realistic = !_settings.OverrideFieldOfView;
         var saved = SaveRealistic(realistic);
         _wasInStage = false;   // the camera label shows the new field of view
-        var label = (_settings.OverrideFieldOfView ? "Field of view: realistic (your seat)" : "Field of view: game") +
+        var label = (_settings.OverrideFieldOfView ? "Realistic set (starts true to your seat)" : "Game set") +
             (ProjectionController.LastChaseView ? " (bonnet, bumper and cockpit views; chase views always use the game's)" : "");
         if (!saved) Notify(label + " · Couldn't save view");
         _modEntry.Logger.Log("F7: " + label + (saved ? "." : "; could not save."));
@@ -335,9 +344,10 @@ internal static class TripleScreen
         if (mode != 0)
         {
             w.Help(_settings.OverrideFieldOfView
-                ? "Field of view: realistic, true to your seat (bonnet and bumper views). Chase views use the game's."
-                : "Field of view: the game's. In bonnet and bumper views, numpad + and - adjust it while driving.");
-            w.Help("While driving, F7 switches bonnet and bumper views between the game's and the realistic field of view.");
+                ? "Field of view: Realistic set. It starts true to your seat; numpad + and - adjust it while driving."
+                : "Field of view: Game set. Numpad + and - adjust it while driving.");
+            w.Help("Bonnet, bumper and cockpit cameras each keep their own adjustments, separately for the Game and Realistic sets.");
+            w.Help("While driving, F7 switches between the Game and Realistic sets.");
             if (w.Command("triple-fov-choice", _settings.OverrideFieldOfView ? "Use the game's field of view" : "Use the realistic field of view"))
             {
                 if (_settings.OverrideFieldOfView) _settings.OverrideFieldOfView = false;
