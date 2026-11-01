@@ -84,6 +84,22 @@ the mod's settings UI with force feedback and telemetry.
 same day; both are in the game's own view rotation with a numpad tuner, and both
 are verified on the owner's rig.
 
+## Triple-screen camera defaults (owner, 2026-11-01)
+
+Settled after comparing Assetto Corsa on the owner's triples, which uses one seat-true field of view for every camera,
+so its bonnet camera shows no bonnet and its bumper camera no wings:
+
+| Camera | Starts in | Why |
+|---|---|---|
+| Cockpit | Realistic (seat-true) | True to the seat. |
+| Bonnet | Game (75°) | "Not realistic, but it was never meant to be; it was meant to be fun." Shows the bonnet; accepts some edge stretch. |
+| Bumper | Realistic | Road only, so a wider view adds stretch and no information; the car is hidden in this view anyway. |
+| Chase | Game (the game's speed zoom) | Fun. |
+
+Each camera keeps its own F7 choice and its own adjustments (position per car, field of view per camera). Every field of
+view wider than Realistic stretches the side screens: the projection is correct for a virtual eye closer than the real
+one. Single-screen players are unaffected (F7 needs triples). Candidate portfolio standard for Wheelkit.
+
 ## Numpad layout and steps
 
 Defaults follow the family layout (toolkit STD-005): 8/2 forward/back, 9/3

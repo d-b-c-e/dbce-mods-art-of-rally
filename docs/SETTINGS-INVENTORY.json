@@ -2311,10 +2311,10 @@
       "min": null,
       "max": null,
       "step": null,
-      "default": false,
+      "default": true,
       "classification": "editable",
       "visibility": "Not shown; F7 in the bumper view",
-      "reason": "The bumper camera's own F7 choice (owner 2026-11-01: each camera remembers its own Game/Realistic set; OverrideFieldOfView is the bonnet's). The F6 field-of-view button sets bonnet, bumper and chase together."
+      "reason": "The bumper camera's own F7 choice (owner 2026-11-01: each camera remembers its own Game/Realistic set; OverrideFieldOfView is the bonnet's). The F6 field-of-view button sets bonnet, bumper and chase together. Starts Realistic (owner 2026-11-01): road only, so a wider view adds stretch and no information."
     },
     {
       "kind": "field",
