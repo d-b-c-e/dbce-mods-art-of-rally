@@ -329,19 +329,37 @@ namespace RallyCustomVehicles
         }
         // The same numpad keys as art of sim rally's bonnet camera (8/2 forward/back, 4/6 left/right, 9/3 up/down, 7/1 look
         // down/up, +/- field of view, 5 reset), one step per press; saved per car. Not while a modifier is held or a panel is open.
+        // art of sim rally's saved camera keys and their on/off switch (Settings.Key*, CameraTuningKeys), read by name so a
+        // rebind there (or by Wheelkit's Cameras tab) applies to the cockpit too; the numpad layout when Art is absent.
+        private static readonly Type ArtMain = AccessTools.TypeByName("ArtOfSimRally.Mod.Main");
+        private static readonly PropertyInfo ArtSettings = ArtMain == null ? null : AccessTools.Property(ArtMain, "Settings");
+        private static object ArtConfig() { try { return ArtSettings?.GetValue(null); } catch (Exception) { return null; } }
+        private static KeyCode ArtKey(string name, KeyCode fallback)
+        {
+            var cfg = ArtConfig();
+            var value = cfg == null ? null : AccessTools.Field(cfg.GetType(), name)?.GetValue(cfg);
+            return value is KeyCode key && key != KeyCode.None ? key : fallback;
+        }
+        private static bool ArtKeysOn()
+        {
+            var cfg = ArtConfig();
+            var value = cfg == null ? null : AccessTools.Field(cfg.GetType(), "CameraTuningKeys")?.GetValue(cfg);
+            return !(value is bool on) || on;
+        }
         private static void TuneCockpit()
         {
             if (!Application.isFocused || UnityModManager.UI.Instance != null && UnityModManager.UI.Instance.Opened) return;
             if (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl) || Input.GetKey(KeyCode.LeftAlt) ||
                 Input.GetKey(KeyCode.RightAlt) || Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) return;
+            if (!ArtKeysOn()) return;
             bool changed = false;
-            void Step(KeyCode key, ref float value, float delta) { if (Input.GetKeyDown(key)) { value += delta; changed = true; } }
-            Step(KeyCode.Keypad8, ref eyeAdjustment.z, .02f); Step(KeyCode.Keypad2, ref eyeAdjustment.z, -.02f);
-            Step(KeyCode.Keypad6, ref eyeAdjustment.x, .02f); Step(KeyCode.Keypad4, ref eyeAdjustment.x, -.02f);
-            Step(KeyCode.Keypad9, ref eyeAdjustment.y, .02f); Step(KeyCode.Keypad3, ref eyeAdjustment.y, -.02f);
-            Step(KeyCode.Keypad7, ref pitch, 1f); Step(KeyCode.Keypad1, ref pitch, -1f);
-            Step(KeyCode.KeypadPlus, ref fov, 2f); Step(KeyCode.KeypadMinus, ref fov, -2f);
-            if (Input.GetKeyDown(KeyCode.Keypad5)) { var d = CockpitViewStore.Default; eyeAdjustment = new Vector3(d[0], d[1], d[2]); pitch = d[3]; fov = d[4]; changed = true; }
+            void Step(string name, KeyCode fallback, ref float value, float delta) { if (Input.GetKeyDown(ArtKey(name, fallback))) { value += delta; changed = true; } }
+            Step("KeyForward", KeyCode.Keypad8, ref eyeAdjustment.z, .02f); Step("KeyBack", KeyCode.Keypad2, ref eyeAdjustment.z, -.02f);
+            Step("KeyRight", KeyCode.Keypad6, ref eyeAdjustment.x, .02f); Step("KeyLeft", KeyCode.Keypad4, ref eyeAdjustment.x, -.02f);
+            Step("KeyUp", KeyCode.Keypad9, ref eyeAdjustment.y, .02f); Step("KeyDown", KeyCode.Keypad3, ref eyeAdjustment.y, -.02f);
+            Step("KeyPitchDown", KeyCode.Keypad7, ref pitch, 1f); Step("KeyPitchUp", KeyCode.Keypad1, ref pitch, -1f);
+            Step("KeyFovUp", KeyCode.KeypadPlus, ref fov, 2f); Step("KeyFovDown", KeyCode.KeypadMinus, ref fov, -2f);
+            if (Input.GetKeyDown(ArtKey("KeyReset", KeyCode.Keypad5))) { var d = CockpitViewStore.Default; eyeAdjustment = new Vector3(d[0], d[1], d[2]); pitch = d[3]; fov = d[4]; changed = true; }
             if (changed) SaveView();
         }
         private static void ReleaseCamera(bool snap)
