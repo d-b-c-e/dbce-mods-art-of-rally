@@ -39,30 +39,35 @@ third-party binaries, nothing that would force the repo private.
 | `docs/DEVELOPMENT-CAPTURE.md` | Separate probe schema, motion/contact units, standalone analysis and interpretation limits. |
 | `docs/` | FINDINGS, FORCE-FEEDBACK, TELEMETRY, CONTROLS, CAMERA, ROADMAP, RELEASING |
 
-## Status (2026-10-30) — paused, 0.4.4-rc.21 installed for owner test
+## Status (2026-11-01) — paused, 0.4.4-rc.21 + Custom Vehicles 0.6.1 installed for owner test
 
-Public baseline stays **0.4.3** (GitHub release). Installed on the rig: **0.4.4-rc.21** (source `e94836e`; details and rollback in `docs/LOCAL-DEPLOYMENT.md`).
-rc.13: simplified triple framing (always corrected; chase = game FOV; F7 = Game/Realistic for bonnet/bumper; Shift+F7
-developer comparison). rc.12: FFB switched on in F6 mid-stage starts at once; a stage started with FFB
-off says so. Standalone Turtle Van mod removed (Custom Vehicles carries the van). rc.11 fixes ISS-0014 (separate-display Original in sync) and shows every FFB
-switch-off (ISS-0015; the owner's FFB is still off in Settings.xml). rc.10 saves the F7 view (`F7View`, narrow XML write) and restores it at launch;
-rc.9 added the F7 cycle and game-FOV default (ISS-0005). Main is pushed; no tag or release for 0.4.4 yet.
+Public baseline stays **0.4.3** (GitHub release; no tag/release for 0.4.4). Installed on the rig: **0.4.4-rc.21**
+(source `e94836e`, ZIP `7C3B2D98…6B0D`, Mod.dll `7C653F3E…B8B7`; rollback copy of rc.20 at
+`E:\Source\temp\art-0.4.4-rc.21\backup-installed-rc.20`; every rc's hashes and rollback in `docs/LOCAL-DEPLOYMENT.md`).
+Custom Vehicles **0.6.1** (`b85ba66`) installed; rollback `E:\Source\temp\customvehicles-0.6.1\backup-installed-0.6.0`.
+The standalone Turtle Van mod was removed (Custom Vehicles carries the van, on Das Speedvan).
 
-Since 0.4.3 (all offline-tested, **none driven in game yet**): "Match my seat" + F6 seat line, F7
-session A/B (measured vs game FOV), chase views keep game framing (`ChaseUsesGameFov`), opt-in curved
-panels (`CurveRadiusMm`, presenter per display, fail-to-flat latch, opt-in luminance sample in
-render diagnostics), local bezel gap, KI-46 "next weather" prompt fix, KI-52 Surround canvas
-centring, racing-row window landing, Wheelkit receipt marker `artCurvedTriples`. Shared curve math
-is vendored from the triple toolkit (`CurvedPanelWarp`, toolkit `29c1f4d`).
+Owner-verified in game (10-31/11-01): curve warp no longer bows straight edges (fishbowl fixed); Custom class in Free
+Roam (Scout drove); telemetry works once SimHub is on its FH5 profile (port 8000). Everything else below is offline-tested
+only.
 
-Owner-gated: first curved drive (recipe `docs/reviews/2026-10-29-curved-drive-recipe.md`, script
-`tools/testing/Set-ArtCurveRun.ps1`); rc.6/rc.7 feel (Match my seat, F7, chase); clean-install
-Phase B launch needs the owner's Steam Cloud choice (`docs/reviews/2026-10-29-clean-install-phase-b-plan.md`);
-whether CustomVehicles/TurtleVan stay enabled in UMM (both currently enabled). Parked: KI-53 bumper
-flicker (needs a clip), GitHub #2/#3 (HeadCRACK retest on 0.4.3). Art cannot be driven unattended
-(injected input rejected; triples draw only on the stage camera).
+Since 0.4.3 / rc.12-rc.21 (details in CHANGELOG): FFB off is shown on screen and FFB switched on in F6 mid-stage starts at
+once; simplified triple framing (always corrected; chase = game FOV + saved per-view offset; bonnet/bumper/cockpit keep
+Game and Realistic sets per car, Realistic starts at the seat's true FOV; F7 switches sets; Shift+F7 developer
+comparison); curve warp from the real eye (toolkit 7af26cd); camera name overlay near the bottom; per-car bonnet/bumper
+placement fitted from the model (bonnet surface + windscreen base); camera keys no longer blocked by a held shifter gear;
+H-pattern re-applies a held gate; `artFovSets` receipt marker for Wheelkit.
 
-Local `results/`/`artifacts/` from before 2026-10-27 were lost; tracked review docs keep the hashes.
+**Open (owner reports, not fixed):** (1) the last camera is not restored at stage start; (2) 1st gear held at the start
+is not engaged. rc.20+ logs both at stage start ("Camera: … game's saved view N", "H-pattern at stage start: lever …").
+Suspect for (2): the shared input reports a held gear button only after it changes (fix would belong in the shared
+provider). **Next step:** owner drives one stage with the lever already in 1st and a recognisable last camera; read
+`artofrally_Data\Managed\UnityModManager\Log.txt`.
+
+**Owner actions:** that drive; check new-car bonnet/bumper starting positions and the Realistic set; Wheelkit 0.6.63
+(lili) adds My Rig FFB On/Off written by Apply (ISS-0022, reviewed by vemi); Wheelkit Cameras tab + Game/Realistic choice
+(ISS-0023) follow `dbce-wheelkit docs/ART-STANDARDS-FOR-WHEELKIT.md`. Clean-install Phase B passed 10-31. Banked: custom
+car mirrors float; Custom Vehicles own handling (step 2) not started; Career/Daily/Weekly have no Custom class.
 
 ## Status (2026-10-04)
 

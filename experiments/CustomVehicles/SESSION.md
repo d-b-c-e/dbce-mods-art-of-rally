@@ -96,3 +96,7 @@ Owner: the Scout worked from Free Roam's Custom class; wants every mode, online 
 ## 2026-10-31 - 0.5.0 installed; banked: mirrors
 
 0.5.0 (7ea3aba): cockpit view adjustable with the numpad, saved per car (State/cockpit-views.json). Banked (owner): the side mirrors float beside the body instead of attaching to a modelled part. Camera feel: the cockpit camera is rigid to the car body, so body rocking shows (the Speedvan donor rocks more); the game itself only shakes the camera on gear shifts.
+
+## 2026-11-01 - 0.6.1 installed
+
+0.4.x-0.6.1: Custom class in Free Roam, Time Attack and Custom Rally (no online uploads with a custom car; Custom Rally saves keep the donor class); Turtle Van on Das Speedvan with own engine 100 kW for step 2; cockpit view saved per car and per Game/Realistic set, numpad-adjustable with Art's saved camera keys, eye range 1.5 m; a saved cockpit camera is re-selected at the stage start. Owner drove the Scout from Free Roam's Custom class. Next: owner checks the Custom Rally preview and the cockpit keys; step 2 (own handling) after light testing; banked: mirrors.

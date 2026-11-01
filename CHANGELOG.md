@@ -9,6 +9,15 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed (source, not yet packaged)
 
+- art of rally 0.4.4-rc.12..rc.21 (2026-10-31/11-01, owner test builds):
+  - FFB: switching it on in F6 mid-stage starts it at once; every switch-off and each stage started with FFB off shows "Force feedback off. It stays off until you turn it on in F6 > FFB".
+  - Field of view: every camera keeps its own adjustments. Bonnet, bumper and the Custom Vehicles cockpit keep a Game and a Realistic set per car (F7 switches; Realistic starts at the seat's true field of view and stays adjustable with numpad +/- and F6); chase views use the game's field of view plus a saved per-view offset (numpad +/-). F6 field-of-view sliders 20-120°.
+  - Curved panels: the warp is computed from the real eye at the game's field of view, so straight edges no longer bow (owner-verified).
+  - Camera overlay: the camera's name near the bottom ("Bonnet Camera - Game FOV", "Cockpit - Realistic", "Chase 2") with a key reminder, on each camera change and stage start.
+  - Bonnet/bumper placement is remembered per car; a car never tuned starts from the last tuned car, fitted to its shape (bonnet surface and windscreen base, measured from the body).
+  - Camera keys are no longer blocked while an H-pattern shifter is in gear; an H-pattern gear held at the start is re-applied (owner reports it still fails; logged for diagnosis).
+  - Info.json declares `artFovSets` for Wheelkit.
+
 - Triple screens, simplified field of view (owner 2026-10-31): the screens are always corrected for their angle (and curve when a radius is set). Chase views always use the game's field of view. Bonnet and bumper views use the game's, adjusted with numpad +/- as before, or Realistic (true to your seat). F7 switches Game / Realistic and saves it; Shift+F7 is a developer comparison (original / angle / angle + curve, not saved). Retired: the widened-measured slider, the chase-view opt-out and the saved F7 comparison step.
 
 - F7 is now a comparison of the screen correction, not of the field of view: Original game view → Angle correction → Angle + curve correction (the curve step only when a curve is set and working). Your saved framing (game or measured field of view) stays the same throughout. A centered label shows the mode, the framing, and the step for 2.5 s; the pick is saved and restored at the next launch (only a failed save is reported, and menus or a curve fallback never change the saved pick); in menus F7 says the comparison is available while driving. A curve that cannot be drawn reports the fallback. Nothing is saved; changing the view settings ends the comparison.
