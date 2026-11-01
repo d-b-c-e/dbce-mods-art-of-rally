@@ -105,6 +105,14 @@ namespace ArtOfSimRally.Mod
         private static Collider[] BodyColliders() =>
             _root.GetComponentsInChildren<Collider>().Where(c => c is MeshCollider && c.enabled && !c.isTrigger).ToArray();
 
+        // A renderer's mesh box in its own transform (null owner when it has no mesh).
+        private static (Transform, Bounds) LocalBox(Renderer r)
+        {
+            if (r is SkinnedMeshRenderer skinned) return (skinned.transform, skinned.localBounds);
+            var mesh = r.GetComponent<MeshFilter>()?.sharedMesh;
+            return mesh == null ? (null, default) : (r.transform, mesh.bounds);
+        }
+
         private static bool Visible(Renderer r) => (r is MeshRenderer || r is SkinnedMeshRenderer) && r.enabled && !r.forceRenderingOff &&
             r.name.IndexOf("shadow", StringComparison.OrdinalIgnoreCase) < 0;
 
@@ -115,19 +123,19 @@ namespace ArtOfSimRally.Mod
             // The body only: a Custom Vehicles body's own meshes, else the car's solid colliders (lights, glows and effect
             // meshes made a van measure 7 m wide; owner log 2026-10-31), else every visible mesh.
             var visual = _root.Find(CustomVisual);
+            // Each mesh's own local box, turned with the car. World-aligned Renderer/Collider.bounds grew with the car's yaw
+            // and made cars measure 5.5-7 m wide (owner logs 2026-10-31/11-01).
             var boxes = visual != null
-                ? visual.GetComponentsInChildren<Renderer>().Where(Visible).Select(r => r.bounds).ToList()
-                : BodyColliders().Select(c => c.bounds).ToList();
-            // Mesh colliders are the body; box helpers made a car 5.71 m wide (owner 2026-11-01). Last resort: meshes no
-            // wider than a car.
-            if (boxes.Count == 0) boxes = _root.GetComponentsInChildren<Renderer>().Where(Visible).Select(r => r.bounds)
-                .Where(b => b.size.x < 3.2f && b.size.z < 7f).ToList();
+                ? visual.GetComponentsInChildren<Renderer>().Where(Visible).Select(LocalBox).Where(b => b.Item1 != null).ToList()
+                : BodyColliders().OfType<MeshCollider>().Where(c => c.sharedMesh != null).Select(c => (c.transform, c.sharedMesh.bounds)).ToList();
+            if (boxes.Count == 0) boxes = _root.GetComponentsInChildren<Renderer>().Where(Visible).Select(LocalBox).Where(b => b.Item1 != null).ToList();
             bool any = false; float bottom = 0, top = 0, front = 0, back = 0, left = 0, right = 0;
-            foreach (var b in boxes)
+            foreach (var (owner, b) in boxes)
             {
                 for (int i = 0; i < 8; i++)
                 {
-                    var p = target.InverseTransformPoint(new Vector3((i & 1) == 0 ? b.min.x : b.max.x, (i & 2) == 0 ? b.min.y : b.max.y, (i & 4) == 0 ? b.min.z : b.max.z));
+                    var corner = new Vector3((i & 1) == 0 ? b.min.x : b.max.x, (i & 2) == 0 ? b.min.y : b.max.y, (i & 4) == 0 ? b.min.z : b.max.z);
+                    var p = target.InverseTransformPoint(owner.TransformPoint(corner));
                     if (!any) { bottom = top = p.y; front = back = p.z; left = right = p.x; any = true; }
                     bottom = Mathf.Min(bottom, p.y); top = Mathf.Max(top, p.y); front = Mathf.Max(front, p.z); back = Mathf.Min(back, p.z);
                     left = Mathf.Min(left, p.x); right = Mathf.Max(right, p.x);
