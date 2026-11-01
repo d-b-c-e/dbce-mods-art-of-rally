@@ -1,6 +1,16 @@
 # Local deployment
 
-## Current installation — 0.4.4-rc.19 (October 31, owner test)
+## Current installation — 0.4.4-rc.20 (October 31, owner test)
+
+rc.19 plus (82adf86): the camera fit measures the body only (the Turtle Van had measured 7.09 m wide); start-of-stage
+log lines for the H-pattern lever and gearbox ("H-pattern at stage start: ...") and for each camera change
+("Camera: ... game's saved view N"), to diagnose the held 1st gear and the remembered camera. ZIP SHA-256
+`57D6CEB51B46F45A7DBF2FA657306BC7FCD3A40DCF3D0968C902E1E33824BBE2`; Mod.dll
+`364827CD1090E07FBEEC48C14012219D0CBDB8559DDE0D48FE9B227AA32205FC`. Installer 70, ShimInput 12356, CameraTuning 396,
+Triple 1355, SettingsUi 3444, WheelInput 620 passed. Game closed; payload 9/9; owner settings byte-identical.
+Rollback copy of rc.19: `E:\Source\temp\art-0.4.4-rc.20\backup-installed-rc.19`.
+
+## Previous installation — 0.4.4-rc.19 (October 31, owner test)
 
 rc.18 plus the bonnet camera fitted from the car's shape (645e77c): centre-line profile from readable meshes or
 the car's colliders; bonnet height and windscreen base anchor the fit; box fallback; measurements logged per car
