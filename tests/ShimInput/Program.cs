@@ -260,6 +260,12 @@ internal static class Program
         // 1st held at the start: the game refused the first shift (clutch, change under way) or reset to neutral.
         Check(ShimTransmission.Next(H, false, 0, 4, ref last, 0, false, 6) == 4, "a held gate the gearbox is not in was not applied again");
         Check(ShimTransmission.Next(H, false, 0, 4, ref last, 0, false, 6, changing: true) == null, "a held gate interrupted a change under way");
+        // Owner log 2026-11-01: at the start the game is in 1st and the provider reads the held 1st as neutral.
+        last = int.MinValue;
+        Check(ShimTransmission.Next(H, false, 2, 1, ref last, 0, false, 6) == null && last == 1, "a first neutral reading shifted the game out of gear");
+        Check(ShimTransmission.Next(H, false, 2, 1, ref last, 0, false, 6) == null, "a held neutral was re-applied over the game's gear");
+        Check(ShimTransmission.Next(H, false, 2, 2, ref last, 0, false, 6) == null && last == 2, "1st read after start-up shifted although engaged");
+        Check(ShimTransmission.Next(H, false, 2, 1, ref last, 0, false, 6) == 1, "a real move to neutral was not applied");
         Check(ShimTransmission.Next(H, false, 4, 7, ref last, 0, false, 6) == null && last == 7, "missing gear clamped");
         Check(ShimTransmission.Next(H, false, 4, 7, ref last, 0, false, 6) == null, "missing gear retried");
         Check(ShimTransmission.Next(H, false, 4, null, ref last, 1, false, 6) == null, "stale gate or step shifted");

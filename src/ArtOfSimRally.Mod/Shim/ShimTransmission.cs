@@ -57,8 +57,18 @@ namespace ArtOfSimRally.Mod.Shim
             if (mode == Mode.HPattern)
             {
                 if (!gate.HasValue) return null;
-                if (gate.Value != lastGate) { lastGate = gate.Value; return Exists(gate.Value, maxIndex) ? gate : null; }
-                return !changing && engaged != gate.Value && Exists(gate.Value, maxIndex) ? gate : null;
+                if (gate.Value != lastGate)
+                {
+                    bool first = lastGate == int.MinValue;
+                    lastGate = gate.Value;
+                    // The shared provider reports a gear held since start-up as neutral until the lever moves (owner log
+                    // 2026-11-01: lever 1st, read neutral, the game's own 1st was shifted out). A first neutral reading is
+                    // not trusted; the game's gear stays until the lever is seen to move.
+                    if (first && gate.Value == Neutral) return null;
+                    return Exists(gate.Value, maxIndex) && engaged != gate.Value ? gate : null;
+                }
+                // A held gear the gearbox is not in is applied again; a held neutral never is (it may be that unread gear).
+                return !changing && gate.Value != Neutral && engaged != gate.Value && Exists(gate.Value, maxIndex) ? gate : null;
             }
             lastGate = int.MinValue;
             return Step(engaged, step, skipNeutral, maxIndex);
