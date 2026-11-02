@@ -105,6 +105,12 @@ Single-screen players keep the game's behaviour; the Game/Realistic choice only 
   fits the same pipeline: a curved ultrawide is a few virtual flat slices on a cylinder, each an off-axis view, warped
   by the curve, all in one window.
 - Future idea: an in-game overlay like AC's Triple Screen app (live diagram, sliders) for tweaking the rig per game.
+- **"More zoomed than AC" at the same seat-true FOV is the cockpit, not the maths** (owner, Turtle Van vs AC's Abarth):
+  the van's eye sits high and close behind a large flat dash. Uniform world scale cannot cause it (a uniformly larger
+  world looks identical from the same eye). First check the actual FOV: the van's "Realistic" cockpit had been saved
+  at 47.6° and later 65° without any label saying so (fixed: "(Custom)" on the cockpit label, reset to the seat FOV).
+  Moving the eye back/down keeps the seams exact; widening the FOV bends near objects at the seams. The owner settled
+  on a mix of both for the van: a per-vehicle taste, not a default.
 - **Owner vision for Wheelkit My Rig**: a config window like AC's where the user sets the number of monitors, resolution,
   physical size, eye distance and curvature per display (including edge cases such as one 49" 32:9 at 1000R, about 68°
   of arc, wrapping about 100° around an eye at 800 mm). A top-down diagram shows each display as a line or arc, the
