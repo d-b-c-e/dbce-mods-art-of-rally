@@ -12,7 +12,7 @@ happens in game). Rollback copy of rc.31: `E:\Source\temp\art-0.4.4-rc.32\backup
 
 Custom Vehicles 0.6.5 (`207874f`): logs the body size beside the donor's at attach and warns past 15%. dll
 `E237B67FA74FF9452B1DC597A3EA6CFB6B16E70634DB11CA59F8814AE42EDC90`; 13/13; State files unchanged; 0.6.4 backup at
-`E:\Source	emp\customvehicles-0.6.5ackup-installed-0.6.4`.
+`E:\Source\temp\customvehicles-0.6.5\backup-installed-0.6.4`.
 ## Previous installation — 0.4.4-rc.31 + Custom Vehicles 0.6.4 (November 1, owner test)
 
 The van's "Realistic" cockpit was saved at 47.6° (seat-true 33.6°), then reset by the old numpad 5 to the 65° Game
