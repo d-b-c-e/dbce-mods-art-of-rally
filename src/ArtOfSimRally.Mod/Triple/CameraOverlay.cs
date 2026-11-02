@@ -17,7 +17,7 @@ internal static class CameraOverlay
 
     internal static string Hint(Kind kind, bool triples, bool realistic, bool tuningKeys)
     {
-        var hint = tuningKeys ? "Numpad + / - field of view" : "";
+        var hint = tuningKeys ? "Numpad + / - zoom" : "";
         if (triples) hint += (hint.Length > 0 ? " · " : "") + "F7 " + (realistic ? "Game set" : "Realistic set");
         return hint;
     }

@@ -677,10 +677,10 @@ internal static class Program
             && ArtOfSimRally.Mod.Triple.CameraOverlay.Name(ArtOfSimRally.Mod.Triple.CameraOverlay.Kind.Bonnet, 0, true) == "Bonnet Camera - Realistic"
             && ArtOfSimRally.Mod.Triple.CameraOverlay.Name(ArtOfSimRally.Mod.Triple.CameraOverlay.Kind.Cockpit, 0, false) == "Cockpit - Game FOV"
             && ArtOfSimRally.Mod.Triple.CameraOverlay.Name(ArtOfSimRally.Mod.Triple.CameraOverlay.Kind.Chase, 2, true) == "Chase 2 - Realistic", "camera names");
-        Check(ArtOfSimRally.Mod.Triple.CameraOverlay.Hint(ArtOfSimRally.Mod.Triple.CameraOverlay.Kind.Bumper, true, false, true) == "Numpad + / - field of view · F7 Realistic set"
-            && ArtOfSimRally.Mod.Triple.CameraOverlay.Hint(ArtOfSimRally.Mod.Triple.CameraOverlay.Kind.Bumper, true, true, true) == "Numpad + / - field of view · F7 Game set"
-            && ArtOfSimRally.Mod.Triple.CameraOverlay.Hint(ArtOfSimRally.Mod.Triple.CameraOverlay.Kind.Bonnet, false, false, true) == "Numpad + / - field of view"
-            && ArtOfSimRally.Mod.Triple.CameraOverlay.Hint(ArtOfSimRally.Mod.Triple.CameraOverlay.Kind.Chase, true, false, true) == "Numpad + / - field of view · F7 Realistic set", "key reminders");
+        Check(ArtOfSimRally.Mod.Triple.CameraOverlay.Hint(ArtOfSimRally.Mod.Triple.CameraOverlay.Kind.Bumper, true, false, true) == "Numpad + / - zoom · F7 Realistic set"
+            && ArtOfSimRally.Mod.Triple.CameraOverlay.Hint(ArtOfSimRally.Mod.Triple.CameraOverlay.Kind.Bumper, true, true, true) == "Numpad + / - zoom · F7 Game set"
+            && ArtOfSimRally.Mod.Triple.CameraOverlay.Hint(ArtOfSimRally.Mod.Triple.CameraOverlay.Kind.Bonnet, false, false, true) == "Numpad + / - zoom"
+            && ArtOfSimRally.Mod.Triple.CameraOverlay.Hint(ArtOfSimRally.Mod.Triple.CameraOverlay.Kind.Chase, true, false, true) == "Numpad + / - zoom · F7 Realistic set", "key reminders");
 
         // Shift+F7 developer comparison: session only; with no step the normal view is angle + curve when a curve works.
         Check(ArtOfSimRally.Mod.Triple.F7Comparison.Current(null, curveActive: true)

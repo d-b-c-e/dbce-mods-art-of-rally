@@ -44,6 +44,9 @@ namespace ArtOfSimRally.Mod
                 KeyCode.Keypad6, KeyCode.Keypad4, KeyCode.KeypadPlus, KeyCode.KeypadMinus, KeyCode.Keypad5 },
             new[] { KeyCode.Keypad9, KeyCode.Keypad3, KeyCode.Keypad8, KeyCode.Keypad2, KeyCode.KeypadDivide, KeyCode.KeypadMultiply,
                 KeyCode.Keypad4, KeyCode.Keypad6, KeyCode.KeypadPlus, KeyCode.KeypadMinus, KeyCode.Keypad5 },
+            // Layout 3, the STD-005 numpad set up to 0.4.4-rc.31, with + widening the view.
+            new[] { KeyCode.Keypad9, KeyCode.Keypad3, KeyCode.Keypad8, KeyCode.Keypad2, KeyCode.Keypad4, KeyCode.Keypad6,
+                KeyCode.Keypad7, KeyCode.Keypad1, KeyCode.KeypadPlus, KeyCode.KeypadMinus, KeyCode.Keypad5 },
         };
 
         /// <summary>
@@ -72,7 +75,7 @@ namespace ArtOfSimRally.Mod
             }
             foreach (var binding in Bindings) binding.Set(cfg, binding.Get(defaults));
             Status = "Camera keys moved to the numpad layout: 8/2 forward/back, 9/3 up/down, 4/6 left/right, " +
-                "7/1 tilt forward/back, +/- field of view, 5 reset. Rebind any of them here.";
+                "7/1 tilt forward/back, + zoom in / - zoom out, 5 reset. Rebind any of them here.";
             return true;
         }
 

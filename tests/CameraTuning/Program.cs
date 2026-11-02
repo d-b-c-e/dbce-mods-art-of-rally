@@ -23,8 +23,8 @@ static class Program
         Host.Settings = new Settings(); var cfg = Host.Settings;
         // STD-005 family layout in Bindings order.
         var defaults = new[] { KeyCode.Keypad9, KeyCode.Keypad3, KeyCode.Keypad8, KeyCode.Keypad2,
-            KeyCode.Keypad4, KeyCode.Keypad6, KeyCode.Keypad7, KeyCode.Keypad1, KeyCode.KeypadPlus,
-            KeyCode.KeypadMinus, KeyCode.Keypad5 };
+            KeyCode.Keypad4, KeyCode.Keypad6, KeyCode.Keypad7, KeyCode.Keypad1, KeyCode.KeypadMinus,
+            KeyCode.KeypadPlus, KeyCode.Keypad5 };
         Check(CameraKeys.Bindings.Select(b => b.Get(cfg)).SequenceEqual(defaults), "family defaults changed");
         using (var xml = new StringReader("<Settings><BonnetHeight>1.25</BonnetHeight></Settings>"))
         {
@@ -150,7 +150,9 @@ static class Program
         var swapped = (KeyCode[])layout1.Clone(); (swapped[6], swapped[7]) = (swapped[7], swapped[6]);
         var layout2 = new[] { KeyCode.Keypad9, KeyCode.Keypad3, KeyCode.Keypad8, KeyCode.Keypad2, KeyCode.KeypadDivide,
             KeyCode.KeypadMultiply, KeyCode.Keypad6, KeyCode.Keypad4, KeyCode.KeypadPlus, KeyCode.KeypadMinus, KeyCode.Keypad5 };
-        foreach (var old in new[] { layout1, swapped, layout2 })
+        var layout3 = new[] { KeyCode.Keypad9, KeyCode.Keypad3, KeyCode.Keypad8, KeyCode.Keypad2, KeyCode.Keypad4,
+            KeyCode.Keypad6, KeyCode.Keypad7, KeyCode.Keypad1, KeyCode.KeypadPlus, KeyCode.KeypadMinus, KeyCode.Keypad5 };
+        foreach (var old in new[] { layout1, swapped, layout2, layout3 })
         {
             var cfg = LoadKeys(old);
             Check(KeysOf(cfg).SequenceEqual(old), "fixture XML did not load saved keys");

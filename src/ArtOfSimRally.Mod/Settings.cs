@@ -217,8 +217,9 @@ namespace ArtOfSimRally.Mod
         public KeyCode KeyRight     = KeyCode.Keypad6;
         public KeyCode KeyPitchDown = KeyCode.Keypad7;
         public KeyCode KeyPitchUp   = KeyCode.Keypad1;
-        public KeyCode KeyFovUp     = KeyCode.KeypadPlus;
-        public KeyCode KeyFovDown   = KeyCode.KeypadMinus;
+        // + zooms in (narrower), - zooms out (wider): owner 2026-11-01, "+/- are swapped from what I'd expect".
+        public KeyCode KeyFovUp     = KeyCode.KeypadMinus;
+        public KeyCode KeyFovDown   = KeyCode.KeypadPlus;
         public KeyCode KeyReset     = KeyCode.Keypad5;
 
         // ---- Shifter --------------------------------------------------------

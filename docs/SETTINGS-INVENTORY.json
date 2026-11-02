@@ -1766,7 +1766,7 @@
       "min": null,
       "max": null,
       "step": null,
-      "default": "KeypadPlus",
+      "default": "KeypadMinus",
       "classification": "runtime-only",
       "visibility": "adjustment bindings disclosure",
       "reason": "Runtime keyboard capture with reserved-key/conflict checks."
@@ -1785,7 +1785,7 @@
       "min": null,
       "max": null,
       "step": null,
-      "default": "KeypadMinus",
+      "default": "KeypadPlus",
       "classification": "runtime-only",
       "visibility": "adjustment bindings disclosure",
       "reason": "Runtime keyboard capture with reserved-key/conflict checks."
