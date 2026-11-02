@@ -109,7 +109,18 @@ internal sealed class ProjectionController
             return ProjectionOutcome.Degraded(layoutResult, "OUTPUT_WIDTH_UNSUPPORTED", "The combined output must provide at least one native-width viewport per panel.");
         }
 
-        var switching = settings.AllowOutputResolutionMismatch ? null
+        // Separate monitors (no Surround): one borderless window across the row instead (SpanWindow).
+        if (settings.EnableThreeViewPrototype && SpanWindow.Needed(output.CombinedWidthPx.Value))
+        {
+            var waiting = SpanWindow.Ensure(output.CombinedWidthPx.Value, output.CombinedHeightPx.Value);
+            if (waiting != null)
+            {
+                Release();
+                return ProjectionOutcome.Starting(layoutResult, "SPAN_WINDOW", waiting);
+            }
+        }
+        else SpanWindow.Release();
+        var switching = settings.AllowOutputResolutionMismatch || SpanWindow.Engaged ? null
             : RequestOutputSize(layoutResult, output.CombinedWidthPx.Value, output.CombinedHeightPx.Value, "the Surround span");
         if (!settings.AllowOutputResolutionMismatch &&
             (Screen.width != output.CombinedWidthPx.Value || Screen.height != output.CombinedHeightPx.Value))

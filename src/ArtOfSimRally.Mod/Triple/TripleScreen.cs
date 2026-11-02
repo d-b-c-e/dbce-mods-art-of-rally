@@ -313,7 +313,8 @@ internal static class TripleScreen
                 LogLayoutRefresh(Layout.Refresh(false));
                 _blockedByLegacyMod = LegacyModActive();
             }
-            if (_enabled && !_blockedByLegacyMod && _frame % 30 == 0) Landing.Update();
+            // The span window (SpanWindow) covers the whole row; the home-display landing would pull it back.
+            if (_enabled && !_blockedByLegacyMod && _frame % 30 == 0 && !SpanWindow.Engaged) Landing.Update();
             var layout = EffectiveLayout.Resolve(Layout.Current, _settings);
             ProjectionOutcome outcome;
             if (!_enabled)
