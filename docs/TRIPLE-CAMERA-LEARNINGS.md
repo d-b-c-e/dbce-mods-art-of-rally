@@ -105,6 +105,11 @@ Single-screen players keep the game's behaviour; the Game/Realistic choice only 
   fits the same pipeline: a curved ultrawide is a few virtual flat slices on a cylinder, each an off-axis view, warped
   by the curve, all in one window.
 - Future idea: an in-game overlay like AC's Triple Screen app (live diagram, sliders) for tweaking the rig per game.
+- **Owner vision for Wheelkit My Rig**: a config window like AC's where the user sets the number of monitors, resolution,
+  physical size, eye distance and curvature per display (including edge cases such as one 49" 32:9 at 1000R, about 68°
+  of arc, wrapping about 100° around an eye at 800 mm). A top-down diagram shows each display as a line or arc, the
+  head and the view cone, live. The example render corrects for that rig with the same toolkit projection code games
+  use. Requires generalising the toolkit's three-panel `TripleRigDefinition` into an N-display rig.
 
 ## 7. Wheelkit ideas from the owner
 
