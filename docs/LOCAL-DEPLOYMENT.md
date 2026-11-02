@@ -1,6 +1,16 @@
 # Local deployment
 
-## Current installation — 0.4.4-rc.29 (November 1, owner test)
+## Current installation — 0.4.4-rc.30 (November 1, owner test)
+
+Owner report 11-01 (Turtle Van cockpit, Realistic): dash and roof bar jump at the seams in every Shift+F7 mode, unlike
+Assetto Corsa. AC's `triple_screen.ini` puts the center screen at 0.660 m; ours subtracted the 1500R sagitta (42 mm).
+rc.30 (`05a3291`, toolkit `74c5eda`): eye distance is to the plane through the panel edges. ZIP SHA-256
+`894C5BB42E3E7E94CF09A3F232009F3DF53DA470B766884CF029E86C3721F384`; Mod.dll
+`F89ADCDF48DD5DC3534A0A503977126AB21B5F7B5423FEBCEFC73FF0019ACF29`. Installer 70, Triple 1356, toolkit core 25 passed.
+Game closed, lease vemi; payload 9/9; owner settings byte-identical. Rollback copy of rc.29:
+`E:\Source\temp\art-0.4.4-rc.30\backup-installed-rc.29`.
+
+## Previous installation — 0.4.4-rc.29 (November 1, owner test)
 
 Owner screenshot 11-01: the Turtle Van's bonnet camera inside the cab (measurement refused at 4.15 m tall; vertex
 sampling read its flat roof as a hole). rc.29 (`6021eab`): custom bodies sliced by their triangles, windscreen found

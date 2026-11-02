@@ -92,6 +92,20 @@ Single-screen players keep the game's behaviour; the Game/Realistic choice only 
   and the CSP files above. Portfolio decision pending the owner's opinion of it; Shutoko Revival Project 0.9.3 is
   installed as the "fun" content.
 
+## 6b. Decisions after the AC comparison (owner, 2026-11-01 evening)
+
+- **Eye distance is measured to the plane through the panel edges**, as AC and the FOV calculators take it. Our core
+  subtracted the curve's sagitta (42 mm at 1500R), placing the panels too close; near objects jumped at the seams in
+  every mode. Fixed in the shared core (toolkit `74c5eda`, Art rc.30). The curve now only warps the image.
+- **One borderless window spanning the screens is the only presentation mode** (AC/CSP style: three views drawn into
+  one 7680x1440 window at x -2560, no Surround needed). No separate-window fallback: the owner judged it extra plumbing
+  that is hard to maintain and another mode to test. Surround and non-Surround then share one code path. AC's margin 4
+  gives about 3.3 mm between images (we use the measured 8 mm).
+- **Ultrawide (32:9) users stay a goal**: proper cylindrical projection for curved ultrawides, as SimCurve does. This
+  fits the same pipeline: a curved ultrawide is a few virtual flat slices on a cylinder, each an off-axis view, warped
+  by the curve, all in one window.
+- Future idea: an in-game overlay like AC's Triple Screen app (live diagram, sliders) for tweaking the rig per game.
+
 ## 7. Wheelkit ideas from the owner
 
 - **My Rig live diagram**: a top-down drawing of the screens and the head that updates while width, distance, angle and
