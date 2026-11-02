@@ -173,8 +173,10 @@ internal static class TripleScreen
         var chase = angles == null || angle == null ? 1 : angles.IndexOf(angle) + 1;
         bool triples = _settings.EnableThreeViewPrototype || _settings.EnableSeparateDisplayPrototype;
         bool realistic = RealisticFor(kind);
+        // The Custom Vehicles cockpit keeps its own view; its Realistic set is Custom when it is not at the seat's true FOV.
         bool custom = kind == CameraOverlay.Kind.Chase ? ChaseFov.Custom(Main.Settings, chase - 1, realistic)
-            : kind != CameraOverlay.Kind.Cockpit && CameraMountMemory.FovCustom(Main.Settings, kind == CameraOverlay.Kind.Bumper, realistic);
+            : kind == CameraOverlay.Kind.Cockpit ? realistic && RealisticStartDegrees is double seat && Math.Abs(camera.fieldOfView - seat) > .5d
+            : CameraMountMemory.FovCustom(Main.Settings, kind == CameraOverlay.Kind.Bumper, realistic);
         _cameraName = CameraOverlay.Name(kind, chase, realistic, custom);
         _cameraHint = _cameraNote ?? CameraOverlay.Hint(kind, triples, realistic, Main.Settings.CameraTuningKeys);
         _cameraNote = null;

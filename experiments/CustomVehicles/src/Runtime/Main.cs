@@ -365,7 +365,14 @@ namespace RallyCustomVehicles
             Step("KeyUp", KeyCode.Keypad9, ref eyeAdjustment.y, .02f); Step("KeyDown", KeyCode.Keypad3, ref eyeAdjustment.y, -.02f);
             Step("KeyPitchDown", KeyCode.Keypad7, ref pitch, 1f); Step("KeyPitchUp", KeyCode.Keypad1, ref pitch, -1f);
             Step("KeyFovUp", KeyCode.KeypadPlus, ref fov, 2f); Step("KeyFovDown", KeyCode.KeypadMinus, ref fov, -2f);
-            if (Input.GetKeyDown(ArtKey("KeyReset", KeyCode.Keypad5))) { var d = CockpitViewStore.Default; eyeAdjustment = new Vector3(d[0], d[1], d[2]); pitch = d[3]; fov = d[4]; changed = true; }
+            // Reset returns the Realistic set to the seat's true field of view, not the Game default (owner 2026-11-01: a
+            // Realistic cockpit left at 47.6° bent the dashboard at the seams and reset could not bring it back).
+            if (Input.GetKeyDown(ArtKey("KeyReset", KeyCode.Keypad5)))
+            {
+                var d = CockpitViewStore.Default; eyeAdjustment = new Vector3(d[0], d[1], d[2]); pitch = d[3]; fov = d[4];
+                if (viewFor != null && viewFor.EndsWith("_realistic") && ArtRealisticDegrees() is double seat) fov = (float)Math.Round(seat, 1);
+                changed = true;
+            }
             if (changed) SaveView();
         }
         private static void ReleaseCamera(bool snap)
