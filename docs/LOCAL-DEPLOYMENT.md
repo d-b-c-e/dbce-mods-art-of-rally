@@ -1,6 +1,17 @@
 # Local deployment
 
-## Current installation — 0.4.4-rc.28 (November 1, owner test)
+## Current installation — 0.4.4-rc.29 (November 1, owner test)
+
+Owner screenshot 11-01: the Turtle Van's bonnet camera inside the cab (measurement refused at 4.15 m tall; vertex
+sampling read its flat roof as a hole). rc.29 (`6021eab`): custom bodies sliced by their triangles, windscreen found
+walking back from the front, cab-over handling, height limit 4.5 m. Camera settings were cleared again before this
+drive (backup `E:\Source\temp\art-camera-reset-20261101b`). ZIP SHA-256
+`30EE083568C3E677ED33B279E0A1CB3199CC922697257B93F34FAC30BABE4DA6`; Mod.dll
+`D0491D130998D6550A112A95F3CACA1088FA03A9F54FF1DA89A491ED4F94B92F`. Installer 70, CameraTuning 403 passed. Game closed,
+lease vemi; payload 9/9; owner settings byte-identical. Rollback copy of rc.28:
+`E:\Source\temp\art-0.4.4-rc.29\backup-installed-rc.28`.
+
+## Previous installation — 0.4.4-rc.28 (November 1, owner test)
 
 rc.27 plus the bumper view starting Realistic on triples (`a56c9e4`; owner decision after the Assetto Corsa comparison,
 docs/CAMERA.md "Triple-screen camera defaults"). ZIP SHA-256
