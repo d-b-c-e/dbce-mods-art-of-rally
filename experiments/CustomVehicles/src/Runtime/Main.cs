@@ -215,6 +215,39 @@ namespace RallyCustomVehicles
             visual.SetActive(true);
             status=activePackage.Manifest.name+" attached to "+car.name+". Cycle camera views for the cockpit.";
             entry.Logger.Log(status+" Body scale "+visual.transform.localScale+"; donor colliders unchanged.");
+            LogSizes();
+        }
+        // The custom body beside the donor's solid body (owner 2026-11-01: the Turtle Van may not match the game's scale).
+        // Only the wheelbase is matched; width and height are the model's own, so a mismatch shows here.
+        private static void LogSizes()
+        {
+            try
+            {
+                var donor = car.GetComponentsInChildren<MeshCollider>().Where(c => c.enabled && !c.isTrigger && c.sharedMesh != null && !c.transform.IsChildOf(visual.transform))
+                    .Select(c => (c.transform, c.sharedMesh.bounds));
+                var body = visual.GetComponentsInChildren<MeshFilter>().Where(f => f.sharedMesh != null).Select(f => (f.transform, f.sharedMesh.bounds));
+                var d = LocalSize(donor); var b = LocalSize(body);
+                if (d == null || b == null) { entry.Logger.Log("Size check: could not measure the donor or the body."); return; }
+                float w = b.Value.x / d.Value.x, h = b.Value.y / d.Value.y, l = b.Value.z / d.Value.z;
+                bool off = Mathf.Abs(w - 1f) > .15f || Mathf.Abs(h - 1f) > .15f || Mathf.Abs(l - 1f) > .15f;
+                entry.Logger.Log($"Size check: {activePackage.Manifest.name} {b.Value.x:0.00} wide x {b.Value.y:0.00} high x {b.Value.z:0.00} long; " +
+                    $"donor {car.name.Replace("(Clone)", "")} {d.Value.x:0.00} x {d.Value.y:0.00} x {d.Value.z:0.00} m (x{w:0.00} / x{h:0.00} / x{l:0.00})" +
+                    (off ? ". More than 15% from the donor: the model may not match the game's scale." : "."));
+            }
+            catch (Exception ex) { entry.Logger.Log("Size check skipped: " + ex.Message); }
+        }
+        // Width, height, length of mesh boxes in the car's own space (each box turned with its mesh, not world-aligned).
+        private static Vector3? LocalSize(IEnumerable<(Transform owner, Bounds box)> boxes)
+        {
+            bool any = false; Vector3 min = Vector3.zero, max = Vector3.zero;
+            foreach (var (owner, box) in boxes)
+                for (int i = 0; i < 8; i++)
+                {
+                    var corner = new Vector3((i & 1) == 0 ? box.min.x : box.max.x, (i & 2) == 0 ? box.min.y : box.max.y, (i & 4) == 0 ? box.min.z : box.max.z);
+                    var p = car.transform.InverseTransformPoint(owner.TransformPoint(corner));
+                    if (!any) { min = max = p; any = true; } else { min = Vector3.Min(min, p); max = Vector3.Max(max, p); }
+                }
+            return any ? max - min : (Vector3?)null;
         }
 
         internal static void PopulateModel(VehiclePackage package, GameObject root, int layer, Dictionary<string, Transform> groups, List<UnityEngine.Object> resources)
