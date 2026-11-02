@@ -1,6 +1,17 @@
 # Local deployment
 
-## Current installation — 0.4.4-rc.32 (November 1, owner test)
+## Current installation — 0.4.4-rc.33 (November 1, owner test: spanning window)
+
+rc.32 plus the span window (`0b6f821`): span mode on separate monitors makes one borderless 7680x1440 window at the
+racing row's origin (AC/CSP style) instead of side windows. TripleScreen.xml switched for the test:
+EnableThreeViewPrototype true, EnableSeparateDisplayPrototype false (before:
+`E:\Source\temp\art-0.4.4-rc.33\TripleScreen.before-span.xml`; restore it to go back to separate windows). ZIP SHA-256
+`E1730EAF71B2E7F6A1D829920554917D3F2BC4E3AB908994C98923AA49774A4D`; Mod.dll
+`D456059076D4F1299A18795514ADCE490F7DB5525C3F34DC70BF2E9F188249FB`. Installer 70, Triple 1356, SettingsUi 3572 passed.
+Game closed, lease vemi; payload 9/9; Settings.xml byte-identical. Rollback copy of rc.32:
+`E:\Source\temp\art-0.4.4-rc.33\backup-installed-rc.32`. Log lines: "Span window: ...".
+
+## Previous installation — 0.4.4-rc.32 (November 1, owner test)
 
 rc.31 plus numpad + zooms in and - zooms out (`81efa1c`; owner: "+/- are swapped"); untouched key sets migrate on load.
 ZIP SHA-256 `B3AFFD8AB8525BBBA98345C2DBF2E59719C00D6A5C02F130FF6CB945ABF2DBA1`; Mod.dll
