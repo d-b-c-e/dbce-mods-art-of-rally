@@ -17,11 +17,9 @@ public sealed class Settings : UnityModManager.ModSettings
     // automatically by an imported layout or a package update.
     public bool EnableThreeViewPrototype;
 
-    // Independent physical-display path. Requires a separate-displays layout,
-    // three Windows monitors, the center as primary, and an attended restart.
+    // Legacy (owner 2026-11-01): the separate-windows mode was removed; one window across the monitors is the only
+    // triple-screen mode. Read once on load: true turns EnableThreeViewPrototype on and is cleared (TripleScreen.Load).
     public bool EnableSeparateDisplayPrototype;
-    public int LeftDisplayIndex = 1;
-    public int RightDisplayIndex = 2;
 
     // Owner policy 2026-10-29 (ISS-0005): the game's field of view is the default framing for every camera; the
     // measured perspective (true) is opt-in. Saved files keep their value.

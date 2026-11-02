@@ -10,9 +10,8 @@ using UnityEngine.Rendering.PostProcessing;
 namespace ArtOfSimRally.Mod.Triple;
 
 /// <summary>
-/// Sends physical off-axis views directly to three independent Unity displays.
-/// Unlike the Surround prototype, this path has no wide render target or
-/// compositor. Secondary-display activation persists until the game exits.
+/// Renders three physical off-axis views as viewports of one wide window (Surround, or SpanWindow across separate
+/// monitors). The class name is historical: the separate-displays mode it was written for was removed 2026-11-01.
 /// </summary>
 [DefaultExecutionOrder(10000)]
 internal sealed class SeparateDisplayRenderDriver : MonoBehaviour
@@ -36,12 +35,7 @@ internal sealed class SeparateDisplayRenderDriver : MonoBehaviour
     private string _layoutHash;
     private Rect _originalRect;
     private int _originalTargetDisplay;
-    private int _leftDisplayIndex;
-    private int _rightDisplayIndex;
-    private bool _spanMode;
     private bool _configured;
-    private bool _wasFocused;
-    private int _raiseWindowsAfterFrame = -1;
     // Curved panels: each view renders to a texture and a presenter per display redraws it along the eye rays.
     private CurvedPanelWarp[] _warps;
     private string _curveLayout;
@@ -81,9 +75,7 @@ internal sealed class SeparateDisplayRenderDriver : MonoBehaviour
                                          _sides[0].GetComponent<HxVolumetricImageEffect>()?.enabled == true ? 1 : 0) +
                                         (_sides[1] != null && _sides[1].GetComponent<HxVolumetricCamera>()?.enabled == true &&
                                          _sides[1].GetComponent<HxVolumetricImageEffect>()?.enabled == true ? 1 : 0);
-    internal int LastRaisedSideWindowCount { get; private set; }
     internal string RenderError { get; private set; }
-    internal bool SpanMode => _spanMode;
 
     private void Awake()
     {
@@ -94,27 +86,13 @@ internal sealed class SeparateDisplayRenderDriver : MonoBehaviour
         _originalTargetTexture = _source.targetTexture;
     }
 
-    internal void Configure(string layoutHash, Matrix4x4[] projections, Quaternion[] rotations, int leftDisplayIndex, int rightDisplayIndex,
-        CurvedPanelWarp[] warps = null, int panelWidthPx = 0, int panelHeightPx = 0)
-    {
-        if (_source == null) throw new InvalidOperationException("The gameplay camera is unavailable.");
-        if (projections == null || projections.Length != 3 || rotations == null || rotations.Length != 3)
-            throw new ArgumentException("Exactly three projections and rotations are required.");
-        if (leftDisplayIndex < 1 || rightDisplayIndex < 1 || leftDisplayIndex == rightDisplayIndex ||
-            leftDisplayIndex >= Display.displays.Length || rightDisplayIndex >= Display.displays.Length)
-            throw new ArgumentOutOfRangeException(nameof(leftDisplayIndex), "Two distinct secondary Unity display indices are required.");
-
-        ConfigureCore(layoutHash, projections, rotations, false, leftDisplayIndex, rightDisplayIndex);
-        ConfigureCurve(warps, panelWidthPx, panelHeightPx);
-    }
-
     internal void ConfigureSpan(string layoutHash, Matrix4x4[] projections, Quaternion[] rotations,
         CurvedPanelWarp[] warps = null, int panelWidthPx = 0, int panelHeightPx = 0)
     {
         if (_source == null) throw new InvalidOperationException("The gameplay camera is unavailable.");
         if (projections == null || projections.Length != 3 || rotations == null || rotations.Length != 3)
             throw new ArgumentException("Exactly three projections and rotations are required.");
-        ConfigureCore(layoutHash, projections, rotations, true, 0, 0);
+        ConfigureCore(layoutHash, projections, rotations);
         ConfigureCurve(warps, panelWidthPx, panelHeightPx);
     }
 
@@ -126,7 +104,7 @@ internal sealed class SeparateDisplayRenderDriver : MonoBehaviour
             CurveFailure = null;
             return;
         }
-        var layout = $"{_spanMode}|{_leftDisplayIndex}|{_rightDisplayIndex}|{panelWidthPx}x{panelHeightPx}";
+        var layout = $"{panelWidthPx}x{panelHeightPx}";
         if (ReferenceEquals(warps, _warps) && layout == _curveLayout)
         {
             foreach (var presenter in _presenters)
@@ -151,23 +129,10 @@ internal sealed class SeparateDisplayRenderDriver : MonoBehaviour
             if (!_targets[index].Create()) { FailCurve("a curved view's render target could not be created."); return; }
         }
         var depth = _source.depth + 10f;
-        if (_spanMode)
-        {
-            var presenter = CurvedPanelPresenter.Create("DBCE Curved Presenter", transform, 0, depth);
-            for (var index = 0; index < 3; index++)
-                presenter.Add(_targets[index], new Rect(index / 3f, 0f, 1f / 3f, 1f), warps[index]);
-            _presenters.Add(presenter);
-        }
-        else
-        {
-            var displays = new[] { _leftDisplayIndex, 0, _rightDisplayIndex };
-            for (var index = 0; index < 3; index++)
-            {
-                var presenter = CurvedPanelPresenter.Create("DBCE Curved Presenter " + index, transform, displays[index], depth);
-                presenter.Add(_targets[index], new Rect(0f, 0f, 1f, 1f), warps[index]);
-                _presenters.Add(presenter);
-            }
-        }
+        var span = CurvedPanelPresenter.Create("DBCE Curved Presenter", transform, 0, depth);
+        for (var index = 0; index < 3; index++)
+            span.Add(_targets[index], new Rect(index / 3f, 0f, 1f / 3f, 1f), warps[index]);
+        _presenters.Add(span);
     }
 
     /// <summary>Set when the last curved configuration could not run; the caller latches flat output.</summary>
@@ -237,13 +202,10 @@ internal sealed class SeparateDisplayRenderDriver : MonoBehaviour
         }
     }
 
-    private void ConfigureCore(string layoutHash, Matrix4x4[] projections, Quaternion[] rotations,
-        bool spanMode, int leftDisplayIndex, int rightDisplayIndex)
+    private void ConfigureCore(string layoutHash, Matrix4x4[] projections, Quaternion[] rotations)
     {
-        // An old frame must never certify a new layout or a remapped display.
-        if (!string.Equals(_layoutHash, layoutHash, StringComparison.Ordinal) ||
-            _spanMode != spanMode ||
-            _leftDisplayIndex != leftDisplayIndex || _rightDisplayIndex != rightDisplayIndex)
+        // An old frame must never certify a new layout.
+        if (!string.Equals(_layoutHash, layoutHash, StringComparison.Ordinal))
         {
             _layoutHash = layoutHash;
             SuccessfulCenterFrames = 0;
@@ -259,17 +221,9 @@ internal sealed class SeparateDisplayRenderDriver : MonoBehaviour
             _rotations[index] = rotations[index];
         }
 
-        _leftDisplayIndex = leftDisplayIndex;
-        _rightDisplayIndex = rightDisplayIndex;
-        _spanMode = spanMode;
         EnsureSideColorVolume();
         EnsureSideCameras();
         ExpandVegetationVisibility();
-        if (!spanMode)
-        {
-            ActivateIfNeeded(_leftDisplayIndex);
-            ActivateIfNeeded(_rightDisplayIndex);
-        }
         _configured = true;
         enabled = true;
         RenderError = null;
@@ -278,11 +232,7 @@ internal sealed class SeparateDisplayRenderDriver : MonoBehaviour
     internal void Release()
     {
         _configured = false;
-        _spanMode = false;
         enabled = false;
-        _wasFocused = false;
-        _raiseWindowsAfterFrame = -1;
-        LastRaisedSideWindowCount = 0;
         _layoutHash = null;
         SuccessfulCenterFrames = 0;
         LastCenterFrame = -1;
@@ -321,11 +271,6 @@ internal sealed class SeparateDisplayRenderDriver : MonoBehaviour
         _lastColorRefresh = 0f;
         SideColorGradeError = null;
         SideEffectSummary = "none";
-    }
-
-    private static void ActivateIfNeeded(int index)
-    {
-        if (!Display.displays[index].active) Display.displays[index].Activate();
     }
 
     private void EnsureSideColorVolume()
@@ -432,9 +377,6 @@ internal sealed class SeparateDisplayRenderDriver : MonoBehaviour
         if (!_configured || _source == null) return;
         try
         {
-            var focused = Application.isFocused;
-            if (focused && !_wasFocused) _raiseWindowsAfterFrame = Time.frameCount + 1;
-            _wasFocused = focused;
             var sourceEffects = _source.GetComponent<PostProcessLayer>();
             for (var index = 0; index < 2; index++)
             {
@@ -447,8 +389,8 @@ internal sealed class SeparateDisplayRenderDriver : MonoBehaviour
                 // when physical properties are enabled.
                 view.usePhysicalProperties = true;
                 view.targetTexture = Curved ? _targets[index == 0 ? 0 : 2] : null;
-                view.targetDisplay = _spanMode ? 0 : index == 0 ? _leftDisplayIndex : _rightDisplayIndex;
-                view.rect = _spanMode && !Curved ? SpanRect(index == 0 ? 0 : 2) : new Rect(0f, 0f, 1f, 1f);
+                view.targetDisplay = 0;
+                view.rect = !Curved ? SpanRect(index == 0 ? 0 : 2) : new Rect(0f, 0f, 1f, 1f);
                 view.depth = _source.depth + index + 1f;
                 view.stereoTargetEye = StereoTargetEyeMask.None;
                 view.transform.position = _source.transform.position;
@@ -458,12 +400,6 @@ internal sealed class SeparateDisplayRenderDriver : MonoBehaviour
                 view.enabled = true;
             }
             if (Curved) _source.targetTexture = _targets[1];
-            if (focused && _raiseWindowsAfterFrame >= 0 && Time.frameCount >= _raiseWindowsAfterFrame)
-            {
-                try { LastRaisedSideWindowCount = SideWindowFocusRestorer.Raise(); }
-                catch { LastRaisedSideWindowCount = 0; }
-                _raiseWindowsAfterFrame = -1;
-            }
             RenderError = null;
         }
         catch (Exception exception)
@@ -478,7 +414,7 @@ internal sealed class SeparateDisplayRenderDriver : MonoBehaviour
     {
         if (!_configured || _source == null) return;
         _source.targetDisplay = 0;
-        _source.rect = _spanMode && !Curved ? SpanRect(1) : new Rect(0f, 0f, 1f, 1f);
+        _source.rect = !Curved ? SpanRect(1) : new Rect(0f, 0f, 1f, 1f);
         _source.projectionMatrix = _projections[1];
     }
 

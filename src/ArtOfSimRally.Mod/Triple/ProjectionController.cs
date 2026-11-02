@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Dbce.TripleScreen;
-using Dbce.Wheel.Display;
 using Dbce.TripleScreen.Protocol;
 using UnityEngine;
 using UnityEngine.Rendering.PostProcessing;
@@ -16,30 +15,8 @@ internal sealed class ProjectionController
     private CenterProjectionDriver _centerDriver;
     private SeparateDisplayRenderDriver _separateDriver;
     private readonly OutputResolution _outputResolution = new OutputResolution();
-    // Side displays for this process (sana 81386). Activation cannot be undone, so the proof and any failure last
-    // until exit: no other monitor is tried after a mismatch.
-    private static SideActivationWitness s_sideWitness;
-    private static SideDisplaySelector.Result s_sideSelection;
-    private static float s_sideSelectionTime = float.NegativeInfinity;
-
-    /// <summary>Evidence for render-diagnostics: how the side displays were chosen and proven.</summary>
-    internal static object SideMappingEvidence => new
-    {
-        selectionCode = s_sideSelection?.Code,
-        selectionMessage = s_sideSelection?.Message,
-        predictedLeftIndex = s_sideSelection?.LeftIndex,
-        predictedRightIndex = s_sideSelection?.RightIndex,
-        phase = s_sideWitness?.Current.ToString() ?? "NotStarted",
-        code = s_sideWitness?.Code,
-        message = s_sideWitness?.Message,
-        observations = s_sideWitness?.Observations.ToArray(),
-        note = "Saved LeftDisplayIndex/RightDisplayIndex are not used. Unity's position-sorted display order predicts the " +
-               "side indices; each side is proven by the window it opens before side views render.",
-    };
-
     internal double? CenterVerticalFovDegrees { get; private set; }
-    internal long SuccessfulWideFrames => _separateDriver?.SpanMode == true
-        ? _separateDriver.SuccessfulCenterFrames : 0;
+    internal long SuccessfulWideFrames => _separateDriver?.SuccessfulCenterFrames ?? 0;
     internal DateTime? LastSuccessfulWideFrameUtc => SuccessfulWideFrames == 0
         ? (DateTime?)null : _separateDriver.LastCenterFrameUtc;
     internal bool SeparateDisplaysRendered => _separateDriver != null && _separateDriver.AllDisplaysRendered;
@@ -54,13 +31,11 @@ internal sealed class ProjectionController
     internal int SideBeautifyCount => _separateDriver?.SideBeautifyCount ?? 0;
     internal string SampleCurveLuminance() => _separateDriver?.SampleCurveLuminance();
     internal int SideVolumetricCount => _separateDriver?.SideVolumetricCount ?? 0;
-    internal int LastRaisedSideWindowCount => _separateDriver?.LastRaisedSideWindowCount ?? 0;
     internal double ActiveViewWidthScale { get; private set; } = 1d;
 
     internal ProjectionOutcome Update(LayoutLoadResult layoutResult, Settings settings)
     {
-        if (!settings.EnableCenterPanelPreview && !settings.EnableThreeViewPrototype &&
-            !settings.EnableSeparateDisplayPrototype)
+        if (!settings.EnableCenterPanelPreview && !settings.EnableThreeViewPrototype)
         {
             Release();
             return ProjectionOutcome.Inactive(layoutResult, "FEATURE_DISABLED", "Triple-screen rendering is off; stock rendering is active.");
@@ -80,15 +55,6 @@ internal sealed class ProjectionController
         {
             Release();
             return ProjectionOutcome.Rejected("LAYOUT_INVALID", "The desired layout is missing a required object.");
-        }
-
-        if (output.Mode == "separate-displays")
-            return UpdateSeparateDisplays(layoutResult, settings);
-
-        if (!settings.EnableCenterPanelPreview && !settings.EnableThreeViewPrototype)
-        {
-            Release();
-            return ProjectionOutcome.Inactive(layoutResult, "FEATURE_DISABLED", "Triple-screen rendering is disabled; stock rendering is unchanged.");
         }
 
         if (!output.CombinedWidthPx.HasValue || !output.CombinedHeightPx.HasValue)
@@ -130,7 +96,7 @@ internal sealed class ProjectionController
                 layoutResult,
                 "OUTPUT_RESOLUTION_MISMATCH",
                 Display.main.systemWidth != output.CombinedWidthPx.Value
-                    ? $"Game output is {Screen.width}x{Screen.height}; the span needs {output.CombinedWidthPx.Value}x{output.CombinedHeightPx.Value}. Turn on NVIDIA Surround, or choose separate monitors."
+                    ? $"Game output is {Screen.width}x{Screen.height}; the span needs {output.CombinedWidthPx.Value}x{output.CombinedHeightPx.Value}. Turn on NVIDIA Surround, or arrange the three monitors side by side in Windows."
                     : $"Game output is {Screen.width}x{Screen.height}; the span needs {output.CombinedWidthPx.Value}x{output.CombinedHeightPx.Value}. Choose that resolution in the game's display options.");
         }
 
@@ -138,7 +104,7 @@ internal sealed class ProjectionController
         var rig = camera == null || camera.transform.parent == null
             ? null
             : camera.transform.parent.GetComponent<CarCameras>();
-        var continuingSpanCamera = camera != null && camera == _camera && _separateDriver?.SpanMode == true;
+        var continuingSpanCamera = camera != null && camera == _camera && _separateDriver != null;
         if (camera == null || rig == null || (!rig.enabled && !continuingSpanCamera) || camera.name != "Camera Main")
         {
             Release();
@@ -239,132 +205,6 @@ internal sealed class ProjectionController
             $"Switching the game output from {from} to {width}x{height} for {purpose}.");
     }
 
-    private ProjectionOutcome UpdateSeparateDisplays(LayoutLoadResult layoutResult, Settings settings)
-    {
-        var panel = layoutResult.Document.Panel;
-        var geometry = layoutResult.Document.Geometry;
-        if (!settings.EnableSeparateDisplayPrototype)
-        {
-            Release();
-            return ProjectionOutcome.Inactive(layoutResult, "SEPARATE_DISPLAY_OPT_IN_REQUIRED",
-                "The independent-display experiment is off; stock rendering remains active.");
-        }
-
-        if (settings.EnableThreeViewPrototype || settings.EnableCenterPanelPreview)
-        {
-            Release();
-            return ProjectionOutcome.Degraded(layoutResult, "RENDER_MODE_CONFLICT",
-                "Turn off the Surround three-view and center-preview options before using independent displays.");
-        }
-
-        var switching = RequestOutputSize(layoutResult, panel.NativeWidthPx, panel.NativeHeightPx, "the center monitor");
-        if (Screen.width != panel.NativeWidthPx || Screen.height != panel.NativeHeightPx)
-        {
-            Release();
-            return switching ?? ProjectionOutcome.Degraded(layoutResult, "PRIMARY_DISPLAY_MISMATCH",
-                $"Primary game output is {Screen.width}x{Screen.height}; independent displays require the center monitor at {panel.NativeWidthPx}x{panel.NativeHeightPx}.");
-        }
-
-        // The side displays come from the racing row Windows shows, so a dashboard or other extra display is never
-        // used; the saved LeftDisplayIndex/RightDisplayIndex are not read (sana 81386). Nothing is activated here.
-        if (s_sideWitness == null)
-        {
-            var selection = SelectSideDisplays(panel);
-            if (!selection.Ok)
-            {
-                Release();
-                return ProjectionOutcome.Degraded(layoutResult, selection.Code, selection.Message);
-            }
-        }
-        else if (s_sideWitness.Current == SideActivationWitness.Phase.Failed)
-        {
-            Release();
-            return ProjectionOutcome.Degraded(layoutResult, s_sideWitness.Code, s_sideWitness.Message);
-        }
-
-        var camera = Camera.main;
-        var rig = camera == null || camera.transform.parent == null
-            ? null : camera.transform.parent.GetComponent<CarCameras>();
-        // The game's CameraManager disables CarCameras at the finish line and
-        // enables CinemachineBrain on the same Stage Camera. Keep an already
-        // armed three-display driver on that Camera Main through the handoff.
-        var continuingStageCamera = camera != null && camera == _camera && _separateDriver != null;
-        if (camera == null || rig == null || (!rig.enabled && !continuingStageCamera) || camera.name != "Camera Main")
-        {
-            Release();
-            return ProjectionOutcome.Starting(layoutResult, "STAGE_CAMERA_WAIT",
-                "Waiting for the active gameplay camera. Menus remain on the primary center display.");
-        }
-
-        var postProcessing = camera.GetComponent<PostProcessLayer>();
-        if (postProcessing != null && postProcessing.antialiasingMode == PostProcessLayer.Antialiasing.TemporalAntialiasing)
-        {
-            Release();
-            return ProjectionOutcome.Degraded(layoutResult, "TAA_UNSUPPORTED",
-                "Temporal anti-aliasing can reset custom projection matrices; select another AA mode for this experiment.");
-        }
-
-        // Activation happens only here, at the gameplay camera, one side at a time, and only once the game's main window
-        // is confirmed on the row's center display: no side camera renders until both sides are proven by the windows
-        // they open.
-        if (s_sideWitness == null)
-            s_sideWitness = new SideActivationWitness(s_sideSelection.LeftIndex, s_sideSelection.RightIndex,
-                s_sideSelection.Left, s_sideSelection.Center, s_sideSelection.Right);
-        if (s_sideWitness.Current != SideActivationWitness.Phase.Proven)
-        {
-            SideActivationWitness.MainWindow main;
-            IReadOnlyList<SideActivationWitness.SecondaryWindow> windows;
-            try
-            {
-                main = SecondaryDisplayWindows.ReadMain();
-                windows = SecondaryDisplayWindows.Read();
-            }
-            catch (Exception exception)
-            {
-                Release();
-                return ProjectionOutcome.Error(layoutResult, "SECONDARY_WINDOW_READ_FAILED", SafeMessage(exception.Message));
-            }
-            var phase = s_sideWitness.Step(Time.realtimeSinceStartup, main, windows, index => Display.displays[index].Activate());
-            // Failed is final; NotStarted means the center display is not confirmed yet and nothing was activated.
-            if (phase == SideActivationWitness.Phase.Failed || phase == SideActivationWitness.Phase.NotStarted)
-            {
-                Release();
-                return ProjectionOutcome.Degraded(layoutResult, s_sideWitness.Code, s_sideWitness.Message);
-            }
-            if (phase != SideActivationWitness.Phase.Proven)
-                return ProjectionOutcome.Starting(layoutResult, s_sideWitness.Code, s_sideWitness.Message);
-        }
-
-        try
-        {
-            var viewWidthScale = ResolveViewWidthScale(panel, geometry, camera, settings);
-            var definition = Rig(panel, geometry, viewWidthScale, settings);
-            var surfaces = TripleRigBuilder.Build(definition);
-            ActiveViewWidthScale = viewWidthScale;
-            EnsureSeparateDriver(camera);
-            ConfigureViews(surfaces, definition, settings,
-                $"separate|{s_sideWitness.LeftIndex}|{s_sideWitness.RightIndex}|{panel.NativeWidthPx}x{panel.NativeHeightPx}", warps =>
-            {
-                var (projections, rotations) = Views(surfaces, warps, camera);
-                _separateDriver.Configure(layoutResult.Sha256, projections, rotations, s_sideWitness.LeftIndex, s_sideWitness.RightIndex,
-                    warps, panel.NativeWidthPx, panel.NativeHeightPx);
-            });
-            if (_separateDriver.RenderError != null)
-                return ProjectionOutcome.Error(layoutResult, "SEPARATE_DISPLAY_RENDER_ERROR", _separateDriver.RenderError);
-            if (!_separateDriver.AllDisplaysRendered)
-                return ProjectionOutcome.Starting(layoutResult, "SEPARATE_DISPLAYS_ARMED",
-                    "Three physical views are armed; waiting for all three cameras to finish a frame.");
-            return ProjectionOutcome.SeparateViewActive(layoutResult, _separateDriver.LastThreeViewFrameUtc,
-                "SEPARATE_DISPLAYS_EXPERIMENTAL",
-                $"Three cameras target independent Unity displays with {FovDescription(settings, camera)}.{CurveDescription} Side post-processing, UI routing, FPS and scanout remain under test.");
-        }
-        catch (Exception exception)
-        {
-            Release();
-            return ProjectionOutcome.Error(layoutResult, "SEPARATE_DISPLAY_ERROR", SafeMessage(exception.Message));
-        }
-    }
-
     internal void Release()
     {
         if (_centerDriver != null)
@@ -417,11 +257,9 @@ internal sealed class ProjectionController
 
     // The F7 "Angle correction" step keeps the angled views and drops only the warp.
     private static double RequestedCurve(Settings settings) =>
-        TripleScreen.SessionStep == ComparisonStep.Angle || Original ? 0d : SavedCurve(settings);
+        TripleScreen.SessionStep == ComparisonStep.Angle ? 0d : SavedCurve(settings);
 
-    // F7 "Original game view" on separate displays (ISS-0014): the activated side displays cannot be switched off, so
-    // releasing froze them on their last frame. Instead all three render one flat plane at the game's framing (no
-    // side angle, bezel gap or curve), the separate-display equivalent of the stock wide view.
+    // Shift+F7 "Original game view": TripleScreen releases to stock rendering for it.
     private static bool Original => TripleScreen.SessionStep == ComparisonStep.Original;
 
     internal bool CurveActive => _curve.Warps != null && _curve.Failure == null;
@@ -438,10 +276,10 @@ internal sealed class ProjectionController
 
     private static TripleRigDefinition Rig(PanelDocument panel, GeometryDocument geometry, double viewWidthScale, Settings settings)
     {
-        var bezel = settings.UseLocalLayout && !Original ? panel.BezelWidthMm : 0d;
+        var bezel = settings.UseLocalLayout ? panel.BezelWidthMm : 0d;
         var radius = RequestedCurve(settings);
         TripleRigDefinition Build(double curve) => new(panel.PhysicalWidthMm, panel.PhysicalHeightMm,
-            geometry.EyeDistanceMm / viewWidthScale, Original ? 0d : geometry.LeftYawDegrees, Original ? 0d : geometry.RightYawDegrees,
+            geometry.EyeDistanceMm / viewWidthScale, geometry.LeftYawDegrees, geometry.RightYawDegrees,
             geometry.EyeHeightAbovePanelCenterMm, bezel, curve);
         try { return Build(radius); }
         catch (ArgumentOutOfRangeException) when (radius > 0d) { return Build(0d); }
@@ -559,25 +397,6 @@ internal sealed class ProjectionController
 
     private string FovDescription(Settings settings, Camera camera) =>
         $"a {camera.fieldOfView:0}° camera field of view" + (LastChaseView ? " (chase view, the game's)" : Realistic(settings) ? " (Realistic set)" : " (Game set)");
-
-    // The racing-row prediction, refreshed at most once a second until activation starts.
-    private static SideDisplaySelector.Result SelectSideDisplays(PanelDocument panel)
-    {
-        var now = Time.realtimeSinceStartup;
-        if (s_sideSelection != null && now - s_sideSelectionTime < 1f) return s_sideSelection;
-        s_sideSelectionTime = now;
-        try
-        {
-            var unity = Display.displays.Select(display => (display.systemWidth, display.systemHeight)).ToArray();
-            s_sideSelection = SideDisplaySelector.Select(WindowsMonitors.Read(), unity, Environment.GetCommandLineArgs(),
-                panel.NativeWidthPx, panel.NativeHeightPx);
-        }
-        catch (Exception exception)
-        {
-            s_sideSelection = new SideDisplaySelector.Result { Ok = false, Code = "DISPLAY_READ_FAILED", Message = SafeMessage(exception.Message) };
-        }
-        return s_sideSelection;
-    }
 
     private static string SafeMessage(string message)
     {

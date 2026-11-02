@@ -15,7 +15,7 @@ internal sealed class ResolvedLayoutSource
     {
         var key = string.Join("|", imported.Sha256 ?? imported.ErrorCode ?? "missing",
             settings.UseLocalLayout, settings.ManualSetupConfirmed, settings.EnableThreeViewPrototype,
-            settings.EnableSeparateDisplayPrototype, settings.PanelWidthPx, settings.PanelHeightPx,
+            settings.PanelWidthPx, settings.PanelHeightPx,
             settings.PanelWidthMm, settings.PanelHeightMm, settings.EyeDistanceMm,
             settings.LeftYawDegrees, settings.RightYawDegrees, settings.BezelGapMm, settings.CurveRadiusMm);
         if (key == _key && _result != null) return _result;
@@ -27,16 +27,15 @@ internal sealed class ResolvedLayoutSource
             return _result = LayoutLoadResult.Failure("LAYOUT_NOT_CONFIGURED", "No imported layout is available. Open Advanced setup to enter your screen measurements.");
 
         var input = settings.UseLocalLayout ? LocalDocument(settings) : imported.Document;
-        var mode = settings.EnableSeparateDisplayPrototype ? "separate-displays" :
-            !settings.UseLocalLayout && (input.Output?.Mode == "borderless-span" || input.Output?.Mode == "nvidia-surround")
+        var mode = !settings.UseLocalLayout && (input.Output?.Mode == "borderless-span" || input.Output?.Mode == "nvidia-surround")
                 ? input.Output.Mode : "nvidia-surround";
         var output = new OutputDocument { Mode = mode };
-        if (mode != "separate-displays" && !settings.UseLocalLayout && input.Output?.Mode == mode)
+        if (!settings.UseLocalLayout && input.Output?.Mode == mode)
         {
             output.CombinedWidthPx = input.Output.CombinedWidthPx;
             output.CombinedHeightPx = input.Output.CombinedHeightPx;
         }
-        else if (mode != "separate-displays" && input.Panel != null)
+        else if (input.Panel != null)
         {
             var width = (long)input.Panel.NativeWidthPx * 3;
             if (width <= int.MaxValue) output.CombinedWidthPx = (int)width;

@@ -16,8 +16,6 @@ internal sealed class RenderDiagnostics
     private float _lastSampleTime = -1f;
     private int _lastSampleFrame;
     private string _lastPresentation;
-    private string _lastObservedRow;
-    private string _lastIdentity;
     private string _lastCurveLuminance;
     private int _curveLuminanceLines;
 
@@ -55,20 +53,6 @@ internal sealed class RenderDiagnostics
         PresentationSummary = $"{Screen.width}x{Screen.height}, {Screen.fullScreenMode}, " +
                               $"VSync requested {requestedVsync} / effective {effectiveVsync}, " +
                               $"display {Screen.currentResolution.refreshRate} Hz";
-        // Windows' displays as the shared selector sees them: evidence beside Unity's list, never a mapping to it.
-        var observedRow = ObservedRacingRow.Observe();
-        if (observedRow.Summary != _lastObservedRow)
-        {
-            _lastObservedRow = observedRow.Summary;
-            _logger.Log("Observed racing row: " + observedRow.Summary);
-        }
-        // Candidate links from Unity's display indices to those displays: evidence only, nothing is activated or chosen.
-        var identity = UnityDisplayIdentity.Observe();
-        if (identity.Summary != _lastIdentity)
-        {
-            _lastIdentity = identity.Summary;
-            _logger.Log("Unity display identity (diagnostic only): " + identity.Summary);
-        }
         // Opt-in GPU readback (presenter contract section 5): only with "Log detail for support".
         var curveLuminance = Main.Settings?.DiagnosticLogging == true ? projection.SampleCurveLuminance() : null;
         if (curveLuminance != null && curveLuminance != _lastCurveLuminance && _curveLuminanceLines++ < 30)   // about five minutes of log lines; the JSON keeps updating
@@ -116,7 +100,6 @@ internal sealed class RenderDiagnostics
             sourceVolumetricEnabled = camera != null && camera.GetComponent<HxVolumetricCamera>()?.enabled == true &&
                                       camera.GetComponent<HxVolumetricImageEffect>()?.enabled == true,
             sideVolumetricCount = projection.SideVolumetricCount,
-            lastRaisedSideWindowCount = projection.LastRaisedSideWindowCount,
             frustumShadowComponentCount = UnityEngine.Object.FindObjectsOfType<NGSS_FrustumShadows>().Length,
             shadowDistance = QualitySettings.shadowDistance,
             sourceVerticalFovDegrees = camera == null ? (float?)null : camera.fieldOfView,
@@ -151,9 +134,6 @@ internal sealed class RenderDiagnostics
                 renderingWidth = display.renderingWidth,
                 renderingHeight = display.renderingHeight
             }).ToArray(),
-            observedRacingRow = observedRow,
-            unityDisplayIdentity = identity,
-            sideMapping = ProjectionController.SideMappingEvidence,
             note = "VSync is the Unity request, not proof of synchronized display scanout. " +
                    "Update FPS, render CPU time, and camera callback span are not GPU/present timing. " +
                    "Active physical projection replaces camera FOV but preserves camera pitch and position."

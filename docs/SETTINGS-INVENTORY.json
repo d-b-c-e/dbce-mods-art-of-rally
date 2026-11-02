@@ -2177,7 +2177,7 @@
       "key": "EnableThreeViewPrototype",
       "source": "src/ArtOfSimRally.Mod/Triple/Settings.cs",
       "page": "Cameras",
-      "label": "Triple screens",
+      "label": "Triple screens: one window across the monitors",
       "type": "bool",
       "displayUnit": null,
       "scale": 1,
@@ -2187,12 +2187,7 @@
       "default": false,
       "classification": "editable",
       "visibility": "Simple and Advanced",
-      "reason": "Mode selector maps Surround to ThreeView and Separate monitors to SeparateDisplay; both false is Off.",
-      "choices": [
-        "Off",
-        "Surround",
-        "Separate monitors"
-      ]
+      "reason": "On/Off toggle: one window across the monitors (Surround, or SpanWindow on separate monitors) is the only triple-screen mode (owner 2026-11-01)."
     },
     {
       "kind": "field",
@@ -2201,7 +2196,7 @@
       "key": "EnableSeparateDisplayPrototype",
       "source": "src/ArtOfSimRally.Mod/Triple/Settings.cs",
       "page": "Cameras",
-      "label": "Triple screens",
+      "label": null,
       "type": "bool",
       "displayUnit": null,
       "scale": 1,
@@ -2209,52 +2204,9 @@
       "max": null,
       "step": null,
       "default": false,
-      "classification": "editable",
-      "visibility": "Simple and Advanced",
-      "reason": "Mode selector maps Surround to ThreeView and Separate monitors to SeparateDisplay; both false is Off.",
-      "choices": [
-        "Off",
-        "Surround",
-        "Separate monitors"
-      ]
-    },
-    {
-      "kind": "field",
-      "settingsType": "ArtOfSimRally.Mod.Triple.Settings",
-      "file": "Mods/ArtOfSimRally/TripleScreen.xml",
-      "key": "LeftDisplayIndex",
-      "source": "src/ArtOfSimRally.Mod/Triple/Settings.cs",
-      "page": "Cameras",
-      "label": null,
-      "type": "int",
-      "displayUnit": null,
-      "scale": 1,
-      "min": null,
-      "max": null,
-      "step": null,
-      "default": 1,
       "classification": "excluded/unused",
       "visibility": "Not shown",
-      "reason": "Side screens are found automatically; stored index is unused and retained."
-    },
-    {
-      "kind": "field",
-      "settingsType": "ArtOfSimRally.Mod.Triple.Settings",
-      "file": "Mods/ArtOfSimRally/TripleScreen.xml",
-      "key": "RightDisplayIndex",
-      "source": "src/ArtOfSimRally.Mod/Triple/Settings.cs",
-      "page": "Cameras",
-      "label": null,
-      "type": "int",
-      "displayUnit": null,
-      "scale": 1,
-      "min": null,
-      "max": null,
-      "step": null,
-      "default": 2,
-      "classification": "excluded/unused",
-      "visibility": "Not shown",
-      "reason": "Side screens are found automatically; stored index is unused and retained."
+      "reason": "Legacy (owner 2026-11-01): the separate-windows mode was removed. A saved true turns EnableThreeViewPrototype on once at load and is cleared. Kept so older files load."
     },
     {
       "kind": "field",

@@ -22,10 +22,6 @@
     <Compile Include="..\..\src\ArtOfSimRally.Mod\Triple\F7Comparison.cs" Link="F7Comparison.cs" />
     <Compile Include="..\..\src\ArtOfSimRally.Mod\Triple\CameraOverlay.cs" Link="CameraOverlay.cs" />
     <Compile Include="..\..\src\ArtOfSimRally.Mod\Triple\LayoutSource.cs" Link="LayoutSource.cs" />
-    <Compile Include="..\..\src\ArtOfSimRally.Mod\Triple\ObservedRacingRow.cs" Link="ObservedRacingRow.cs" />
-    <Compile Include="..\..\src\ArtOfSimRally.Mod\Triple\DisplayIdentityEvidence.cs" Link="DisplayIdentityEvidence.cs" />
-    <Compile Include="..\..\src\ArtOfSimRally.Mod\Triple\SideDisplaySelector.cs" Link="SideDisplaySelector.cs" />
-    <Compile Include="..\..\src\ArtOfSimRally.Mod\Triple\SideActivationWitness.cs" Link="SideActivationWitness.cs" />
     <Compile Include="..\..\src\ArtOfSimRally.Mod\Triple\OutputResolution.cs" Link="OutputResolution.cs" />
     <Compile Include="..\..\lib\display\WindowLanding.cs" Link="Toolkit\Display\WindowLanding.cs" />
     <Compile Include="..\..\lib\display\RacingRow.cs" Link="RacingRow.cs" />

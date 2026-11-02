@@ -45,6 +45,13 @@ internal static class TripleScreen
             modEntry.Logger.Warning("Triple screens: could not load settings; safe defaults are active: " + exception.Message);
             _settings = new Settings();
         }
+        if (_settings.EnableSeparateDisplayPrototype)
+        {
+            _settings.EnableSeparateDisplayPrototype = false;
+            _settings.EnableThreeViewPrototype = true;
+            Save();
+            modEntry.Logger.Log("Triple screens: separate windows replaced by one window across the monitors");
+        }
 
         _status = new StatusPublisher(modEntry.Logger);
         _renderDiagnostics = new RenderDiagnostics(modEntry.Logger);
@@ -59,7 +66,7 @@ internal static class TripleScreen
         _blockedByLegacyMod = LegacyModActive();
 
         var layout = EffectiveLayout.Resolve(Layout.Current, _settings);
-        _lastOutcome = _settings.EnableThreeViewPrototype || _settings.EnableCenterPanelPreview || _settings.EnableSeparateDisplayPrototype
+        _lastOutcome = _settings.EnableThreeViewPrototype || _settings.EnableCenterPanelPreview
             ? ProjectionOutcome.Starting(layout, "ADAPTER_STARTING", "Adapter loaded; waiting to evaluate the stage camera.")
             : ProjectionOutcome.Inactive(layout, "FEATURE_DISABLED", "Triple-screen rendering is disabled; stock rendering is unchanged.");
         _status.Publish(_lastOutcome, Application.version, true);
@@ -112,7 +119,7 @@ internal static class TripleScreen
     private static GUIStyle _noticeStyle;
 
     private static string SessionKey() => string.Join("|", _settings.OverrideFieldOfView, _settings.BumperRealistic, _settings.ChaseRealistic,
-        _settings.CurveRadiusMm, _settings.EnableThreeViewPrototype, _settings.EnableSeparateDisplayPrototype);
+        _settings.CurveRadiusMm, _settings.EnableThreeViewPrototype);
 
     internal static void Notify(string text)
     {
@@ -171,7 +178,7 @@ internal static class TripleScreen
         var kind = CameraKind(rig);
         var angles = s_angles(rig);
         var chase = angles == null || angle == null ? 1 : angles.IndexOf(angle) + 1;
-        bool triples = _settings.EnableThreeViewPrototype || _settings.EnableSeparateDisplayPrototype;
+        bool triples = TriplesOn;
         bool realistic = RealisticFor(kind);
         // The Custom Vehicles cockpit keeps its own view; its Realistic set is Custom when it is not at the seat's true FOV.
         bool custom = kind == CameraOverlay.Kind.Chase ? ChaseFov.Custom(Main.Settings, chase - 1, realistic)
@@ -223,7 +230,7 @@ internal static class TripleScreen
     /// <summary>The cockpit's own Game/Realistic choice (starts Realistic). Read by name by Custom Vehicles.</summary>
     internal static bool CockpitRealisticActive => _settings != null && _settings.CockpitRealistic && TriplesOn;
 
-    private static bool TriplesOn => _settings.EnableThreeViewPrototype || _settings.EnableSeparateDisplayPrototype;
+    private static bool TriplesOn => _settings.EnableThreeViewPrototype;
 
     /// <summary>The Realistic set's starting field of view: the seat's true vertical field of view (null without measurements).</summary>
     internal static double? RealisticStartDegrees => _settings == null || Layout == null ? null
@@ -298,7 +305,7 @@ internal static class TripleScreen
             catch (Exception exception) { _wasInStage = true; _modEntry.Logger.Warning("Camera overlay skipped: " + exception.Message); }
         }
         if (_enabled && Application.isFocused && !SettingsPanel.Editing && Input.GetKeyDown(KeyCode.F7)
-            && (_settings.EnableThreeViewPrototype || _settings.EnableSeparateDisplayPrototype))
+            && _settings.EnableThreeViewPrototype)
         {
             bool shift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
             bool otherModifier = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl) ||
@@ -329,7 +336,7 @@ internal static class TripleScreen
             {
                 if (_sessionKey != SessionKey()) { SessionStep = null; _sessionKey = SessionKey(); }
                 Projection.LandingOwnsOutputResize = Landing.BlocksOutputResize;
-                if (SessionStep == ComparisonStep.Original && !_settings.EnableSeparateDisplayPrototype)
+                if (SessionStep == ComparisonStep.Original)
                 {
                     Projection.Release();
                     outcome = ProjectionOutcome.Inactive(layout, "F7_ORIGINAL_VIEW", "Original game view (picked with F7); stock rendering.");
@@ -353,9 +360,6 @@ internal static class TripleScreen
         }
     }
 
-    // STD-022's three-way selector in the owner's wording (toolkit STANDARDS.md); the stored flags are unchanged.
-    private static readonly string[] Modes = { "Off", "Surround", "Separate monitors" };
-
     /// <summary>Drawn inside the Cameras page of the wheel settings panel, on the panel's shared rows
     /// (<see cref="Dbce.Wheel.Ui.Unity.F6Widgets"/>). Only the presentation is shared: the mode flags, the field-of-view
     /// math and the measurements are this mod's own, and nothing is written on a draw without input.</summary>
@@ -367,11 +371,9 @@ internal static class TripleScreen
                 "Disable or remove \"DBCE triple-screen for art of rally\" in Unity Mod Manager; this mod now includes triple screens.", true, null);
         if (float.IsNaN(_settings.ViewWidthScale) || float.IsInfinity(_settings.ViewWidthScale))
             _settings.ViewWidthScale = 1f;
-        var mode = _settings.EnableSeparateDisplayPrototype ? 2 : _settings.EnableThreeViewPrototype ? 1 : 0;
-        int picked = w.ChoiceRow("triple-mode", "Triple screens", null, Modes, mode, true);
-        if (picked >= 0) mode = picked;
-        _settings.EnableThreeViewPrototype = mode == 1;
-        _settings.EnableSeparateDisplayPrototype = mode == 2;
+        // One window across the monitors (Surround, or SpanWindow on separate monitors) is the only mode (owner 2026-11-01).
+        var on = w.ToggleRow("triple-mode", "Triple screens: one window across the monitors", null, _settings.EnableThreeViewPrototype, true);
+        _settings.EnableThreeViewPrototype = on;
         _settings.EnableCenterPanelPreview = false;
 
         var layout = EffectiveLayout.Resolve(Layout.Current, _settings);
@@ -379,7 +381,7 @@ internal static class TripleScreen
         var geometry = layout.Document?.Geometry;
         // Simplified framing (owner 2026-10-31): the screens are always corrected for their angle (and curve); the only
         // choice is the field of view of bonnet and bumper views. Chase views always use the game's.
-        if (mode != 0)
+        if (on)
         {
             w.Help(_settings.OverrideFieldOfView
                 ? "Field of view: Realistic set. It starts true to your seat; numpad + and - adjust it while driving."
@@ -393,14 +395,14 @@ internal static class TripleScreen
             }
         }
 
-        if (_lastOutcome != null && mode != 0)
+        if (_lastOutcome != null && on)
             w.Help("Status: " + _lastOutcome.Diagnostic.Message);
         if (w.Command("triple-advanced", (_showAdvanced ? "Hide" : "Show") + " advanced setup and diagnostics")) _showAdvanced = !_showAdvanced;
         if (!_showAdvanced) return;
 
-        if (mode != 0 && _lastOutcome != null && Projection.CenterVerticalFovDegrees.HasValue)
+        if (on && _lastOutcome != null && Projection.CenterVerticalFovDegrees.HasValue)
             w.Help($"Current center field of view: {Projection.CenterVerticalFovDegrees.Value:0}°. Shift+F7 while driving: developer comparison (original / angle / angle + curve, not saved).");
-        if (mode != 0 && _settings.OverrideFieldOfView && (panel == null || geometry == null))
+        if (on && _settings.OverrideFieldOfView && (panel == null || geometry == null))
             w.Help("Enter your screen measurements below for the realistic field of view.");
 
         w.Caption("Screen measurements");
@@ -429,13 +431,6 @@ internal static class TripleScreen
             _settings.CurveRadiusMm = FloatField(w, "triple-curve-radius", "Screen curve radius (mm, 0 = flat)", _settings.CurveRadiusMm);
             if (w.Command("triple-use-measurements", "Use these measurements")) _settings.ManualSetupConfirmed = true;
             w.Help(_settings.ManualSetupConfirmed ? "Local setup active" : "Local setup not yet active");
-        }
-        if (mode == 2)
-        {
-            w.Help("Center must be Windows primary. Exit the game after changing display mode; activated displays release on exit.");
-            // The side displays are found automatically (the racing row beside the primary); the saved index fields are
-            // no longer used, so they are not shown. Their stored values are left untouched.
-            w.Help("Side displays are found automatically: the equal-size displays directly left and right of the primary. Other displays, such as a dashboard, are ignored.");
         }
         _settings.CenterMenusOnMiddleScreen = w.ToggleRow("triple-center-menus", "Keep menus and HUD on the middle screen", null,
             _settings.CenterMenusOnMiddleScreen, true);
