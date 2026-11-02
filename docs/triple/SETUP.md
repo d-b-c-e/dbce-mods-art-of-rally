@@ -37,19 +37,11 @@ off to follow the game's live camera FOV on all three views; turn it on to use
 the saved slider value. Existing settings retain slider control by default.
 This option is not in the published 0.3.11 ZIP yet.
 
-## Separate monitors
+## Turning triple screens on
 
-With the game closed, set Windows to **Extend these displays**. Make the center screen Windows primary and use the same native resolution on all three screens. Launch the game at that native center resolution. Choose **Separate monitors** under Triple screens (F6, Cameras) and start a stage. The title and menus remain on the primary screen.
+Three monitors side by side work with or without NVIDIA Surround. With the game closed, either set Windows to **Extend these displays** with the center screen as primary, or enable a 3-panel-wide Surround output. All three screens need the same native resolution (for three 2560×1440 screens the span is **7680×1440**); bezel-corrected Surround widths are not supported. Then turn on **Triple screens: one window across the monitors** (F6, Cameras).
 
-The side displays are found automatically: the equal-size displays directly left and right of the primary. Other displays, such as a dashboard above the row, are ignored, and nothing needs setting. When a stage starts, the mod first checks that the game fills the primary screen, which is required. It then activates one side at a time and checks that each side's window opened on the expected screen before drawing side views. If that check fails, the side views stay off for the rest of that game session. Do not start the game with `-multidisplay`, which turns off the display ordering this relies on. The side display windows remain activated until the game exits, so restart the game after switching output modes or changing the display arrangement.
-
-On the tested three-monitor rig this mode had aligned seams, stable vegetation, matched lighting, and no visible tearing during the attended drive. Other monitor mixes and replay/photo flows remain unverified.
-
-## Surround
-
-With the game closed, enable a single 3-panel-wide output such as NVIDIA Surround. Use exactly three native panel widths and one native panel height; for three 2560×1440 screens, that is **7680×1440**. Bezel-corrected widths are not yet supported by this renderer. Launch the game at the same wide resolution and choose **Surround** under Triple screens (F6, Cameras). It places three camera viewports side by side, each with its own off-axis projection.
-
-Surround tearing remains unresolved on the tested rig even though Unity reported VSync 1. If it is distracting, try **Separate monitors** after closing the game and returning Windows to extended desktop mode. See [known issues](KNOWN-ISSUES.md).
+Without Surround, the game becomes one borderless window across the three monitors, as Assetto Corsa does. The first launch after turning it on may briefly show the game squeezed onto one screen while it switches; later launches start across all three. Menus and the HUD stay on the middle screen. Each screen gets its own off-axis view of your measured rig. A dashboard or other display above the row is ignored.
 
 ## Updating, removing, and compatibility
 
