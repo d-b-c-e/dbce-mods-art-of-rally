@@ -308,8 +308,23 @@ static class Program
             var sloped = CameraMountFit.HoodProfile(z, nose);
             Check(sloped != null && Math.Abs(sloped[0] - (-.08f)) < 1e-4 && Math.Abs(sloped[1] - z[11]) < 1e-5,
                 "a sloping nose was taken for the bonnet: " + (sloped == null ? "null" : sloped[0] + " at " + sloped[1]));
+            // Cab-over (the Turtle Van, owner 2026-11-01): the front face rises 1.2 m straight to the roof, so there is no
+            // bonnet; the camera goes just ahead of the face at half its height.
             var cabOver = new float[40]; for (int i = 0; i < 40; i++) cabOver[i] = Math.Min(1.4f, .2f + i * .3f);
-            Check(CameraMountFit.HoodProfile(z, cabOver) == null, "a front with no bonnet gave one");
+            var cab = CameraMountFit.HoodProfile(z, cabOver);
+            Check(cab != null && Math.Abs(cab[0] + CameraMountFit.BonnetAbove - .8f) < 1e-4 && cab[1] < z[0] && cab[1] > z[0] - .05f,
+                "a cab-over front did not place the camera ahead of its face: " + (cab == null ? "null" : cab[0] + " at " + cab[1]));
+            // A roof turret behind the windscreen does not move the bonnet: low nose, flat bonnet, windscreen, roof, turret.
+            var turret = new float[40];
+            for (int i = 0; i < 40; i++) turret[i] = i == 0 ? .3f : i < 10 ? .8f : i < 14 ? .8f + (i - 9) * .2f : i < 20 ? 1.6f : 2.4f;
+            var t = CameraMountFit.HoodProfile(z, turret);
+            Check(t != null && Math.Abs(t[0] - .8f) < 1e-4 && Math.Abs(t[1] - z[9]) < 1e-5, "a roof turret moved the bonnet");
+            // Slicing: one flat roof panel of two big triangles reads as a full surface, not two corner points.
+            var roof = new float[40]; for (int i = 0; i < 40; i++) roof[i] = float.NaN;
+            CameraMountFit.Slice(roof, 2f, 4f, new[] { -1f, 1.5f, 2f, 1f, 1.5f, 2f, 1f, 1.5f, -2f, -1f, 1.5f, -2f }, new[] { 0, 1, 2, 0, 2, 3 }, new[] { 0f });
+            bool full = true; foreach (var y in roof) full &= Math.Abs(y - 1.5f) < 1e-4;
+            Check(full, "a flat panel with corners only at its ends was not read as a surface");
+            Check(CameraMountFit.Plausible(new[] { -1.16f, 2.99f, 2.02f, 2.75f, 1.5f, 2.01f }), "the Turtle Van (4.15 m with its turret) was refused");
             var flat = new float[40]; for (int i = 0; i < 40; i++) flat[i] = 1f;
             Check(CameraMountFit.HoodProfile(z, flat) == null && CameraMountFit.HoodProfile(z, new float[3]) == null, "no step or too few samples gives no shape");
 

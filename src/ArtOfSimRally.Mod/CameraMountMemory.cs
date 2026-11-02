@@ -194,8 +194,8 @@ namespace ArtOfSimRally.Mod
             return z;
         }
 
-        // Highest vertex per slice along a centre strip, from meshes the mod can read (Custom Vehicles bodies are; the
-        // game's own usually are not). NaN where nothing was found.
+        // The top of the body's cross-sections at the centre line and a quarter-width either side, from meshes the mod
+        // can read (Custom Vehicles bodies are; the game's own usually are not). NaN where nothing was found.
         private static float[] MeshProfile(Transform scope, Transform target, float front, float back, float halfStrip)
         {
             var h = Enumerable.Repeat(float.NaN, Samples).ToArray();
@@ -205,14 +205,13 @@ namespace ArtOfSimRally.Mod
                 var mesh = filter.sharedMesh; var r = filter.GetComponent<Renderer>();
                 if (mesh == null || !mesh.isReadable || r == null || !Visible(r)) continue;
                 var toTarget = target.worldToLocalMatrix * filter.transform.localToWorldMatrix;
-                foreach (var v in mesh.vertices)
+                var vertices = mesh.vertices; var xyz = new float[vertices.Length * 3];
+                for (int v = 0; v < vertices.Length; v++)
                 {
-                    var p = toTarget.MultiplyPoint3x4(v);
-                    if (Mathf.Abs(p.x) > halfStrip) continue;
-                    int i = Mathf.RoundToInt((front - p.z) / length * (Samples - 1));
-                    if (i < 0 || i >= Samples) continue;
-                    if (float.IsNaN(h[i]) || p.y > h[i]) h[i] = p.y;
+                    var p = toTarget.MultiplyPoint3x4(vertices[v]);
+                    xyz[v * 3] = p.x; xyz[v * 3 + 1] = p.y; xyz[v * 3 + 2] = p.z;
                 }
+                CameraMountFit.Slice(h, front, length, xyz, mesh.triangles, new[] { -halfStrip / 2f, 0f, halfStrip / 2f });
             }
             return h;
         }

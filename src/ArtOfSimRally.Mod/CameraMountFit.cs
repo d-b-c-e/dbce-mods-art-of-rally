@@ -71,35 +71,76 @@ namespace ArtOfSimRally.Mod
         {
             if (!Valid(extent)) return false;
             float height = extent[1] - extent[0];
-            if (extent[3] < 1.2f || extent[3] > 3.2f || height < .8f || height > 3.6f) return false;
+            // 4.5 m: the Turtle Van with its roof turret is about 4.1 m (owner 2026-11-01); width remains the main guard.
+            if (extent[3] < 1.2f || extent[3] > 3.2f || height < .8f || height > 4.5f) return false;
             return extent.Length == ExtentValues || extent[4] > extent[0] + .25f;
         }
 
-        // Steeper than this (rise per metre, about 19°) is windscreen; a bonnet or a sloping nose is shallower.
+        // Steeper than this (rise per metre, about 19°) is a front face or windscreen; a bonnet or a sloping nose is shallower.
         internal const float WindscreenSlope = .35f;
+        // A front face rising more than this has no bonnet in front of the windscreen (a cab-over van).
+        internal const float CabOverFace = .9f;
 
-        // The bonnet from a top-surface profile along the centre line, sampled from the front backwards (z falling,
-        // NaN where nothing was found). From where the profile first reaches roof height (the front two thirds' highest,
-        // so a rear wing is ignored) it walks forward while the surface falls steeply: where that stops is the windscreen
-        // base, and its height is the bonnet. A median of the front quarter took the Eibenhammer's low sloping nose for
-        // the bonnet and the bonnet's rise for the windscreen, and put the camera inside the car (owner 2026-11-01).
-        // Null when there is no windscreen step or no bonnet ahead of it.
+        // The bonnet from a top-surface profile along the centre line, sampled from the front backwards (z falling, NaN
+        // where nothing was found). From the front: climb the front face while it is steep, follow the bonnet while it is
+        // shallow (a gently sloping nose counts), and where the surface turns steep again is the windscreen base; its
+        // height is the bonnet. Walking from the roof instead stopped on a roof turret (owner 2026-11-01), and a
+        // front-quarter median took a sloping nose for the bonnet. A cab-over (the front face itself rises past
+        // CabOverFace) gets its "bonnet" camera just ahead of the face at half its height. Null when no windscreen step
+        // is found in the front 60% of the car.
         internal static float[] HoodProfile(float[] z, float[] height)
         {
             if (z == null || height == null || z.Length != height.Length || z.Length < 8) return null;
-            float roof = float.NaN;
-            for (int i = 0; i < z.Length * 2 / 3; i++) if (!float.IsNaN(height[i]) && !(height[i] <= roof)) roof = height[i];
-            if (float.IsNaN(roof)) return null;
-            int j = Array.FindIndex(height, h => !float.IsNaN(h) && h >= roof - .08f);
-            while (true)
-            {
-                int prev = j - 1;
-                while (prev >= 0 && float.IsNaN(height[prev])) prev--;
-                if (prev < 0) return null;   // steep all the way to the front: no bonnet
-                if ((height[j] - height[prev]) / (z[prev] - z[j]) < WindscreenSlope) break;
-                j = prev;
-            }
-            return roof - height[j] < .12f ? null : new[] { height[j], z[j] };
+            var idx = new System.Collections.Generic.List<int>();
+            for (int i = 0; i < z.Length; i++) if (!float.IsNaN(height[i])) idx.Add(i);
+            if (idx.Count < 8) return null;
+            float Slope(int a, int b) => (height[b] - height[a]) / (z[a] - z[b]);
+            int k = 0;
+            while (k + 1 < idx.Count && Slope(idx[k], idx[k + 1]) >= WindscreenSlope) k++;
+            if (height[idx[k]] - height[idx[0]] > CabOverFace)
+                return new[] { (height[idx[0]] + height[idx[k]]) / 2f - BonnetAbove, z[0] - .01f };
+            while (k + 1 < idx.Count && Slope(idx[k], idx[k + 1]) < WindscreenSlope) k++;
+            if (k + 1 >= idx.Count) return null;
+            int b = idx[k];
+            if (z[b] < z[0] - .6f * (z[0] - z[z.Length - 1])) return null;
+            float after = float.MinValue;
+            for (int i = k + 1; i < idx.Count; i++) after = Math.Max(after, height[idx[i]]);
+            return after < height[b] + .12f ? null : new[] { height[b], z[b] };
+        }
+
+        /// <summary>Raises <paramref name="h"/> (the profile, sampled from <paramref name="front"/> backwards over
+        /// <paramref name="length"/>) to the top of a mesh's cross-sections at the given x planes. Points are x,y,z in the
+        /// camera target's space. Corner points alone missed the big flat panels of a low-poly body (the Turtle Van's
+        /// roof read as a hole and its bonnet camera was placed inside the cab, owner 2026-11-01).</summary>
+        internal static void Slice(float[] h, float front, float length, float[] xyz, int[] triangles, float[] planes)
+        {
+            int n = h.Length;
+            var cut = new float[6];
+            for (int t = 0; t + 2 < triangles.Length; t += 3)
+                foreach (var x0 in planes)
+                {
+                    int found = 0;
+                    for (int e = 0; e < 3 && found < 2; e++)
+                    {
+                        int a = triangles[t + e] * 3, b = triangles[t + (e + 1) % 3] * 3;
+                        float da = xyz[a] - x0, db = xyz[b] - x0;
+                        if (da * db > 0f || da == db) continue;
+                        float f = da / (da - db);
+                        cut[found * 3] = xyz[a + 1] + (xyz[b + 1] - xyz[a + 1]) * f;
+                        cut[found * 3 + 1] = xyz[a + 2] + (xyz[b + 2] - xyz[a + 2]) * f;
+                        found++;
+                    }
+                    if (found < 2) continue;
+                    float ya = cut[0], za = cut[1], yb = cut[3], zb = cut[4];
+                    int i0 = (int)Math.Ceiling((front - Math.Max(za, zb)) / length * (n - 1) - 1e-4);
+                    int i1 = (int)Math.Floor((front - Math.Min(za, zb)) / length * (n - 1) + 1e-4);
+                    for (int i = Math.Max(0, i0); i <= Math.Min(n - 1, i1); i++)
+                    {
+                        float zi = front - length * i / (n - 1);
+                        float y = Math.Abs(zb - za) < 1e-6f ? Math.Max(ya, yb) : ya + (yb - ya) * (zi - za) / (zb - za);
+                        if (float.IsNaN(h[i]) || y > h[i]) h[i] = y;
+                    }
+                }
         }
     }
 }
