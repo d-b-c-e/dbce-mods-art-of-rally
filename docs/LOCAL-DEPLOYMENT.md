@@ -1,6 +1,17 @@
 # Local deployment
 
-## Current installation — 0.4.4-rc.34 + Custom Vehicles 0.6.6 (November 1, owner test)
+## Current installation — 0.4.4-rc.35 (November 1, owner test)
+
+rc.34 minus the separate-windows mode (`54c77eb`, -1,309 lines): one window across the monitors is the only triple
+presentation; a saved EnableSeparateDisplayPrototype=true turns into the span on load; F6 is one on/off toggle. Curved
+span path unchanged (one presenter over three thirds). Full `Test-Rc.ps1` gate passed (rc.35 label), Triple 1303,
+SettingsUi 3540, Lifecycle 80, CameraTuning 407, Installer 70. ZIP SHA-256
+`C4775008844A05C9711045EA0DD9778AE7BB68004507F022CBE697C71C569DC6`; Mod.dll
+`F139D8AD37C5F2DDEB930D6A40522728D0C4C55438DFD79565D322901AED5417`. Game closed, lease vemi; payload 9/9; owner
+settings byte-identical. Rollback copy of rc.34: `E:\Source\temp\art-0.4.4-rc.35\backup-installed-rc.34`. Custom
+Vehicles 0.6.6 unchanged. Player docs (docs/triple/SETUP.md, README, TROUBLESHOOTING) still mention Separate monitors.
+
+## Previous installation — 0.4.4-rc.34 + Custom Vehicles 0.6.6 (November 1, owner test)
 
 Owner 11-01 on rc.33: spanning window "in the right direction". rc.34 (`43ffcb9`): plain-colour camera backgrounds go
 black while menus are centred (grey splash side bars). Custom Vehicles 0.6.6: the car's particle effects are hidden
