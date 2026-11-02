@@ -1,6 +1,15 @@
 # Local deployment
 
-## Current installation — 0.4.4-rc.31 + Custom Vehicles 0.6.4 (November 1, owner test)
+## Current installation — 0.4.4-rc.32 (November 1, owner test)
+
+rc.31 plus numpad + zooms in and - zooms out (`81efa1c`; owner: "+/- are swapped"); untouched key sets migrate on load.
+ZIP SHA-256 `B3AFFD8AB8525BBBA98345C2DBF2E59719C00D6A5C02F130FF6CB945ABF2DBA1`; Mod.dll
+`FD1F2150FB79475493358F5AB355793A5E6AE72BFB686B82D99A03647840A28C`. Installer 70, CameraTuning 407, Triple 1356,
+SettingsUi 3572 passed. Game closed, lease vemi; payload 9/9; owner settings byte-identical (the key migration
+happens in game). Rollback copy of rc.31: `E:\Source\temp\art-0.4.4-rc.32\backup-installed-rc.31`. Custom Vehicles
+0.6.4 unchanged (it reads Art's keys).
+
+## Previous installation — 0.4.4-rc.31 + Custom Vehicles 0.6.4 (November 1, owner test)
 
 The van's "Realistic" cockpit was saved at 47.6° (seat-true 33.6°), then reset by the old numpad 5 to the 65° Game
 default; that, not the projection, bent the dashboard at the seams. rc.31 (`f891337`): the cockpit label shows
