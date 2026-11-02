@@ -28,7 +28,8 @@ namespace ArtOfSimRally.Mod
             return new[]
             {
                 0f, hood + BonnetAbove, glass + BonnetAhead, bonnetPitch, bonnetFov,
-                0f, (bottom + hood) / 2f, front + BumperAhead, bumperPitch, bumperFov
+                // Halfway up the front face, at most 45 cm above the bottom (a cab-over's "bonnet" is its roof).
+                0f, bottom + Math.Min((hood - bottom) / 2f, .45f), front + BumperAhead, bumperPitch, bumperFov
             };
         }
 
@@ -61,7 +62,8 @@ namespace ArtOfSimRally.Mod
             if (extent == null || (extent.Length != ExtentValues && extent.Length != ShapeExtentValues)) return false;
             foreach (var v in extent) if (float.IsNaN(v) || float.IsInfinity(v)) return false;
             if (!(extent[1] > extent[0] && extent[3] > 0.2f)) return false;
-            return extent.Length == ExtentValues || (extent[4] > extent[0] && extent[4] < extent[1] && extent[5] < extent[2]);
+            // A cab-over's "bonnet" is its roof edge, which may be the top of the car.
+            return extent.Length == ExtentValues || (extent[4] > extent[0] && extent[4] <= extent[1] && extent[5] < extent[2]);
         }
 
         // A measurement that can be a car body: 1.2-3.2 m wide, 0.8-3.6 m tall, a bonnet at least 25 cm above the bottom. A
@@ -86,8 +88,9 @@ namespace ArtOfSimRally.Mod
         // shallow (a gently sloping nose counts), and where the surface turns steep again is the windscreen base; its
         // height is the bonnet. Walking from the roof instead stopped on a roof turret (owner 2026-11-01), and a
         // front-quarter median took a sloping nose for the bonnet. A cab-over (the front face itself rises past
-        // CabOverFace) gets its "bonnet" camera just ahead of the face at half its height. Null when no windscreen step
-        // is found in the front 60% of the car.
+        // CabOverFace) has no bonnet: its "bonnet" camera goes on the front edge of the roof, above the windscreen (owner
+        // 2026-11-01; just ahead of the glass it sat between the van's front corners, which filled the side screens).
+        // Null when no windscreen step is found in the front 60% of the car.
         internal static float[] HoodProfile(float[] z, float[] height)
         {
             if (z == null || height == null || z.Length != height.Length || z.Length < 8) return null;
@@ -98,7 +101,7 @@ namespace ArtOfSimRally.Mod
             int k = 0;
             while (k + 1 < idx.Count && Slope(idx[k], idx[k + 1]) >= WindscreenSlope) k++;
             if (height[idx[k]] - height[idx[0]] > CabOverFace)
-                return new[] { (height[idx[0]] + height[idx[k]]) / 2f - BonnetAbove, z[0] - .01f };
+                return new[] { height[idx[k]], z[idx[k]] - BonnetAhead };
             while (k + 1 < idx.Count && Slope(idx[k], idx[k + 1]) < WindscreenSlope) k++;
             if (k + 1 >= idx.Count) return null;
             int b = idx[k];

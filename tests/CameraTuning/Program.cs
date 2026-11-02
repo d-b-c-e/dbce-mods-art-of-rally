@@ -311,11 +311,12 @@ static class Program
             Check(sloped != null && Math.Abs(sloped[0] - (-.08f)) < 1e-4 && Math.Abs(sloped[1] - z[11]) < 1e-5,
                 "a sloping nose was taken for the bonnet: " + (sloped == null ? "null" : sloped[0] + " at " + sloped[1]));
             // Cab-over (the Turtle Van, owner 2026-11-01): the front face rises 1.2 m straight to the roof, so there is no
-            // bonnet; the camera goes just ahead of the face at half its height.
+            // bonnet; the camera goes on the roof's front edge (BonnetAbove over it, at the edge once Base adds BonnetAhead).
             var cabOver = new float[40]; for (int i = 0; i < 40; i++) cabOver[i] = Math.Min(1.4f, .2f + i * .3f);
             var cab = CameraMountFit.HoodProfile(z, cabOver);
-            Check(cab != null && Math.Abs(cab[0] + CameraMountFit.BonnetAbove - .8f) < 1e-4 && cab[1] < z[0] && cab[1] > z[0] - .05f,
-                "a cab-over front did not place the camera ahead of its face: " + (cab == null ? "null" : cab[0] + " at " + cab[1]));
+            Check(cab != null && Math.Abs(cab[0] - 1.4f) < 1e-4 && Math.Abs(cab[1] + CameraMountFit.BonnetAhead - z[4]) < 1e-4,
+                "a cab-over did not put the camera on its roof's front edge: " + (cab == null ? "null" : cab[0] + " at " + cab[1]));
+            Check(CameraMountFit.Valid(new[] { .2f, 1.4f, 2f, 1.8f, cab[0], cab[1] }), "a roof-edge bonnet at the top of a cab-over was refused");
             // A roof turret behind the windscreen does not move the bonnet: low nose, flat bonnet, windscreen, roof, turret.
             var turret = new float[40];
             for (int i = 0; i < 40; i++) turret[i] = i == 0 ? .3f : i < 10 ? .8f : i < 14 ? .8f + (i - 9) * .2f : i < 20 ? 1.6f : 2.4f;
