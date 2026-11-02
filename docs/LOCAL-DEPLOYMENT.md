@@ -1,6 +1,19 @@
 # Local deployment
 
-## Current installation — 0.4.4-rc.30 (November 1, owner test)
+## Current installation — 0.4.4-rc.31 + Custom Vehicles 0.6.4 (November 1, owner test)
+
+The van's "Realistic" cockpit was saved at 47.6° (seat-true 33.6°), then reset by the old numpad 5 to the 65° Game
+default; that, not the projection, bent the dashboard at the seams. rc.31 (`f891337`): the cockpit label shows
+"(Custom)" when the Realistic set is not seat-true; Custom Vehicles 0.6.4: reset returns Realistic to the seat FOV.
+The van's Realistic cockpit FOV was set back to 33.6 in `State/cockpit-views.json` (before:
+`E:\Source\temp\customvehicles-0.6.4\cockpit-views.before-seat-reset.json`). ZIP SHA-256
+`F03BF5CE38794AC74E60587DACC7CFE90D4AE9BB61CD644C2FE1CFE4EE8F5464`; Mod.dll
+`094E589EA03678131C3A7DD1D7B7F0AB8977FC323E54DEFEB5DC1EC04E5F20C7`; CV dll
+`7856EE8F4C6CE62A45AEF0371DAC1EA332F626039CE7789707DD0396EB287FCB`. Installer 70, Triple 1356, SettingsUi 3572, CV
+148 passed. Game closed, lease vemi; payloads 9/9 and 13/13; owner settings byte-identical. Rollback: rc.30 at
+`E:\Source\temp\art-0.4.4-rc.31\backup-installed-rc.30`, CV 0.6.3 at `E:\Source\temp\customvehicles-0.6.4\backup-installed-0.6.3`.
+
+## Previous installation — 0.4.4-rc.30 (November 1, owner test)
 
 Owner report 11-01 (Turtle Van cockpit, Realistic): dash and roof bar jump at the seams in every Shift+F7 mode, unlike
 Assetto Corsa. AC's `triple_screen.ini` puts the center screen at 0.660 m; ours subtracted the 1500R sagitta (42 mm).
