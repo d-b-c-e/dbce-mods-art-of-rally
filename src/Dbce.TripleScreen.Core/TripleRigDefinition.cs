@@ -99,8 +99,11 @@ public sealed class TripleRigDefinition
     public double BezelGapMm { get; }
     public double CurveRadiusMm { get; }
 
-    /// <summary>Eye to the center panel's chord plane: the glass distance less the sagitta (equal when flat).</summary>
-    public double ChordDistanceMm => EyeDistanceMm - CurvedPanelWarp.Sagitta(PanelWidthMm, CurveRadiusMm);
+    /// <summary>Eye to the center panel's chord plane, the plane through its edges: the measured eye distance, as
+    /// Assetto Corsa and the sim-racing FOV calculators take it (owner rig 2026-11-01: AC's triple_screen.ini puts the
+    /// center screen at 0.660 m). Subtracting the curve's sagitta (42 mm at 1500R) placed the panels too close and made
+    /// near objects - a dashboard, a roof bar - jump at the seams.</summary>
+    public double ChordDistanceMm => EyeDistanceMm;
 
     /// <summary>
     /// Eye distance at which the center panel spans a game's vertical field of view. Use it to

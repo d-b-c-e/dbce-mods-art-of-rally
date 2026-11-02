@@ -592,9 +592,12 @@ internal static class Program
         var refused = false;
         try { CurvedPanelWarp.Create(surfaces[1], eye, 300d); } catch (ArgumentOutOfRangeException) { refused = true; }
         Check(refused, "radius below half the panel width is refused");
-        // Eye distance is to the glass middle: the curved rig's center glass is at the measured 660 mm, flat unchanged.
+        // Eye distance is to the plane through the panel edges, as Assetto Corsa takes it (owner rig 2026-11-01): the
+        // curved rig's edges are at the measured 660 mm and its glass middle one sagitta further; flat unchanged.
         var curvedRig = TripleRigBuilder.Build(new TripleRigDefinition(708.417d, 398.484d, 660d, 70d, 70d, 0d, 8d, 1500d));
-        Check(Math.Abs(CurvedPanelWarp.PanelPoint(curvedRig[1], 1500d, 0.5d, 0.5d).Z + 660d) < 1e-9, "curved glass middle at the eye distance");
+        Check(Math.Abs(curvedRig[1].LowerLeft.Z + 660d) < 1e-9, "curved panel edges at the eye distance");
+        Check(Math.Abs(CurvedPanelWarp.PanelPoint(curvedRig[1], 1500d, 0.5d, 0.5d).Z + 660d + CurvedPanelWarp.Sagitta(708.417d, 1500d)) < 1e-9,
+            "curved glass middle one sagitta beyond the eye distance");
         Check(Math.Abs(surfaces[1].Center.Z + 660d) < 1e-9, "flat rig still places the panel at the eye distance");
         Check(Math.Abs((curvedRig[2].LowerLeft - curvedRig[1].LowerRight).Length - 8d) < 1e-9, "bezel gap separates the lit areas at each seam");
         foreach (var bad in new[] { -1500d, 300d, double.NaN })
