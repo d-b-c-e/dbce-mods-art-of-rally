@@ -329,6 +329,9 @@ namespace RallyCustomVehicles
                 {
                     ReleaseCamera(false); camera=cam; savedNear=cam.nearClipPlane; savedFov=cam.fieldOfView;
                     savedPosition=cam.transform.localPosition; savedRotation=cam.transform.localRotation;
+                    // The car's own spray/dust/mist effects drift through the cab and smear across the view from inside
+                    // (owner 2026-11-01); hidden in the cockpit only, restored on any other camera.
+                    foreach(var p in car.GetComponentsInChildren<Renderer>()) if(p.GetType().Name=="ParticleSystemRenderer" && !p.forceRenderingOff) { p.forceRenderingOff=true; cockpitHidden.Add(p); }
                 }
                 TuneCockpit();
                 cam.transform.position=visual.transform.TransformPoint(V(asset.camera)+eyeAdjustment);
@@ -408,9 +411,12 @@ namespace RallyCustomVehicles
             }
             if (changed) SaveView();
         }
+        private static readonly List<Renderer> cockpitHidden = new List<Renderer>();
         private static void ReleaseCamera(bool snap)
         {
             smoothing=false;
+            foreach(var p in cockpitHidden) if(p!=null) p.forceRenderingOff=false;
+            cockpitHidden.Clear();
             if(camera==null) return;
             camera.transform.localPosition=savedPosition; camera.transform.localRotation=savedRotation;
             camera.nearClipPlane=savedNear; camera.fieldOfView=savedFov; camera=null;

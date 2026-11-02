@@ -13,6 +13,9 @@ namespace ArtOfSimRally.Mod.Triple;
 internal sealed class MenuCenteringController
 {
     private readonly Dictionary<RectTransform, (Vector2 Min, Vector2 Max)> _original = new();
+    // Plain-colour camera backgrounds go black while menus sit on the middle panel: the splash screen's grey filled the
+    // side panels once its background was moved to the middle (owner 2026-11-01). Restored on release.
+    private readonly Dictionary<Camera, Color> _background = new();
 
     internal void Update(bool enabled, LayoutLoadResult layout)
     {
@@ -39,6 +42,12 @@ internal sealed class MenuCenteringController
                     rect.anchorMax = new Vector2(CenterThird(rect.anchorMax.x), rect.anchorMax.y);
                 }
         }
+        foreach (var camera in Camera.allCameras)
+            if (camera.clearFlags == CameraClearFlags.SolidColor && camera.backgroundColor != Color.black && !_background.ContainsKey(camera))
+            {
+                _background.Add(camera, camera.backgroundColor);
+                camera.backgroundColor = Color.black;
+            }
         // shortcut: an element the game re-anchors after we move it stays where the game put it; add a re-check if a capture shows one.
     }
 
@@ -53,6 +62,9 @@ internal sealed class MenuCenteringController
                 item.Key.anchorMax = item.Value.Max;
             }
         _original.Clear();
+        foreach (var item in _background)
+            if (item.Key != null) item.Key.backgroundColor = item.Value;
+        _background.Clear();
     }
 
     private static bool MatchesThreePanelOutput(LayoutLoadResult result)
