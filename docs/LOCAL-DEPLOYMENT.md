@@ -1,6 +1,16 @@
 # Local deployment
 
-## Current installation — 0.4.4-rc.33 (November 1, owner test: spanning window)
+## Current installation — 0.4.4-rc.34 + Custom Vehicles 0.6.6 (November 1, owner test)
+
+Owner 11-01 on rc.33: spanning window "in the right direction". rc.34 (`43ffcb9`): plain-colour camera backgrounds go
+black while menus are centred (grey splash side bars). Custom Vehicles 0.6.6: the car's particle effects are hidden
+in the cockpit view only (spray/mist smearing inside the van's cab). ZIP SHA-256
+`D86CFA9F4AA0CC7FD99FF2D563725052A6BD58852B9EAC26234B19DD6B9224B2`; Mod.dll
+`B9B856BF06773AF1642569CBEA782CD232FFAEBA5071E4B7A0A95764110C8C8A`. Installer 70, Triple 1356, SettingsUi 3572, CV 148
+passed. Game closed, lease vemi; payloads 9/9, 13/13; settings byte-identical. Rollback: rc.33 at
+`E:\Source\temp\art-0.4.4-rc.34\backup-installed-rc.33`, CV 0.6.5 at `E:\Source\temp\customvehicles-0.6.6\backup-installed-0.6.5`.
+
+## Previous installation — 0.4.4-rc.33 (November 1, owner test: spanning window)
 
 rc.32 plus the span window (`0b6f821`): span mode on separate monitors makes one borderless 7680x1440 window at the
 racing row's origin (AC/CSP style) instead of side windows. TripleScreen.xml switched for the test:
