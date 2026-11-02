@@ -1,6 +1,14 @@
 # Local deployment
 
-## Current installation — 0.4.4-rc.35 (November 1, owner test)
+## Current installation — 0.4.4-rc.36 (November 1, owner test)
+
+rc.35 plus the cab-over bonnet camera on the roof's front edge and the bumper camera at most 45 cm up (`4ea8b21`; owner:
+in the test view the camera sat between the van's front corners). ZIP SHA-256
+`0B42775FC7382DBC6E76DC3D5C7618D736BCA125C9DBA831323E4F4A24928C47`; Mod.dll
+`E5368292772994DBBDEDF729F2A2337E44D629CD8A7943E8D42DE2CBCF7D8CE3`. Installer 70, CameraTuning 408 passed. Game closed,
+lease vemi; settings unchanged. Rollback copy of rc.35: `E:\Source\temp\art-0.4.4-rc.36\backup-installed-rc.35`.
+
+## Previous installation — 0.4.4-rc.35 (November 1, owner test)
 
 rc.34 minus the separate-windows mode (`54c77eb`, -1,309 lines): one window across the monitors is the only triple
 presentation; a saved EnableSeparateDisplayPrototype=true turns into the span on load; F6 is one on/off toggle. Curved
