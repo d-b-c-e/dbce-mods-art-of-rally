@@ -9,12 +9,10 @@ namespace ArtOfSimRally.Mod
     /// </summary>
     /// <remarks>
     /// <para>
-    /// They behave like any other view: press the change-view button and they
-    /// appear in the cycle after the eight stock angles, and the choice persists.
-    /// That works because <c>CarCameras.SetCameraFromSave</c> wraps on
-    /// <c>CameraAnglesList.Count</c> rather than on a hard-coded 8, so appending
-    /// entries in a <c>Start</c> postfix is enough to join the rotation - no
-    /// patching of the cycling logic at all.
+    /// They join the native rotation after the stock angles. Native cycling wraps
+    /// on the current list count; saved selection clamps to it. After adding our
+    /// entries, refresh an owned saved selection that may have been clamped while
+    /// only the stock views existed. Stock/foreign choices remain with the game.
     /// </para>
     /// <para>
     /// The stock rig cannot produce these views by parameters alone. It always
@@ -208,6 +206,7 @@ namespace ArtOfSimRally.Mod
                 }
                 var list = AnglesList(__instance);
                 if (list == null) return;
+                bool added = false;
 
                 // Start runs per car; only ever contribute one entry per view.
                 // distance 0 keeps the stock rig from doing anything useful or
@@ -218,13 +217,29 @@ namespace ArtOfSimRally.Mod
                 {
                     _bonnetAngle = new CameraAngle(0f, 0f, 0f, CameraAngle.CameraAngles.CAMERA1);
                     list.Add(_bonnetAngle);
+                    added = true;
                     ModLog.Info($"Bonnet camera added as view {list.Count} in the rotation.");
                 }
                 if (cfg.BumperCameraEnabled && (_bumperAngle == null || !list.Contains(_bumperAngle)))
                 {
                     _bumperAngle = new CameraAngle(0f, 0f, 0f, CameraAngle.CameraAngles.CAMERA1);
                     list.Add(_bumperAngle);
+                    added = true;
                     ModLog.Info($"Bumper camera added as view {list.Count} in the rotation.");
+                }
+                // A native refresh made before these entries existed clamps to a stock view without changing
+                // SETTINGS_CAMERA_PRESET. Use the game's own selection/pose update once the owned slot is ready.
+                // Never reinterpret a foreign/missing index or reapply after a later player camera change.
+                if (added && Main.Enabled && __instance.enabled && __instance.target != null)
+                {
+                    int saved = SaveGame.GetInt("SETTINGS_CAMERA_PRESET", 3);
+                    if (saved >= 0 && saved < list.Count &&
+                        (ReferenceEquals(list[saved], _bonnetAngle) || ReferenceEquals(list[saved], _bumperAngle)) &&
+                        !ReferenceEquals(__instance.CurrentCameraAngle, list[saved]))
+                    {
+                        __instance.RefreshCameraType();
+                        ModLog.Info($"Restored saved {(ReferenceEquals(list[saved], _bonnetAngle) ? "bonnet" : "bumper")} camera (view {saved + 1}).");
+                    }
                 }
             }
         }

@@ -21,6 +21,19 @@ Severity is about the effect on driving, not on how annoying it looks:
 
 ## Open
 
+### ISS-0024 — Last mounted camera at stage start (source candidate)
+
+The bonnet/bumper Start postfix appended views without reapplying a saved owned
+slot that native selection had clamped while only stock views existed. The
+November 2 source candidate refreshes only a just-added, available owned slot,
+once, through the native selection/pose method. It leaves saved preferences,
+stock/foreign choices and disabled/unready/external-mod cases untouched.
+The original hook fails the new lifecycle fixture; fixed Lifecycle95,
+CameraTuning408, SettingsUi3549 and net48 build pass. **Not installed or observed
+across stages.** This covers the mounted-view ordering gap; the owner's complete
+symptom, late Custom Vehicles cockpit and stage/restart rendering still need live
+validation. See [camera issue handoff](2026-11-02-camera-issues.md).
+
 ### KI-53 — Bumper camera flickers subtly in evening light
 
 **Owner report 2026-10-28 on 0.4.4-rc.1, cosmetic.** In the bumper camera at the evening

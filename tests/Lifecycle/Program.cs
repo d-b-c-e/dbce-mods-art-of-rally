@@ -151,11 +151,54 @@ static class Program
         var own=Mount(); Check(BonnetCamera.ActiveView(own)==BonnetCamera.View.Bonnet,"mounted views did not work without external mod");
         BonnetCamera.Release(true);
     }
+    static void SavedMountedCamera()
+    {
+        // A native selection made before our entries exist clamps to the last stock angle.
+        // The real Start postfix must re-admit only the saved view it has just contributed.
+        CarCameras EarlySelection(int saved)
+        {
+            ArtOfSimRally.Mod.Main.Enabled=true; ArtOfSimRally.Mod.Main.OtherCameraModLoaded=false;
+            ArtOfSimRally.Mod.Main.Settings=new Settings(); SaveGame.Preset=saved;
+            var rig=new CarCameras();
+            for(int i=0;i<8;i++) rig.CameraAnglesList.Add(new CameraAngle(1,1,1,CameraAngle.CameraAngles.CAMERA1));
+            rig.RefreshCameraType();
+            return rig;
+        }
+        try
+        {
+            foreach(int saved in new[]{8,9})
+            {
+                var rig=EarlySelection(saved);var early=rig.CurrentCameraAngle;
+                Patch("AddToRotation","Append",rig);
+                Check(rig.CameraAnglesList.Count==10&&ReferenceEquals(rig.CurrentCameraAngle,rig.CameraAnglesList[saved]),"saved mounted camera was left on the clamped stock view");
+                Check(rig.Refreshes==2&&!ReferenceEquals(early,rig.CurrentCameraAngle)&&SaveGame.Preset==saved,"restore bypassed native refresh or changed saved preference");
+                rig.CurrentCameraAngle=rig.CameraAnglesList[0];
+                Patch("AddToRotation","Append",rig);
+                Check(rig.CameraAnglesList.Count==10&&rig.Refreshes==2&&ReferenceEquals(rig.CurrentCameraAngle,rig.CameraAnglesList[0]),"a repeated postfix overrode a later camera pick");
+            }
+            foreach(int saved in new[]{0,3,7,-1,10,99})
+            {
+                var rig=EarlySelection(saved);var selected=rig.CurrentCameraAngle;
+                Patch("AddToRotation","Append",rig);
+                Check(ReferenceEquals(selected,rig.CurrentCameraAngle)&&rig.Refreshes==1&&SaveGame.Preset==saved,"stock/foreign/invalid saved preference was reinterpreted");
+            }
+            var disabled=EarlySelection(8);ArtOfSimRally.Mod.Main.Enabled=false;
+            var stock=disabled.CurrentCameraAngle;Patch("AddToRotation","Append",disabled);
+            Check(ReferenceEquals(stock,disabled.CurrentCameraAngle)&&disabled.Refreshes==1,"disabled mod restored a mounted camera");
+            var unready=EarlySelection(8);unready.target=null;stock=unready.CurrentCameraAngle;
+            Patch("AddToRotation","Append",unready);
+            Check(ReferenceEquals(stock,unready.CurrentCameraAngle)&&unready.Refreshes==1,"unready rig was snapped before target existed");
+            var bumperOnly=EarlySelection(8);ArtOfSimRally.Mod.Main.Settings.BonnetCameraEnabled=false;
+            Patch("AddToRotation","Append",bumperOnly);
+            Check(bumperOnly.CameraAnglesList.Count==9&&BonnetCamera.ActiveView(bumperOnly)==BonnetCamera.View.Bumper,"restore assumed fixed bonnet/bumper slot numbers");
+        }
+        finally {SaveGame.Preset=null;ArtOfSimRally.Mod.Main.Enabled=true;}
+    }
     static int Main(string[] args)
     {
         try
         {
-            Cameras(); Shutdown(); CameraCompatibility();
+            SavedMountedCamera(); Cameras(); Shutdown(); CameraCompatibility();
             Console.WriteLine(JsonSerializer.Serialize(new {status="passed",assertions})); return 0;
         }
         catch(Exception ex) { Console.Error.WriteLine(ex); return 1; }

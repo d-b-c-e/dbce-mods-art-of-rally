@@ -79,9 +79,16 @@ public class CarCameras
     public CameraAngle CurrentCameraAngle;
     public UnityEngine.Transform target = new UnityEngine.Transform();
     public bool enabled = true;
-    public int Snaps;
-    public void RefreshCameraType() { CurrentCameraAngle=CameraAnglesList[0]; }
+    public int Snaps, Refreshes;
+    // Selection part of the shipped method: clamp the saved preset without writing it back.
+    // Native pose math is intentionally outside this fixture.
+    public void RefreshCameraType() { Refreshes++; CurrentCameraAngle=CameraAnglesList[Math.Clamp(SaveGame.GetInt("SETTINGS_CAMERA_PRESET",3),0,CameraAnglesList.Count-1)]; }
     public void SetToWantedPositionImmediate() { Snaps++; }
+}
+public static class SaveGame
+{
+    public static int? Preset;
+    public static int GetInt(string key,int fallback) => Preset ?? fallback;
 }
 public class CameraManager { }
 public class CarDynamics { public Axles axles; public UnityEngine.Transform transform = new UnityEngine.Transform(); }

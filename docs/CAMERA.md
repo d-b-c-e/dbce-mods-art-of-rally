@@ -152,10 +152,13 @@ been exercised in an attended game session. Default mappings remain numpad keys.
 
 Implementation is [`BonnetCamera.cs`](../src/ArtOfSimRally.Mod/BonnetCamera.cs)
 and [`CameraTuner.cs`](../src/ArtOfSimRally.Mod/CameraTuner.cs). The mechanism is
-smaller than the design notes above imply: `CarCameras.SetCameraFromSave` wraps
-on `CameraAnglesList.Count` rather than a hard-coded 8, so appending entries in a
-`Start` postfix is enough to join the rotation — no patching of the cycling logic
-at all. A `LateUpdate` postfix then takes the camera over completely while one of
+smaller than the design notes above imply: native cycling wraps on the current
+`CameraAnglesList.Count`, while loading a saved preset clamps to that count.
+The `Start` postfix appends our entries and refreshes a saved owned bonnet/bumper
+slot once, if it was selected before that slot existed (ISS-0024 source fix,
+November 2). It uses the game's `RefreshCameraType`, without writing the preset
+or overriding stock/foreign choices. No cycling patch is needed.
+A `LateUpdate` postfix then takes the camera over completely while one of
 ours is active, because the stock rig always places the camera at a distance and
 calls `LookAt` on the car, and a zero distance would have it looking at itself.
 

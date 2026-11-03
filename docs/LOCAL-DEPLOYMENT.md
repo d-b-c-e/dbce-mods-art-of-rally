@@ -1,10 +1,19 @@
 # Local deployment
 
+## Camera source successor, November 2 (not installed)
+
+ISS-0024: after adding mounted views, refresh an available owned saved camera
+once through the native method. Lifecycle95/CameraTuning408/SettingsUi3549 and
+net48 build pass; no stage/runtime or owner acceptance is claimed. ISS-0023's
+Wheelkit UI already exists in current source; installed UI/Apply and cross-game
+gates remain open. [Camera issue handoff](2026-11-02-camera-issues.md).
+Installed rc.36 below is unchanged.
+
 ## Source successor, November 2 (not installed)
 
 Single-element saves now preserve original XML bytes outside the owned scalar;
 SettingsUi 3549/Regression 478849 assertions and production net48 build pass.
-No public push or owner-file change. Details and evidence:
+Source 1502abe was pushed with owner approval; no owner-file change. Details and evidence:
 [element-save handoff](2026-11-02-element-save-preservation.md).
 The installed rc.36 identity below remains unchanged.
 
