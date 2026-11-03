@@ -1,5 +1,13 @@
 # Local deployment
 
+## Source successor, November 2 (not installed)
+
+Single-element saves now preserve original XML bytes outside the owned scalar;
+SettingsUi 3549/Regression 478849 assertions and production net48 build pass.
+No public push or owner-file change. Details and evidence:
+[element-save handoff](2026-11-02-element-save-preservation.md).
+The installed rc.36 identity below remains unchanged.
+
 ## Current installation — 0.4.4-rc.36 (November 1, owner test)
 
 rc.35 plus the cab-over bonnet camera on the roof's front edge and the bumper camera at most 45 cm up (`4ea8b21`; owner:

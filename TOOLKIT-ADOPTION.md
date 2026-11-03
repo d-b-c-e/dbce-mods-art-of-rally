@@ -1,5 +1,26 @@
 # Toolkit standards adoption
 
+## November 2: XML element-save preservation and STD-038..049 audit
+
+WriteElement now validates XML and patches only its owned scalar span instead of
+reserializing the document. Existing STD-046 row below remains unchanged. No new
+camera/force/default behavior or install is claimed. Source evidence:
+[element-save handoff](docs/2026-11-02-element-save-preservation.md).
+
+| Standard | Title | Status | Notes |
+|---|---|---|---|
+| STD-038 | Window lands on racing row | partial | Existing landing source and historical qualification retained; no new native startup/display evidence. |
+| STD-039 | Direct game steering | partial | Existing direct wheel/Shim input retained; no virtual-controller change or new hardware parity proof. |
+| STD-040 | One download and F6 parity | partial | Existing release/private RC package and in-game setup retained; public dependency/distribution and full parity gates remain separate. |
+| STD-041 | Always corrected triples; framing sets | adopted | Current Art camera policy supplies Game/Realistic sets with session-only developer comparison; this task changes persistence only. No new rendered acceptance. |
+| STD-042 | Remember and label camera adjustments | partial | Existing per-car/camera/set offsets and labels retained; stage/last-camera and owner acceptance remain separately tracked. |
+| STD-043 | Independent hotkeys and held gates | partial | CameraKeys.AnyHeld checks camera bindings rather than global anyKey. Held H-pattern/stage-start behavior not newly qualified. |
+| STD-044 | Atomic owned-value byte-preserving writes | partial | WriteElement preserves UTF-8 BOM, per-line EOL, XML quote/entity/comment/attribute bytes and no final newline; scalar/duplicate/DTD/encoding refusal and owned flushed temps covered. SettingsUi 3549 + Regression 478849 pass. Full object serialization and concurrent external-edit admission remain separate. |
+| STD-045 | Default force On; My Rig owns switch | partial | Existing On/Off persistence and accepted force tune/profile mapping retained; no output/default or installed Apply qualification in this task. |
+| STD-047 | One spanning window; edge-plane eye | adopted | Current source has one span and ChordDistanceMm returns EyeDistanceMm unchanged; prior runtime/owner evidence remains separate from this save fixture. |
+| STD-048 | Numpad plus zooms in | adopted | Settings KeyFovDown = KeypadPlus narrows; KeyFovUp = KeypadMinus widens. Existing migration/custom bindings retained. |
+| STD-049 | Cab-over bonnet on roof front edge | adopted | Current rc.36 source/installed handoff records roof-front bonnet/bumper fitting; no new vehicle or rig acceptance claimed here. |
+
 ## October 15 owned prompt labels - source candidate
 
 Scoped STD-020 GLY / STD-033/036 presentation follow-up: native controls/menu

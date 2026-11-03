@@ -237,8 +237,44 @@ static class Program
     }
     static int Main()
     {
-        try{Inventory();TripleSave();TelemetryDefault();Views();SelectionAndMigration();Runtime();MenuIsolation();Display();Console.WriteLine(JsonSerializer.Serialize(new{status="passed",assertions,hardwareOutput=false,visualInspection=false}));return 0;}
+        try{ElementBytes();Inventory();TripleSave();TelemetryDefault();Views();SelectionAndMigration();Runtime();MenuIsolation();Display();Console.WriteLine(JsonSerializer.Serialize(new{status="passed",assertions,hardwareOutput=false,visualInspection=false}));return 0;}
         catch(Exception e){Console.Error.WriteLine(e);return 1;}
+    }
+    static void ElementBytes()
+    {
+        var dir=Path.Combine(Path.GetTempPath(),"art-element-bytes-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(dir);
+        var file=Path.Combine(dir,"Settings.xml");
+        bool Throws(Action action){try{action();return false;}catch(Exception){return true;}}
+        try
+        {
+            const string before="<?xml version='1.0' encoding='utf-8'?>\r\n<Settings note='a > b'>\n  <!-- <OverrideFieldOfView>fake</OverrideFieldOfView> -->\r\n  <Future note='keep'>A&#x26;B</Future>\n  <OverrideFieldOfView data='keep'>true</OverrideFieldOfView>\r\n</Settings>";
+            foreach(var bom in new[]{false,true})
+            {
+                var encoding=new System.Text.UTF8Encoding(bom);
+                byte[] Bytes(string text)=>encoding.GetPreamble().Concat(encoding.GetBytes(text)).ToArray();
+                File.WriteAllBytes(file,Bytes(before));
+                SettingsPersistence.WriteElement(file,"OverrideFieldOfView","false");
+                Check(File.ReadAllBytes(file).SequenceEqual(Bytes(before.Replace(">true</OverrideFieldOfView>",">false</OverrideFieldOfView>"))),
+                    "single XML value changed BOM/EOL/quote style/entities/comments/attributes or final newline");
+            }
+            foreach(var bad in new[]{"<Settings><Pick>1</Pick><Pick>2</Pick></Settings>","<Settings><Pick><Child/></Pick></Settings>","<!DOCTYPE Settings [<!ENTITY x 'value'>]><Settings><Pick>&x;</Pick></Settings>"})
+            {
+                File.WriteAllText(file,bad);var original=File.ReadAllBytes(file);
+                Check(Throws(()=>SettingsPersistence.WriteElement(file,"Pick","3"))&&File.ReadAllBytes(file).SequenceEqual(original),"ambiguous/structured/DTD XML was rewritten");
+            }
+            File.WriteAllText(file,"<Settings note='keep'><Pick data='x' /></Settings>");
+            SettingsPersistence.WriteElement(file,"Pick","<&\r\n");
+            var parsed=new System.Xml.XmlDocument();parsed.Load(file);
+            Check(parsed.DocumentElement["Pick"].InnerText=="<&\r\n"&&File.ReadAllText(file).StartsWith("<Settings note='keep'><Pick data='x' >"),"self-closing scalar or escaped value damaged surrounding markup");
+            File.WriteAllText(file,"<Settings note='keep' />");
+            SettingsPersistence.WriteElement(file,"Pick","3");
+            Check(File.ReadAllText(file)=="<Settings note='keep' ><Pick>3</Pick></Settings>","empty-root insertion rewrote unowned attributes");
+            File.WriteAllText(file,"<Settings>\r\n  <Unknown>x</Unknown>\n</Settings>");
+            SettingsPersistence.WriteElement(file,"Pick","3");
+            Check(File.ReadAllText(file).Replace("<Pick>3</Pick>","")=="<Settings>\r\n  <Unknown>x</Unknown>\n</Settings>","missing-field insertion rewrote unowned whitespace");
+            Check(Directory.GetFiles(dir,"*.tmp").Length==0,"element save left a staging file");
+        }
+        finally{Directory.Delete(dir,true);}
     }
     static void MenuIsolation()
     {
