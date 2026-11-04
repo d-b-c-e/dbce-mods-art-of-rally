@@ -338,3 +338,16 @@ without suppressing landing or repeatedly acquiring preferences in the episode.
 596 offline assertions and Release warning-as-error build pass; pin/diff pass.
 STD-038 remains PARTIAL pending corrected-source and native/runtime evidence.
 Existing unrelated unchecked/partial/missing standards remain as listed above.
+
+## November 3 structured adoption-row reconciliation
+
+The backlog reader recognizes four-column ledger rows. STD-030's scoped F6
+source work and STD-031's explicitly partial steering-reference work were
+already documented above, but neither had a recognized row. These rows expose
+that existing evidence without adding a build, test, package, runtime or physical
+result. Historical paragraphs and their candidate-specific limits still apply.
+
+| Standard | Title | Status | Notes |
+|---|---|---|---|
+| STD-030 | Standard F6 panel comes first | partial | Existing Simple/Advanced F6 and shared binding/UI work are recorded in STD-004 and the October15 STD-004/030 sections above. Source-only Save-warning/editor/help follow-ups do not inherit rendered/package acceptance. No new implementation, build, installed UI or hardware qualification in this row reconciliation. |
+| STD-031 | Art reference: new50 matches legacy30 | partial | The October11 steering-reference section already records the new default reference, unchanged explicit saved tunes/historical replay, build/settings/recorder checks and paired original-force trials. Its package/runtime adoption and physical-feel gates remain separate; no retune or new qualification here. See docs/reviews/2026-10-11-ffb-reference-v2.md. |
