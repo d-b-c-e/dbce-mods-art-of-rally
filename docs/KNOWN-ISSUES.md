@@ -21,7 +21,7 @@ Severity is about the effect on driving, not on how annoying it looks:
 
 ## Open
 
-### ISS-0024 — Last mounted camera at stage start (source candidate)
+### ISS-0024 — Last mounted camera at stage start (installed candidate; rendering unverified)
 
 The bonnet/bumper Start postfix appended views without reapplying a saved owned
 slot that native selection had clamped while only stock views existed. The
@@ -32,8 +32,9 @@ The original hook fails the new lifecycle fixture; fixed Lifecycle95,
 CameraTuning408, SettingsUi3549 and net48 build pass. The a905fe79 DLL was later
 file-only installed November3 (C2C35822); stage rendering remains unobserved.
 The November4 successor also waits for late target/rig/player readiness:
-actual old hook15checks/7fail, fixed15+Lifecycle95 pass. It is not yet built into
-an installed combined candidate. This covers the mounted-view ordering gap; the owner's complete
+actual old hook15checks/7fail, fixed15+Lifecycle95 pass. Combined rc.37 was
+file-only installed November4 (Mod79FC4995), with1,396 retained consumer/native/
+managed/installer checks. This covers the mounted-view ordering gap; the owner's complete
 symptom, late Custom Vehicles cockpit and stage/restart rendering still need live
 validation. See [camera issue handoff](2026-11-02-camera-issues.md) and
 [stage/held-gate successor](2026-11-03-stage-camera-gates.md).

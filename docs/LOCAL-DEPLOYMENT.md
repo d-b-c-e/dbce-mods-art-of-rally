@@ -1,5 +1,45 @@
 # Local deployment
 
+## Current installation — 0.4.4-rc.37, November 4
+
+File-only installed from clean package source
+`0d9c0808d521286b8002816317ba54a5cb1f52f0`. This candidate restores an owned
+saved mounted camera after late rig/target/player readiness, retries legacy held
+H-pattern gears after a refused/reset shift, and retains absolute H-pattern gates
+through startup/reacquisition in the exact installed 31-action shared Core.
+Stock/foreign camera ownership and sequential/menu/paddle release guards remain.
+
+| Artifact | SHA-256 |
+|---|---|
+| `ArtOfSimRally-0.4.4-rc.37-shared-input.zip` | `859F6A097340E50175C50E9D2C30271C37ADCA3202178D5C0A378A83BDCABDE6` |
+| Installed Mod DLL | `79FC4995EB99018087CCE46A53E7B999AC898CA420E439D39831E1E98B53F75B` |
+| Installed shared shim | `7E4A1251AC733E34A393E28EA3453F3ED409C8356158FF82ADD4242348A0A9A1` |
+| Installed `build.json` | `01BD50C889594197DDBFD43CA173CC1A81BDA8DADF91204E85C205415B834DA8` |
+| Both unchanged native force copies | `44E46799945438BC07DF738472602DB1E3ECC04C3F77CAD5B12FCACF49C69272` |
+
+Retained qualification: 507 Art consumer + 679 native + 140 exact-DLL managed +
+70 isolated real-installer assertions = **1,396 checks**. The real package producer
+regenerated the receipt, including the formerly stale nested controls identity.
+All nine installed package payloads match the retained archive. Six files changed;
+the whole 22-file mod folder was backed up. Seventeen protected files retained
+bytes, creation/write timestamps and attributes, and all 24 captured security
+descriptors match. Atomic Info.json replacement changed its owner SID; the
+captured owner was restored and independently checked before release.
+
+Backup and guarded one-step rollback:
+`E:/Source/_archive/2026-11-04/owner-before-art-stage-gates-074254237/Rollback.ps1`
+(SHA-256 `3DAD9298AD87FBD02239FD8DD9BB151CD69FBE4CB27F2D89E50003E293B11A59`).
+The rollback also verifies and restores the captured security descriptors; it has
+been parser-checked, not executed against the installed candidate.
+
+Evidence: `bld/stage-start-qualification/owner-install/independent-readback.json`
+(`1D1198B5969DF1D1B32364747D355179117735949CDA1564A764428AAC5557D8`),
+the adjacent install receipt, and
+[stage/held-gate qualification](2026-11-03-stage-camera-gates.md).
+No game, UI or device run occurred. Stage/restart rendering, late Custom Vehicles
+cockpit restoration, physical held shifter behavior and owner acceptance remain
+open. STD-042/043 remain partial. Historical entries below describe earlier copies.
+
 ## Current file-only successor, November 3
 
 The owner-directed sweep installed a905fe79 Mod DLL

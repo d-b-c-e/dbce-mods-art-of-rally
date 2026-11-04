@@ -10,12 +10,12 @@ Desktop routes (2026-11-03): follow the [route ladder](../../dbce-project-mgmt/s
 
 ## Repository Purpose
 
-**Current state (reconciled 2026-10-23):**
+**Current state (installed files reconciled 2026-11-04):**
 
 - **Published:** the latest public stable release is **0.4.1**, GitHub
   [`v0.4.1`](https://github.com/d-b-c-e/dbce-mods-art-of-rally/releases/tag/v0.4.1),
   published 2026-10-07 01:08:38 UTC from `7c3de40`. The README download points there.
-- **Installed:** owner-accepted private **0.4.2-rc.30**, clean package source `89ca2180af9199ca678095009e5c09e0ea79b27c`, installed October23. Its nine installed mod payloads match the validated ZIP `7F243455`; the owner tested and fully signed off on Art of Rally on October23. Preserve accepted driving, force and performance. The keyboard concern from that session was withdrawn as unconfirmed. Moved-control Bind/Save/restart, action response, glyphs and device loss on hardware remain separately untested extras. See `docs/LOCAL-DEPLOYMENT.md` and the unpublished release draft `docs/releases/0.4.2.md`. Public shim/helper distribution and stable packaging policy remain unresolved until release preparation is complete.
+- **Installed:** private **0.4.4-rc.37**, file-only November4 from clean package source `0d9c0808d521286b8002816317ba54a5cb1f52f0`; Mod `79FC4995`, shim `7E4A1251`, validated ZIP `859F6A09`. All nine installed payloads match, with1,396 retained consumer/native/managed/installer checks, protected settings/metadata and security descriptors independently verified. This stage-camera/held-gate successor has no rendered, driving, device or owner acceptance. Both native force copies remain `44E46799`. The owner's October23 full signoff applied to earlier **0.4.2-rc.30** (`89ca2180`/ZIP `7F243455`); preserve its accepted driving, force and performance. The keyboard concern from that session was withdrawn as unconfirmed. Moved-control Bind/Save/restart, action response, glyphs and device loss on hardware remain separately untested extras. See `docs/LOCAL-DEPLOYMENT.md` for current identities/backup/rollback and `docs/releases/0.4.2.md` for the historical unpublished draft. Public shim/helper distribution and stable packaging policy remain unresolved until release preparation is complete.
 
 `docs/LOCAL-DEPLOYMENT.md` (its "Current installation" section) is authoritative for
 what is installed, and the GitHub releases page is authoritative for what is

@@ -1,5 +1,41 @@
 # Stage camera readiness and held H-pattern gates, November 3
 
+## Delivered November 4
+
+Art **0.4.4-rc.37** was built through the real package producer from clean source
+`0d9c0808d521286b8002816317ba54a5cb1f52f0`, landed on local main and file-only
+installed. The exact retained ZIP is
+`859F6A097340E50175C50E9D2C30271C37ADCA3202178D5C0A378A83BDCABDE6`;
+Mod `79FC4995EB99018087CCE46A53E7B999AC898CA420E439D39831E1E98B53F75B`,
+shim `7E4A1251AC733E34A393E28EA3453F3ED409C8356158FF82ADD4242348A0A9A1`.
+
+Retained **1,396 checks**: 507 Art consumer, 679 native, 140 managed actual-DLL
+ABI/copied-provider/held-start/profile-info, and 70 real isolated installer
+assertions. CPU516131 built/package-validated the candidate but stopped before
+installer checks on inherited Windows PowerShell module paths. CPU516283 ran
+only the unchanged installer suite against that exact archive: 70 PASS in15.80s.
+Both receipts and prior failed/refused receipts remain; all jobs, audits,
+certificates, handles and leases closed. No passing suites were repeated.
+
+All nine installed payloads match. Whole 22-file mod backup, 17 protected-file
+metadata checks and 24 security descriptors are independently verified. The
+Info.json replacement's changed owner SID was restored to the captured owner;
+all descriptors then matched. Both native force copies remain `44E46799`.
+The real producer corrected the stale nested controls hash and shim identity.
+Backup/guarded rollback is
+`E:/Source/_archive/2026-11-04/owner-before-art-stage-gates-074254237/Rollback.ps1`;
+rollback SHA `3DAD9298AD87FBD02239FD8DD9BB151CD69FBE4CB27F2D89E50003E293B11A59`.
+Install/readback/security evidence is under
+`bld/stage-start-qualification/owner-install`; independent readback SHA is
+`1D1198B5969DF1D1B32364747D355179117735949CDA1564A764428AAC5557D8`.
+
+No game/device/FFB/UI/owner acceptance or public push. Rendered stage/restart
+restoration, late Custom Vehicles cockpit and physical held-gate behavior remain
+open; STD-042/043 stay partial. No CPU/rig/process/cleanup custody remains.
+Documentation-only successors to the compiled source do not change this package.
+
+## Historical checkpoints (superseded by delivery above)
+
 Coordinator514777; isolated branch `napo/art-stage-camera-gates-20261103`,
 worktree `E:/Source/_work/napo-art-stage-camera-gates-20261103`.
 Basebb6eb25 includes the previously qualified/installed a905fe79 mounted-camera
