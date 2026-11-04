@@ -1,5 +1,23 @@
 # Local deployment
 
+## Current file-only successor, November 3
+
+The owner-directed sweep installed a905fe79 Mod DLL
+`C2C358228C02D1EAE964B542C50DA4127DF5F3E48475D656369DF8BF93FDE727`
+and build.json, backed up at
+`E:/Source/_archive/2026-11-03/owner-before-artofrally-040825444` with manifest
+and guarded Rollback.ps1. The installed DLL was independently confirmed again
+November4. Settings and existing native/shim payloads were preserved; no game,
+force or owner acceptance accompanied this file-only update. Earlier installed
+rc.36 paragraphs below are historical checkpoints.
+
+The current build.json nested controls assembly hash still names E5368292;
+the final qualified stage-readiness/held-gate package must regenerate it through
+the real producer. The new successor is not installed: its actual hook/legacy
+consumer checks total507 GREEN assertions, while the exact31-action shared-Core
+successor awaits native/DLL/ABI qualification and combined production build.
+See [current work](2026-11-03-stage-camera-gates.md).
+
 ## Camera source successor, November 2 (not installed)
 
 ISS-0024: after adding mounted views, refresh an available owned saved camera

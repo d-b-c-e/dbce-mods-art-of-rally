@@ -29,10 +29,14 @@ November 2 source candidate refreshes only a just-added, available owned slot,
 once, through the native selection/pose method. It leaves saved preferences,
 stock/foreign choices and disabled/unready/external-mod cases untouched.
 The original hook fails the new lifecycle fixture; fixed Lifecycle95,
-CameraTuning408, SettingsUi3549 and net48 build pass. **Not installed or observed
-across stages.** This covers the mounted-view ordering gap; the owner's complete
+CameraTuning408, SettingsUi3549 and net48 build pass. The a905fe79 DLL was later
+file-only installed November3 (C2C35822); stage rendering remains unobserved.
+The November4 successor also waits for late target/rig/player readiness:
+actual old hook15checks/7fail, fixed15+Lifecycle95 pass. It is not yet built into
+an installed combined candidate. This covers the mounted-view ordering gap; the owner's complete
 symptom, late Custom Vehicles cockpit and stage/restart rendering still need live
-validation. See [camera issue handoff](2026-11-02-camera-issues.md).
+validation. See [camera issue handoff](2026-11-02-camera-issues.md) and
+[stage/held-gate successor](2026-11-03-stage-camera-gates.md).
 
 ### KI-53 — Bumper camera flickers subtly in evening light
 

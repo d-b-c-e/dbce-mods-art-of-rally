@@ -58,3 +58,36 @@ checks passed. No candidate/full mod build or file installation yet.
 Remaining focused GREEN/full candidate build and file installation are pending. Rendered stage
 restoration, late cockpit, physical shifter and owner acceptance remain open.
 No public push is authorized.
+
+## Qualification checkpoint, November 4
+
+CPU515423 passed the remaining existing shifter identity suite386 assertions.
+Combined retained GREEN:15 new camera checks,95 existing Lifecycle assertions,
+11 held/sequential checks and386 identity assertions (507 total). Source at
+4a69dbc5 differs from068cdcef only in tests/docs. Both successful cohorts closed
+with unchanged pins/certificates and complete job/audit/handle/lease closure.
+
+Shared Core work is isolated at
+`E:/Source/_work/napo-toolkit-art-held-gates-20261103`, branch
+`napo/art-held-gates-20261103`, off the installed31-action421bd4b baseline.
+Its actual old production passed50 checks and failed30 of80 as expected under
+CPU515563. Candidatea5dd678b changes only H-pattern absolute-gate rearming;
+Sequential/Automatic, hotkey/menu/paddle, read-validity and latched fences stay
+owned by the original paths.82-check GREEN plus full Core/fake-COM/provider-host/
+ABI/copied-provider/DLL-import qualification await CPU GO. No newer42-action
+Core, new API or unrelated native behavior is adopted.
+
+Pending exact request515624: plan
+`A1C5E6868A75AAC4F9E47A67DB4FF0B86ED9370DEFBF67FC28A28AEB26B9ECA8`,
+operator `61AB4D063FD6AD1857511A14FEC48DE24BB22F303D9944A8AB1268A075E8A637`.
+75 pins;240s including30 cleanup, one BelowNormal worker, exclusive lease,
+certificate inventory, owned job and independent all-image audit before exit.
+The earlier339EF014/A5395E7B pair was withdrawn before execution after a pure
+PowerShell argv preflight correction. No native GREEN build has started and no
+CPU/rig custody is held.
+
+Current installed Art remains the earlier file-only a905fe79 DLL C2C35822,
+verified November4. Its nested build.json controls assembly identity still says
+E5368292; regenerate through the real package.ps1 producer with the final
+qualified combined candidate. Do not hand-edit the owner receipt now. Existing
+force DLL, shim BC9B030A and owner settings remain untouched by this task.
