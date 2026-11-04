@@ -738,3 +738,7 @@ Keep project-related research, evidence, scripts, packages, and other working fi
 
 Clean up temporary files and disposable copies promptly once they are no longer useful. Preserve active work, user data, settings, saves, required evidence, backups, rollback artifacts, and worktrees until their retention or replacement is established. Follow existing project, rig, and data-loss safeguards; do not remove files merely because they are old or untracked.
 <!-- END project-file-location -->
+
+## Owner deployment directive - November 3, 2026
+
+The owner authorizes installing the latest available work for playtesting, superseding older install, source-only and attended-review holds. Use the actual Steam/Stream Deck launch copy, verify build compatibility, preserve saved settings, back up replaced files and small mod-owned folders outside the game with hashes and one-step rollback, and refuse replacement while that game is running. Coordinate serialized builds below normal priority. This file-only deployment does not authorize a game launch or establish runtime, device or owner acceptance. Preserve existing technical safety constraints; Sonic UE4SS stays unloaded online. Public-push restrictions remain in force.
