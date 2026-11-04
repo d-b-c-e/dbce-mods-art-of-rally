@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
   "managedRelease": "v0.15.0",
-  "toolkitRelease": "v0.16.0",
+  "toolkitRelease": "v0.16.0-art-held-gates.a5dd678",
   "nativeSourceRevision": "bbbf6e3f0cbbcd207383647a8a18fe1d724408e2",
   "nativeSourceTag": "v0.16.0",
   "nativeVersion": 901,
   "nativeExportCount": 51,
   "nativeArchitecture": "x64",
   "nativeSha256": "44E46799945438BC07DF738472602DB1E3ECC04C3F77CAD5B12FCACF49C69272",
-  "shimSha256": "BC9B030A25834D8CCE562F22588EC5E0D3F5C1FA026AD7AD984776D60CD6254B",
-  "shimSourceRevision": "421bd4b234c5e0869f082f3dc26ed08845cc7bff",
-  "scope": "Official toolkit v0.16.0 component release: the native (0.9.1 plus read-snapshot and interface-path exports) and shared-input shim the owner accepted in rc30. Managed FFB and telemetry remain byte-identical to v0.15.0. No force-model or saved-tune change."
+  "shimSha256": "7E4A1251AC733E34A393E28EA3453F3ED409C8356158FF82ADD4242348A0A9A1",
+  "shimSourceRevision": "a5dd678b220936d5b8368b5943231220f98562b8",
+  "scope": "Private Art-local composition: official v0.16.0 native and v0.15.0 managed components unchanged; only the exact 31-action shared shim receives the qualified H-pattern held-gate fix. Not an official toolkit release or owner hardware acceptance."
 }

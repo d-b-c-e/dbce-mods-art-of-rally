@@ -15,7 +15,7 @@ namespace ArtOfSimRally.Mod
         internal const string ProfileFileName = "dbce-controls.ini", ShimFileName = "dbce_shim.dll";
         // Canonical toolkit shim c6594fa (built from 421bd4b): copied provider, fenced latched bridge,
         // pure profile inspection. Pinned in lib/input-shim/CANDIDATE.json; October 13 offline tests passed.
-        internal const string ExpectedShimSha256 = "BC9B030A25834D8CCE562F22588EC5E0D3F5C1FA026AD7AD984776D60CD6254B";
+        internal const string ExpectedShimSha256 = "7E4A1251AC733E34A393E28EA3453F3ED409C8356158FF82ADD4242348A0A9A1";
         // A failed joystick restore is retried in the menus about once a second, then left for a restart.
         internal const int RestoreRetries = 10, RestoreRetryFrames = 60;
         private static readonly RewiredInputIsolation inventory = new RewiredInputIsolation();

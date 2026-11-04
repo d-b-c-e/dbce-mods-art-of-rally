@@ -102,6 +102,44 @@ internal static class BridgeTests
         checks = 0;
         ActualOne(dll, false); ActualOne(dll, true); ActualActions(dll); LatchedBridgeGate(dll); return checks;
     }
+    // Exact candidate DLL -> copied physical snapshot -> real Core frame ->
+    // Art's actual gate decision. No DirectInput or force device is opened.
+    internal static int ActualHeldGates(string dll)
+    {
+        checks = 0;
+        string folder = Path.Combine(Path.GetTempPath(), "art-held-gate-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(folder);
+        string identity = " dev={d71b8350-61b7-11f1-8001-444553540000} prod={0006346e-0000-0000-0000-504944564944}";
+        string profile = "[Controls]\nSchema = 1\nProfile = Held Gate\nRevision = r1\nTransmission = H-pattern\n" +
+            "gear1 = button 0" + identity + "\nconfirm = button 1" + identity + "\nshiftUp = button 2" + identity + "\n";
+        var source = new DeviceSource(); source.Buttons[0][0] = source.Buttons[0][1] = source.Buttons[0][2] = true;
+        var native = new ShimBridgeNative(dll, folder, System.Text.Encoding.UTF8.GetBytes(profile));
+        var sink = new ShimAxisConsumer(); var bridge = new ShimBridge(source, native, sink, new[] { 0 }); int frame = 0;
+        void Step() { Check(bridge.ReadFrame(++frame, (slot, bytes) => { }), "held-gate copied frame: " + bridge.Failure); Thread.Sleep(5); }
+        try
+        {
+            for (int i = 0; i < 200 && !sink.Live(ShimTransmission.Gear1, frame); i++) Step();
+            Check(native.Transmission() == "H-pattern", "Core lost the H-pattern profile mode");
+            Check(sink.Live(ShimTransmission.Gear1, frame), "startup held gate remained Rearming until lever movement");
+            Check(ShimTransmission.Gate(sink, frame) == ShimTransmission.FirstGear, "live Core first-gear level did not reach Art");
+            Check(sink.Value(9, frame) == 0 && sink.TakeShift() == 0, "held startup menu/paddle escaped release guards");
+            int last = int.MinValue;
+            Check(ShimTransmission.Next(ShimTransmission.Mode.HPattern, false, ShimTransmission.Neutral,
+                ShimTransmission.Gate(sink, frame), ref last, 0, false, 6) == ShimTransmission.FirstGear, "Art did not engage a gate held before startup");
+            Step();
+            Check(ShimTransmission.Next(ShimTransmission.Mode.HPattern, false, ShimTransmission.FirstGear,
+                ShimTransmission.Gate(sink, frame), ref last, 0, false, 6) == null, "Art repeated an already engaged held gear");
+            Check(ShimTransmission.Next(ShimTransmission.Mode.HPattern, false, ShimTransmission.Neutral,
+                ShimTransmission.Gate(sink, frame), ref last, 0, false, 6) == ShimTransmission.FirstGear, "held gate did not survive a native stage reset");
+            Check(ShimTransmission.Next(ShimTransmission.Mode.HPattern, false, ShimTransmission.Neutral,
+                ShimTransmission.Gate(sink, frame), ref last, 0, false, 6, changing: true) == null, "held retry interrupted an in-flight gear change");
+            source.Buttons[0][1] = source.Buttons[0][2] = false; Step();
+            source.Buttons[0][1] = source.Buttons[0][2] = true; Step();
+            Check(sink.Value(9, frame) == 1 && sink.TakeShift() == 1, "menu/paddle did not accept a fresh press after release");
+        }
+        finally { bridge.Stop("held-gate qualification complete"); }
+        Check(File.ReadAllText(Path.Combine(folder, "host-shutdown.json")).Contains("\"state\":\"resolved\""), "held-gate copied host stop did not resolve");
+        return checks;
+    }
     // Run only against a shim whose copied-provider bridge admits latched control sessions.
     internal static int ActualLatchedSession(string dll) { checks = 0; ActualLatched(dll); ActualTrial(dll); return checks; }
     // Slice B against the real Core: the probe's LatchedTrial drives action-level navDown/navUp through

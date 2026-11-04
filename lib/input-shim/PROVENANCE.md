@@ -191,3 +191,28 @@ These offline checks do not establish:
 - general shared-input parity.
 
 Publishing the shim binary remains a separate owner decision.
+# November 4 private Art held-gate successor
+
+Local candidate sourcea5dd678b220936d5b8368b5943231220f98562b8 in the toolkit's
+isolated `napo/art-held-gates-20261103` branch starts from the exact installed
+31-action421bd4b baseline. It changes only H-pattern absolute-gate rearming;
+other transmission modes, digital shortcuts, fresh-read rules and latched
+physical-input fences retain their existing paths. No newer42-action Core/API
+or force/native reader update is adopted.
+
+Qualified DLL:926720 bytes, SHA256
+`7E4A1251AC733E34A393E28EA3453F3ED409C8356158FF82ADD4242348A0A9A1`,
+clang19.1.5 /MT. Actual RED80/30, GREEN679 checks across held gates, Core,
+fake-COM/provider host, ABI and copied-provider suites. The final suite's summary
+format caused a harness classification failure after its successful exit;
+that raw receipt is retained. Separate read-only frozen dumpbin inspection
+verified static CRT, Windows imports and all20 declared exports, with no DLL
+load or test repeat. See toolkit `native/shim/docs/ART-HELD-GATES-2026-11-04.md`.
+
+The local vendored shim, build receipt, component provenance, manifest and
+CANDIDATE pin agree. This is a private Art composition, not an official toolkit
+release or authorization for public push/distribution. Existing WheelFfb/native
+and managed FFB/telemetry bytes and owner tuning are unchanged. Art managed
+copied-provider, final package/install and physical shifter acceptance are
+separate gates; no new runtime/owner acceptance is claimed.
+

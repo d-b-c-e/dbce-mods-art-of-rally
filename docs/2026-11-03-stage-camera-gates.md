@@ -55,7 +55,7 @@ in neutral and counts the real neutral-to-first transitions. Production is
 unchanged; only that suite needs retry. Job/audit/handle/lease closure and My/Root
 checks passed. No candidate/full mod build or file installation yet.
 
-Remaining focused GREEN/full candidate build and file installation are pending. Rendered stage
+Final combined candidate build and file installation are pending. Rendered stage
 restoration, late cockpit, physical shifter and owner acceptance remain open.
 No public push is authorized.
 
@@ -85,6 +85,25 @@ certificate inventory, owned job and independent all-image audit before exit.
 The earlier339EF014/A5395E7B pair was withdrawn before execution after a pure
 PowerShell argv preflight correction. No native GREEN build has started and no
 CPU/rig custody is held.
+
+That request later executed: CPU515624 completed all seven native builds and679
+functional checks (82 gate,192 Core,106 fake-COM,37 host,185 ABI,77 copied-provider).
+Its final stdout parser did not recognize the successful copied-provider summary;
+the raw result remains a harness failure. Separate read-only frozen dumpbin
+inspection completed the remaining static-CRT/import/export check without test
+repetition or DLL loading. Native `cpu-green03/qualification.json` records the
+composite, SHA25603DD28B8E8888C168576335D2ECE662218C46CF7B44EDCB7C27BBE230F32A08A.
+Native branch6032311 contains the qualification note, compiled productiona5dd678b.
+
+Art now pins qualified shim
+`7E4A1251AC733E34A393E28EA3453F3ED409C8356158FF82ADD4242348A0A9A1`
+(926720 bytes) consistently in startup, CANDIDATE, vendored bytes/receipt and
+component manifest. Its private toolkit label identifies the composition;
+official native/managed force bytes are unchanged. A focused managed path now
+tests the exact DLL through real copied snapshots/Core frames into Art's held
+gear decision, plus existing ABI/bridge/profile inspection. It performs no
+DirectInput or force acquisition. Managed/combined net48 build, real package
+producer and exact archive validation remain pending CPU GO.
 
 Current installed Art remains the earlier file-only a905fe79 DLL C2C35822,
 verified November4. Its nested build.json controls assembly identity still says

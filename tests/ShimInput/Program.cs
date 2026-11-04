@@ -932,6 +932,15 @@ internal static class Program
         }
         try
         {
+            if (args.Length == 2 && args[0] == "--qualification-only")
+            {
+                assertions += AbiProbe.Check(args[1]);
+                assertions += BridgeTests.Actual(args[1]);
+                assertions += BridgeTests.ActualHeldGates(args[1]);
+                assertions += ProfileInfoTests.Actual(args[1]);
+                Console.WriteLine("{\"status\":\"passed\",\"assertions\":" + assertions + ",\"copiedProvider\":true,\"realDevice\":false}");
+                return 0;
+            }
             if (args.Length == 1 && args[0] == "--shared-status-only")
             {
                 SharedStatus();
