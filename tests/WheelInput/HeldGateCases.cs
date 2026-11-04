@@ -34,6 +34,13 @@ internal static class HeldGateCases
         Device.Buttons[1] = 0; Shifter.Update(drive);
         drive.gear = 2; Shifter.Update(drive);
         Check("physical neutral remains true after native reset", drive.gear == 1);
+        Host.Settings.ShifterIsHPattern = false; Host.Settings.ShiftUpButton = 0;
+        Device.Buttons[0] = 128; Host.SettingsVisible = true; Shifter.Update(drive);
+        Host.SettingsVisible = false; before = drive.Shifts; Shifter.Update(drive);
+        Check("sequential panel press still waits for release", drive.Shifts == before);
+        Device.Buttons[0] = 0; Shifter.Update(drive);
+        Device.Buttons[0] = 128; Shifter.Update(drive);
+        Check("new sequential press after release still shifts once", drive.gear == 2 && drive.Shifts == before + 1);
         Shifter.Close();
         Console.WriteLine(JsonSerializer.Serialize(new { schema = "art.held-gate-regression@1", pass = failures == 0, checks = results.Count, failures, productionConsumer = true, nativeOrDeviceLoaded = false, assertions = results }));
         return failures == 0 ? 0 : 1;

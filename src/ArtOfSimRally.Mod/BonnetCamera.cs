@@ -44,6 +44,33 @@ namespace ArtOfSimRally.Mod
         private static CameraAngle _bonnetAngle;
         private static CameraAngle _bumperAngle;
         private static bool _cameraModOwnsRotation;
+        private static CarCameras _restoreRig;
+        private static CameraAngle _restoreAngle;
+        private static int _restorePreset;
+
+        // A view can be appended before the rig has a target, is enabled or
+        // hands the camera to the player. Retain that one owned request until
+        // readiness; a changed saved selection cancels it. Never select a
+        // foreign/late-added view on another adapter's behalf.
+        private static void RestoreWhenReady(CarCameras rig)
+        {
+            if (!ReferenceEquals(_restoreRig, rig)) return;
+            var list = AnglesList(rig);
+            var cfg = Main.Settings;
+            if (_cameraModOwnsRotation || cfg == null || list == null ||
+                _restorePreset != SaveGame.GetInt("SETTINGS_CAMERA_PRESET", 3) ||
+                _restorePreset < 0 || _restorePreset >= list.Count || !ReferenceEquals(list[_restorePreset], _restoreAngle) ||
+                (ReferenceEquals(_restoreAngle, _bonnetAngle) && !cfg.BonnetCameraEnabled) ||
+                (ReferenceEquals(_restoreAngle, _bumperAngle) && !cfg.BumperCameraEnabled))
+            { _restoreRig = null; _restoreAngle = null; return; }
+            if (!Main.Enabled || !rig.enabled || rig.target == null || !GameState.IsPlayerView) return;
+            // Clear before calling the game's method: no re-entry or later
+            // frame can replay this request over a subsequent player choice.
+            var angle = _restoreAngle; _restoreRig = null; _restoreAngle = null;
+            if (ReferenceEquals(rig.CurrentCameraAngle, angle)) return;
+            rig.RefreshCameraType();
+            ModLog.Info($"Restored saved {(ReferenceEquals(angle, _bonnetAngle) ? "bonnet" : "bumper")} camera (view {_restorePreset + 1}).");
+        }
         internal const string ExternalCameraHelp = "Camera Mod is loaded. Its chase views keep control of the camera rotation; " +
             "our bonnet/bumper views and tuning keys are suspended for compatibility. To use our mounted views, " +
             "disable Camera Mod before launching the game again. Your saved mount settings are kept.";
@@ -200,6 +227,7 @@ namespace ArtOfSimRally.Mod
                     // and edits by enum index. Sharing the list can mutate the
                     // wrong camera even when our reference-based lookup is correct.
                     Release(false);
+                    _restoreRig = null; _restoreAngle = null;
                     _bonnetAngle = _bumperAngle = null;
                     ModLog.Info(ExternalCameraHelp);
                     return;
@@ -230,15 +258,15 @@ namespace ArtOfSimRally.Mod
                 // A native refresh made before these entries existed clamps to a stock view without changing
                 // SETTINGS_CAMERA_PRESET. Use the game's own selection/pose update once the owned slot is ready.
                 // Never reinterpret a foreign/missing index or reapply after a later player camera change.
-                if (added && Main.Enabled && __instance.enabled && __instance.target != null)
+                if (added)
                 {
+                    _restoreRig = null; _restoreAngle = null;
                     int saved = SaveGame.GetInt("SETTINGS_CAMERA_PRESET", 3);
                     if (saved >= 0 && saved < list.Count &&
-                        (ReferenceEquals(list[saved], _bonnetAngle) || ReferenceEquals(list[saved], _bumperAngle)) &&
-                        !ReferenceEquals(__instance.CurrentCameraAngle, list[saved]))
+                        (ReferenceEquals(list[saved], _bonnetAngle) || ReferenceEquals(list[saved], _bumperAngle)))
                     {
-                        __instance.RefreshCameraType();
-                        ModLog.Info($"Restored saved {(ReferenceEquals(list[saved], _bonnetAngle) ? "bonnet" : "bumper")} camera (view {saved + 1}).");
+                        _restoreRig = __instance; _restoreAngle = list[saved]; _restorePreset = saved;
+                        RestoreWhenReady(__instance);
                     }
                 }
             }
@@ -254,6 +282,7 @@ namespace ArtOfSimRally.Mod
             {
                 var cfg = Main.Settings;
                 if (cfg == null) return;
+                RestoreWhenReady(__instance);
                 var view = ActiveView(__instance);
                 bool shouldDrive = Main.Enabled && !_cameraModOwnsRotation && GameState.IsPlayerView &&
                     ((view == View.Bonnet && cfg.BonnetCameraEnabled) ||

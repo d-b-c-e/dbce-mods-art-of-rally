@@ -44,7 +44,6 @@ namespace ArtOfSimRally.Mod
 
         private static readonly byte[] _buttons = new byte[MaxButtons];
         private static bool _open;
-        private static int  _lastApplied = int.MinValue;
         private static bool _lastUp;
         private static bool _lastDown;
         private static readonly DeferredSave SelectionSave = new DeferredSave();
@@ -190,10 +189,17 @@ namespace ArtOfSimRally.Mod
             // A press made in the panel must not become a gear change on close.
             if (_waitForRelease)
             {
-                if (PressedButton >= 0) return;
-                _waitForRelease = false;
-                Reset();
-                return;
+                // H-pattern is an absolute lever position, including one held
+                // before stage/panel handoff. Sequential presses still wait
+                // for release so a panel press cannot become a queued shift.
+                if (cfg.ShifterIsHPattern) _waitForRelease = false;
+                else
+                {
+                    if (PressedButton >= 0) return;
+                    _waitForRelease = false;
+                    Reset();
+                    return;
+                }
             }
             if (cfg.ShifterIsHPattern) UpdateHPattern(cfg, drivetrain, n);
             else UpdateSequential(cfg, drivetrain, n);
@@ -220,10 +226,9 @@ namespace ArtOfSimRally.Mod
             // neutral on an H-pattern.
             if (gear < 0) gear = Neutral;
 
-            if (gear == _lastApplied) return;
-            _lastApplied = gear;
-
-            if (!GearExists(drivetrain, gear)) return;
+            // The lever is the truth. The game may refuse a change or reset to
+            // neutral between stages; a cached request is not an engaged gear.
+            if (drivetrain.changingGear || drivetrain.gear == gear || !GearExists(drivetrain, gear)) return;
             drivetrain.Shift(gear, true);
         }
 
@@ -289,7 +294,6 @@ namespace ArtOfSimRally.Mod
         internal static void SuppressUntilRelease() => _waitForRelease = true;
         public static void Reset()
         {
-            _lastApplied = int.MinValue;
             _lastUp = false;
             _lastDown = false;
         }
