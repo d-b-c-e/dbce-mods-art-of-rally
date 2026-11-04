@@ -249,6 +249,7 @@ static class Program
     }
     static int Main(string[] args)
     {
+        if (args.Length == 1 && args[0] == "--held-gate-regression") return HeldGateCases.Run();
         try
         {
             var directory = Path.GetFullPath(Path.Combine("results", "wheel-input-" + Guid.NewGuid().ToString("N")));

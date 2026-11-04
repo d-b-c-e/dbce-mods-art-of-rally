@@ -196,6 +196,7 @@ static class Program
     }
     static int Main(string[] args)
     {
+        if (args.Length == 1 && args[0] == "--stage-late-regression") return StageLateCases.Run(Patch);
         try
         {
             SavedMountedCamera(); Cameras(); Shutdown(); CameraCompatibility();

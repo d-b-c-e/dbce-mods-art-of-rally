@@ -129,9 +129,9 @@ public class AxisCarController
 }
 public class Drivetrain
 {
-    public bool automatic;
+    public bool automatic, changingGear, RefuseShift;
     public int gear=2; public float[] gearRatios=new float[7]; public int Shifts;
-    public void Shift(int selected,bool force) { gear=selected; Shifts++; }
+    public void Shift(int selected,bool force) { if(!RefuseShift) gear=selected; Shifts++; }
 }
 public static class SettingsManager
 {
