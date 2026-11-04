@@ -3,6 +3,36 @@
 For setup, start with [SimHub and ButtKicker](SETUP.md#simhub-and-buttkicker).
 This reference describes packet contents, units and developer checks.
 
+## Default and saved choice: November 3 source review
+
+At source `ea15b7c6aa87c4ec65c12a19988efc315dcb58ac`,
+[Settings.cs](../src/ArtOfSimRally.Mod/Settings.cs) initializes telemetry On,
+host `127.0.0.1`, port8000. Its saved-choice contract retains an explicit
+`TelemetryEnabled=false`; the default is not permission to re-enable an owner's
+saved Off value. This documentation change writes no settings or defaults.
+
+[The settings page](../src/ArtOfSimRally.Mod/SettingsPanel.cs) exposes the owner
+Telemetry switch, saved destination and active/pending endpoint status. Its
+local preset is an explicit action. The UI correctly distinguishes sending from
+receiver delivery: UDP itself supplies no acknowledgment.
+
+[TelemetryPump](../src/ArtOfSimRally.Mod/TelemetryPump.cs) only prepares a sender
+while idle and enabled. During driving it uses the already-created sender;
+changed endpoint settings wait for idle rather than resolving a destination on
+each physics step. Disabled telemetry parks and shuts down the sender. The
+producer passes frames to the vendored `Dbce.Wheel.Telemetry` sender; the packet
+contract described below is Horizon324, not a newly implemented local encoder.
+
+This closes the blank/stale STD-016 documentation entry as **partial source
+adoption**. It does not rebuild or requalify the pinned toolkit artifact, perform
+a socket/receiver/game test, or extend historical acceptance to a new candidate.
+The inspected consumer pin is `lib/toolkit/VERSION` v0.16.0; no newer toolkit
+source is substituted for that vendored binary's evidence.
+The October24 owner telemetry sign-off remains separate and unchanged. STD-009
+speed/HUD semantics and current binary/endpoint identity require their own
+evidence; this notes review adds none. No public push, owner install, SimHub,
+device, network output or runtime action was performed.
+
 ## Why Forza's format
 
 art of rally has no telemetry output. Rather than invent a format and then
