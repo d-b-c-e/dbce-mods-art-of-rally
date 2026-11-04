@@ -23,8 +23,7 @@ each physics step. Disabled telemetry parks and shuts down the sender. The
 producer passes frames to the vendored `Dbce.Wheel.Telemetry` sender; the packet
 contract described below is Horizon324, not a newly implemented local encoder.
 
-This closes the blank/stale STD-016 documentation entry as **partial source
-adoption**. It does not rebuild or requalify the pinned toolkit artifact, perform
+This documents source/default behavior; the original unchecked adoption status remains open. It does not rebuild or requalify the pinned toolkit artifact, perform
 a socket/receiver/game test, or extend historical acceptance to a new candidate.
 The inspected consumer pin is `lib/toolkit/VERSION` v0.16.0; no newer toolkit
 source is substituted for that vendored binary's evidence.
