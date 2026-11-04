@@ -47,6 +47,14 @@ with real Core regression/ABI qualification. Do not add a second Art device
 reader or duplicate raw profile-binding resolution. No shared-provider fix or
 physical held-start success is claimed by the legacy-consumer fixture.
 
-GREEN/full candidate build and file installation remain pending. Rendered stage
+CPU515284 passed the actual15-case camera regression, all95 existing Lifecycle
+assertions and the actual11-case held/sequence regression. The existing shifter
+identity suite then stopped because its default fake car was already in first
+but expected a redundant first-gear Shift call. The fixture now starts/reopens
+in neutral and counts the real neutral-to-first transitions. Production is
+unchanged; only that suite needs retry. Job/audit/handle/lease closure and My/Root
+checks passed. No candidate/full mod build or file installation yet.
+
+Remaining focused GREEN/full candidate build and file installation are pending. Rendered stage
 restoration, late cockpit, physical shifter and owner acceptance remain open.
 No public push is authorized.
