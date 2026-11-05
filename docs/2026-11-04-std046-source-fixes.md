@@ -4,7 +4,30 @@ Assignment: kole526255, off main ca1b3fed55c732eda8d59e03476c927b12b7165b.
 This public repository remains LOCAL ONLY. No install, game launch, device use,
 push or standards promotion is authorized by this source increment.
 
-## Changes awaiting CPU qualification
+## CPU526552 passed; local source/build only
+
+Candidate source `f8c2c215fc160bd89f7ec50afa12780ff16f3959` passed the approved
+BelowNormal interval in25.49s. The unchanged ca1b3fe Keys/Tuner/Chase sources
+compiled successfully, then each targeted mode failed on its expected assertion:
+F7 capture, imported F7 dispatch, idle saved-FOV clipping, missing chase wheel
+reset. Raw failures are retained as old-RED proof. Current CameraTuning passed481
+assertions; TripleScreen passed1,304. Full production mod compile passed with
+0 warnings/0 errors; candidate Mod SHA256
+`B2F972336A9EC95FD362F932F6D41A8A06F5E3657FE20FFF5DF816874621D4BF`.
+
+All175 frozen pins and clean source remained exact, certificate metadata
+unchanged. Independent587-image census found28 recorded identities absent and
+zero scoped survivors. Exact lease4e5aa585218a4529a9b4efbad961be25 released at
+2026-11-05T06:05:36.5955105Z; named lease/token absence corroborated.
+No package, install, game/UI/input/device use or owner-state write. Installed
+rc.37 remains unchanged; this is offline source/build qualification only.
+
+Evidence: `obj/std046-qualification-20261104/cpu-526552/`, including raw phase
+logs and result/independent-audit/closure.json. PlanDDDA94E25D90, Run8E7BA0ED2169.
+Result `7FCB9DDC7CE5DDB446302054A6774C83D9768458DC8AE1A911B91E48D2615E1F`;
+audit `062CCB31F40E668894486AD3E1A8237715C0C3529B183D1488785D67C19895DB`.
+
+## Qualified bounded changes
 
 - Fixed F7 joins the existing reserved camera-key predicate in capture, held
   dispatch and reset edges. Imported bindings remain saved; their independent
@@ -27,14 +50,14 @@ push or standards promotion is authorized by this source increment.
   Unknown/nonfinite baselines do not claim Custom. The real overlay integration
   must still be observed with the actual Custom Vehicles component.
 
-Qualification prepared, not run: CameraTuning links actual ChaseFov plus the
+CameraTuning links actual ChaseFov plus the
 existing actual CameraKeys/CameraTuner/settings XML paths; only input, clock,
 game camera/angle and Harmony field access are doubles. Four targeted modes
 exercise F7 capture, imported F7 dispatch, FOV bounds and chase wheel reset.
-CameraSourceRoot permits compiling these same tests against the unchanged three
-production source files from ca1b3fe for actual old-RED evidence. TripleScreen
-tests exercise the real Custom predicate. A full mod compile is required to
-verify actual Unity/Harmony wiring. No passing result is claimed yet.
+CameraSourceRoot compiled these tests against the unchanged three production
+source files from ca1b3fe for actual old-RED evidence. TripleScreen tests exercise
+the real Custom predicate; full mod compile verifies static Unity/Harmony
+compatibility. Actual callback ordering and rendering remain open.
 
 ## Real per-car/set persistence test plan
 
