@@ -3,11 +3,13 @@
     <OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings><Nullable>disable</Nullable>
     <GameDir Condition="'$(GameDir)' == ''">D:\Program Files (x86)\Steam\steamapps\common\artofrally</GameDir>
+    <CameraSourceRoot Condition="'$(CameraSourceRoot)' == ''">$(MSBuildThisFileDirectory)../../src/ArtOfSimRally.Mod</CameraSourceRoot>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="../../src/ArtOfSimRally.Mod/CameraTuner.cs" Link="CameraTuner.cs" />
+    <Compile Include="$(CameraSourceRoot)/CameraTuner.cs" Link="CameraTuner.cs" />
+    <Compile Include="$(CameraSourceRoot)/ChaseFov.cs" Link="ChaseFov.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/CameraMountFit.cs" Link="CameraMountFit.cs" />
-    <Compile Include="../../src/ArtOfSimRally.Mod/CameraKeys.cs" Link="CameraKeys.cs" />
+    <Compile Include="$(CameraSourceRoot)/CameraKeys.cs" Link="CameraKeys.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/NativeKeyboardBindings.cs" Link="NativeKeyboardBindings.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/DeferredSave.cs" Link="DeferredSave.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/Settings.cs" Link="Settings.cs" />

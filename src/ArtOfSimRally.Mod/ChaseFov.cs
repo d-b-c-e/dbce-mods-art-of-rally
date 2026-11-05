@@ -38,6 +38,7 @@ namespace ArtOfSimRally.Mod
         /// <summary>From the mounted-camera postfix, for a stock chase view only.</summary>
         internal static void Apply(CarCameras rig, Settings cfg)
         {
+            bool resetButton = CameraTuner.TakeResetButton();
             var cam = UIManager.Instance?.PanelManager?.mainCamera;
             var list = Angles(rig);
             if (cam == null || list == null || rig.CurrentCameraAngle == null) return;
@@ -48,21 +49,24 @@ namespace ArtOfSimRally.Mod
             var offsets = seat.HasValue ? cfg.ChaseFovRealisticOffsets : cfg.ChaseFovOffsets;
             while (offsets.Count <= index) offsets.Add(0f);
 
-            if (cfg.CameraTuningKeys && Main.Enabled && !Main.SettingsVisible && Application.isFocused && !CameraKeys.ModifierHeld())
+            if (cfg.CameraTuningKeys && Main.Enabled && CameraTuner.ReadyForKeys())
             {
                 float now = Time.unscaledTime, step = CameraRepeat.Bounded(cfg.CameraFovStep, .5f, 10f, 2f);
                 float delta = (Up.Tick(CameraKeys.Held(8), now) ? step : 0f) - (Down.Tick(CameraKeys.Held(9), now) ? step : 0f);
-                bool reset = Input.GetKeyDown(cfg.KeyReset) && offsets[index] != 0f;
-                if (delta != 0f || reset)
+                bool reset = (CameraKeys.Pressed(10) || resetButton) && offsets[index] != 0f;
+                float next = reset ? 0f : offsets[index] + delta;
+                if ((delta != 0f || reset) && !float.IsNaN(next) && !float.IsInfinity(next))
                 {
-                    offsets[index] = reset ? 0f : Mathf.Clamp(offsets[index] + delta, -40f, 40f);
+                    offsets[index] = next;
                     Main.MarkSettingsDirty();
                     Triple.TripleScreen.ReannounceCamera(reset ? "Field of view reset" : null);
                 }
             }
+            else { Up.Release(); Down.Release(); }
             Remove();
             _camera = cam;
-            _applied = seat.HasValue ? Mathf.Clamp((float)seat.Value + offsets[index], 20f, 120f) - cam.fieldOfView : offsets[index];
+            _applied = seat.HasValue ? (float)seat.Value + offsets[index] - cam.fieldOfView : offsets[index];
+            if (float.IsNaN(_applied) || float.IsInfinity(_applied) || float.IsInfinity(cam.fieldOfView + _applied)) _applied = 0f;
             cam.fieldOfView += _applied;
         }
     }

@@ -162,6 +162,15 @@ internal static class TripleScreen
 
     private static string _cameraNote;
 
+    private static double? CockpitGameFov()
+    {
+        // Custom Vehicles owns this default. Resolve on demand so a later-loaded
+        // component can supply it; an absent/unknown baseline claims no Custom label.
+        var type = AccessTools.TypeByName("RallyCustomVehicles.CockpitViewStore");
+        var defaults = type == null ? null : AccessTools.Field(type, "Default")?.GetValue(null) as float[];
+        return defaults != null && defaults.Length > 4 ? (double?)defaults[4] : null;
+    }
+
     /// <summary>Shows the camera label again on the next frame (after a field of view change or reset), optionally with a
     /// note in place of the key reminder.</summary>
     internal static void ReannounceCamera(string note = null) { _wasInStage = false; _cameraNote = note; }
@@ -180,9 +189,9 @@ internal static class TripleScreen
         var chase = angles == null || angle == null ? 1 : angles.IndexOf(angle) + 1;
         bool triples = TriplesOn;
         bool realistic = RealisticFor(kind);
-        // The Custom Vehicles cockpit keeps its own view; its Realistic set is Custom when it is not at the seat's true FOV.
+        // The Custom Vehicles cockpit keeps its own view and Game baseline.
         bool custom = kind == CameraOverlay.Kind.Chase ? ChaseFov.Custom(Main.Settings, chase - 1, realistic)
-            : kind == CameraOverlay.Kind.Cockpit ? realistic && RealisticStartDegrees is double seat && Math.Abs(camera.fieldOfView - seat) > .5d
+            : kind == CameraOverlay.Kind.Cockpit ? CameraOverlay.CustomFov(camera.fieldOfView, realistic ? RealisticStartDegrees : CockpitGameFov())
             : CameraMountMemory.FovCustom(Main.Settings, kind == CameraOverlay.Kind.Bumper, realistic);
         _cameraName = CameraOverlay.Name(kind, chase, realistic, custom);
         _cameraHint = _cameraNote ?? CameraOverlay.Hint(kind, triples, realistic, Main.Settings.CameraTuningKeys);

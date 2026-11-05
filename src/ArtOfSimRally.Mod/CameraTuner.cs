@@ -38,6 +38,7 @@ namespace ArtOfSimRally.Mod
         private static bool _waitForRelease;
         private static bool _resetButtonPressed;
         internal static void ReadResetButton() => _resetButtonPressed = WheelInput.ShortcutPressed(WheelInput.Channel.CameraReset);
+        internal static bool TakeResetButton() { bool pressed = _resetButtonPressed; _resetButtonPressed = false; return pressed; }
 
         private static readonly CameraRepeat[] Repeats = CreateRepeats();
         private static CameraRepeat[] CreateRepeats()
@@ -51,6 +52,18 @@ namespace ArtOfSimRally.Mod
         private static void ReleaseRepeats() { foreach (var repeat in Repeats) repeat.Release(); }
 
         public static void SuppressUntilRelease() { _waitForRelease = true; ReleaseRepeats(); }
+
+        internal static bool ReadyForKeys()
+        {
+            if (Main.SettingsVisible || !Application.isFocused || CameraKeys.Listening >= 0 || CameraKeys.ModifierHeld())
+            { SuppressUntilRelease(); return false; }
+            if (_waitForRelease)
+            {
+                if (CameraKeys.AnyHeld) return false;
+                _waitForRelease = false;
+            }
+            return true;
+        }
 
         internal static void MarkDirty()
         {
@@ -74,25 +87,16 @@ namespace ArtOfSimRally.Mod
         /// </summary>
         public static void Update(BonnetCamera.View view)
         {
-            bool resetButton = _resetButtonPressed; _resetButtonPressed = false;
+            bool resetButton = TakeResetButton();
             var cfg = Main.Settings;
             if (!Main.Enabled || cfg == null || !cfg.CameraTuningKeys || view == BonnetCamera.View.None)
             {
                 ReleaseRepeats();
                 return;
             }
-            if (Main.SettingsVisible || !Application.isFocused || CameraKeys.Listening >= 0 || CameraKeys.ModifierHeld())
-            {
-                SuppressUntilRelease();
-                return;
-            }
             // A captured key or the key that closed the panel must be released
             // before it can adjust/reset a mount on the next LateUpdate.
-            if (_waitForRelease)
-            {
-                if (CameraKeys.AnyHeld) return;
-                _waitForRelease = false;
-            }
+            if (!ReadyForKeys()) { ReleaseRepeats(); return; }
 
             float now  = Time.unscaledTime;
             float move = CameraRepeat.Bounded(cfg.CameraMoveStep, .005f, .25f, .02f);
@@ -118,11 +122,9 @@ namespace ArtOfSimRally.Mod
                 changed |= Nudge(ref cfg.BonnetPitch, 6, 7, tilt, now);
                 fovChanged = Nudge(ref cfg.BonnetFOV, 8, 9, fov, now);
             }
-            // The F6 sliders' range; the Realistic set can start near 34° on a 32-inch rig.
-            cfg.BonnetFOV = Mathf.Clamp(cfg.BonnetFOV, 20f, 120f); cfg.BumperFOV = Mathf.Clamp(cfg.BumperFOV, 20f, 120f);
             if (fovChanged) { changed = true; Triple.TripleScreen.ReannounceCamera(); }
 
-            if (Input.GetKeyDown(cfg.KeyReset) || resetButton)
+            if (CameraKeys.Pressed(10) || resetButton)
             {
                 // A fresh instance carries the field initialisers, which are the
                 // single source of truth for defaults now that there is no config
@@ -143,7 +145,9 @@ namespace ArtOfSimRally.Mod
             float delta = (up ? step : 0f) - (down ? step : 0f);
             if (delta == 0f) return false;
 
-            value += delta;
+            float next = value + delta;
+            if (float.IsNaN(next) || float.IsInfinity(next)) return false;
+            value = next;
             return true;
         }
     }

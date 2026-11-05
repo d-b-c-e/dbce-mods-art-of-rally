@@ -8,6 +8,11 @@ internal static class CameraOverlay
 
     internal static bool Mounted(Kind kind) => kind != Kind.Chase;
 
+    internal static bool CustomFov(double current, double? baseline) => baseline.HasValue &&
+        !double.IsNaN(current) && !double.IsInfinity(current) &&
+        !double.IsNaN(baseline.Value) && !double.IsInfinity(baseline.Value) &&
+        System.Math.Abs(current - baseline.Value) > .5d;
+
     // "(Custom)" when the set's field of view was changed from stock (owner 2026-11-01); the reset key clears it.
     internal static string Name(Kind kind, int chaseNumber, bool realistic, bool custom = false)
     {

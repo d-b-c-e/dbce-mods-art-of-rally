@@ -464,6 +464,14 @@ internal static class Program
             "Original on separate displays is one flat contiguous plane");
 
         // Camera overlay: a short name near the bottom and a key reminder (owner 2026-10-31).
+        Check(!ArtOfSimRally.Mod.Triple.CameraOverlay.CustomFov(65, 65)
+            && ArtOfSimRally.Mod.Triple.CameraOverlay.CustomFov(70, 65)
+            && !ArtOfSimRally.Mod.Triple.CameraOverlay.CustomFov(34, 34)
+            && ArtOfSimRally.Mod.Triple.CameraOverlay.CustomFov(47.6, 34)
+            && !ArtOfSimRally.Mod.Triple.CameraOverlay.CustomFov(65.5, 65)
+            && !ArtOfSimRally.Mod.Triple.CameraOverlay.CustomFov(70, null)
+            && !ArtOfSimRally.Mod.Triple.CameraOverlay.CustomFov(double.NaN, 65)
+            && !ArtOfSimRally.Mod.Triple.CameraOverlay.CustomFov(65, double.PositiveInfinity), "Game and Realistic cockpit Custom FOV predicate");
         Check(ArtOfSimRally.Mod.Triple.CameraOverlay.Name(ArtOfSimRally.Mod.Triple.CameraOverlay.Kind.Bonnet, 0, false) == "Bonnet Camera - Game FOV"
             && ArtOfSimRally.Mod.Triple.CameraOverlay.Name(ArtOfSimRally.Mod.Triple.CameraOverlay.Kind.Bonnet, 0, true) == "Bonnet Camera - Realistic"
             && ArtOfSimRally.Mod.Triple.CameraOverlay.Name(ArtOfSimRally.Mod.Triple.CameraOverlay.Kind.Cockpit, 0, false) == "Cockpit - Game FOV"

@@ -450,19 +450,19 @@ namespace ArtOfSimRally.Mod
             if (RightButton("Reset " + (_mount == 0 ? "bonnet" : "bumper") + " view", 150)) { CameraMountMemory.Reset(c, _mount != 0); Main.MarkSettingsDirty(); }
             if (_mount == 0)
             {
-                c.BonnetHeight = Slider(c.BonnetHeight, -.5f, 3, .95f, "Height", 1, " m");
-                c.BonnetForward = Slider(c.BonnetForward, -3, 5, 1, "Forward", 1, " m");
-                c.BonnetSide = Slider(c.BonnetSide, -2, 2, 0, "Side", 1, " m");
-                c.BonnetPitch = Slider(c.BonnetPitch, -45, 45, 3, "Tilt", 1, "°");
-                c.BonnetFOV = Slider(c.BonnetFOV, 20, 120, 75, "Field of view", 1, "°");
+                c.BonnetHeight = Slider(c.BonnetHeight, -.5f, 3, .95f, "Height", 1, " m", true);
+                c.BonnetForward = Slider(c.BonnetForward, -3, 5, 1, "Forward", 1, " m", true);
+                c.BonnetSide = Slider(c.BonnetSide, -2, 2, 0, "Side", 1, " m", true);
+                c.BonnetPitch = Slider(c.BonnetPitch, -45, 45, 3, "Tilt", 1, "°", true);
+                c.BonnetFOV = Slider(c.BonnetFOV, 20, 120, 75, "Field of view", 1, "°", true);
             }
             else
             {
-                c.BumperHeight = Slider(c.BumperHeight, -.5f, 3, .45f, "Height", 1, " m");
-                c.BumperForward = Slider(c.BumperForward, -3, 5, 1.9f, "Forward", 1, " m");
-                c.BumperSide = Slider(c.BumperSide, -2, 2, 0, "Side", 1, " m");
-                c.BumperPitch = Slider(c.BumperPitch, -45, 45, 2, "Tilt", 1, "°");
-                c.BumperFOV = Slider(c.BumperFOV, 20, 120, 80, "Field of view", 1, "°");
+                c.BumperHeight = Slider(c.BumperHeight, -.5f, 3, .45f, "Height", 1, " m", true);
+                c.BumperForward = Slider(c.BumperForward, -3, 5, 1.9f, "Forward", 1, " m", true);
+                c.BumperSide = Slider(c.BumperSide, -2, 2, 0, "Side", 1, " m", true);
+                c.BumperPitch = Slider(c.BumperPitch, -45, 45, 2, "Tilt", 1, "°", true);
+                c.BumperFOV = Slider(c.BumperFOV, 20, 120, 80, "Field of view", 1, "°", true);
             }
             c.BonnetLean = Slider(c.BonnetLean, 0, 1, .1f, "Corner lean (both views)", 100, "%");
             Help("Shortcut steps: one step per press; holding repeats about ten steps a second.");
@@ -561,13 +561,20 @@ namespace ArtOfSimRally.Mod
         /// A value row: slider, minus, value, plus and Default. The slider keeps Art's continuous values; minus and plus
         /// move one readable step. With no input the saved value is returned unchanged (never rounded on draw).
         /// </summary>
-        private static float Slider(float value, float min, float max, float normal, string label, float scale, string unit)
+        private static float Slider(float value, float min, float max, float normal, string label, float scale, string unit, bool unrestricted = false)
         {
             double shown = value * (double)scale;
-            double proposed = W.NumberRow("slider-" + label, label, null, shown, min * (double)scale, max * (double)scale,
-                Step((max - min) * (double)scale), "0.##", unit, true, normal * (double)scale);
+            double step = Step((max - min) * (double)scale);
+            // Camera +/- controls can continue beyond the initial slider span.
+            // Expand around the saved value without changing it merely on draw.
+            double low = unrestricted ? Math.Min(min * (double)scale, shown - step) : min * (double)scale;
+            double high = unrestricted ? Math.Max(max * (double)scale, shown + step) : max * (double)scale;
+            double proposed = W.NumberRow("slider-" + label, label, null, shown, low, high,
+                step, "0.##", unit, true, normal * (double)scale);
             if (proposed == shown || double.IsNaN(proposed) || double.IsInfinity(proposed)) return value;
-            return Mathf.Clamp((float)(proposed / scale), min, max);
+            float next = (float)(proposed / scale);
+            if (float.IsNaN(next) || float.IsInfinity(next)) return value;
+            return unrestricted ? next : Mathf.Clamp(next, min, max);
         }
         /// <summary>About one hundredth of the range, rounded to 1, 2 or 5 × 10^n (1% for 0..100, 0.05 m for −0.5..3 m).</summary>
         private static double Step(double range)

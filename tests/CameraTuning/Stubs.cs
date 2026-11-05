@@ -38,6 +38,7 @@ namespace ArtOfSimRally.Mod
         public static bool Enabled = true, SettingsVisible = false;
         public static string Path;
         public static int Saves;
+        public static void MarkSettingsDirty() => CameraTuner.MarkDirty();
         public static bool SaveSettings()
         {
             Saves++;
@@ -49,5 +50,49 @@ namespace ArtOfSimRally.Mod
 
 namespace ArtOfSimRally.Mod.Triple
 {
-    internal static class TripleScreen { public static void ReannounceCamera(string note = null) { } }
+    internal static class CameraOverlay { internal enum Kind { Chase } }
+    internal static class TripleScreen
+    {
+        public static bool Realistic;
+        public static double? RealisticStartDegrees = 34;
+        public static bool RealisticFor(CameraOverlay.Kind kind) => Realistic;
+        public static void ReannounceCamera(string note = null) { }
+    }
+}
+
+namespace ArtOfSimRally.Mod
+{
+    // Managed host doubles for the production ChaseFov consumer, not a substitute
+    // implementation of its offsets, reset, set choice or persistence.
+    internal sealed class Camera { public float fieldOfView; }
+    internal sealed class CameraAngle { }
+    internal sealed class CarCameras
+    {
+        public readonly List<CameraAngle> CameraAnglesList = new();
+        public CameraAngle CurrentCameraAngle;
+    }
+    internal sealed class PanelManager { public Camera mainCamera; }
+    internal sealed class UIManager
+    {
+        public static UIManager Instance = new();
+        public PanelManager PanelManager = new();
+    }
+}
+
+namespace HarmonyLib
+{
+    [AttributeUsage(AttributeTargets.Class)]
+    internal sealed class HarmonyPatch : Attribute { public HarmonyPatch(Type type, string name) { } }
+    [AttributeUsage(AttributeTargets.Method)]
+    internal sealed class HarmonyPrefix : Attribute { }
+    internal static class AccessTools
+    {
+        internal delegate F FieldRef<T, F>(T instance);
+        internal static FieldRef<T, F> FieldRefAccess<T, F>(string name)
+        {
+            if (typeof(T) != typeof(ArtOfSimRally.Mod.CarCameras) || typeof(F) != typeof(List<ArtOfSimRally.Mod.CameraAngle>) || name != "CameraAnglesList")
+                throw new InvalidOperationException("Unexpected game field");
+            return instance => (F)(object)((ArtOfSimRally.Mod.CarCameras)(object)instance).CameraAnglesList;
+        }
+    }
 }

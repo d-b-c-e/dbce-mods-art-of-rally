@@ -71,7 +71,7 @@ namespace ArtOfSimRally.Mod
             foreach (var binding in Bindings)
             {
                 var key = binding.Get(defaults);
-                if (key == cfg.SettingsKey || key == KeyCode.F8 || key == KeyCode.F10) return false;
+                if (Reserved(cfg, key)) return false;
             }
             foreach (var binding in Bindings) binding.Set(cfg, binding.Get(defaults));
             Status = "Camera keys moved to the numpad layout: 8/2 forward/back, 9/3 up/down, 4/6 left/right, " +
@@ -83,8 +83,15 @@ namespace ArtOfSimRally.Mod
         private static float _deadline;
         public static string Status { get; private set; } = "";
         public static bool Available(Settings cfg) => cfg != null && (cfg.BonnetCameraEnabled || cfg.BumperCameraEnabled);
-        internal static bool Held(int index) => Input.GetKey(Bindings[index].Get(Main.Settings)) ||
+        internal static bool Reserved(Settings cfg, KeyCode key) => key == KeyCode.F7 || key == KeyCode.F8 ||
+            key == KeyCode.F10 || key == cfg.SettingsKey;
+        // A saved/imported reserved key stays saved, but cannot also tune the camera.
+        // Wheel channels remain independent of the keyboard reservation.
+        internal static bool Held(int index) => (!Reserved(Main.Settings, Bindings[index].Get(Main.Settings)) &&
+            Input.GetKey(Bindings[index].Get(Main.Settings))) ||
             WheelInput.Value(WheelInput.CameraChannel(index)) > .5f;
+        internal static bool Pressed(int index) => !Reserved(Main.Settings, Bindings[index].Get(Main.Settings)) &&
+            Input.GetKeyDown(Bindings[index].Get(Main.Settings));
         internal static bool AnyButtonHeld { get { for (int i = 0; i < Bindings.Length; i++) if (WheelInput.Value(WheelInput.CameraChannel(i)) > .5f) return true; return false; } }
         // Only the camera bindings (keys and wheel buttons). Input.anyKey also counts joystick buttons, and an H-pattern
         // shifter in gear or a latched wheel switch holds one indefinitely (owner report 2026-10-31: keys stopped working).
@@ -138,8 +145,8 @@ namespace ArtOfSimRally.Mod
                 Status = "Use one keyboard key without Shift, Ctrl, Alt or Windows/Command. Escape cancels.";
                 return true;
             }
-            if (key == KeyCode.F8 || key == cfg.SettingsKey || key == KeyCode.F10)
-            { Status = "That key is reserved for Settings or Stop FFB. Choose another key."; return true; }
+            if (Reserved(cfg, key))
+            { Status = "That key is reserved for camera sets, Settings or Stop FFB. Choose another key."; return true; }
             for (int i = 0; i < Bindings.Length; i++)
                 if (i != Listening && Bindings[i].Get(cfg) == key)
                 {
@@ -173,8 +180,8 @@ namespace ArtOfSimRally.Mod
             foreach (var binding in Bindings)
             {
                 var key = binding.Get(defaults);
-                if (key == cfg.SettingsKey || key == KeyCode.F8 || key == KeyCode.F10)
-                { Cancel(); Status = "Defaults conflict with Settings/Stop FFB. Rebind that action first; camera keys kept."; return; }
+                if (Reserved(cfg, key))
+                { Cancel(); Status = "Defaults conflict with camera sets/Settings/Stop FFB. Rebind that action first; camera keys kept."; return; }
                 if (!NativeKeyboardBindings.Available(key, out string conflict))
                 { Cancel(); Status = conflict; return; }
             }

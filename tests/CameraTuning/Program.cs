@@ -38,7 +38,7 @@ static class Program
         CameraKeys.Begin(0); CameraKeys.Cancel();
         Check(CameraKeys.Listening == -1 && cfg.KeyUp == defaults[0], "cancel changed binding");
         CameraKeys.Begin(0);
-        foreach (var reserved in new[]{KeyCode.F8, KeyCode.F6, KeyCode.F10})
+        foreach (var reserved in new[]{KeyCode.F7, KeyCode.F8, KeyCode.F6, KeyCode.F10})
             Check(CameraKeys.HandleKey(cfg,reserved,false) && CameraKeys.Listening==0 && cfg.KeyUp==defaults[0],"reserved key accepted");
         Clock.unscaledTime+=11; CameraKeys.Tick();
         Check(CameraKeys.Listening==-1 && cfg.KeyUp==defaults[0],"timeout changed old camera key");
@@ -416,13 +416,131 @@ static class Program
         Check(cfg.BonnetHeight==.95f&&cfg.BumperHeight==1.8f,"USB reset scope wrong");
         cfg.BonnetHeight=1.3f;CameraTuner.Update(BonnetCamera.View.Bonnet);Check(cfg.BonnetHeight==1.3f,"USB reset repeated from one edge");
     }
-    static int Main()
+    static void FreshCameraFixture()
+    {
+        Keys.Release(); WheelInput.Held.Clear(); WheelInput.Pressed.Clear(); CameraKeys.Cancel();
+        Host.Enabled = true; Host.SettingsVisible = false; ArtOfSimRally.Mod.Application.isFocused = true;
+        CameraTuner.Flush(shutdown: true); ChaseFov.Remove();
+        Host.Settings = new Settings();
+        CameraTuner.ReadResetButton(); CameraTuner.Update(BonnetCamera.View.Bonnet);
+        ArtOfSimRally.Mod.Triple.TripleScreen.Realistic = false;
+        Clock.unscaledTime += 2;
+    }
+    static void F7Capture()
+    {
+        FreshCameraFixture(); var cfg = Host.Settings; Host.SaveSettings();
+        string before = File.ReadAllText(Host.Path);
+        for (int i = 0; i < CameraKeys.Bindings.Length; i++)
+        {
+            var keys = KeysOf(cfg); CameraKeys.Begin(i);
+            Check(CameraKeys.HandleKey(cfg, KeyCode.F7, false) && CameraKeys.Listening == i && KeysOf(cfg).SequenceEqual(keys),
+                "F7 capture accepted for action " + i);
+            Check(File.ReadAllText(Host.Path) == before, "F7 rejection rewrote saved settings");
+            CameraKeys.Cancel();
+        }
+    }
+    static void F7Dispatch()
+    {
+        for (int i = 0; i < CameraKeys.Bindings.Length; i++)
+        {
+            FreshCameraFixture();
+            var keys = KeysOf(Host.Settings); keys[i] = KeyCode.F7;
+            Host.Settings = LoadKeys(keys); var cfg = Host.Settings;
+            cfg.BonnetHeight = 2; cfg.BumperHeight = 1.5f;
+            Host.SaveSettings(); string saved = File.ReadAllText(Host.Path);
+            var bonnet = MountValues(cfg, false); var bumper = MountValues(cfg, true);
+            Keys.Held.Add(KeyCode.F7); Keys.Pressed.Add(KeyCode.F7);
+            CameraTuner.Update(BonnetCamera.View.Bonnet);
+            Clock.unscaledTime += .5f; CameraTuner.Update(BonnetCamera.View.Bonnet);
+            CameraTuner.Update(BonnetCamera.View.Bumper);
+            Check(MountValues(cfg, false).SequenceEqual(bonnet) && MountValues(cfg, true).SequenceEqual(bumper),
+                "imported F7 dispatched camera action " + i);
+            CameraTuner.Flush(shutdown: true);
+            Check(CameraKeys.Bindings[i].Get(cfg) == KeyCode.F7 && File.ReadAllText(Host.Path) == saved,
+                "reserved imported binding was rewritten");
+            Keys.Release(); CameraTuner.Update(BonnetCamera.View.Bonnet);
+            if (i == 10) { WheelInput.Pressed.Add(WheelInput.Channel.CameraReset); CameraTuner.ReadResetButton(); }
+            else WheelInput.Held.Add(WheelInput.CameraChannel(i));
+            CameraTuner.Update(BonnetCamera.View.Bonnet);
+            Check(!MountValues(cfg, false).SequenceEqual(bonnet), "F7 reservation blocked independent wheel action " + i);
+            WheelInput.Held.Clear();
+        }
+    }
+    static (CarCameras rig, ArtOfSimRally.Mod.Camera camera) ChaseFixture()
+    {
+        FreshCameraFixture();
+        var rig = new CarCameras(); rig.CameraAnglesList.Add(new CameraAngle()); rig.CameraAnglesList.Add(new CameraAngle());
+        rig.CurrentCameraAngle = rig.CameraAnglesList[0];
+        var cam = new ArtOfSimRally.Mod.Camera { fieldOfView = 80 };
+        UIManager.Instance.PanelManager.mainCamera = cam;
+        return (rig, cam);
+    }
+    static void FovLimits()
+    {
+        FreshCameraFixture(); var cfg = Host.Settings;
+        cfg.BonnetFOV = 130; cfg.BumperFOV = 15;
+        CameraTuner.Update(BonnetCamera.View.Bonnet);
+        Check(cfg.BonnetFOV == 130 && cfg.BumperFOV == 15, "idle tuner clamped saved FOV");
+        Keys.Held.Add(cfg.KeyFovUp); CameraTuner.Update(BonnetCamera.View.Bonnet); Keys.Release();
+        Check(cfg.BonnetFOV == 132 && cfg.BumperFOV == 15, "mounted FOV adjustment retained arbitrary bound");
+        CameraTuner.Update(BonnetCamera.View.Bumper); Keys.Held.Add(cfg.KeyFovDown);
+        CameraTuner.Update(BonnetCamera.View.Bumper); Keys.Release();
+        Check(cfg.BumperFOV == 13, "mounted lower FOV adjustment retained arbitrary bound");
+        var (rig, cam) = ChaseFixture(); cfg = Host.Settings;
+        cfg.ChaseFovOffsets.AddRange(new[] { 50f, -50f }); cfg.ChaseFovRealisticOffsets.AddRange(new[] { 100f, -20f });
+        Keys.Held.Add(cfg.KeyFovUp); ChaseFov.Apply(rig, cfg); Keys.Release();
+        Check(cfg.ChaseFovOffsets[0] == 52 && cam.fieldOfView == 132, "chase offset retained forty-degree bound");
+        ChaseFov.Remove(); Check(cam.fieldOfView == 80, "chase offset compounded instead of removing");
+        ArtOfSimRally.Mod.Triple.TripleScreen.Realistic = true;
+        ChaseFov.Apply(rig, cfg); Check(cam.fieldOfView == 134, "Realistic chase retained upper FOV bound"); ChaseFov.Remove();
+        rig.CurrentCameraAngle = rig.CameraAnglesList[1]; ChaseFov.Apply(rig, cfg);
+        Check(cam.fieldOfView == 14, "Realistic chase retained lower FOV bound"); ChaseFov.Remove();
+        CameraTuner.MarkDirty(); CameraTuner.Flush(shutdown: true);
+        Check(Saved().ChaseFovOffsets.SequenceEqual(cfg.ChaseFovOffsets) && Saved().ChaseFovRealisticOffsets.SequenceEqual(cfg.ChaseFovRealisticOffsets),
+            "production chase offsets lost in actual XML save/reload");
+    }
+    static void ChaseReset()
+    {
+        var (rig, cam) = ChaseFixture(); var cfg = Host.Settings;
+        cfg.ChaseFovOffsets.AddRange(new[] { 12f, 7f }); cfg.ChaseFovRealisticOffsets.AddRange(new[] { 3f, 5f });
+        WheelInput.Pressed.Add(WheelInput.Channel.CameraReset); CameraTuner.ReadResetButton(); ChaseFov.Apply(rig, cfg);
+        Check(cfg.ChaseFovOffsets.SequenceEqual(new[] { 0f, 7f }) && cfg.ChaseFovRealisticOffsets.SequenceEqual(new[] { 3f, 5f }) && cam.fieldOfView == 80,
+            "chase did not consume wheel reset for only the active view/set"); ChaseFov.Remove();
+        cfg.ChaseFovOffsets[0] = 9; ChaseFov.Apply(rig, cfg);
+        Check(cfg.ChaseFovOffsets[0] == 9, "chase replayed a consumed wheel edge"); ChaseFov.Remove();
+        cfg.KeyReset = KeyCode.F7; Keys.Pressed.Add(KeyCode.F7); ChaseFov.Apply(rig, cfg);
+        Check(cfg.ChaseFovOffsets[0] == 9, "chase imported F7 reset collided with set key"); Keys.Release(); ChaseFov.Remove();
+        ArtOfSimRally.Mod.Triple.TripleScreen.Realistic = true;
+        WheelInput.Pressed.Add(WheelInput.Channel.CameraReset); CameraTuner.ReadResetButton(); ChaseFov.Apply(rig, cfg);
+        Check(cfg.ChaseFovRealisticOffsets[0] == 0 && cfg.ChaseFovOffsets[0] == 9 && cfg.ChaseFovRealisticOffsets[1] == 5 && cam.fieldOfView == 34,
+            "Realistic wheel reset changed another set/view or failed calculated FOV"); ChaseFov.Remove();
+        // Capture and focus loss consume an edge, then require physical release.
+        cfg.ChaseFovRealisticOffsets[0] = 4; CameraKeys.Begin(0);
+        WheelInput.Held.Add(WheelInput.Channel.CameraReset); WheelInput.Pressed.Add(WheelInput.Channel.CameraReset);
+        CameraTuner.ReadResetButton(); ChaseFov.Apply(rig, cfg); CameraKeys.Cancel();
+        ChaseFov.Apply(rig, cfg); Check(cfg.ChaseFovRealisticOffsets[0] == 4, "capture reset leaked into chase"); ChaseFov.Remove();
+        WheelInput.Held.Clear(); ChaseFov.Apply(rig, cfg); ChaseFov.Remove();
+        ArtOfSimRally.Mod.Application.isFocused = false;
+        WheelInput.Pressed.Add(WheelInput.Channel.CameraReset); CameraTuner.ReadResetButton(); ChaseFov.Apply(rig, cfg); ChaseFov.Remove();
+        ArtOfSimRally.Mod.Application.isFocused = true; ChaseFov.Apply(rig, cfg); ChaseFov.Remove();
+        Check(cfg.ChaseFovRealisticOffsets[0] == 4, "unfocused reset replayed on focus return");
+        CameraTuner.Flush(shutdown: true);
+        Check(Saved().ChaseFovOffsets.SequenceEqual(cfg.ChaseFovOffsets) && Saved().ChaseFovRealisticOffsets.SequenceEqual(cfg.ChaseFovRealisticOffsets),
+            "chase reset save changed the wrong set/view");
+    }
+    static int Main(string[] args)
     {
         try
         {
             var directory = Path.GetFullPath(Path.Combine("results", "camera-tuning-" + Guid.NewGuid().ToString("N")));
             Directory.CreateDirectory(directory); Host.Path = Path.Combine(directory, "Settings.xml");
-            Saves(); Bindings(); Migration(); NativeKeyboardConflicts(); KeyEffects(); UsbCameraButtons(); Steps();
+            string mode = args.FirstOrDefault();
+            if (mode == "--f7-capture") F7Capture();
+            else if (mode == "--f7-dispatch") F7Dispatch();
+            else if (mode == "--fov-limits") FovLimits();
+            else if (mode == "--chase-reset") ChaseReset();
+            else if (mode != null) throw new ArgumentException("Unknown fixture mode");
+            else { Saves(); Bindings(); Migration(); NativeKeyboardConflicts(); KeyEffects(); UsbCameraButtons(); Steps(); F7Capture(); F7Dispatch(); FovLimits(); ChaseReset(); }
             Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
         }
         catch (Exception ex) { Console.Error.WriteLine(ex); return 1; }
