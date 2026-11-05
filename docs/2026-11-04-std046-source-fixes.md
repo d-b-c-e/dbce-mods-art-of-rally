@@ -1,8 +1,20 @@
 # Art camera STD-046 bounded source increment
 
 Assignment: kole526255, off main ca1b3fed55c732eda8d59e03476c927b12b7165b.
-This public repository remains LOCAL ONLY. No install, game launch, device use,
-push or standards promotion is authorized by this source increment.
+This public repository remains LOCAL ONLY. Later explicit delivery grants are
+recorded below; this source increment alone authorizes no runtime or publication.
+
+## Delivered rc.38, November 5
+
+Local main53399f6 was packaged through the unchanged real producer as rc.38,
+ZIP E08D682B/Mod45CB3C5D/build065CFB79, then installed526782 after qualified
+archive readback/metadata372/installer70 checks. Four files changed; nine package
+payloads,51 backups/SDDL and47 protected files independently verified. Settings,
+24 save files, four CV State files, calibration/native/shim unchanged. Exact
+lease released06:20:08.9373524Z. No game/UI/input/device test or new acceptance.
+Perspective/curve remain ready_for_test; owner re-check on this build is pending.
+Full hashes, retained wrapper failure, rollback and evidence in
+[Local deployment](LOCAL-DEPLOYMENT.md). No full STD-046 adoption is claimed.
 
 ## CPU526552 passed; local source/build only
 

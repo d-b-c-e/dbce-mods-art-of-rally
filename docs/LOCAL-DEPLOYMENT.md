@@ -1,6 +1,62 @@
 # Local deployment
 
-## Current installation — 0.4.4-rc.37, November 4
+## Current installation — 0.4.4-rc.38, November 5
+
+File-only installed from clean local-main package source
+`53399f616bb5fd32a629ec424d060b2a6a0c03b9`. Fixed Art F7 reservation covers
+capture and imported keyboard dispatch/reset while preserving saved bindings
+and independent wheel channels. Mounted/chase tweaks retain their stored values;
+only the final lens is fenced1..179degrees. Camera +/- editing can exceed the
+initial slider span. Chase consumes one wheel-reset edge with capture/focus
+suppression. Cockpit Custom compares the actual Game/Realistic FOV baseline.
+
+| Artifact | SHA-256 |
+|---|---|
+| `ArtOfSimRally-0.4.4-rc.38-shared-input.zip` | `E08D682BDA91B76446DBD80A53F5A4E83778741FA08354160B96E66677834000` |
+| Installed Mod DLL | `45CB3C5DF223EB78203D8238D2B55E9FA72A0DA829F89D9863A687E47826CD3A` |
+| Installed `build.json` | `065CFB79BD1ADD609EB2865C7EA9C0B60045AAC1D0947AFB221D6F15466E962E` |
+| Unchanged shared shim | `7E4A1251AC733E34A393E28EA3453F3ED409C8356158FF82ADD4242348A0A9A1` |
+| Both unchanged native force copies | `44E46799945438BC07DF738472602DB1E3ECC04C3F77CAD5B12FCACF49C69272` |
+
+Four actual-old regression modes failed as expected; current CameraTuning481,
+TripleScreen1,304, metadata inspector372 and real isolated installer70 checks
+passed. The first package batch526705 produced the exact ZIP but failed its
+wrapper's phase-counter scope check; raw FAIL preserved. Installer-only526743
+qualified that retained archive without rebuilding or repeating passed checks.
+
+Install526782 admitted on raw idle4080.734s, replaced only Mod/Core/Protocol/
+build.json, and verified all nine installed package payloads. Separate-process
+verification confirmed51 original backup hashes,47 protected-file bytes/creation/
+write timestamps/attributes,51 security descriptors and four rollback guards.
+This includes24 save files and four Custom Vehicles State files, plus all mod
+settings and native force copies. Calibrated numbers and owner settings were
+not rewritten. Independent587-image census found the installer absent and zero
+scoped survivors; exact lease released2026-11-05T06:20:08.9373524Z. No custody.
+
+Backup and one-step guarded rollback:
+`E:/Source/_archive/2026-11-05/owner-before-art-std046-rc38/Rollback.ps1`, actual SHA
+`8B2231AE35E49D7E51BB8962D90DADD2ED040D8382E04AC349FBE4EA7CC354BE`.
+Its reviewed body is text-exact with the frozen preview46DB312A; the raw hashes
+differ by one trailing newline byte from Set-Content. Actual parser0; rollback
+was not exercised against owner files. It refuses changed targets/permissions,
+then restores original bytes, timestamps, attributes and security descriptors.
+
+Evidence in `E:/Source/_work/napo-art-std046-fixes-20261104`:
+`obj/std046-install-20261105/{install-526782,independent-owner-verify,result,independent-audit,closure}.json`.
+Owner proof `C56A96A05F5E523E0512667BA35F1C55E371BB7193DD9184902CA8EDBCCA0D0B`;
+result `06B40052558B341ED3C381670D519E8884B90ADBF445A4F1F89BB47349FCFE0A`.
+Package and source checks are in the adjacent std046-package-20261105 and
+std046-qualification-20261104 folders. Standing install approval stopped after
+this first admitted run. PUBLIC repository remains local only; no push/release.
+
+No game/UI/input/device/rendered/physical/owner acceptance test accompanied this
+installation. Perspective/curve remain ready_for_test and need owner re-check
+on this new candidate; earlier rc.30 driving/force/performance acceptance remains
+preserved. Real mounted persistence coverage, chase pose offsets, Custom Vehicles
+offset storage/F7 dispatch and remaining STD-046 gaps stay explicit in
+[the source increment](2026-11-04-std046-source-fixes.md).
+
+## Historical installation — 0.4.4-rc.37, November 4
 
 File-only installed from clean package source
 `0d9c0808d521286b8002816317ba54a5cb1f52f0`. This candidate restores an owned
