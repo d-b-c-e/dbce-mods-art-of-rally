@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework><OutputType>Exe</OutputType><LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors><NoWarn>CS0649</NoWarn>
+    <GameDir Condition="'$(GameDir)' == ''">D:\Program Files (x86)\Steam\steamapps\common\artofrally</GameDir>
+    <CockpitSourceRoot Condition="'$(CockpitSourceRoot)' == ''">$(MSBuildThisFileDirectory)..\..\src</CockpitSourceRoot>
+    <DefineConstants Condition="'$(Baseline)' == 'true'">$(DefineConstants);BASELINE</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(CockpitSourceRoot)\Core\*.cs" Link="Production\%(Filename)%(Extension)" />
+    <Compile Include="$(CockpitSourceRoot)\Runtime\CockpitTuning.cs" Link="Production\CockpitTuning.cs" />
+    <Reference Include="Newtonsoft.Json"><HintPath>$(GameDir)\artofrally_Data\Managed\Newtonsoft.Json.dll</HintPath><Private>true</Private></Reference>
+    <Reference Include="UnityEngine.CoreModule"><HintPath>$(GameDir)\artofrally_Data\Managed\UnityEngine.CoreModule.dll</HintPath><Private>true</Private></Reference>
+  </ItemGroup>
+</Project>

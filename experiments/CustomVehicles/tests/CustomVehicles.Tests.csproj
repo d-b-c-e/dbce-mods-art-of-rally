@@ -5,6 +5,7 @@
     <GameDir Condition="'$(GameDir)' == ''">D:\Program Files (x86)\Steam\steamapps\common\artofrally</GameDir>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="Cockpit\**\*.cs" />
     <Compile Include="..\src\Core\*.cs" Link="Core\%(Filename)%(Extension)" />
     <Reference Include="Newtonsoft.Json"><HintPath>$(GameDir)\artofrally_Data\Managed\Newtonsoft.Json.dll</HintPath><Private>true</Private></Reference>
   </ItemGroup>

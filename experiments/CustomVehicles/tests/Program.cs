@@ -146,8 +146,8 @@ internal static class Program
         var viewPath=Path.Combine(temp,"cockpit-views.json"); var views=new CockpitViewStore(viewPath);
         Check(views.Get("dbce.trail-scout").SequenceEqual(CockpitViewStore.Default),"an unsaved car gets the default cockpit view");
         views.Set("dbce.trail-scout",new[]{0f,.1f,1.9f,6f,200f}); var reloaded=new CockpitViewStore(viewPath); reloaded.Load();
-        Check(reloaded.Get("dbce.trail-scout").SequenceEqual(new[]{0f,.1f,1.5f,6f,120f}),"a cockpit view survives a restart, clamped");
-        Check(reloaded.Get("dbce.turtle-van").SequenceEqual(CockpitViewStore.Default),"each car keeps its own view");
+        Check(reloaded.Get("dbce.trail-scout").SequenceEqual(new[]{0f,.1f,1.9f,6f,200f}),"a finite cockpit view survives a restart without arbitrary clipping");
+        Check(reloaded.Get("dbce.turtle-van").SequenceEqual(new[]{0f,0f,0f,6f,200f}),"pose belongs to each car; FOV belongs to the set");
         File.WriteAllText(viewPath,"{\"dbce.trail-scout\":[1,2]}"); bool refused=false; try{new CockpitViewStore(viewPath).Load();}catch(InvalidDataException){refused=true;}
         Check(refused,"a damaged cockpit view file is refused");
         var customIds=new List<string>{"dbce.trail-scout","dbce.turtle-van"};

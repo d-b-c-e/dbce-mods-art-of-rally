@@ -10,7 +10,7 @@ using UnityModManagerNet;
 
 namespace RallyCustomVehicles
 {
-    public static class Main
+    public static partial class Main
     {
         private const string Id = "ArtOfSimRally.CustomVehicles";
         private static UnityModManager.ModEntry entry;
@@ -45,10 +45,6 @@ namespace RallyCustomVehicles
         // The cockpit's rotation follows the car through a short low-pass so the body's tremor at rest does not shake the
         // view (owner 2026-11-01); matches art of sim rally's mounted cameras. Position stays rigid.
         private static Quaternion smoothRotation; private static bool smoothing;
-        private static Vector3 eyeAdjustment;
-        private static float pitch = 6f, fov = 65f;
-        internal static CockpitViewStore CockpitViews;
-        private static string viewFor;   // the package whose saved cockpit view is loaded
         private static string status = "Select an installed custom vehicle in the car chooser.";
 
         private static EventManager Manager => ManagerField?.GetValue(null) as EventManager;
@@ -72,6 +68,7 @@ namespace RallyCustomVehicles
             try
             {
                 Packages = VehiclePackage.Discover(Path.Combine(entry.Path,"Vehicles"), message => entry.Logger.Error(message));
+                CockpitViews.ConfigureCars(Packages.Select(p => p.Manifest.id));
                 if (Packages.Count > 0) asset = Packages[0].Model;
                 Log("Loaded " + Packages.Count + " vehicle package(s).");
                 if (UnityModManager.modEntries.Any(m => m.Info.Id == "ArtOfSimRally.TurtleVan" && (m.Active || m.Enabled)))
@@ -121,22 +118,7 @@ namespace RallyCustomVehicles
             if (GUILayout.Button("Retry visual attachment")) { failed = false; Detach(); }
             GUILayout.Label(status);
             GUILayout.Label("Cycle the game's camera views to reach the cockpit (added after the existing views).");
-            GUILayout.Label("Driver eye position (metres):");
-            Row("Left / right", ref eyeAdjustment.x, .02f);
-            Row("Up / down", ref eyeAdjustment.y, .02f);
-            Row("Forward / back", ref eyeAdjustment.z, .02f);
-            Row("Look down (degrees)", ref pitch, 1f);
-            Row("Vertical field of view", ref fov, 2f);
-            // Limits live in CockpitViewStore.Clamp (applied by SaveView).
-            if (GUILayout.Button("Reset driver view")) { eyeAdjustment = Vector3.zero; pitch = 6; fov = 65; }
-            SaveView();
-        }
-        private static void Row(string label, ref float value, float step)
-        {
-            GUILayout.BeginHorizontal(); GUILayout.Label(label + ": " + value.ToString("0.00"), GUILayout.Width(240));
-            if (GUILayout.Button("−", GUILayout.Width(42))) value -= step;
-            if (GUILayout.Button("+", GUILayout.Width(42))) value += step;
-            GUILayout.EndHorizontal();
+            DrawCockpitTuning();
         }
 
         private static void Update(UnityModManager.ModEntry mod, float dt)
@@ -145,6 +127,7 @@ namespace RallyCustomVehicles
             try
             {
                 Catalog.DiscoverExistingChooser();
+                FlushCockpitPending();
                 var m = Manager;
                 var active = m?.playerManager?.carDynamics;
                 // Selection belongs to the spawned player instance, not whichever
@@ -152,8 +135,10 @@ namespace RallyCustomVehicles
                 var chosen = active?.GetComponent<VehicleInstance>()?.Package;
                 if (chosen == null) { if (visual != null) Detach(); return; }
                 if (activePackage != chosen) { Detach(); activePackage = chosen; asset = chosen.Model; }
-                var viewKey = chosen.Manifest.id + (ArtRealistic() ? "_realistic" : "");
-                if (viewFor != viewKey) { SaveView(); LoadView(chosen.Manifest.id, viewKey); }
+                bool realistic = ArtRealistic();
+                var seat = realistic ? ArtRealisticDegrees() : null;
+                var viewKey = chosen.Manifest.id + (realistic ? "_realistic" : "");
+                if (viewId != chosen.Manifest.id || viewIsRealistic != realistic || viewSeat != seat) { SaveView(); LoadView(chosen.Manifest.id, viewKey); }
                 if (active != car || (visual != null && active == null)) { Detach(); activePackage = chosen; asset = chosen.Model; }
                 if (active == null || m.IsRestartingStage()) { ReleaseCamera(false); return; }
                 if (visual == null) Attach(active); // Include intro/finish cinematics once native wheels are ready.
@@ -334,82 +319,15 @@ namespace RallyCustomVehicles
                     foreach(var p in car.GetComponentsInChildren<Renderer>()) if(p.GetType().Name=="ParticleSystemRenderer" && !p.forceRenderingOff) { p.forceRenderingOff=true; cockpitHidden.Add(p); }
                 }
                 TuneCockpit();
-                cam.transform.position=visual.transform.TransformPoint(V(asset.camera)+eyeAdjustment);
+                var position=visual.transform.TransformPoint(V(asset.camera)+eyeAdjustment);
+                if(Finite(position.x) && Finite(position.y) && Finite(position.z)) cam.transform.position=position;
                 var carRotation=car.transform.rotation;
                 if(!smoothing || Quaternion.Angle(smoothRotation,carRotation)>20f) { smoothRotation=carRotation; smoothing=true; }
                 else smoothRotation=Quaternion.Slerp(smoothRotation,carRotation,1f-Mathf.Exp(-Mathf.Max(0f,Time.deltaTime)/.06f));
-                cam.transform.rotation=smoothRotation*Quaternion.Euler(pitch,0,0);
-                cam.nearClipPlane=.025f; cam.fieldOfView=fov;
+                cam.transform.rotation=smoothRotation*Quaternion.Euler((float)Math.IEEERemainder(pitch,360d),0,0);
+                cam.nearClipPlane=.025f; cam.fieldOfView=CockpitViewStore.LensFov(fov);
             }
             catch(Exception ex) { failed=true; Detach(); status="Camera/model stopped after error; see UMM log."; entry.Logger.Error(ex.ToString()); }
-        }
-        // Game and Realistic (art of sim rally's F7) each keep their own cockpit view. A Realistic view never set starts
-        // from this car's Game view at the seat's true field of view.
-        private static void LoadView(string id, string key)
-        {
-            var v = CockpitViews?.Get(key) ?? (float[])CockpitViewStore.Default.Clone();
-            if (key != id && CockpitViews != null && !CockpitViews.Has(key))
-            {
-                v = CockpitViews.Get(id);
-                if (ArtRealisticDegrees() is double seat) v[4] = (float)Math.Round(seat, 1);
-            }
-            eyeAdjustment = new Vector3(v[0], v[1], v[2]); pitch = v[3]; fov = v[4]; viewFor = key;
-            SaveView();
-        }
-        // art of sim rally's cockpit Game/Realistic choice (cockpits start Realistic) and its starting field of view, by name.
-        private static readonly Type ArtTriple = AccessTools.TypeByName("ArtOfSimRally.Mod.Triple.TripleScreen");
-        private static readonly PropertyInfo ArtRealisticActive = ArtTriple == null ? null : AccessTools.Property(ArtTriple, "CockpitRealisticActive") ?? AccessTools.Property(ArtTriple, "RealisticActive");
-        private static readonly PropertyInfo ArtRealisticStart = ArtTriple == null ? null : AccessTools.Property(ArtTriple, "RealisticStartDegrees");
-        private static bool ArtRealistic() { try { return ArtRealisticActive != null && (bool)ArtRealisticActive.GetValue(null); } catch (Exception) { return false; } }
-        private static double? ArtRealisticDegrees() { try { return (double?)ArtRealisticStart?.GetValue(null); } catch (Exception) { return null; } }
-        private static void SaveView()
-        {
-            if (viewFor == null || CockpitViews == null) return;
-            var clamped = CockpitViewStore.Clamp(new[] { eyeAdjustment.x, eyeAdjustment.y, eyeAdjustment.z, pitch, fov });
-            eyeAdjustment = new Vector3(clamped[0], clamped[1], clamped[2]); pitch = clamped[3]; fov = clamped[4];
-            try { CockpitViews.Set(viewFor, clamped); } catch (Exception ex) { Log("Cockpit view not saved: " + ex.Message); }
-        }
-        // The same numpad keys as art of sim rally's bonnet camera (8/2 forward/back, 4/6 left/right, 9/3 up/down, 7/1 look
-        // down/up, +/- field of view, 5 reset), one step per press; saved per car. Not while a modifier is held or a panel is open.
-        // art of sim rally's saved camera keys and their on/off switch (Settings.Key*, CameraTuningKeys), read by name so a
-        // rebind there (or by Wheelkit's Cameras tab) applies to the cockpit too; the numpad layout when Art is absent.
-        private static readonly Type ArtMain = AccessTools.TypeByName("ArtOfSimRally.Mod.Main");
-        private static readonly PropertyInfo ArtSettings = ArtMain == null ? null : AccessTools.Property(ArtMain, "Settings");
-        private static object ArtConfig() { try { return ArtSettings?.GetValue(null); } catch (Exception) { return null; } }
-        private static KeyCode ArtKey(string name, KeyCode fallback)
-        {
-            var cfg = ArtConfig();
-            var value = cfg == null ? null : AccessTools.Field(cfg.GetType(), name)?.GetValue(cfg);
-            return value is KeyCode key && key != KeyCode.None ? key : fallback;
-        }
-        private static bool ArtKeysOn()
-        {
-            var cfg = ArtConfig();
-            var value = cfg == null ? null : AccessTools.Field(cfg.GetType(), "CameraTuningKeys")?.GetValue(cfg);
-            return !(value is bool on) || on;
-        }
-        private static void TuneCockpit()
-        {
-            if (!Application.isFocused || UnityModManager.UI.Instance != null && UnityModManager.UI.Instance.Opened) return;
-            if (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl) || Input.GetKey(KeyCode.LeftAlt) ||
-                Input.GetKey(KeyCode.RightAlt) || Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) return;
-            if (!ArtKeysOn()) return;
-            bool changed = false;
-            void Step(string name, KeyCode fallback, ref float value, float delta) { if (Input.GetKeyDown(ArtKey(name, fallback))) { value += delta; changed = true; } }
-            Step("KeyForward", KeyCode.Keypad8, ref eyeAdjustment.z, .02f); Step("KeyBack", KeyCode.Keypad2, ref eyeAdjustment.z, -.02f);
-            Step("KeyRight", KeyCode.Keypad6, ref eyeAdjustment.x, .02f); Step("KeyLeft", KeyCode.Keypad4, ref eyeAdjustment.x, -.02f);
-            Step("KeyUp", KeyCode.Keypad9, ref eyeAdjustment.y, .02f); Step("KeyDown", KeyCode.Keypad3, ref eyeAdjustment.y, -.02f);
-            Step("KeyPitchDown", KeyCode.Keypad7, ref pitch, 1f); Step("KeyPitchUp", KeyCode.Keypad1, ref pitch, -1f);
-            Step("KeyFovUp", KeyCode.KeypadPlus, ref fov, 2f); Step("KeyFovDown", KeyCode.KeypadMinus, ref fov, -2f);
-            // Reset returns the Realistic set to the seat's true field of view, not the Game default (owner 2026-11-01: a
-            // Realistic cockpit left at 47.6° bent the dashboard at the seams and reset could not bring it back).
-            if (Input.GetKeyDown(ArtKey("KeyReset", KeyCode.Keypad5)))
-            {
-                var d = CockpitViewStore.Default; eyeAdjustment = new Vector3(d[0], d[1], d[2]); pitch = d[3]; fov = d[4];
-                if (viewFor != null && viewFor.EndsWith("_realistic") && ArtRealisticDegrees() is double seat) fov = (float)Math.Round(seat, 1);
-                changed = true;
-            }
-            if (changed) SaveView();
         }
         private static readonly List<Renderer> cockpitHidden = new List<Renderer>();
         private static void ReleaseCamera(bool snap)
@@ -435,6 +353,7 @@ namespace RallyCustomVehicles
         }
         private static void Detach()
         {
+            SaveView();
             RemoveAngle();
             foreach(var item in hidden) if(item.Key!=null) item.Key.forceRenderingOff=item.Value;
             hidden.Clear();
