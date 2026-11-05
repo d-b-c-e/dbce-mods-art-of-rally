@@ -71,6 +71,7 @@ namespace ArtOfSimRally.Mod
 
         internal static void MarkDirty()
         {
+            CameraMountMemory.Capture(Main.Settings);
             Save.MarkDirty();
             _saveDueAt = Time.unscaledTime + 1f;
         }

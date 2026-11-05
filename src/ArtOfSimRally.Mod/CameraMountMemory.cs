@@ -11,14 +11,18 @@ namespace ArtOfSimRally.Mod
     // Runs from the mounted camera only, so the stock views never pay for it.
     internal static class CameraMountMemory
     {
-        private const string CustomVisual = "CustomVehicle_VisualOnly";
+        private const string CustomVisual = CameraCarIdentity.CustomVisual;
         private const string RealisticSuffix = "|realistic";
         // Position indexes in the CameraMountFit value order (FOV, at 4 and 9, is kept per camera instead).
         private static readonly int[] Positions = { 0, 1, 2, 3, 5, 6, 7, 8 };
         private static Transform _target, _root;
-        private static bool _custom, _realistic;
+        private static bool _realistic;
+        private static Settings _settings;
         private static string _key;
+        private static string _car;
         private static float[] _extent, _base, _loaded;
+        private static float _nextFit;
+        private static double? _seat;
 
         // Each car keeps two sets, Game and Realistic (F7), stored separately (owner 2026-10-31: adjustments in one mode
         // must not carry into the other).
@@ -26,24 +30,31 @@ namespace ArtOfSimRally.Mod
         internal static void Track(Transform target, Settings cfg, bool bumper)
         {
             bool realistic = Triple.TripleScreen.RealisticFor(bumper ? Triple.CameraOverlay.Kind.Bumper : Triple.CameraOverlay.Kind.Bonnet);
-            if (target != _target)
-            {
-                _target = target;
-                _root = target.GetComponentInParent<CarDynamics>()?.transform ?? target;
-                _key = null;
-            }
-            bool custom = _root.Find(CustomVisual) != null;
-            if (_key != null && custom == _custom && realistic == _realistic) { Remember(cfg); return; }
-            if (_key != null) Remember(cfg);   // keep the set being left
-            _custom = custom; _realistic = realistic;
-            Load(cfg);
+            var seat = realistic ? Triple.TripleScreen.RealisticStartDegrees : null;
+            string car = CameraCarIdentity.Key(target);
+            string key = car == null ? null : car + (realistic ? RealisticSuffix : "");
+            if (ReferenceEquals(cfg, _settings) && target == _target && key == _key && realistic == _realistic && seat == _seat &&
+                (_extent != null || Time.unscaledTime < _nextFit))
+            { Remember(cfg); return; }
+            // Capture before changing target, key or set. Save/reload may also
+            // replace Settings while Unity keeps the same target alive.
+            Capture(_settings);
+            bool measure = target != _target || car != _car || _extent == null;
+            _target = target; _root = CameraCarIdentity.Root(target);
+            _car = car; _key = key; _realistic = realistic; _seat = seat; _settings = cfg;
+            if (_root == null || _key == null) { _loaded = null; _base = null; return; }
+            Load(cfg, measure);
         }
 
-        private static void Load(Settings cfg)
+        private static void Load(Settings cfg, bool measure)
         {
-            _key = _root.name.Replace("(Clone)", "").Trim() + (_custom ? "+" + CustomId() : "") + (_realistic ? RealisticSuffix : "");
-            _extent = Measure(_target);
+            if (measure)
+            {
+                _extent = Measure(_target);
+                _nextFit = Time.unscaledTime + 1f; // a late body can replace an unmeasured start
+            }
             _base = BaseFor(cfg);
+            CameraMountFit.KeepOutside(_base, _extent);
             var saved = cfg.CameraMounts.LastOrDefault(m => m.Car == _key);
             var offsets = saved?.Offsets?.Length == Positions.Length ? saved.Offsets : null;
             string how = "calculated";
@@ -58,8 +69,7 @@ namespace ArtOfSimRally.Mod
             var v = (float[])_base.Clone();
             if (offsets != null) for (int i = 0; i < Positions.Length; i++) v[Positions[i]] += offsets[i];
             v[4] += FovOffset(cfg, false); v[9] += FovOffset(cfg, true);
-            // Only the calculated start is kept outside the body; the player's own tweaks may go anywhere (owner 2026-11-01).
-            if (offsets == null) CameraMountFit.KeepOutside(v, _extent);
+            // Only the calculated start is kept outside the body; saved tweaks may go anywhere.
             Apply(cfg, v);
             _loaded = Snapshot(cfg);
             ModLog.Info("Camera mounts for " + _key + ": " + how + (_extent == null ? " (no measurement: defaults)" : "") +
@@ -72,7 +82,7 @@ namespace ArtOfSimRally.Mod
         {
             var d = Snapshot(new Settings());
             float bonnetFov = d[4], bumperFov = d[9];
-            if (_realistic && Triple.TripleScreen.RealisticStartDegrees is double seat) bonnetFov = bumperFov = (float)Math.Round(seat, 1);
+            if (_realistic && _seat is double seat) bonnetFov = bumperFov = (float)Math.Round(seat, 1);
             var v = CameraMountFit.Base(_extent, bonnetFov, bumperFov, d[3], d[8]) ?? d;
             v[4] = bonnetFov; v[9] = bumperFov;
             return v;
@@ -96,7 +106,7 @@ namespace ArtOfSimRally.Mod
         /// <summary>Reset key / F6 button: this car's position and this camera's field of view (every car) back to stock.</summary>
         internal static void Reset(Settings cfg, bool bumper)
         {
-            if (_key == null || _base == null) { cfg.ResetCameraMount(bumper); return; }
+            if (!ReferenceEquals(cfg, _settings) || _key == null || _base == null) { cfg.ResetCameraMount(bumper); return; }
             var v = Snapshot(cfg);
             int from = bumper ? 5 : 0;
             for (int i = from; i < from + 5; i++) v[i] = _base[i];
@@ -105,9 +115,22 @@ namespace ArtOfSimRally.Mod
             ModLog.Info("Camera mounts for " + _key + ": " + (bumper ? "bumper" : "bonnet") + " reset to the calculated placement.");
         }
 
+        /// <summary>The same calculated baseline as whole-view Reset, for one F6 Default button.</summary>
+        internal static float Default(Settings cfg, bool bumper, int field)
+        {
+            if (field < 0 || field > 4) throw new ArgumentOutOfRangeException(nameof(field));
+            var baseline = ReferenceEquals(cfg, _settings) && _base != null ? _base : Snapshot(new Settings());
+            return baseline[(bumper ? 5 : 0) + field];
+        }
+
+        // Called at the edit/save boundary too, so the last nudge need not wait
+        // for another LateUpdate before its offsets can be serialized.
+        internal static void Capture(Settings cfg)
+        { if (cfg != null && ReferenceEquals(cfg, _settings)) Remember(cfg); }
+
         private static void Remember(Settings cfg)
         {
-            if (_key == null || _loaded == null) return;
+            if (!ReferenceEquals(cfg, _settings) || _key == null || _loaded == null) return;
             var now = Snapshot(cfg);
             if (now.SequenceEqual(_loaded)) return;
             _loaded = now;
@@ -235,15 +258,5 @@ namespace ArtOfSimRally.Mod
             return h;
         }
 
-        // Custom Vehicles' active package id, by name so this mod does not depend on it.
-        private static string CustomId()
-        {
-            try
-            {
-                var type = AccessTools.TypeByName("RallyCustomVehicles.Main");
-                return type == null ? "custom" : Traverse.Create(type).Field("activePackage").Property("Manifest").Field("id").GetValue<string>() ?? "custom";
-            }
-            catch (Exception) { return "custom"; }
-        }
     }
 }

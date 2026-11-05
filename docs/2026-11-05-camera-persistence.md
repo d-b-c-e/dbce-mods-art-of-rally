@@ -1,0 +1,72 @@
+# Real camera persistence and missing pose/default behavior
+
+Assignment kole526824. Fresh worktree
+`E:/Source/_work/napo-art-camera-persistence-20261105`, branch
+`napo/art-camera-persistence-20261105`, off local main388696f. PUBLIC/local only;
+no push/install/runtime. Installed rc.38 and owner calibration remain unchanged.
+
+## Source outcome awaiting CPU qualification
+
+CameraTuning now links the actual CameraMountMemory, CameraCarIdentity,
+ChaseFov and ChasePoseStore. Its Reset/Track/Load/Remember/offset storage is no
+longer substituted. GeometryStubs supplies synthetic scene boxes/transforms,
+clock/input/host and reflected package identity; production geometry and storage
+code consumes them. These doubles do not establish real Unity geometry, physics,
+reflection integration, callback ordering, input reachability or rendering.
+
+The mounted store captures before target/set/settings changes and at edit/save
+boundaries, preserving the last nudge even without another LateUpdate. A changed
+Custom Vehicles package ID on the same donor/target changes the key. Unknown
+package identities receive no persistent guessed key. A late measured body can
+replace a default start while preserving offsets; a changed seat calculation
+recomputes the baseline and keeps the saved FOV delta. Geometry is reused across
+set switches instead of resampling it on every F6/active-view handoff.
+
+Stock chase now stores side/height/forward/pitch in ChaseCameraPoses by stable
+car identity, stock view index and Game/Realistic set. Existing FOV lists remain
+shared across cars for each view/set; legacy FOV data is not migrated into poses.
+Pose overlays use car axes for translation and camera-local pitch, are removed
+before the game camera updates, and are released on mounted/cinematic/disable/
+unload handoff. A foreign Camera Mod keeps rotation/pose ownership; saved pose
+records remain intact. Stored tweaks have no arbitrary bounds; nonfinite values
+cannot be applied, and rotation conversion reduces full turns without rewriting
+the saved pitch. Reset clears the active car/view/set pose and that view/set's
+shared FOV, preserving other cars, views and sets. Pose alone does not mark FOV
+Custom. Context changes use the existing capture/focus/release gate.
+
+Individual F6 Default buttons now receive the calculated current-car/set field
+baseline used by whole-view Reset. F6 tracks the selected mounted camera before
+drawing these fields, including when a stock chase view is active. Applying one
+Default clears only that field's offset; FOV remains shared across cars. No
+calibrated placement constants, native/shim binary, force, bindings or starting
+choice is changed.
+
+## Prepared checks, not yet run
+
+The same new tests can compile against the unchanged rc.38 production
+Keys/Tuner/ChaseFov/CameraMountMemory via CameraSourceRoot. Four targeted old-RED
+modes exercise target-switch last edit, immediate-save last nudge, same-target
+custom-package identity change, and missing stock chase pose dispatch. Compiler
+errors are not acceptable regression witnesses; each must fail its specific
+runtime assertion. The F6 Default cases test the actual new baseline handler;
+no old rendered/click-path reproduction is claimed.
+
+Current production-path cases cover two cars x both sets x both mounts, eight
+pose fields, FOV sharing, same-target settings reload, reset scope, failed locked
+save plus newest-value retry/reload, UTF8-no-BOM/CRLF, valid legacy absolute-pose
+migration, late body/seat data, custom-package isolation, chase keyboard/USB
+mapping, car axes, noncompounding undo/release, foreign camera ownership and
+actual XML persistence. SettingsUi must verify the new runtime-only inventory
+field; Lifecycle must compile/run its affected callback owner path. Full mod
+compile is required. CPU GO is requested only after source/runner/pins freeze;
+no compilation/test has occurred during preparation.
+
+## Remaining gates
+
+Custom Vehicles retains its independent absolute/bounded cockpit store and
+direct imported-key dispatch; that companion scope remains open. Stable stock
+view indices, measured meshes, actual hotkey/UI dispatch, callback handoffs,
+stage/car/restart rendering, final extreme-lens behavior and owner seating/
+comfort require later bounded runtime/owner evidence. Existing ready_for_test
+perspective/curve status and rc.30 historical driving/force acceptance are not
+promoted or downgraded by these source changes. No complete STD-046 adoption.

@@ -137,7 +137,7 @@ namespace ArtOfSimRally.Mod
     internal static class GameState { public static bool IsDriving=false, IsPlayerView=true; }
     internal static class ModLog { public static void Info(string value) { } public static void Warning(string value) { } }
     internal static class CameraMountMemory { public static void Track(UnityEngine.Transform target, Settings cfg, bool bumper) { } }
-    internal static class ChaseFov { public static void Apply(CarCameras rig, Settings cfg) { } }
+    internal static class ChaseFov { public static void Apply(CarCameras rig, Settings cfg, bool allowPose=true) { } public static void Release() { } }
     internal static class CameraTuner
     {
         public static float LensFov(float value) => value;

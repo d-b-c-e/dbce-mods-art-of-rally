@@ -6,7 +6,7 @@ using Host = ArtOfSimRally.Mod.Main;
 using Clock = ArtOfSimRally.Mod.Time;
 using Keys = ArtOfSimRally.Mod.Input;
 
-static class Program
+static partial class Program
 {
     static int assertions;
     static void Check(bool ok, string message) { assertions++; if (!ok) throw new Exception(message); }
@@ -420,7 +420,9 @@ static class Program
     {
         Keys.Release(); WheelInput.Held.Clear(); WheelInput.Pressed.Clear(); CameraKeys.Cancel();
         Host.Enabled = true; Host.SettingsVisible = false; ArtOfSimRally.Mod.Application.isFocused = true;
-        CameraTuner.Flush(shutdown: true); ChaseFov.Remove();
+        CameraTuner.Flush(shutdown: true);
+        var release = typeof(ChaseFov).GetMethod("Release", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+        if (release == null) ChaseFov.Remove(); else release.Invoke(null, null);
         Host.Settings = new Settings();
         CameraTuner.ReadResetButton(); CameraTuner.Update(BonnetCamera.View.Bonnet);
         ArtOfSimRally.Mod.Triple.TripleScreen.Realistic = false;
@@ -543,8 +545,13 @@ static class Program
             else if (mode == "--f7-dispatch") F7Dispatch();
             else if (mode == "--fov-limits") FovLimits();
             else if (mode == "--chase-reset") ChaseReset();
+            else if (mode == "--mounted-switch") MountedSwitch();
+            else if (mode == "--mounted-last-edit") MountedLastEdit();
+            else if (mode == "--custom-identity") CustomIdentity();
+            else if (mode == "--chase-pose") ChasePosePersistence();
+            else if (mode == "--persistence") Persistence();
             else if (mode != null) throw new ArgumentException("Unknown fixture mode");
-            else { Saves(); Bindings(); Migration(); NativeKeyboardConflicts(); KeyEffects(); UsbCameraButtons(); Steps(); F7Capture(); F7Dispatch(); FovLimits(); ChaseReset(); }
+            else { Saves(); Bindings(); Migration(); NativeKeyboardConflicts(); KeyEffects(); UsbCameraButtons(); Steps(); F7Capture(); F7Dispatch(); FovLimits(); ChaseReset(); Persistence(); }
             Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
         }
         catch (Exception ex) { Console.Error.WriteLine(ex); return 1; }

@@ -153,6 +153,7 @@ namespace ArtOfSimRally.Mod
             if (value && Settings.ForceFeedbackEnabled && !FfbNative.Ready) ForceReconnect.Request();
             if (!value)
             {
+                ChaseFov.Release();
                 CameraKeys.Cancel();
                 GameBindings.CancelPending();
                 // Let go of the wheel and park consumers the moment the player
@@ -182,6 +183,7 @@ namespace ArtOfSimRally.Mod
         private static bool OnUnload(UnityModManager.ModEntry modEntry)
         {
             Enabled = false;
+            ChaseFov.Release();
             TripleScreen.Unload();
             CameraKeys.Cancel();
             GameBindings.CancelPending();
@@ -262,6 +264,7 @@ namespace ArtOfSimRally.Mod
             try
             {
                 if (Settings == null || _modEntry == null) return false;
+                CameraMountMemory.Capture(Settings);
                 Settings.Save(_modEntry);
                 TripleScreen.Save();
                 _uiDirty = false; SettingsSaveStatus = "Saved";

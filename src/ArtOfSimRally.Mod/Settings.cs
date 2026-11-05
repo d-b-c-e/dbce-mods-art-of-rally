@@ -193,6 +193,9 @@ namespace ArtOfSimRally.Mod
         public List<float> ChaseFovOffsets = new List<float>();
         // The Realistic set's per-view offsets, added to the seat's true field of view (F7 in a chase view).
         public List<float> ChaseFovRealisticOffsets = new List<float>();
+        // Pose is per car, stock chase view and set. FOV deliberately remains in
+        // the shared per-view lists above, so changing cars cannot fork its value.
+        public List<ChaseCameraPose> ChaseCameraPoses = new List<ChaseCameraPose>();
 
         public bool CameraTuningKeys = true;
 
@@ -344,5 +347,13 @@ namespace ArtOfSimRally.Mod
         // migrate an adjusted set to offsets.
         public float[] Values;
         public bool Tuned;
+    }
+
+    public sealed class ChaseCameraPose
+    {
+        public string Car;
+        public int View;
+        public bool Realistic;
+        public float Side, Height, Forward, Pitch;
     }
 }

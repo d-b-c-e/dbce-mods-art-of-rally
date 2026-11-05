@@ -436,7 +436,7 @@ namespace ArtOfSimRally.Mod
             {
                 Heading("Adjustment bindings");
                 c.CameraTuningKeys = Toggle(c.CameraTuningKeys, "Live adjustment shortcuts");
-                Help("Use keyboard keys or separate USB buttons; no numpad required. F8 and the Settings key are reserved. Release USB buttons before Bind, and use buttons not already assigned in the game.");
+                Help("Use keyboard keys or separate USB buttons; no numpad required. F7, F8, F10 and the Settings key are reserved. Release USB buttons before Bind, and use buttons not already assigned in the game.");
                 for (int i = 0; i < CameraKeys.Bindings.Length; i++)
                     CameraAdjustmentBinding(c, i);
                 bool enabled = GUI.enabled; GUI.enabled = enabled && !Editing;
@@ -446,23 +446,31 @@ namespace ArtOfSimRally.Mod
             if (!SettingsViewPolicy.Advanced(c))
             { if (SettingsViewPolicy.CustomCamera(c) && LinkButton("Review custom camera tuning in Advanced >", 275)) Select(c, true, 2); return; }
             Heading("Camera adjustment");
+            Help("Default clears just that value's offset in the current car/set. Field of view is shared by every car in the same camera/set.");
             _mount = Segmented(_mount, new[] { "Bonnet pose", "Bumper pose" }, "Camera pose", 230);
+            var camera = UIManager.Instance?.PanelManager?.mainCamera;
+            var rig = camera == null || camera.transform.parent == null ? null : camera.transform.parent.GetComponent<CarCameras>();
+            if (rig != null && rig.target != null && GameState.IsPlayerView)
+            {
+                try { CameraMountMemory.Track(rig.target, c, _mount != 0); }
+                catch (Exception ex) { ModLog.Warning("Camera settings memory skipped: " + ex.Message); }
+            }
             if (RightButton("Reset " + (_mount == 0 ? "bonnet" : "bumper") + " view", 150)) { CameraMountMemory.Reset(c, _mount != 0); Main.MarkSettingsDirty(); }
             if (_mount == 0)
             {
-                c.BonnetHeight = Slider(c.BonnetHeight, -.5f, 3, .95f, "Height", 1, " m", true);
-                c.BonnetForward = Slider(c.BonnetForward, -3, 5, 1, "Forward", 1, " m", true);
-                c.BonnetSide = Slider(c.BonnetSide, -2, 2, 0, "Side", 1, " m", true);
-                c.BonnetPitch = Slider(c.BonnetPitch, -45, 45, 3, "Tilt", 1, "°", true);
-                c.BonnetFOV = Slider(c.BonnetFOV, 20, 120, 75, "Field of view", 1, "°", true);
+                c.BonnetHeight = Slider(c.BonnetHeight, -.5f, 3, CameraMountMemory.Default(c, false, 1), "Height", 1, " m", true);
+                c.BonnetForward = Slider(c.BonnetForward, -3, 5, CameraMountMemory.Default(c, false, 2), "Forward", 1, " m", true);
+                c.BonnetSide = Slider(c.BonnetSide, -2, 2, CameraMountMemory.Default(c, false, 0), "Side", 1, " m", true);
+                c.BonnetPitch = Slider(c.BonnetPitch, -45, 45, CameraMountMemory.Default(c, false, 3), "Tilt", 1, "°", true);
+                c.BonnetFOV = Slider(c.BonnetFOV, 20, 120, CameraMountMemory.Default(c, false, 4), "Field of view", 1, "°", true);
             }
             else
             {
-                c.BumperHeight = Slider(c.BumperHeight, -.5f, 3, .45f, "Height", 1, " m", true);
-                c.BumperForward = Slider(c.BumperForward, -3, 5, 1.9f, "Forward", 1, " m", true);
-                c.BumperSide = Slider(c.BumperSide, -2, 2, 0, "Side", 1, " m", true);
-                c.BumperPitch = Slider(c.BumperPitch, -45, 45, 2, "Tilt", 1, "°", true);
-                c.BumperFOV = Slider(c.BumperFOV, 20, 120, 80, "Field of view", 1, "°", true);
+                c.BumperHeight = Slider(c.BumperHeight, -.5f, 3, CameraMountMemory.Default(c, true, 1), "Height", 1, " m", true);
+                c.BumperForward = Slider(c.BumperForward, -3, 5, CameraMountMemory.Default(c, true, 2), "Forward", 1, " m", true);
+                c.BumperSide = Slider(c.BumperSide, -2, 2, CameraMountMemory.Default(c, true, 0), "Side", 1, " m", true);
+                c.BumperPitch = Slider(c.BumperPitch, -45, 45, CameraMountMemory.Default(c, true, 3), "Tilt", 1, "°", true);
+                c.BumperFOV = Slider(c.BumperFOV, 20, 120, CameraMountMemory.Default(c, true, 4), "Field of view", 1, "°", true);
             }
             c.BonnetLean = Slider(c.BonnetLean, 0, 1, .1f, "Corner lean (both views)", 100, "%");
             Help("Shortcut steps: one step per press; holding repeats about ten steps a second.");
@@ -474,6 +482,7 @@ namespace ArtOfSimRally.Mod
             float fov = Slider(c.CameraFovStep, .5f, 10, 2, "Field of view per press", 1, "°");
             if (fov != c.CameraFovStep) c.CameraFovStep = Mathf.Round(fov * 10f) / 10f;
             if (RightButton("Default steps", 150)) { c.ResetCameraSteps(); Main.MarkSettingsDirty(); }
+            CameraMountMemory.Capture(c);
         }
         private static void Telemetry(Settings c)
         {

@@ -1500,7 +1500,7 @@
       "default": [],
       "classification": "runtime-only",
       "visibility": "Not shown; numpad +/- in a chase view",
-      "reason": "Per chase view (list position) offset in degrees added to the game's speed-dependent field of view (owner 2026-10-31: every camera adjustable and saved). Clamped to +/-40."
+      "reason": "Per chase view/set FOV offset, shared across cars. Stored tweaks are unrestricted; only the applied final lens is fenced to1..179degrees."
     },
     {
       "kind": "field",
@@ -1520,6 +1520,25 @@
       "classification": "runtime-only",
       "visibility": "Not shown; numpad +/- in a chase view",
       "reason": "Per chase view offsets in degrees for the Realistic set (seat-true field of view plus offset; owner 2026-11-01: F7 on every camera)."
+    },
+    {
+      "kind": "field",
+      "settingsType": "ArtOfSimRally.Mod.Settings",
+      "file": "Mods/ArtOfSimRally/Settings.xml",
+      "key": "ChaseCameraPoses",
+      "source": "src/ArtOfSimRally.Mod/Settings.cs",
+      "page": "Cameras",
+      "label": null,
+      "type": "list",
+      "displayUnit": null,
+      "scale": 1,
+      "min": null,
+      "max": null,
+      "step": null,
+      "default": [],
+      "classification": "runtime-only",
+      "visibility": "Camera adjustment shortcuts in stock chase views",
+      "reason": "Side/height/forward/pitch offsets per stable car identity, stock chase view index and Game/Realistic set. FOV remains shared across cars in its separate per-view/set lists."
     },
     {
       "kind": "field",

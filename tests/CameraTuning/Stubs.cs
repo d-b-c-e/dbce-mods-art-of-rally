@@ -25,8 +25,6 @@ namespace ArtOfSimRally.Mod
     internal static class Application { public static bool isFocused = true; }
     internal static class GameState { public static bool IsDriving = false; }
     internal static class BonnetCamera { public enum View { None, Bonnet, Bumper } }
-    // No car is tracked offline, so reset falls back to the defaults, as CameraMountMemory.Reset does without a car.
-    internal static class CameraMountMemory { public static void Reset(Settings c, bool bumper) => c.ResetCameraMount(bumper); }
     internal static class ModLog
     {
         public static readonly List<string> Messages = new();
@@ -42,7 +40,13 @@ namespace ArtOfSimRally.Mod
         public static bool SaveSettings()
         {
             Saves++;
-            try { SettingsPersistence.Write(Settings, Path); return true; }
+            try
+            {
+                // Same edit boundary as production Main.SaveSettings. Reflection
+                // also permits the actual rc38 source (without Capture) in RED modes.
+                typeof(CameraMountMemory).GetMethod("Capture", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)?.Invoke(null, new object[] { Settings });
+                SettingsPersistence.Write(Settings, Path); return true;
+            }
             catch (IOException) { return false; }
         }
     }
@@ -50,7 +54,7 @@ namespace ArtOfSimRally.Mod
 
 namespace ArtOfSimRally.Mod.Triple
 {
-    internal static class CameraOverlay { internal enum Kind { Chase } }
+    internal static class CameraOverlay { internal enum Kind { Chase, Bonnet, Bumper } }
     internal static class TripleScreen
     {
         public static bool Realistic;
@@ -64,12 +68,13 @@ namespace ArtOfSimRally.Mod
 {
     // Managed host doubles for the production ChaseFov consumer, not a substitute
     // implementation of its offsets, reset, set choice or persistence.
-    internal sealed class Camera { public float fieldOfView; }
+    internal sealed class Camera { public float fieldOfView; public Transform transform = new(); }
     internal sealed class CameraAngle { }
     internal sealed class CarCameras
     {
         public readonly List<CameraAngle> CameraAnglesList = new();
         public CameraAngle CurrentCameraAngle;
+        public Transform target = new() { name="fixture car" };
     }
     internal sealed class PanelManager { public Camera mainCamera; }
     internal sealed class UIManager
@@ -88,11 +93,19 @@ namespace HarmonyLib
     internal static class AccessTools
     {
         internal delegate F FieldRef<T, F>(T instance);
+        internal static Type TypeByName(string name) => name == "RallyCustomVehicles.Main" ? typeof(ArtOfSimRally.Mod.CameraFixture) : null;
         internal static FieldRef<T, F> FieldRefAccess<T, F>(string name)
         {
             if (typeof(T) != typeof(ArtOfSimRally.Mod.CarCameras) || typeof(F) != typeof(List<ArtOfSimRally.Mod.CameraAngle>) || name != "CameraAnglesList")
                 throw new InvalidOperationException("Unexpected game field");
             return instance => (F)(object)((ArtOfSimRally.Mod.CarCameras)(object)instance).CameraAnglesList;
         }
+    }
+    internal sealed class Traverse
+    {
+        public static Traverse Create(Type type) => new();
+        public Traverse Field(string name) { if (name != "activePackage" && name != "id") throw new Exception("Unexpected reflected field"); return this; }
+        public Traverse Property(string name) { if (name != "Manifest") throw new Exception("Unexpected reflected property"); return this; }
+        public T GetValue<T>() => (T)(object)ArtOfSimRally.Mod.CameraFixture.CustomId;
     }
 }
