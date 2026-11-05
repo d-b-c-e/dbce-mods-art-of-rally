@@ -368,7 +368,7 @@ namespace ArtOfSimRally.Mod
 
                 // The stock UpdateFOVAndPitch rewrites fieldOfView every frame for
                 // the chase camera, so set ours after it rather than once.
-                cam.fieldOfView = bumper ? cfg.BumperFOV : cfg.BonnetFOV;
+                cam.fieldOfView = CameraTuner.LensFov(bumper ? cfg.BumperFOV : cfg.BonnetFOV);
                 cam.nearClipPlane = Mathf.Min(_savedNear, MountedNearClip);
 
                 // Polled here so the hotkeys are live only while looking through

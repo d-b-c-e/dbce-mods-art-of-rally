@@ -65,8 +65,8 @@ namespace ArtOfSimRally.Mod
             else { Up.Release(); Down.Release(); }
             Remove();
             _camera = cam;
-            _applied = seat.HasValue ? (float)seat.Value + offsets[index] - cam.fieldOfView : offsets[index];
-            if (float.IsNaN(_applied) || float.IsInfinity(_applied) || float.IsInfinity(cam.fieldOfView + _applied)) _applied = 0f;
+            float requested = seat.HasValue ? (float)seat.Value + offsets[index] : cam.fieldOfView + offsets[index];
+            _applied = CameraTuner.LensFov(requested) - cam.fieldOfView;
             cam.fieldOfView += _applied;
         }
     }

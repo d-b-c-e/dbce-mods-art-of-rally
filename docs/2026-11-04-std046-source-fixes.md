@@ -14,7 +14,11 @@ push or standards promotion is authorized by this source increment.
   offsets to-40..40 or Realistic FOV to20..120. Nonfinite adjustment results are
   refused. Camera pose/FOV rows retain the ordinary initial slider span, expand
   around the saved value, and allow +/- beyond it without changing values on draw.
-  The engine's handling of extreme finite FOV still needs runtime evidence.
+  Final mounted/chase lens writes alone are fenced to1..179degrees, away from
+  degenerate perspective endpoints, with a finite fallback. Stored tweaks remain
+  unchanged, including offsets beyond that applied-lens range. Actual engine
+  handling still needs runtime evidence. This application-only fence incorporates
+  coordinator526552's clarification after the initial source freeze3f7da9cd.
 - Chase consumes the same sampled wheel-reset edge once, scoped to the active
   chase view/set. Capture, panel, modifier and focus suppression now use the same
   held-until-release gate as mounted tuning.

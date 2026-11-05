@@ -495,6 +495,10 @@ static class Program
         ChaseFov.Apply(rig, cfg); Check(cam.fieldOfView == 134, "Realistic chase retained upper FOV bound"); ChaseFov.Remove();
         rig.CurrentCameraAngle = rig.CameraAnglesList[1]; ChaseFov.Apply(rig, cfg);
         Check(cam.fieldOfView == 14, "Realistic chase retained lower FOV bound"); ChaseFov.Remove();
+        cfg.ChaseFovRealisticOffsets[1] = 1000; ChaseFov.Apply(rig, cfg);
+        Check(cam.fieldOfView == 179 && cfg.ChaseFovRealisticOffsets[1] == 1000, "final upper lens fence rewrote the stored offset"); ChaseFov.Remove();
+        cfg.ChaseFovRealisticOffsets[1] = -1000; ChaseFov.Apply(rig, cfg);
+        Check(cam.fieldOfView == 1 && cfg.ChaseFovRealisticOffsets[1] == -1000, "final lower lens fence rewrote the stored offset"); ChaseFov.Remove();
         CameraTuner.MarkDirty(); CameraTuner.Flush(shutdown: true);
         Check(Saved().ChaseFovOffsets.SequenceEqual(cfg.ChaseFovOffsets) && Saved().ChaseFovRealisticOffsets.SequenceEqual(cfg.ChaseFovRealisticOffsets),
             "production chase offsets lost in actual XML save/reload");

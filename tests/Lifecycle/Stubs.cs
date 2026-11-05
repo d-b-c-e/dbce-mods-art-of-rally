@@ -140,6 +140,7 @@ namespace ArtOfSimRally.Mod
     internal static class ChaseFov { public static void Apply(CarCameras rig, Settings cfg) { } }
     internal static class CameraTuner
     {
+        public static float LensFov(float value) => value;
         public static void Update(BonnetCamera.View view) { }
         public static void Flush(bool shutdown=false) => Calls.Log.Add("camera-save");
     }

@@ -39,6 +39,10 @@ namespace ArtOfSimRally.Mod
         private static bool _resetButtonPressed;
         internal static void ReadResetButton() => _resetButtonPressed = WheelInput.ShortcutPressed(WheelInput.Channel.CameraReset);
         internal static bool TakeResetButton() { bool pressed = _resetButtonPressed; _resetButtonPressed = false; return pressed; }
+        // Keep the final perspective lens away from its degenerate endpoints.
+        // This never clips or rewrites the player's stored value/offset.
+        internal static float LensFov(float degrees) => float.IsNaN(degrees) || float.IsInfinity(degrees)
+            ? 60f : Mathf.Clamp(degrees, 1f, 179f);
 
         private static readonly CameraRepeat[] Repeats = CreateRepeats();
         private static CameraRepeat[] CreateRepeats()
