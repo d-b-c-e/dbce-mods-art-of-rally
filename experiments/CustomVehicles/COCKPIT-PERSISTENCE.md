@@ -1,6 +1,6 @@
 # Cockpit camera persistence increment (2026-11-05)
 
-Source candidate only; CPU qualification is pending. No package, installed-state
+CPU527449 qualified source `431f07bf`; packaging identity is CV 0.6.7 with Art rc.40. No package or installed-state
 write, game launch, input injection, physical output, or public push.
 
 Cockpit eye translations are offsets from each package's authored camera point.
@@ -40,3 +40,15 @@ simulated host. The plugin build and existing Harmony/guard checks cover the rea
 assembly separately. None establishes native Unity execution, rendered seams,
 physical keyboard/device behavior, driving, or owner acceptance. Installed Turtle
 and Art settings/saves/FFB remain untouched; RuntimeQualified stays false.
+
+CPU527449 passed in 20.2847 seconds: old 6cf01f2 compiled, then all three
+named behavior regressions failed as expected; current cockpit159 assertions,
+existing Core148, 57 Harmony targets and actual upload/local-prefix callback and
+locked-physics checks passed. CV net48 compiled with zero warnings/errors. All
+294 pins and certificate metadata were unchanged. Independent608-image census
+found all22 recorded identities absent and scoped0; lease005a36ae59b447f4a36aa15f5f54cb58
+released2026-11-05T07:37:30.3362049Z. Raw results/logs/old failure scratch remain in
+`E:/Source/_work/napo-art-cv-cockpit-20261105/obj/cv-cockpit-20261105/cpu-527449`.
+ResultSHA9269570165648113FDB10524B4A01D89573AF1CB70CC5C446361F7B08A3E1A81;
+auditSHA452C5284A127D2CB9E3D4FCE62D5A180BA07C8D1C03223520F4083C797B1C3EF.
+The version-only change to0.6.7 will be rebuilt/checked by the package producer.

@@ -1,3 +1,14 @@
+# Cockpit successor qualification - 2026-11-05
+
+CV 0.6.7 source uses per-car/set pose offsets, shared set FOV, safe legacy migration
+and imported-F7 rejection. CPU527449:159 production cockpit assertions,148 Core
+assertions,57 Harmony targets and locked-physics/upload guards PASS; three old-source
+runtime RED witnesses retained. Native Unity/input/device/geometry/owner acceptance
+remain unqualified. See [COCKPIT-PERSISTENCE.md](COCKPIT-PERSISTENCE.md).
+Package/install pending; installed CV0.6.6 and Art rc39 remain unchanged.
+
+The original framework qualification record follows as historical evidence.
+
 # Qualification and review record — 2026-10-08
 
 The owner requested sustained development and advice from Astra and Claude while
