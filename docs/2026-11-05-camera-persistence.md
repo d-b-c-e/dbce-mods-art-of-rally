@@ -5,7 +5,16 @@ Assignment kole526824. Fresh worktree
 `napo/art-camera-persistence-20261105`, off local main388696f. PUBLIC/local only;
 no push/install/runtime. Installed rc.38 and owner calibration remain unchanged.
 
-## Source outcome awaiting CPU qualification
+## Qualified source and file-only delivery
+
+rc.39 delivered from clean local-main package source8f67b511, ZIP E8351B57/
+Mod3D4221FF/build31773C6E. Actual producer/metadata379/archive27/installer70 passed
+CPU526985, release06:56:20.5943170Z. Standing526985 admitted1793861915431 once
+on rawidle6400.859s; four writes, nine payload hashes,51 backups/security and47
+protected files independently verified. Settings,24 saves/four CV State,
+calibration/native/shim unchanged. Exact lease released06:58:50.2950667Z;
+standing approval stopped, no custody. No game/UI/device/owner acceptance.
+Full hashes, backup/rollback and evidence in [Local deployment](LOCAL-DEPLOYMENT.md).
 
 CPU526948 subsequently PASS30.51s: all four actual-old runtime regression modes
 failed their expected assertions after a successful old-source compile. Current
@@ -18,8 +27,8 @@ identities absent, scoped0; exact90542db200d046f7a2afff76078336bc released
 Evidence `obj/camera-persistence-20261105/cpu-526948` raw logs/result/audit/closure;
 result1F6AB6B7E67E38730954A833C0D2F3DCADEE477B8ADC670B27C2594F413E1D59,
 auditECCEDC7FE6D0879036B460E131B65394504029967510CEEE0C3226F347069DED.
-No game/device/UI/install/public push. Installed rc.38 remains unchanged pending
-separately qualified/approved rc.39 package and file-only installation.
+No game/device/UI/install/public push occurred during that source qualification;
+the later authorized package/file-only installation is recorded above.
 
 CameraTuning now links the actual CameraMountMemory, CameraCarIdentity,
 ChaseFov and ChasePoseStore. Its Reset/Track/Load/Remember/offset storage is no
@@ -55,7 +64,7 @@ Default clears only that field's offset; FOV remains shared across cars. No
 calibrated placement constants, native/shim binary, force, bindings or starting
 choice is changed.
 
-## Prepared checks, not yet run
+## Initial prepared checks, subsequently passed CPU526948
 
 The same new tests can compile against the unchanged rc.38 production
 Keys/Tuner/ChaseFov/CameraMountMemory via CameraSourceRoot. Four targeted old-RED
@@ -73,7 +82,7 @@ mapping, car axes, noncompounding undo/release, foreign camera ownership and
 actual XML persistence. SettingsUi must verify the new runtime-only inventory
 field; Lifecycle must compile/run its affected callback owner path. Full mod
 compile is required. CPU GO is requested only after source/runner/pins freeze;
-no compilation/test has occurred during preparation.
+no compilation/test occurred during preparation.
 
 ## Remaining gates
 

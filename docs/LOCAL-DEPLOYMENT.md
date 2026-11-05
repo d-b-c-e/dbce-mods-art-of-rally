@@ -1,6 +1,62 @@
 # Local deployment
 
-## Current installation — 0.4.4-rc.38, November 5
+## Current installation — 0.4.4-rc.39, November 5
+
+File-only installed from clean local-main package source
+`8f67b511bcf068571a64b4d9bd75b98c275417d9`. Adds stock chase pose offsets per
+car/view/set, calculated individual F6 Defaults and real mounted-store coverage.
+The mounted store preserves the last edit across target/set/settings/save changes,
+late body/seat recalculation and same-donor custom-package ID changes. Chase FOV
+remains shared per view/set across cars. See
+[camera persistence](2026-11-05-camera-persistence.md) for exact scope and limits.
+
+| Artifact | SHA-256 |
+|---|---|
+| `ArtOfSimRally-0.4.4-rc.39-shared-input.zip` | `E8351B57BF1C780BD2E62F073CDE440312E7949099EF17F082EBF0143CA9F8E5` |
+| Installed Mod DLL | `3D4221FFEEE8C3DE6F3F17998AA443460AD2C475EC6479BAD1F6189842B21A37` |
+| Installed `build.json` | `31773C6EDFD6EF142522DF72FA25729FC9243240FB23EBAE62E9DD5AFF761857` |
+| Unchanged shared shim | `7E4A1251AC733E34A393E28EA3453F3ED409C8356158FF82ADD4242348A0A9A1` |
+| Both unchanged native force copies | `44E46799945438BC07DF738472602DB1E3ECC04C3F77CAD5B12FCACF49C69272` |
+
+CPU526948 retained four actual-old runtime regression failures, then passed
+CameraTuning1,056, SettingsUi3,565, Lifecycle95 and full mod compile0 warnings/
+errors. The production mounted store replaces the old Reset double; synthetic
+scene/input/geometry remains explicit. CPU526985 passed the actual producer,
+379 metadata checks,27-entry archive readback and70 real installer checks, without
+repeating the source suites. Source/public push remains local only.
+
+Standing526985 admitted fresh install1793861915431 once, rawidle6400.859s,
+Art closed/Steam app0. Four writes only (Mod/Core/Protocol/build.json); all nine
+installed package hashes match. Separate-process verification passed51 original
+backup hashes/security descriptors,47 protected bytes/creation/write ticks/attrs
+and four rollback guards. This covers24 save files and four CV State files;
+settings, calibration, native and shim were unchanged. Independent586-image
+census found the installer absent/scoped0; exact68eb3694c46a48148165ae6e9e5b219c
+lease released2026-11-05T06:58:50.2950667Z, absence corroborated. No custody.
+Standing approval stopped after this first admitted run.
+
+Backup/one-step guarded rollback:
+`E:/Source/_archive/2026-11-05/owner-before-art-camera-persistence-rc39/Rollback.ps1`,
+actual SHA `8B2231AE35E49D7E51BB8962D90DADD2ED040D8382E04AC349FBE4EA7CC354BE`.
+Reviewed preview46DB312A has the same executable body with one less trailing
+newline byte. Guarded rollback restores original bytes/timestamps/attributes/
+security and refuses later changed targets; not exercised against owner files.
+
+Evidence in `E:/Source/_work/napo-art-camera-persistence-20261105`:
+`obj/camera-persistence-install-20261105/{install-1793861915431,independent-owner-verify,result,independent-audit,closure}.json`.
+Result `80D5737C12F9882B22A6A9B8B9D8F9219A1D2110EE8DEF82C73D979910135370`;
+audit `9CBA1E79F87A7553CD9087B6F7C401F5E98D1E5DF03F11A10AC0D7A7EA07CBAB`.
+Adjacent camera-persistence-20261105 and camera-persistence-package-20261105
+folders retain source/package receipts and raw logs.
+
+No game/UI/input/device/rendered/physical/owner acceptance run. Perspective and
+curve remain ready_for_test with owner re-check required on rc.39. Historical
+rc.30 driving/force/performance acceptance remains preserved. Custom Vehicles'
+separate absolute/bounded cockpit store/imported-F7 dispatch remains open;
+native geometry/indices/UI/callbacks/stage/restart behavior still needs runtime.
+No full STD-046 adoption or public release is claimed.
+
+## Historical installation — 0.4.4-rc.38, November 5
 
 File-only installed from clean local-main package source
 `53399f616bb5fd32a629ec424d060b2a6a0c03b9`. Fixed Art F7 reservation covers
