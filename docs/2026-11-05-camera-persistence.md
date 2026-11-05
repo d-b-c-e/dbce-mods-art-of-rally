@@ -7,6 +7,20 @@ no push/install/runtime. Installed rc.38 and owner calibration remain unchanged.
 
 ## Source outcome awaiting CPU qualification
 
+CPU526948 subsequently PASS30.51s: all four actual-old runtime regression modes
+failed their expected assertions after a successful old-source compile. Current
+CameraTuning1,056, SettingsUi3,565 and Lifecycle95 checks passed; full mod compile
+0 warnings/0 errors. Candidate source596c37ad, Mod
+9359DCFCB48C17348966E9AFBF95AC21C1B64ECBEB34CC938AE58794A45C42F8.
+All230 input pins/certs unchanged. Independent589-image census found29 recorded
+identities absent, scoped0; exact90542db200d046f7a2afff76078336bc released
+2026-11-05T06:51:23.8192355Z, named lease/token absence corroborated. No custody.
+Evidence `obj/camera-persistence-20261105/cpu-526948` raw logs/result/audit/closure;
+result1F6AB6B7E67E38730954A833C0D2F3DCADEE477B8ADC670B27C2594F413E1D59,
+auditECCEDC7FE6D0879036B460E131B65394504029967510CEEE0C3226F347069DED.
+No game/device/UI/install/public push. Installed rc.38 remains unchanged pending
+separately qualified/approved rc.39 package and file-only installation.
+
 CameraTuning now links the actual CameraMountMemory, CameraCarIdentity,
 ChaseFov and ChasePoseStore. Its Reset/Track/Load/Remember/offset storage is no
 longer substituted. GeometryStubs supplies synthetic scene boxes/transforms,
