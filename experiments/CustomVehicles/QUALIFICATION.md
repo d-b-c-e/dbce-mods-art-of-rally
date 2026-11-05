@@ -5,7 +5,9 @@ and imported-F7 rejection. CPU527449:159 production cockpit assertions,148 Core
 assertions,57 Harmony targets and locked-physics/upload guards PASS; three old-source
 runtime RED witnesses retained. Native Unity/input/device/geometry/owner acceptance
 remain unqualified. See [COCKPIT-PERSISTENCE.md](COCKPIT-PERSISTENCE.md).
-Package/install pending; installed CV0.6.6 and Art rc39 remain unchanged.
+Actual package CPU527546 passed; CV0.6.7 + Art rc40 installed file-only under527612,
+fresh1793864862794. Six writes/11 hashes/65 originals+SDDL/59 protected files
+independently verified; exact lease released07:47:59.2624630Z. No game/device test.
 
 The original framework qualification record follows as historical evidence.
 

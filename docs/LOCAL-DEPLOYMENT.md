@@ -1,6 +1,66 @@
 # Local deployment
 
-## Current installation — 0.4.4-rc.39, November 5
+## Current installation - Art0.4.4-rc.40 + CV0.6.7, November5
+
+File-only installed from clean package source
+`4daff2175b5af16891e2d11955ed9180babfd5ea`. Retains rc39 mounted/chase changes
+and adds CV per-car/set pose offsets, shared FOV offsets, measured-seat/reset
+scope, exact legacy backup/migration, pending-save retry and safe imported-key
+consumer behavior. See [CV cockpit persistence](../experiments/CustomVehicles/COCKPIT-PERSISTENCE.md).
+
+| Artifact | SHA-256 |
+|---|---|
+| Art rc40 shared-input ZIP | `DF004857E9A08FCE91E489B96A11247431E6F4AB97F34EB0A47811AF4E011F39` |
+| Installed Art Mod | `9EB7184937B41BD0828A9AA6BC32B6664AC72562DDA563CD70888774EBD7FD84` |
+| Installed Art build.json | `7066CB3CECDD487ACB9DCA19D0B069767F1BB1EFA5B7F79243B001C30EA3E73A` |
+| CV0.6.7 ZIP | `32D1D5AFE17F150CC87A225AE077955BB06A80151F72BCF281E7B1A98C93542D` |
+| Installed CV plugin | `48822A55CA82CA4642D34E426F95AF95A91730D4DA2AC5070FD10EB0E8CAC0F2` |
+| Installed CV Info.json | `62E7C598591F8FA6730C016723211372764A68C1FF2D71A5F6CE33965F037D69` |
+| Unchanged shim | `7E4A1251AC733E34A393E28EA3453F3ED409C8356158FF82ADD4242348A0A9A1` |
+| Both unchanged native force copies | `44E46799945438BC07DF738472602DB1E3ECC04C3F77CAD5B12FCACF49C69272` |
+
+CPU527449 PASS20.2847s: old6cf01f2 compiled then3 named behavior REDs; current
+159 cockpit/148 Core/57 Harmony targets, actual upload/local callbacks and
+locked physical-default guards passed. Plugin net48 compile0 warnings/errors.
+CPU527546 PASS35.6633s: actual Art and CV producers;379 metadata/70 installer/
+5 creator tests,27 Art and14 CV archive entries read back. Unchanged optional
+Blender omitted. All636pins/certs exact;603-image census48 identities absent,
+scoped0; exact95659bcad8134a27a2c2101338c89969 released07:44:05.6479464Z.
+
+Standing install527612 admitted fresh1793864862794 once: rawidle9347.437s before
+lease and9348.203s after, Art closed/Steamapp0. Six writes only: Art Mod/Core/
+Protocol/build and CV plugin/Info. Eleven payload hashes match; separate-process
+65 security descriptors/original backups,59 protected bytes/creation/write ticks/
+raw attributes and6 rollback guards/reviewed body passed. Entire installed CV
+Vehicles and State, docs/cache, Art settings/calibration,24 saves, shim and both
+native force copies remain exact. No legacy State rewrite occurs on installation.
+603-image independent census found operator42544 absent/scoped0; exact
+5a5a1b4932214e3a9be1a4ef11f76e1a lease released2026-11-05T07:47:59.2624630Z,
+named/token absence corroborated. No custody. Standing approval stopped after
+this first admitted run.
+
+Outside backup and guarded rollback:
+`E:/Source/_archive/2026-11-05/owner-before-art-cv-cockpit-rc40/Rollback.ps1`,
+actualSHA `8B2231AE35E49D7E51BB8962D90DADD2ED040D8382E04AC349FBE4EA7CC354BE`.
+Preview46DB312A has the same executable body with one less trailing newline;
+rollback preserves later changed files and restores original bytes/timestamps/
+attributes/security. Reviewed/parser checked, not exercised against owner files.
+
+Evidence in `E:/Source/_work/napo-art-cv-cockpit-20261105`:
+`obj/cv-cockpit-install-20261105/{install-1793864862794,independent-owner-verify,result,independent-audit,closure}.json`.
+Result `0AD1B5969631946F7EE1453637001AA89B7F1B6125C138E8EC1D472AACE9020E`;
+audit `3FB2847D5823DA2CDF097F9AC2BB117A25EA96A04C3F58FC68B245308B53DB1E`;
+ownerproof `27BFB5BE4465A3F6106E487B6B4FDF84E4FA6DE1B2C6295981E623EB135D0C63`.
+Adjacent cv-cockpit-20261105 and cv-cockpit-package-20261105 preserve all source,
+package, baseline regression and raw logs; archives stay at their recorded paths.
+
+No game, real keyboard, UI, device, rendered, physical or new owner acceptance.
+Native Unity callback/geometry/view-index/stage/restart/seating gates remain;
+RuntimeQualified=false. Perspective/curve stay ready_for_test for owner re-check
+on rc40/CV0.6.7. Preserve rc30 historical driving/force/performance acceptance.
+No full STD-046 adoption, public push or release.
+
+## Historical installation — 0.4.4-rc.39, November 5
 
 File-only installed from clean local-main package source
 `8f67b511bcf068571a64b4d9bd75b98c275417d9`. Adds stock chase pose offsets per
