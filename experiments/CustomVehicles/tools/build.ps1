@@ -36,7 +36,7 @@ try {
     $destination = Join-Path $stageRoot $info.Id
     New-Item -ItemType Directory -Path $destination | Out-Null
     Copy-Item -LiteralPath $plugin -Destination $destination
-    foreach ($file in @('Info.json','README.md','CREATOR.md','QUALIFICATION.md')) {
+    foreach ($file in @('Info.json','README.md','CREATOR.md','QUALIFICATION.md','COCKPIT-PERSISTENCE.md')) {
         Copy-Item -LiteralPath (Join-Path $root $file) -Destination $destination
     }
     $cli = Join-Path $root 'tools\VehicleTool\bin\Release\net48\VehicleTool.exe'
@@ -72,7 +72,7 @@ try {
     $sdk = Join-Path $root "dist\$name-CreatorSDK"
     New-Item -ItemType Directory -Path (Join-Path $sdk 'tools'),(Join-Path $sdk 'creator') | Out-Null
     Copy-Item -LiteralPath (Join-Path $root 'SDK-README.md') -Destination (Join-Path $sdk 'README.md')
-    foreach ($file in @('CREATOR.md','QUALIFICATION.md')) { Copy-Item -LiteralPath (Join-Path $root $file) -Destination $sdk }
+    foreach ($file in @('CREATOR.md','QUALIFICATION.md','COCKPIT-PERSISTENCE.md')) { Copy-Item -LiteralPath (Join-Path $root $file) -Destination $sdk }
     foreach ($file in @('export_vehicle.py','make_example.py','render_package.py')) { Copy-Item -LiteralPath (Join-Path $root "creator\$file") -Destination (Join-Path $sdk 'creator') }
     foreach ($file in @('VehicleTool.exe','VehicleTool.exe.config','Newtonsoft.Json.dll','Newtonsoft.Json.LICENSE.md')) {
         Copy-Item -LiteralPath (Join-Path (Split-Path $cli -Parent) $file) -Destination (Join-Path $sdk 'tools')
