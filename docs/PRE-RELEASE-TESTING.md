@@ -159,8 +159,8 @@ label to a final label, needs evidence for the artifact actually distributed.
 ## Relation to cruisn-collection
 
 That project's MAME `.inp` playback benefits from emulator-controlled frames and
-initial machine state. art of rally supplies neither, and injected keyboard input
-is known not to work here. We reuse immutable cases, completion receipts, build
+initial machine state. art of rally supplies neither. Foreground scan-code keyboard
+input does reach its menus and throttle (docs/sweep-2026-11.md), but not frame-exactly. We reuse immutable cases, completion receipts, build
 identity, bounded capture and offline replay discipline. Full Unity playthrough
 automation needs a separate input/state/determinism design. Signal replay does
 not automate cameras, regenerate a stage, or validate force feel.

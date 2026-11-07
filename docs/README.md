@@ -29,6 +29,7 @@
   the optional recorder is separate from the released mod.
 - [F6 through the in-game hook](UI-HOST-HOOK.md): the developer-only `UiHost=hook` spike, and its
   [measurements and verdict](F6-HOST-SPIKE.md) (UI-6).
+- [Final sweep, November 2026](sweep-2026-11.md): opens, menu and gameplay pictures, F6 and keyboard into a stage.
 - [Crash feedback investigation](research/2026-09-14-crash-feedback.md): wheel
   effect prerequisites, SimHub motion signals and the next capture plan.
 

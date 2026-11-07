@@ -18,7 +18,7 @@ Output: `src/ArtOfSimRally.Mod/bin/Release/ArtOfSimRally.Mod.dll`. Keep the clas
 - `dotnet test` runs nothing here. The suites are executable harnesses run by `tools/testing/Test-Rc.ps1 -Version X.Y.Z-rc.N` (unused RC number); it also builds the ZIP and runs installer checks. See `docs/PRE-RELEASE-TESTING.md`.
 - In game: launch through Steam, press F6. Logs: `<game>\artofrally_Data\Managed\UnityModManager\Log.txt`, `%LOCALAPPDATA%\ArtOfSimRally\ffb.log`, `%USERPROFILE%\AppData\LocalLow\Funselektor Labs\art of rally\Player.log`.
 - Back up and restore around a game run: `HKCU\Software\Funselektor Labs\art of rally` (bindings, display prefs), the LocalLow save folder above, and the mod settings under the UMM folder.
-- The game ignores injected keyboard input (SendInput and PostMessage); drive stages by log/diagnostics or ask the owner.
+- Keys: foreground `SendInput` scan codes (game window in front; arrows need `KEYEVENTF_EXTENDEDKEY`) drive the game's menus and throttle into a stage. PostMessage reaches only Unity's legacy `Input` (F6, with focus). Recipe and scripts: `docs/sweep-2026-11.md`.
 
 ## Install on the rig
 With the game closed: `tools/installer/Install.bat` from the built ZIP (also `tools/testing/Test-Installer.ps1` for installer checks). Procedure and rollback: `docs/LOCAL-DEPLOYMENT.md`. `tools/installer/Uninstall.bat` removes only the mod's files; settings stay.
