@@ -1,6 +1,18 @@
 # Local deployment
 
-## Current installation - Art 0.4.4-rc.42 (shared input), November 7
+## Current installation - Art 0.4.4-rc.43 (shared input), November 7
+
+UI-4 build (source `8f53874`): adds the developer-only `[Dev] UiHost=hook` F6 (docs/UI-HOST-HOOK.md); the player
+default is unchanged and the ZIP's file list equals rc.42's. Installed with the package `install.ps1` over rc.42 with
+the game closed; settings and `dbce-controls.ini` stayed byte-identical and all payload hashes match.
+ZIP SHA-256 `FDCF10F27A950E7E204212005C28BB1401FE9BD53ACE0C25A0C4AE3102A25905`, installed Mod `785B26D1F2926F3E372D77B0D46C41EBA902C0E70C8CF9A2A0D1A5027CA89461`.
+Rollback copy of rc.42 (mod folder, UMM folder, saves, registry): `E:/Source/temp/art-0.4.4-rc.43/launch-20261107-110613`.
+Launch-checked 2026-11-07 11:06 through Steam with force feedback muted: the default build (three-view, no dev file)
+logged no UiHost line and its capture passed Test-GamePicture on all three screens. A second run with the dev switch in
+single-screen mode drew the core F6 in the game's frame; see docs/UI-HOST-HOOK.md. Settings, saves and registry were
+restored; ArtUserState reported only the expected `remotecache.vdf` difference.
+
+## Previous installation - Art 0.4.4-rc.42 (shared input), November 7
 
 Cleanup build (ART-1, source `73d5757`): the shim probe flavour, InputBackend, the companion ZIP and the
 qualification runners are deleted; player behavior is unchanged. Installed with the package `install.ps1` over

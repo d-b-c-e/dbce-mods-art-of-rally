@@ -26,5 +26,26 @@ pwsh tools/testing/Set-UiHostHook.ps1 -On    # copies lib/dbce-ui/dbce_ui.dll an
 pwsh tools/testing/Set-UiHostHook.ps1 -Off   # removes both: the player default
 ```
 
+## Rig check, 2026-11-07 (rc.43, single screen)
+
+Launched through Steam with force feedback muted and the mod's triple view off (2560x1440 window). The UMM log showed
+`dbce_ui: Art of Rally Wheel Mod 0.4.4, 14 rows`, the DXGI present hook (Present1 too), drawing on the game's swap
+chain and F6 input attached; the core coexisted with another hook already on `dxgi.dll` Present and ResizeBuffers.
+
+- F6 posted to the game window opened the core panel inside the game's frame (window capture by PID): Force
+  feedback, Display, Cameras and Help tabs, the pushed values (FFB Off, Strength 50%).
+- Down, Down, Right set Strength to 55: Settings.xml changed only `<Strength>50</Strength>` to `55`, same length.
+- Up, Up, Right, Right, Down, Right on Cameras set the field of view to 35 with "Saved" shown: Settings.xml changed
+  only `<BonnetFOV>33.6</BonnetFOV>` to `35`.
+- F6 again closed it; the capture passed `Test-GamePicture -Menu`. WM_CLOSE ended the game in 0.4 s.
+
+Evidence (captures, the before and after Settings.xml, logs) is in
+`E:/Source/temp/art-0.4.4-rc.43/launch-20261107-110613`.
+
+**Owner check still open:** the FOV change in the next frame needs a stage in the bonnet view, which posted input
+cannot start (the game ignores injected input). With the switch on, drive a stage in the bonnet view, press F6, go to
+Cameras and press Right on Field of view: the view should widen a little at once. The wheel D-pad and buttons
+are untested for the same reason.
+
 Not covered yet: the Controls, Display, Telemetry and Help rows, the F7 view toast and the camera name. The
 measurements of the spike's criteria (focus, FFB, Steam overlay, frame cost) are UI-6.
