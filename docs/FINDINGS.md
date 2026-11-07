@@ -147,7 +147,7 @@ artofrally_Data/Plugins/x86_64/Rewired_WindowsGamingInput.dll
 
 Rewired enumerates DirectInput wheels natively, which matches the community
 report that **wheel input already works and only force feedback is missing**.
-This is why `xoutput-redux` is very likely unnecessary — see
+This is why a virtual-controller mapper is very likely unnecessary — see
 [FORCE-FEEDBACK.md](FORCE-FEEDBACK.md) for what is actually missing.
 
 ## The missing force feedback plugin
