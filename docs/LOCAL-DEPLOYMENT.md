@@ -8,8 +8,10 @@ rc40 with the game closed; settings and `dbce-controls.ini` stayed byte-identica
 ZIP SHA-256 `C5C819D74CED0DC413773CE371CE29482F2FD8BCF719054A55F88B47A80948E7`, installed Mod `BE6AEEE9E0C1B4EBBA5568497608AEDA0148E06A556122DE3864F13AE955E68F`.
 The ZIP file list equals rc40/rc41 (plain and shared-input); `build.json` no longer has `artShimProbe`.
 Rollback copy of rc40 (mod folder, Plugins native, saves, registry): `E:/Source/temp/art-0.4.4-rc.42/backup-installed-rc.40`.
-In-game launch check pending: Steam on the rig was signed out (owner signed in elsewhere) on 2026-11-07, so the
-launch stopped at the cloud-sync prompt and was cancelled. CV 0.6.7 is unchanged.
+Launch-checked 2026-11-07 05:07 with force feedback muted: the UMM log showed `Patches applied.` and `Active.`, both
+wheel devices opened, and the game was still running at the menu stage before it was closed by PID. Steam was signed
+out (owner signed in elsewhere), so the exe was started directly with a temporary `steam_appid.txt`, removed afterwards.
+Saves, registry and mod settings were restored byte-identical. CV 0.6.7 is unchanged.
 
 ## Previous installation - Art0.4.4-rc.40 + CV0.6.7, November5
 
