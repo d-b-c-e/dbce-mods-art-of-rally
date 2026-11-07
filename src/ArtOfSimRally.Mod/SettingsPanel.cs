@@ -511,7 +511,7 @@ namespace ArtOfSimRally.Mod
                 GUILayout.EndHorizontal();
                 Help(Connection.Error);
             }
-            Help("Connection applies atomically while paused. Recording remains a separate development probe and is not shipped in this panel.");
+            Help("Connection applies atomically while paused.");
         }
         private static void Support(Settings c)
         {

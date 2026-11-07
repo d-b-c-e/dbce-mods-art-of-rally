@@ -100,8 +100,7 @@ feedback; see the [0.2.7 release notes](docs/releases/0.2.7.md).
 
 The native driver, managed FFB wrapper/force curve and telemetry encoder come
 from **dbce-wheel-mod-toolkit**. The exact release pin and hashes are recorded
-in [Local deployment](docs/LOCAL-DEPLOYMENT.md). Developer recording/replay tools
-are a separate optional release asset, excluded from the normal player ZIP.
+in [Local deployment](docs/LOCAL-DEPLOYMENT.md).
 
 ## Licence
 
