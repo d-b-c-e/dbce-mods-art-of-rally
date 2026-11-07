@@ -81,3 +81,28 @@ selected-profile Preview/Apply/readback remain unverified in this task. Profile
 keys currently target Art; cross-game consumers/receipt capability/qualification
 must precede advertising universal binding/FOV support. Physical force remains a
 separate attended check. Art's existing F6 tuning remains intact.
+
+## ISS-0023 follow-up, November 7: installed Wheelkit checked end to end
+
+The gaps above are now closed for art of rally. With the game closed and the owner's
+profiles and Art settings backed up, the installed Wheelkit 0.6.74 was driven through UI
+Automation (no injected input):
+
+- My rig > Cameras is reachable and shows the four camera starts (Cockpit, Bonnet, Bumper,
+  Chase: Game or Realistic) and the eleven camera-key rows with "Keep each game's own keys".
+- Edits save to the profile immediately. Selecting a game page makes its profile the active one.
+- On the art of rally page, Apply Rig Profile previewed exactly three changes for a test of
+  Bonnet and Chase on Realistic and Move forward on Numpad 0, and nothing else. Applying wrote
+  `KeyForward` Keypad0 to `Settings.xml` and `OverrideFieldOfView` and `ChaseRealistic` true to
+  `TripleScreen.xml`; every other line was unchanged. The installed Art build declares
+  `artFovSets`, which Wheelkit requires before it writes camera starts.
+- Everything was restored afterwards and verified against the backups.
+
+Wheelkit's 231 camera-start tests pass. The game reading these files is existing,
+owner-accepted Art behavior, so the in-game look is the owner's check. Camera keys are written
+only to Art; other games take camera starts through their own receipts.
+
+Left for later: the Apply preview still labels the bonnet's start "Override field of view",
+with help text from before per-camera sets. That label is shared with the published Art
+release, where the setting still means all three views, so rename it in Wheelkit's
+`tools/Catalog-Integrations.ps1` once an Art release with `artFovSets` is published.
