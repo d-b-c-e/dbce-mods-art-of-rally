@@ -67,6 +67,11 @@
     </AssemblyAttribute>
   </ItemGroup>
 
+  <!-- The FFB and Cameras pages of the developer-only hook F6 (UiHost/UiHostHook.cs, [Dev] UiHost=hook). -->
+  <ItemGroup>
+    <EmbeddedResource Include="UiHost\art-hook.settings.json" LogicalName="ArtOfSimRally.Mod.UiHost.settings.json" />
+  </ItemGroup>
+
   <!-- Exact toolkit source (lib/display/provenance.json): the shared racing-row selector, used read-only by
        RenderDiagnostics to report the observed racing row beside Unity's display list. -->
   <ItemGroup>

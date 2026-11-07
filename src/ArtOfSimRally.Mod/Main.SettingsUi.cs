@@ -12,6 +12,8 @@ namespace ArtOfSimRally.Mod
         private static float _uiSaveAt;
         private static bool _settingsWereVisible;
         internal static bool SuppressHostClose;
+        /// <summary>Set only by UiHostHook when the developer switch loaded the core; null keeps the standard F6.</summary>
+        internal static Action<bool> HookPanelTick { get; set; }
         public static string SettingsSaveStatus { get; private set; } = "Saved";
         internal static string ModVersion => _modEntry?.Info.Version ?? "Development build";
         // Keep Unity ECalls out of methods patched by the separate CLR probe
@@ -33,12 +35,18 @@ namespace ArtOfSimRally.Mod
         internal static void SetFeedbackEnabled(bool enabled)
         {
             if (Settings == null) return;
+            ApplyFeedbackEnabled(enabled);
+            MarkSettingsDirty();
+        }
+        // The switch without the save: the hook F6 (UiHostHook) writes only ForceFeedbackEnabled itself (STD-044).
+        internal static void ApplyFeedbackEnabled(bool enabled)
+        {
+            if (Settings == null) return;
             if (Settings.ForceFeedbackEnabled && !enabled) ReportFeedbackOff(FeedbackOffNotice);
             Settings.ForceFeedbackEnabled = enabled;
             FfbNative.StopOutputs();
             if (!enabled) CancelForceRecovery();
             else if (!FfbNative.Ready) ReopenForceFeedback();
-            MarkSettingsDirty();
         }
         internal static void StopFeedback()
         {
@@ -79,7 +87,9 @@ namespace ArtOfSimRally.Mod
             bool stopButton = WheelInput.ShortcutPressed(WheelInput.Channel.StopFfbButton);
             bool settingsButton = WheelInput.ShortcutPressed(WheelInput.Channel.SettingsButton);
             if (Application.isFocused && (Input.GetKeyDown(KeyCode.F8) || (!SettingsPanel.Editing && stopButton))) StopFeedback();
-            if (Enabled && Application.isFocused && (settingsButton || (!CameraKeys.ModifierHeld() && Input.GetKeyDown(Settings.SettingsKey))))
+            // [Dev] UiHost=hook: the toolkit core draws F6 and opens on F6 itself; the wheel's Settings button goes to it.
+            if (HookPanelTick != null) HookPanelTick(settingsButton);
+            else if (Enabled && Application.isFocused && (settingsButton || (!CameraKeys.ModifierHeld() && Input.GetKeyDown(Settings.SettingsKey))))
             {
                 if (!SettingsPanel.Editing) ToggleSettings();
             }

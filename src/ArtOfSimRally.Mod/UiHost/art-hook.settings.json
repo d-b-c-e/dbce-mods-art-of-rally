@@ -1,0 +1,35 @@
+{
+  "settings": {
+    "product": "Art of Rally Wheel Mod",
+    "version": "@VERSION@",
+    "modPage": "https://github.com/d-b-c-e/dbce-mods-art-of-rally",
+    "keys": "F6 settings · F8 force feedback off",
+    "pages": {
+      "ffb": [
+        { "id": "ffb.status", "kind": "status", "text": "Starts when you drive" },
+        { "id": "ffb.enabled", "kind": "toggle", "label": "Force feedback", "default": true, "help": "F8 turns it off at any time." },
+        { "id": "ffb.strength", "kind": "percent", "label": "Strength", "default": 50,
+          "help": "How heavy the wheel feels. Lower it for strong wheels." },
+        { "id": "ffb.crash", "kind": "percent", "label": "Crash strength", "default": 50, "level": "advanced",
+          "help": "How hard crashes hit, when crash kicks are on." },
+        { "id": "ffb.reverse", "kind": "toggle", "label": "Reverse direction", "level": "advanced",
+          "help": "Turn on if the wheel pulls away from center." },
+        { "id": "ffb.smoothing", "kind": "slider", "label": "Smoothing", "unit": "%", "min": 0, "max": 95, "default": 20, "level": "developer" },
+        { "id": "ffb.landing", "kind": "slider", "label": "Landing strength", "unit": "%", "min": 0, "max": 40, "default": 5, "level": "developer" },
+        { "id": "ffb.shift", "kind": "slider", "label": "Shift strength", "unit": "%", "min": 0, "max": 20, "default": 5, "level": "developer" }
+      ],
+      "cameras": [
+        { "id": "cameras.view", "kind": "status", "text": "Drive to adjust the current camera." },
+        { "id": "cameras.fov", "kind": "slider", "label": "Field of view", "unit": "°", "min": 20, "max": 120, "default": 75,
+          "help": "Zoom for the bonnet or bumper camera you drive in." },
+        { "id": "cameras.bonnet", "kind": "toggle", "label": "Bonnet camera", "default": true,
+          "help": "Adds a hood view to the game's camera cycle." },
+        { "id": "cameras.bumper", "kind": "toggle", "label": "Bumper camera", "default": true,
+          "help": "Adds a bumper view to the game's camera cycle." },
+        { "id": "cameras.keys", "kind": "toggle", "label": "Camera keys", "default": true, "level": "advanced",
+          "help": "Numpad moves the camera, + and - zoom, 5 resets." },
+        { "id": "cameras.lean", "kind": "percent", "label": "Corner lean", "default": 10, "level": "developer" }
+      ]
+    }
+  }
+}

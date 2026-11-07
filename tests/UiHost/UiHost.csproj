@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- UI-4: the developer-only hook F6. Production row mapping, settings store and single-element writer; no Unity scene. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings><Nullable>disable</Nullable>
+    <GameDir Condition="'$(GameDir)' == ''">D:\Program Files (x86)\Steam\steamapps\common\artofrally</GameDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/ArtOfSimRally.Mod/UiHost/UiHostRows.cs" Link="UiHostRows.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/Settings.cs" Link="Settings.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/SettingsPersistence.cs" Link="SettingsPersistence.cs" />
+    <None Include="../../src/ArtOfSimRally.Mod/UiHost/art-hook.settings.json" Link="art-hook.settings.json" CopyToOutputDirectory="PreserveNewest" />
+    <Reference Include="UnityEngine.CoreModule"><HintPath>$(GameDir)/artofrally_Data/Managed/UnityEngine.CoreModule.dll</HintPath></Reference>
+    <Reference Include="UnityModManager"><HintPath>../../lib/umm/UnityModManager.dll</HintPath></Reference>
+  </ItemGroup>
+</Project>

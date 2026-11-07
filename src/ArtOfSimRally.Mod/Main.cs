@@ -22,7 +22,7 @@ namespace ArtOfSimRally.Mod
     {
         internal static Settings Settings { get; private set; }
         internal static bool Enabled { get; private set; }
-        internal static bool SettingsVisible => UnityModManager.UI.Instance != null && UnityModManager.UI.Instance.Opened;
+        internal static bool SettingsVisible => (UnityModManager.UI.Instance != null && UnityModManager.UI.Instance.Opened) || UiHostHook.IsOpen;
         internal static bool OtherCameraModLoaded => UnityModManager.FindMod("CameraMod")?.Loaded == true;
 
         internal static void WriteLoadedMods(StringBuilder output)
@@ -134,6 +134,7 @@ namespace ArtOfSimRally.Mod
             try { TripleScreen.Load(modEntry); }
             catch (Exception ex) { ModLog.Warning("Triple screens failed to load: " + ex.Message); }
             ReportFeedbackOff = message => { ModLog.Info(message + "."); TripleScreen.Notify(message); };
+            UiHostHook.Load(modEntry.Path, Settings.GetPath(modEntry)); // developer switch only (dbce-dev.ini)
 
             ModLog.Info(
                 $"Loaded - directSteering={Settings.DirectSteering}, " +

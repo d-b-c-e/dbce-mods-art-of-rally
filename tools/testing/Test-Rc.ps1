@@ -89,6 +89,8 @@ try {
     $result = Run 'settings-ui' 'dotnet' @('run','--project','tests/SettingsUi/SettingsUi.csproj','-c','Release')
     $settingsUi = $result | Select-Object -Last 1 | ConvertFrom-Json
     Assert ($settingsUi.status -eq 'passed' -and $settingsUi.assertions -gt 0) 'Settings UI policy runner ran no assertions'
+    $result = Run 'ui-host' 'dotnet' @('run','--project','tests/UiHost/UiHost.csproj','-c','Release')
+    Assert ([string]($result | Select-Object -Last 1) -match '^PASS ui-host') 'Hook F6 (UiHost) runner did not pass'
     $result = Run 'triple-screen' 'dotnet' @('run','--project','tests/TripleScreen/TripleScreen.csproj','-c','Release')
     $tripleLine = [string]($result | Select-Object -Last 1)
     Assert ($tripleLine -match '^PASS: (\d+) ') 'Triple-screen runner did not pass'
