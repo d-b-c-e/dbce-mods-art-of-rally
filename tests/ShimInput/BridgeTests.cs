@@ -141,39 +141,7 @@ internal static class BridgeTests
         return checks;
     }
     // Run only against a shim whose copied-provider bridge admits latched control sessions.
-    internal static int ActualLatchedSession(string dll) { checks = 0; ActualLatched(dll); ActualTrial(dll); return checks; }
-    // Slice B against the real Core: the probe's LatchedTrial drives action-level navDown/navUp through
-    // atomically replaced batches; a fake menu moves its selection on the delivered values.
-    private static void ActualTrial(string dll)
-    {
-        string folder = Path.Combine(Path.GetTempPath(), "art-copied-trial-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(folder);
-        string session = Path.Combine(folder, "shim-session.txt"), batch = Path.Combine(folder, "shim-batch.txt"), nonce = Guid.NewGuid().ToString("N");
-        ProbeRequest.Replace(session, "nonce=" + nonce + "\nexpires=" + (DateTimeOffset.UtcNow.ToUnixTimeSeconds() + 600) + "\n");
-        string r12 = " dev={d71b8350-61b7-11f1-8001-444553540000} prod={0006346e-0000-0000-0000-504944564944}";
-        string profile = "[Controls]\nSchema = 1\nProfile = Trial\nRevision = r1\nTransmission = Sequential\n" +
-            "steer = axis 0" + r12 + " range=0..65535 rest=32768 travel=+1\nconfirm = button 31" + r12 + "\nnavUp = hat 0 0" + r12 + "\nnavDown = hat 0 18000" + r12 + "\n";
-        var native = new ShimBridgeNative(dll, folder, System.Text.Encoding.UTF8.GetBytes(profile),
-            new ShimBridgeNative.LatchedSession { Nonce = nonce, SessionFile = session, BatchFile = batch, FencesVerified = true, ForceAbsent = true });
-        var sink = new ShimAxisConsumer { AcceptLatched = true }; sink.DeliverOnly(LatchedTrial.NavUp, LatchedTrial.NavDown);
-        var source = new DeviceSource(); source.Buttons[0][31] = true; // a physical confirm held throughout stays masked
-        var bridge = new ShimBridge(source, native, sink, new[] { 0 }); int frame = 0; string selected = "Career#11"; bool confirmed = false;
-        var trial = new LatchedTrial(sink, () => selected, text => ProbeRequest.Replace(batch, text), nonce);
-        try
-        {
-            while (frame < 4000 && trial.Current != LatchedTrial.Step.Passed && trial.Current != LatchedTrial.Step.Failed)
-            {
-                Check(bridge.ReadFrame(++frame, (slot, bytes) => { }), "trial frame: " + bridge.Failure);
-                if (sink.Value(LatchedTrial.NavDown, frame) == 1f) selected = "FreeRoam#12";
-                if (sink.Value(LatchedTrial.NavUp, frame) == 1f) selected = "Career#11";
-                confirmed |= sink.Live(9, frame) || sink.Value(9, frame) != 0f;
-                trial.Tick(frame); Thread.Sleep(5);
-            }
-            Check(trial.Current == LatchedTrial.Step.Passed && trial.AfterDown == "FreeRoam#12" && trial.AfterUp == "Career#11", "actual trial: " + trial.Current + " " + trial.Failure);
-            Check(!confirmed && sink.OriginalFrame.Run == LatchedTrial.Completed, "masked confirm delivered or session not completed");
-        }
-        finally { bridge.Stop("trial qualification complete"); }
-        Check(File.ReadAllText(Path.Combine(folder, "host-shutdown.json")).Contains("\"state\":\"resolved\""), "trial bridge stop did not resolve");
-    }
+    internal static int ActualLatchedSession(string dll) { checks = 0; ActualLatched(dll); return checks; }
     // The ordinary pin, 574bb88 (7DDC9621), refuses every open flag on the copied-provider bridge;
     // f38b855 (0D10F913, reviewed by romi 28531) admits a fenced latched open, and so does the reviewed
     // private-candidate pin (toolkit c6594fa, BC9B030A when adopted). That pin is read from

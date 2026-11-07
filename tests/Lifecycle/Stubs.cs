@@ -112,12 +112,6 @@ namespace ArtOfSimRally.Mod
         public bool Invert=false, DiagnosticLogging=false, ForceFeedbackEnabled=true;
     }
     internal static class Calls { public static List<string> Log = new List<string>(); }
-    internal static class ShimStartup
-    {
-        public static bool Requested => false;
-        public static void Tick() { }
-        public static void Shutdown() { }
-    }
     internal static class SharedInputStartup
     {
         public static void Tick() { }
@@ -144,7 +138,6 @@ namespace ArtOfSimRally.Mod
         public static void Update(BonnetCamera.View view) { }
         public static void Flush(bool shutdown=false) => Calls.Log.Add("camera-save");
     }
-    internal static class InputBackend { public static void Tick() { } }
     internal static class FrameRate { public static void Tick() { } public static void Draw() { } }
     internal static class FrameHealthPersistence
     {

@@ -372,7 +372,7 @@ namespace ArtOfSimRally.Mod
                 if (GameState.IsDriving) CancelAssign();
                 else StepAssign(cfg);
             }
-            UpdateValues(cfg, sharedInput == null && !ShimStartup.Requested);
+            UpdateValues(cfg, sharedInput == null);
             if (!reuseSnapshot || _buttonFrame != Time.frameCount) TickGameButtons();
         }
         private static void UpdateValues(Settings cfg, bool allowLearning)
@@ -493,7 +493,6 @@ namespace ArtOfSimRally.Mod
 
         public static void BeginAssign(Channel c)
         {
-            if (ShimStartup.Requested) { Status = "Assignments are disabled during the shared-input probe."; return; }
             if (SharedReadersRequired && !SharedArtOnly(c)) { Status = SharedEditsRefused; return; }
             if (GameState.IsDriving) { Status = "Pause before assigning a wheel input."; return; }
             if (SharedReadersRequired)

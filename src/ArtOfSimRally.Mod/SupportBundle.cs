@@ -202,6 +202,22 @@ namespace ArtOfSimRally.Mod
         }
 
         // Live Rewired state, read at the moment the user presses the button.
+        // Rewired's Windows input source (normally Raw Input) and its joystick count,
+        // e.g. "Raw Input (3 controllers)". The mod never switches it.
+        private static string DescribeInputBackend()
+        {
+            try
+            {
+                bool direct;
+                try { direct = ReInput.configuration.windowsStandalonePrimaryInputSource == Rewired.Platforms.WindowsStandalonePrimaryInputSource.DirectInput; }
+                catch { direct = false; }
+                string name = direct ? "DirectInput" : "Raw Input";
+                int n = ReInput.isReady ? ReInput.controllers.joystickCount : 0;
+                return name + " (" + n + (n == 1 ? " controller)" : " controllers)");
+            }
+            catch { return "unknown"; }
+        }
+
         // Far more reliable than scraping it back out of a log: the game prints
         // its controller list once at startup, and by the time anyone thinks to
         // collect diagnostics that is tens of thousands of lines in the past.
@@ -216,7 +232,7 @@ namespace ArtOfSimRally.Mod
                 var joysticks = ReInput.controllers.Joysticks;
                 sb.AppendLine("joysticks attached : " + (joysticks?.Count ?? 0));
                 sb.AppendLine("assigned to player : " + (player?.controllers.joystickCount ?? 0));
-                sb.AppendLine("input backend      : " + InputBackend.Describe());
+                sb.AppendLine("input backend      : " + DescribeInputBackend());
                 sb.AppendLine();
 
                 if (joysticks == null) { sb.AppendLine(); return; }

@@ -3,9 +3,6 @@
     <OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings><Nullable>disable</Nullable>
     <GameDir Condition="'$(GameDir)' == ''">D:\Program Files (x86)\Steam\steamapps\common\artofrally</GameDir>
-    <!-- DriveTrial.Sample's clutch and H-pattern fields are filled only by the mod's ShimDrive postfix, which needs
-         the game's car types and is not linked here. -->
-    <NoWarn>$(NoWarn);CS0649</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../ShimInput/BridgeTests.cs" Link="BridgeTests.cs" />

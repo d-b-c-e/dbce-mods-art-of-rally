@@ -27,13 +27,7 @@
 param(
     [Parameter(Mandatory)][string]$Version,
     [switch]$SharedInputCandidate,
-    # Research only: compile the optional shim probe. The ordinary shared-input path is present without it.
-    [switch]$ResearchShimProbe,
-    [string]$SharedInputShim,
-    # Private shared-input candidates only: also build the optional controls setup companion ZIP from the pinned helper
-    # bundle (standalone-setup.json). The mod ZIP itself does not change.
-    [switch]$PrivateStandaloneSetup,
-    [string]$StandaloneSetupZip
+    [string]$SharedInputShim
 )
 
 $ErrorActionPreference = 'Stop'
@@ -44,31 +38,22 @@ $modVersion = [string]$props.Project.PropertyGroup.ModVersion
 if (($Version -split '-')[0] -ne $modVersion) { throw "Version must match Version.props ($modVersion)" }
 $info = Get-Content -LiteralPath (Join-Path $root 'src/ArtOfSimRally.Mod/Info.json') -Raw | ConvertFrom-Json
 if ($info.Version -ne $modVersion) { throw 'Info.json and Version.props disagree' }
-if ($ResearchShimProbe -and -not $SharedInputCandidate) { throw '-ResearchShimProbe requires -SharedInputCandidate' }
 # A final shared-input release takes the shim from the official toolkit pin (lib/toolkit/shim, toolkit v0.16.0+);
 # release candidates may still pass a private copy of the same pinned build.
 $toolkitShim = Join-Path $root 'lib/toolkit/shim/dbce_shim.dll'
 if ($SharedInputCandidate -and -not $SharedInputShim -and (Test-Path -LiteralPath $toolkitShim)) { $SharedInputShim = $toolkitShim }
 if ($SharedInputCandidate -and -not $SharedInputShim) { throw 'The shared-input candidate needs -SharedInputShim, a private copy of the pinned dbce_shim.dll' }
-if ($SharedInputCandidate -and $Version -notmatch '-rc\.' -and ([IO.Path]::GetFullPath($SharedInputShim) -ne [IO.Path]::GetFullPath($toolkitShim) -or $ResearchShimProbe)) {
-    throw 'A final shared-input release takes dbce_shim.dll from the official toolkit pin (lib/toolkit/shim) and has no research probe'
+if ($SharedInputCandidate -and $Version -notmatch '-rc\.' -and [IO.Path]::GetFullPath($SharedInputShim) -ne [IO.Path]::GetFullPath($toolkitShim)) {
+    throw 'A final shared-input release takes dbce_shim.dll from the official toolkit pin (lib/toolkit/shim)'
 }
 if ($SharedInputShim -and -not $SharedInputCandidate) { throw '-SharedInputShim is only for -SharedInputCandidate' }
-# The helper's art of rally writer needs the candidate's shared-input controls contract; a baseline package gets none.
-if ($PrivateStandaloneSetup -and (-not $SharedInputCandidate -or -not $StandaloneSetupZip)) { throw '-PrivateStandaloneSetup needs -SharedInputCandidate and -StandaloneSetupZip (the pinned helper ZIP)' }
-if ($StandaloneSetupZip -and -not $PrivateStandaloneSetup) { throw '-StandaloneSetupZip is only for -PrivateStandaloneSetup' }
 # A stable release is one plainly named download (STD-040); candidates keep their flavour in the name.
-$flavour = if ($ResearchShimProbe) { '-shared-input-probe' } elseif ($SharedInputCandidate -and $Version -match '-rc\.') { '-shared-input' } else { '' }
+$flavour = if ($SharedInputCandidate -and $Version -match '-rc\.') { '-shared-input' } else { '' }
 $dist  = Join-Path $root 'dist'
 $stage = Join-Path $dist "stage-$Version$flavour"
 $zip = Join-Path $dist "ArtOfSimRally-$Version$flavour.zip"
 if ((Test-Path -LiteralPath $stage) -or (Test-Path -LiteralPath $zip)) {
     throw 'Candidate already exists. Keep its evidence; choose a new RC number.'
-}
-$companionStage = Join-Path $dist "stage-$Version$flavour-controls-setup"
-$companionZip = Join-Path $dist "ArtOfSimRally-$Version$flavour-controls-setup.zip"
-if ($PrivateStandaloneSetup -and ((Test-Path -LiteralPath $companionStage) -or (Test-Path -LiteralPath $companionZip))) {
-    throw 'Controls setup companion already exists. Keep its evidence; choose a new RC number.'
 }
 $revision = (& git -C $root rev-parse HEAD).Trim()
 if ($LASTEXITCODE -ne 0) { throw 'Cannot identify source revision' }
@@ -121,12 +106,8 @@ if ($SharedInputCandidate) {
 }
 
 Write-Host "Building managed mod..." -ForegroundColor Cyan
-# Shared payload delivery and the optional research probe are separate choices; every assembly records its flavour.
-$shimProbe = [bool]$ResearchShimProbe
-& dotnet build (Join-Path $root 'src\ArtOfSimRally.Mod\ArtOfSimRally.Mod.csproj') -c Release -v q --nologo -warnaserror "-p:ReleaseLabel=$Version" "-p:SourceRevisionId=$revision" "-p:BuildSourceState=$sourceState" "-p:ArtShimProbe=$($shimProbe.ToString().ToLowerInvariant())"
+& dotnet build (Join-Path $root 'src\ArtOfSimRally.Mod\ArtOfSimRally.Mod.csproj') -c Release -v q --nologo -warnaserror "-p:ReleaseLabel=$Version" "-p:SourceRevisionId=$revision" "-p:BuildSourceState=$sourceState"
 if ($LASTEXITCODE -ne 0) { throw "Managed build failed" }
-. (Join-Path $PSScriptRoot 'ShimProbeFlavour.ps1')
-$null = Assert-ShimProbeFlavour (Join-Path $root 'src/ArtOfSimRally.Mod/bin/Release/ArtOfSimRally.Mod.dll') $shimProbe
 # Inspect the compiled metadata without running game code. A stray recorder
 # source file in the production project must fail even if its DLL isn't copied.
 & dotnet run --project (Join-Path $root 'tools/testing/Replay/Replay.csproj') -c Release -- --verify-release (Join-Path $root 'src/ArtOfSimRally.Mod/bin/Release/ArtOfSimRally.Mod.dll')
@@ -168,7 +149,6 @@ $build = [ordered]@{ schema=1; release=$Version; modVersion=$modVersion; identit
 # verify.ps1 accepts dbce_shim.dll only with this record, whose pins must match the payload.
 # controls is Wheelkit's contract for this exact assembly (lib/input-shim/CONTROLS.json, romi 33009).
 if ($candidate) {
-    $build['artShimProbe'] = $shimProbe
     $controls = Get-Content -LiteralPath (Join-Path $root 'lib/input-shim/CONTROLS.json') -Raw | ConvertFrom-Json
     # Schema 3 (sana 162623) needs a Wheelkit helper that admits art-shim-ini-controls-3 (zele a8583c5).
     if ($controls.schema -ne 3 -or $controls.adapter -ne 'art-shim-ini-controls-3') { throw 'Unsupported shared-input controls contract' }
@@ -194,14 +174,6 @@ foreach ($relative in $payload) { $files[$relative] = (Get-FileHash -LiteralPath
 $null = Assert-Payload $stage
 Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zip
 (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash | Set-Content -LiteralPath "$zip.sha256" -Encoding ASCII
-
-if ($PrivateStandaloneSetup) {
-    # Unity Mod Manager unpacks every entry of a dragged mod ZIP into the game's Mods folder, so the optional helper
-    # ships as its own companion ZIP, never inside the mod ZIP, and its launcher never copies it into the game.
-    & (Join-Path $PSScriptRoot 'controls-setup.ps1') -PackageDirectory $stage `
-        -ExpectedManifestSha256 (Get-FileHash -LiteralPath (Join-Path $stage 'manifest.json') -Algorithm SHA256).Hash `
-        -StandaloneSetupZip $StandaloneSetupZip -CompanionStage $companionStage -CompanionZip $companionZip
-}
 
 Write-Host "Packaged $zip" -ForegroundColor Green
 Get-ChildItem $zip | Select-Object Name, Length

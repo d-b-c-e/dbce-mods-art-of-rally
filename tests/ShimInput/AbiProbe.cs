@@ -13,7 +13,6 @@ internal static class AbiProbe
     [DllImport("kernel32.dll")] private static extern bool FreeLibrary(IntPtr module);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int Number();
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate IntPtr Name(int index);
-    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int Status([Out] byte[] text, int size);
     private static T Export<T>(IntPtr module, string name) where T : class
     {
         var pointer = GetProcAddress(module, name);
@@ -35,27 +34,6 @@ internal static class AbiProbe
                 if (Marshal.PtrToStringAnsi(actionName(i)) != ShimFrame.Names[i]) throw new Exception("shim action mismatch at " + i);
             if (actionName(ShimFrame.Count) != IntPtr.Zero) throw new Exception("shim action count mismatch");
             return 35;
-        }
-        finally { FreeLibrary(module); }
-    }
-    internal static int NoForce(string path, bool loadMuted = false)
-    {
-        // No force/device/initialization API called. The latch and status alone
-        // prove the production exact-resident binding works on CLR and Mono.
-        Environment.SetEnvironmentVariable("DBCE_FFB_LOG", "0"); // this test child must not write the shared default native log
-        if (loadMuted) Environment.SetEnvironmentVariable("DBCE_FFB_MUTE", "1");
-        IntPtr module = LoadLibraryExW(Path.GetFullPath(path), IntPtr.Zero, 0x100 | 0x1000);
-        if (module == IntPtr.Zero) throw new Exception("native latch fixture load failed");
-        try
-        {
-            if (loadMuted)
-            {
-                var status = Export<Status>(module, "GetTestInjectionStatus");
-                if (status(new byte[512], 512) != 1) throw new Exception("load-time mute absent before explicit Enable");
-                Environment.SetEnvironmentVariable("DBCE_FFB_MUTE", null);
-                if (status(new byte[512], 512) != 1) throw new Exception("load-time mute cleared with environment");
-            }
-            ProbeNoForce.Arm(path); ProbeNoForce.Arm(path); return loadMuted ? 4 : 2;
         }
         finally { FreeLibrary(module); }
     }

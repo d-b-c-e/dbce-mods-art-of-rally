@@ -279,10 +279,6 @@ static class Program
             {
                 SharedTransportStop(); Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
             }
-            if (args.Contains("--drive-trial-only"))
-            {
-                DriveRealCore(); Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
-            }
             if (args.Contains("--ordinary-fallback-only"))
             {
                 OrdinaryFallback(); Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
@@ -290,10 +286,6 @@ static class Program
             if (args.Contains("--keyboard-steering-only"))
             {
                 KeyboardSteering(); Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
-            }
-            if (args.Contains("--latched-menu-only"))
-            {
-                LatchedMenu(); Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
             }
             if (args.Contains("--shim-latched-only"))
             {
@@ -307,28 +299,12 @@ static class Program
             else if (args.Contains("--assign-only")) AssignmentReadFailure();
             else { Travel(0, 65535); Travel(65535, 0); RangesAndAssignment(); Lifecycle(); FlipPersistence(); AssignmentReadFailure(); DeviceIdentity(); DeviceRecovery(); ReadHealth(); AssignmentResume(); BindingSaves(); assertions+=ShifterIdentityTests.Run(); assertions+=CalibrationTests.Run(); }
             Clutch();
-            ProbeDoesNotLearnOrAssign();
             assertions += GameButtonTests.Run();
             assertions += IsolationBoundaryTests.Run();
             assertions += ShimConsumerTests.Run();
             Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
         }
         catch (Exception ex) { Console.Error.WriteLine(ex); return 1; }
-    }
-
-    static void ProbeDoesNotLearnOrAssign()
-    {
-        Setup("TSS fixture|0|axis:2|0|30000");
-        string before = Host.Settings.HandbrakeBinding; int saves = Host.Saves;
-        ShimStartup.Requested = true;
-        try
-        {
-            WheelInput.BeginAssign(WheelInput.Channel.Brake);
-            Check(!WheelInput.Assigning.HasValue && WheelInput.Status.Contains("probe"), "probe allowed assignment");
-            Device.Axes[2] = 40000; WheelInput.Update();
-            Check(Host.Settings.HandbrakeBinding == before && Host.Saves == saves, "probe changed learned range or settings");
-        }
-        finally { ShimStartup.Requested = false; }
     }
 
     static void ReadHealth()
@@ -741,100 +717,6 @@ static class Program
         fake.Isolated = true; Frame(); Frame();
         Check(Drive(out throttle) == 0f && throttle == 0f && Text().Contains("wheel and keyboard alike"), "neutral not sticky after isolation loss: " + Text());
         WheelInput.Close();
-    }
-    // The in-game Trial failure (2026-10-12 04:21): the real Core reports navDown test-neutral until a batch
-    // activates, so the release-first arming never armed and the injected press was swallowed. Here the
-    // real latched Core drives Art's actual Rewired postfixes, read the way RewiredStandaloneInputModule's
-    // GetRawMoveVector reads them (GetAxis plus GetNegativeButtonDown on the vertical action).
-    static void LatchedMenu()
-    {
-        string dll = Environment.GetEnvironmentVariable("ART_LATCHED_SHIM_DLL") ?? PinnedShim();
-        Check(File.Exists(dll), "latched dbce_shim.dll unavailable: " + dll);
-        Setup(""); GameButtonCompatibility.Allowed = true; Clock.frameCount = 40000; WheelInput.Update();
-        GameButtonInput.Observe(12, 13, 16, 17);
-        string folder = Path.Combine(Path.GetTempPath(), "art-latched-menu-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(folder);
-        string session = Path.Combine(folder, "shim-session.txt"), batch = Path.Combine(folder, "shim-batch.txt"), nonce = Guid.NewGuid().ToString("N");
-        ArtOfSimRally.Mod.Shim.ProbeRequest.Replace(session, "nonce=" + nonce + "\nexpires=" + (DateTimeOffset.UtcNow.ToUnixTimeSeconds() + 600) + "\n");
-        string r12 = " dev={d71b8350-61b7-11f1-8001-444553540000} prod={0006346e-0000-0000-0000-504944564944}";
-        string profile = "[Controls]\nSchema = 1\nProfile = Menu\nRevision = r1\nTransmission = Sequential\n" +
-            "steer = axis 0" + r12 + " range=0..65535 rest=32768 travel=+1\nconfirm = button 31" + r12 + "\nnavUp = hat 0 0" + r12 + "\nnavDown = hat 0 18000" + r12 + "\n";
-        var native = new ArtOfSimRally.Mod.Shim.ShimBridgeNative(dll, folder, System.Text.Encoding.UTF8.GetBytes(profile),
-            new ArtOfSimRally.Mod.Shim.ShimBridgeNative.LatchedSession { Nonce = nonce, SessionFile = session, BatchFile = batch, FencesVerified = true, ForceAbsent = true });
-        var consumer = ArtOfSimRally.Mod.Shim.ShimInput.Consumer;
-        consumer.AcceptLatched = true; consumer.DeliverOnly(ArtOfSimRally.Mod.Shim.LatchedTrial.NavUp, ArtOfSimRally.Mod.Shim.LatchedTrial.NavDown);
-        WheelInput.AttachSharedInput(new BridgeTests.DeviceSource(), native, () => true, () => true);
-        int selected = 0, moves = 0, navigationFrame = Clock.frameCount + 60;
-        bool Navigation() => Clock.frameCount >= navigationFrame; // Art's 0.5 s EventSystem navigation delay
-        // GetRawMoveVector with moveOneElementPerAxisPress: an axis sign plus the matching button edge,
-        // sent only once EventSystem navigation is enabled.
-        void Menu()
-        {
-            if (!Navigation()) return;
-            float vertical = AxisQuery(13, 0f);
-            if (Query(PadManager.Player, "GetNegativeButtonDown", 13, false) && vertical < 0) { selected++; moves++; }
-            if (Query(PadManager.Player, "GetButtonDown", 13, false) && vertical > 0) { selected--; moves++; }
-        }
-        var trial = new ArtOfSimRally.Mod.Shim.LatchedTrial(consumer, () => "item#" + selected, text => ArtOfSimRally.Mod.Shim.ProbeRequest.Replace(batch, text), nonce, Navigation);
-        try
-        {
-            for (int i = 0; i < 4000 && trial.Current != ArtOfSimRally.Mod.Shim.LatchedTrial.Step.Passed && trial.Current != ArtOfSimRally.Mod.Shim.LatchedTrial.Step.Failed; i++)
-            {
-                Clock.frameCount++; WheelInput.EnsureUpdatedThisFrame(); Menu(); trial.Tick(Clock.frameCount); System.Threading.Thread.Sleep(5);
-            }
-            Check(trial.Current == ArtOfSimRally.Mod.Shim.LatchedTrial.Step.Passed && trial.AfterDown == "item#1" && trial.AfterUp == "item#0" && moves == 2,
-                "menu did not move once down and once up through the patched queries: " + trial.Current + " " + trial.Failure + " moves " + moves);
-        }
-        finally { WheelInput.Close(); }
-        Check(File.ReadAllText(Path.Combine(folder, "host-shutdown.json")).Contains("\"state\":\"resolved\""), "latched menu stop did not resolve");
-    }
-    // Slice C against the real latched Core: raw stimuli built from an owner-shaped profile, published whole,
-    // composed by the production ShimInput.TryOverride; the car stores what GetInput returned and a manual
-    // sequential box takes the consumer's shift queue the way ShifterPatch does.
-    static void DriveRealCore()
-    {
-        string dll = Environment.GetEnvironmentVariable("ART_LATCHED_SHIM_DLL") ?? PinnedShim();
-        Check(File.Exists(dll), "latched dbce_shim.dll unavailable: " + dll);
-        Setup(""); Clock.frameCount = 50000;
-        Device.Devices = new[] { new Device.DeviceInfo { Name = "MOZA R12 Base", Index = 0 }, new Device.DeviceInfo { Name = "DS-8X Shifter", Index = 1 } };
-        WheelInput.Close(); WheelInput.Open(); WheelInput.Update();
-        Check(WheelInput.SharedProbeSlots.Length == 2, "two readers not open");
-        string folder = Path.Combine(Path.GetTempPath(), "art-drive-core-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(folder);
-        string session = Path.Combine(folder, "shim-session.txt"), batch = Path.Combine(folder, "shim-batch.txt"), nonce = Guid.NewGuid().ToString("N");
-        ArtOfSimRally.Mod.Shim.ProbeRequest.Replace(session, "nonce=" + nonce + "\nexpires=" + (DateTimeOffset.UtcNow.ToUnixTimeSeconds() + 600) + "\n");
-        var native = new ArtOfSimRally.Mod.Shim.ShimBridgeNative(dll, folder, System.Text.Encoding.UTF8.GetBytes(BridgeTests.DriveProfile),
-            new ArtOfSimRally.Mod.Shim.ShimBridgeNative.LatchedSession { Nonce = nonce, SessionFile = session, BatchFile = batch, FencesVerified = true, ForceAbsent = true });
-        var consumer = ArtOfSimRally.Mod.Shim.ShimInput.Consumer;
-        consumer.AcceptLatched = true; consumer.DeliverOnly(ArtOfSimRally.Mod.Shim.DriveTrial.Delivered);
-        WheelInput.AttachSharedInput(new BridgeTests.DeviceSource(), native, () => true, () => true);
-        var trial = new ArtOfSimRally.Mod.Shim.DriveTrial(consumer, BridgeTests.DriveProfile, text => ArtOfSimRally.Mod.Shim.ProbeRequest.Replace(batch, text), nonce);
-        int gear = 2, changing = 0;
-        try
-        {
-            for (int i = 0; i < 8000 && !trial.Finished; i++)
-            {
-                Clock.frameCount++; WheelInput.EnsureUpdatedThisFrame();
-                float t = 0, b = 0, s = 0, h = 0, c = 0; bool e = false;
-                var car = new AxisCarController { SteeringOutOfAlignmentEffect = .02f };
-                Check(ArtOfSimRally.Mod.Shim.ShimInput.TryOverride(car, ref t, ref b, ref s, ref h, ref c, ref e), "car input not composed by the shared session");
-                int shift = consumer.TakeShift(); if (shift != 0) { gear += shift; changing = 6; }
-                if (changing > 0) changing--;
-                var last = ArtOfSimRally.Mod.Shim.ShimInput.Last;
-                var sample = new ArtOfSimRally.Mod.Shim.DriveTrial.Sample
-                {
-                    Frame = Clock.frameCount, Underway = true, Composed = last.Frame == Clock.frameCount, SteerLive = last.SteerLive,
-                    AppliedSteer = last.AppliedSteer, AppliedThrottle = last.AppliedThrottle, AppliedBrake = last.AppliedBrake, AppliedHandbrake = last.AppliedHandbrake, Alignment = last.Alignment,
-                    OutSteer = last.Steer, OutThrottle = last.Throttle, OutBrake = last.Brake, OutHandbrake = last.Handbrake,
-                    EngineSteer = s, EngineThrottle = t, EngineBrake = b, EngineHandbrake = h,
-                    Gear = gear, Automatic = false, ChangingGear = changing > 0, Speed = 4f,
-                };
-                foreach (int a in ArtOfSimRally.Mod.Shim.DriveTrial.Delivered) sample.Injected[a] = consumer.Injected(a, Clock.frameCount);
-                trial.Tick(sample); System.Threading.Thread.Sleep(5);
-            }
-            Check(trial.Passed, "real-Core drive did not pass: " + trial.Failure + " | " + string.Join(" | ", trial.Steps.ConvertAll(x => x.Name + "=" + x.Result + " " + x.Detail + " h" + x.HoldSamples + " r" + x.ReleaseSamples + " g" + x.GearBefore + ">" + x.GearAfter)));
-            File.WriteAllText(Path.Combine(folder, "drive-samples.tsv"), trial.Samples.ToString());
-        }
-        finally { WheelInput.Close(); }
-        Check(File.ReadAllText(Path.Combine(folder, "host-shutdown.json")).Contains("\"state\":\"resolved\""), "drive stop did not resolve");
     }
     // romi 31428: an ordinary (non-latched) session through the production GetInput postfix. Owned actions come
     // only from the shared profile; native keyboard passes through for unowned, unbound channels; unowned

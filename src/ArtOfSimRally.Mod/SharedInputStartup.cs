@@ -59,7 +59,7 @@ namespace ArtOfSimRally.Mod
                 () => Time.realtimeSinceStartup, () => Main.Enabled && Main.SettingsVisible && !SettingsPanel.LegacyEditing && Main.HasFocus() &&
                     !GameState.IsDriving && ShimInput.Consumer.Started);
             session = null; reason = waitingFor = null; startedLogged = stopLogged = false; restoreAttempts = 0;
-            RequestedAtStartup = !ShimStartup.Requested && Main.Settings != null && Main.Settings.SharedInput;
+            RequestedAtStartup = Main.Settings != null && Main.Settings.SharedInput;
             ProfilePresent = File.Exists(Path.Combine(modDirectory, ProfileFileName));
             FfbSelection.PrepareShared(RequestedAtStartup);
             if (!RequestedAtStartup) { Enter(SharedInputStatus.Phase.Off); return; }

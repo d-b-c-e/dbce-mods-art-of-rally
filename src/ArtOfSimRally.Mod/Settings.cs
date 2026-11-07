@@ -45,12 +45,6 @@ namespace ArtOfSimRally.Mod
         public bool DisableSteerAssist = false;
 
         /// <summary>
-        /// Switch the game's input library (Rewired) to its DirectInput backend at
-        /// runtime, for devices Raw Input cannot see or read. See InputBackend.cs.
-        /// </summary>
-        public bool UseDirectInputBackend = false;
-
-        /// <summary>
         /// Opt-in candidate: drive the wheel, pedals, menu buttons, shortcuts and
         /// gears from the shared Wheelkit profile (dbce-controls.ini beside the mod)
         /// through the copied input provider. Off keeps Art's own bindings. Read at
