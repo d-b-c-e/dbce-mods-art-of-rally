@@ -1,6 +1,6 @@
 <# Developer switch for the UI-4 spike: F6 drawn by the toolkit core (dbce_ui.dll) through the game's own present hook.
    -On copies lib/dbce-ui/dbce_ui.dll into Mods\ArtOfSimRally and writes dbce-dev.ini with [Dev] UiHost=hook.
-   -Off removes both, which is the player default. Run with the game closed. docs/UI-HOST-HOOK.md #>
+   -Off removes both and the core's dbce_ui.log, which is the player default. Run with the game closed. docs/UI-HOST-HOOK.md #>
 [CmdletBinding()]
 param([switch]$On, [switch]$Off, [string]$GameDir = 'D:\Program Files (x86)\Steam\steamapps\common\artofrally')
 $ErrorActionPreference = 'Stop'
@@ -16,6 +16,6 @@ if ($On) {
     if (-not (Test-Path -LiteralPath $ini)) { [IO.File]::WriteAllText($ini, "[Dev]`r`nUiHost=hook`r`n") }
     "UiHost=hook on: $dll, $ini"
 } else {
-    foreach ($path in $dll, $ini) { if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path } }
+    foreach ($path in $dll, $ini, (Join-Path $modDir 'dbce_ui.log')) { if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path } }
     'UiHost=hook off: F6 is the standard panel'
 }
