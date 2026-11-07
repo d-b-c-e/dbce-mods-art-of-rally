@@ -13,7 +13,7 @@ With **Log detail for support** enabled, 0.2.6 retains one landing's
 first-contact mask, compression fraction and time to compression/all-wheel contact.
 This adds no delay or force change. The saved Norway jump shows a 16.67 ms gap;
 it does not establish the reported track's visual timing. See the
-[investigation and comparison plan](reviews/2026-09-16-landing-startup-investigation.md).
+[investigation and comparison plan](archive/reviews/2026-09-16-landing-startup-investigation.md).
 
 Implemented on 2026-09-12 and accepted for the 0.2.5 release by the owner.
 It defaults **on at strength 5** for new settings and older files without landing
@@ -108,7 +108,7 @@ First RC8 test on 2026-09-12: eight live wheel cues were accepted, including the
 20% maximum. The owner clarified that wheel FFB is fine; their weak/buzzy landing
 report concerns the ButtKicker. **This setting does not control the shaker or
 change telemetry.** Shaker thud enhancement is a separate FR-2 follow-up.
-See [the corrected interpretation](reviews/2026-09-12-landing-wheel-test.md).
+See [the corrected interpretation](archive/reviews/2026-09-12-landing-wheel-test.md).
 Unsupported-driver behavior and a separate final-artifact drive remain pending;
 the owner authorized publication based on RC8 acceptance.
 Existing FFB startup/recovery, gauges and quit retests still apply.

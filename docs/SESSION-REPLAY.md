@@ -100,9 +100,8 @@ Sessions live under `results/sessions/<name>`:
   - `identity-match.tsv` and `ds4-identity-probe.tsv`: the shared identity join's
     inputs.
 
-  The disposable-copy diagnostics ask for them explicitly
-  (`Invoke-SharedInputCopy.ps1 -RewiredInventory -IdentityProbe`). An ordinary
-  recording writes none of them.
+  The disposable-copy diagnostics (removed 2026-11-07) asked for them
+  explicitly. An ordinary recording writes none of them.
   - **Installed recorder:** the SessionTools 0.4.0-rc.15 recorder installed on
     2026-10-12 (`DAA62504`) predates this switch. It still writes
     `rewired-inventory.tsv` in every recording until a later package carries it.
@@ -200,7 +199,7 @@ poses, finish, results and final menu. An independent 12-second synthetic physic
 capture also completed format-3 replay: 721 driving poses, zero reported position
 application error. Its 721 force samples passed 27,453 offline checks with no
 native-magnitude mismatches. Identity and zero-gain trials passed. See the
-[validation record](reviews/2026-10-04-playback-validation.md).
+[validation record](archive/reviews/2026-10-04-playback-validation.md).
 
 Legacy formats 1/2 lack semantic buttons, completion seals, exact RPM and resolved
 scene snapshots; their menus depend on preferences and controlled random seeds.

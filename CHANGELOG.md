@@ -448,7 +448,7 @@ hardware-specific reports remain open; see [release notes](docs/releases/0.2.3.m
   and complete input shutdown. Disabling FFB releases output immediately; enabling
   it after a disabled launch initializes the wheel.
 - Corrected native installation guidance, issue certainty and the roadmap.
-  Detailed engineering review: [2026-09-06-rc-review.md](docs/reviews/2026-09-06-rc-review.md).
+  Detailed engineering review: [2026-09-06-rc-review.md](docs/archive/reviews/2026-09-06-rc-review.md).
 
 ## [0.2.2] - 2026-09-03
 

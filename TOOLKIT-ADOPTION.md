@@ -32,7 +32,7 @@ Niru's shared NativeAction table and Active-only accessor are prerequisites.
 Source inspection only during owner UAT; focused fixtures/build and rendered
 acceptance remain deferred. Existing unchecked/partial rows, including the
 previously noted missing STD-037 adoption, are unchanged. See
-[the scoped review](docs/reviews/2026-10-15-owned-controls-glyphs.md).
+[the scoped review](docs/archive/reviews/2026-10-15-owned-controls-glyphs.md).
 
 Which entries of the wheel toolkit's standards ledger
 (`E:\Source\toolkits\dbce-wheel-mod-toolkit\STANDARDS.md`) this mod has brought in.
@@ -68,8 +68,8 @@ Audited 2026-10-04 (read-only standards audit); statuses below are from that aud
 | STD-024 | On-screen frame-rate counter | adopted | 0.4.2 candidate: "Show frame rate on screen", top right of the centre screen, off by default |
 | STD-027 | Independent steering and effect strengths | partial | Existing steering gain and crash/landing/shift amplitudes are separate. October 8 source labels Steering strength, explains independence and always exposes the Advanced tuning/effects link in Simple. No force arithmetic, saved tune or native change. Build checked; packaging and rendered label/link acceptance remain pending. |
 | STD-033 | Rig profile controls reach the game | partial | rc12 / f6165bc plus candidate Wheelkit writer: production Apply, actual raw reader, named/any-button game queries and real car inputs qualified in October 10 runs06/07. Title, menu Up/Down/Confirm/Back/Start, camera, steering/throttle/brake/handbrake observed. Left/right navigation, clutch and auxiliary shifter still open. No user release of the Wheelkit writer yet. |
-| STD-034 | Closed-loop Apply qualification | partial | Frozen writer/profile, independent raw workload, process no-force latch, actual consumer observations and exact restoration in runs06/07. Config verification accepts only complete semantic XML equivalence after the native serializer reorders fields. All-binding staged-fault matrix and omitted shifter actions remain open. See docs/reviews/2026-10-10-raw-controls-title.md. |
-| STD-035 | Controls identity, provenance and failure rules | partial | Source-only copied provider validates identity/caps/generation/sequence and original QPC freshness; actual Core-to-Art sink tested on .NET8/Unity Mono. Native candidates 64ccf67/574bb88 add exact owned HID paths; the process-only probe joins path plus product to Rewired, preserving both GUID namespaces. No new profile parser/acquisition. Runtime identity/cache/restore and production activation remain open. See docs/reviews/2026-10-11-shared-input-axis-slice.md. |
+| STD-034 | Closed-loop Apply qualification | partial | Frozen writer/profile, independent raw workload, process no-force latch, actual consumer observations and exact restoration in runs06/07. Config verification accepts only complete semantic XML equivalence after the native serializer reorders fields. All-binding staged-fault matrix and omitted shifter actions remain open. See docs/archive/reviews/2026-10-10-raw-controls-title.md. |
+| STD-035 | Controls identity, provenance and failure rules | partial | Source-only copied provider validates identity/caps/generation/sequence and original QPC freshness; actual Core-to-Art sink tested on .NET8/Unity Mono. Native candidates 64ccf67/574bb88 add exact owned HID paths; the process-only probe joins path plus product to Rewired, preserving both GUID namespaces. No new profile parser/acquisition. Runtime identity/cache/restore and production activation remain open. See docs/archive/reviews/2026-10-11-shared-input-axis-slice.md. |
 | STD-036 | Every binding reaches its own device | partial | Existing legacy readers preserved when dormant. Internal source bridge borrows their slots and shares one physical read with Core and the legacy cache; fake production-path tests pass. No runtime attachment. Menus, shifter and shortcuts remain on existing paths; live parity is pending. |
 | STD-046 | Triple cameras: starting choice per camera, tweaks as offsets | adopted | Origin of the standard (rc.24-rc.28): per-camera F7 keys in TripleScreen.xml, offsets on the model-calculated start, reset, "(Custom)", bumper Realistic and car hidden. Offline-tested; owner drove rc.26/rc.27 cameras; full defaults not yet driven. docs/TRIPLE-CAMERA-LEARNINGS.md |
 
@@ -88,7 +88,7 @@ Mono tests. The October 13 disposable startup (with `723E8A38`) resolved the con
 qualification, attached and accepted a shared frame using the test-only muted
 DD301314 native; exact owner/copy restoration passed. Production 44E46799 force
 acquisition, input/FFB coexistence and physical behavior remain unqualified. See
-[the bounded review](docs/reviews/2026-10-13-shared-steering-ffb-target.md).
+[the bounded review](docs/archive/reviews/2026-10-13-shared-steering-ffb-target.md).
 This narrow result does not upgrade general parity or the historical ledger rows.
 
 The shared frame consumer and copied bridge stay dormant in normal launches.
@@ -102,7 +102,7 @@ first muted compatibility proof remains open. See the
 All existing WheelInput tests pass before any publication. Source checks do not
 upgrade STD-033/034's live qualification. There is no settings/backend migration,
 installation or change to the accepted Art v2 force producer or original captures.
-The [slice review](docs/reviews/2026-10-11-shared-input-axis-slice.md) records the
+The [slice review](docs/archive/reviews/2026-10-11-shared-input-axis-slice.md) records the
 outstanding ledger rows and [native bridge implementation](docs/research/2026-10-11-shared-input-bridge.md).
 
 ## Steering reference update (2026-10-11)
@@ -111,7 +111,7 @@ STD-031 is **partial**: the new default reference makes new50 match legacy30
 before clamp/filter; explicit saved tunes and historical replay stay unchanged.
 Build, settings/recorder checks and paired trials on 11,921 original owner force
 rows pass. Package/runtime adoption and physical feel remain. See
-[reference v2](docs/reviews/2026-10-11-ffb-reference-v2.md).
+[reference v2](docs/archive/reviews/2026-10-11-ffb-reference-v2.md).
 
 ## Custom-vehicle experiment evidence (2026-10-08)
 
@@ -214,7 +214,7 @@ scrollable preview and immutable reviewed draft/export follow the common host
 contract. Input/selection changes and preparation failures invalidate old review.
 No collector/auth/network flow or input authority was added. Common fixture is
 scheduled once with Art's combined compile; no build/runtime qualification yet.
-See docs/reviews/2026-10-15-help-report.md. Existing unchecked/partial standards
+See docs/archive/reviews/2026-10-15-help-report.md. Existing unchecked/partial standards
 remain open outside the changed presentation and Help source scope.
 
 October22 source resync: exact toolkit SupportReport.cs pin
@@ -237,7 +237,7 @@ qualify owner installation or rendered/physical actions. The existing final
 UiCapture scenario now has a minimal private recorder-only changed-row follow-up:
 two action samples and camera-binding disclosure with exact in-memory restore.
 No new reader/mode/force/binding authority; recorder build and one later muted
-copy capture remain pending. See docs/reviews/2026-10-15-rc26-final-ui-followup.md.
+copy capture remain pending. See docs/archive/reviews/2026-10-15-rc26-final-ui-followup.md.
 Preexisting partial/unchecked standards stay open outside this source scope.
 
 
@@ -257,7 +257,7 @@ October17 read-only draft recovery: the Art binding toolbar adopts canonical
 SharedBindingPanel's idle + HasDraft Discard policy independently of edit
 access. Save remains Editable-only; capture and reader gates stay unchanged.
 Source-linked presentation cases are extended; build/rendered checks pending.
-See docs/reviews/2026-10-17-readonly-binding-discard.md. No other ledger status changes.
+See docs/archive/reviews/2026-10-17-readonly-binding-discard.md. No other ledger status changes.
 
 October17 persistent binding status: byte-exact shared SettingsPresentation.cs
 from 0dae6b3 supplies BindingPresentation. Every Art page's footer now receives
@@ -271,7 +271,7 @@ plugin0warnings/errors,35source-linked binding presentation checks and169
 SettingsUi assertions. Shared formatterF6Style28 retained from Haru's qualified
 result. No package, install, game or rendered acceptance; installed rc27 retained.
 Exact logs, source-only artifact identity/hash and release are recorded in
-docs/reviews/2026-10-17-readonly-binding-discard.md.
+docs/archive/reviews/2026-10-17-readonly-binding-discard.md.
 
 October17 final private packaging221208: exact eb2316d source-stamped rc28 build,
 required metadata353, normal/unchanged-helper companion integrity/pairing and
@@ -301,7 +301,7 @@ not implemented until test/muted launch classification is qualified. No
 runtime adoption or user readiness. STD-008 remains partial: the existing
 OutputResolution size retry policy is unchanged. Existing unchecked ledger
 rows remain as recorded; STD-037/039/040 still lack full adoption rows.
-See docs/reviews/2026-10-26-window-landing.md.
+See docs/archive/reviews/2026-10-26-window-landing.md.
 
 October 26 DBC-272 corrections: STD-038 remains partial. Landing now waits for
 observed engine/native client-size and windowed-mode agreement (10s deadline),
@@ -320,7 +320,7 @@ Release warning-as-error build PASS, 576 TripleScreen assertions PASS; pin/diff
 checks PASS. STD-038 remains partial pending review and native/runtime evidence.
 Existing unchecked STD-011/012/013/014/016/018/019, partial STD-008 and missing
 full STD-037/039/040 adoption rows are unchanged by this bounded source work.
-See docs/reviews/2026-10-26-window-landing.md for classification limits.
+See docs/archive/reviews/2026-10-26-window-landing.md for classification limits.
 
 October 26 DBC-275/276 correction supersedes the earlier persistence-unimplemented
 wording. Saved-monitor persistence is implemented in the private source candidate;
@@ -350,4 +350,4 @@ result. Historical paragraphs and their candidate-specific limits still apply.
 | Standard | Title | Status | Notes |
 |---|---|---|---|
 | STD-030 | Standard F6 panel comes first | partial | Existing Simple/Advanced F6 and shared binding/UI work are recorded in STD-004 and the October15 STD-004/030 sections above. Source-only Save-warning/editor/help follow-ups do not inherit rendered/package acceptance. No new implementation, build, installed UI or hardware qualification in this row reconciliation. |
-| STD-031 | Art reference: new50 matches legacy30 | partial | The October11 steering-reference section already records the new default reference, unchanged explicit saved tunes/historical replay, build/settings/recorder checks and paired original-force trials. Its package/runtime adoption and physical-feel gates remain separate; no retune or new qualification here. See docs/reviews/2026-10-11-ffb-reference-v2.md. |
+| STD-031 | Art reference: new50 matches legacy30 | partial | The October11 steering-reference section already records the new default reference, unchanged explicit saved tunes/historical replay, build/settings/recorder checks and paired original-force trials. Its package/runtime adoption and physical-feel gates remain separate; no retune or new qualification here. See docs/archive/reviews/2026-10-11-ffb-reference-v2.md. |

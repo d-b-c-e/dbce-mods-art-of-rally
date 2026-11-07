@@ -28,7 +28,6 @@ The config is grouped by feature so this reads clearly to a user:
 [Camera]  Bonnet* and Bumper*: Enabled, Height, Forward, Side, Pitch, FOV; BonnetLean
 [CameraTuning]  remappable keyboard hotkeys (numpad defaults)
 [Telemetry]  Enabled, Host, Port
-[Experiment]  UseDirectInputBackend (Settings.xml only; see CONTROLS.md)
 ```
 
 ## Loader: Unity Mod Manager (done)
@@ -178,7 +177,7 @@ need to rebuild the archive.
    overwrite a published candidate to insert fixes; use a new version instead.
 
 The existing 0.2.4-rc.4 ZIP was already built and tested locally; its
-[exact identity and reports](reviews/2026-09-08-feedback-review.md) remain valid.
+[exact identity and reports](archive/reviews/2026-09-08-feedback-review.md) remain valid.
 Changing the upload procedure does not require rebuilding it or imply that its
 pending attended checks have passed.
 
@@ -199,137 +198,16 @@ Package it with `tools/package/session-tools.ps1 -Version X.Y.Z` from the same
 clean source. Publish its ZIP/checksum as a separate optional asset; never add
 probe dependencies to the player mod. Preserve original captures privately.
 
-The optional controls setup helper is private and separate (sana 51994). Adding
-`-PrivateStandaloneSetup -StandaloneSetupZip <pinned Wheelkit bundle ZIP>` to a
-`-SharedInputCandidate` build also writes
-`ArtOfSimRally-X.Y.Z-rc.N-shared-input-controls-setup.zip` and its checksum. It holds:
-- the Wheelkit standalone bundle pinned in `tools/package/standalone-setup.json`,
-  unmodified, under `ModSetup`;
-- `Set Up Controls.bat` and its script, with `verify.ps1`;
-- a `companion-manifest.json` that hashes every file.
-
-It is a separate ZIP because UMM extracts every entry of a mod ZIP into `Mods`, so the
-helper never reaches the game folder. The launcher finds the game with the installer's
-own `Find-ArtOfRally` and needs the shared-input package installed; the helper itself
-checks the installed candidate. The currently pinned companion is a private test
-artifact, not a public release asset. Test it
-offline with `tools/testing/Test-ControlsSetupCompanion.ps1 -PackageDirectory
-<extracted mod ZIP> -CompanionDirectory <extracted companion>`. Moving `Find-ArtOfRally`
-into `verify.ps1` changed the installer and verifier script bytes of later packages; the
-installed mod files work the same, and published packages are unchanged.
-
-Standalone installation and configuration are supported without Wheelkit: the
-ordinary mod already supplies its installer and F6 setup, and the reusable helper
-adds Controls, Screens and Settings for shared-profile packages. For an eventual
-public package, retain this existing companion route and select its frozen helper
-bundle in the normal release scope; no new configuration framework is needed.
-Keep the companion separate from the UMM mod archive and retain the existing
-exact-package tests. The first-launch requirement for the optional tabs and the
-shared-axis calibration limit are in its packaged README.
-
-### Private b12 companion for the frozen rc29 mod (2026-10-22)
-
-The optional helper pin now names the separately qualified bundle
-`b12ab83fba5bda975ebf4e6356b67b66348711e3`, ZIP
-`StandaloneModSetup-private-b12ab83fba5b-win-x64.zip`, SHA-256
-`A798CE2A711AF78FE6BC7BC9AA7374E8C1FFA25732B82CBA67056915F22886D3`.
-Its bundle manifest is
-`262166C22F2E046A4A5B34DEAA65A6ED7D399A391F5AC8204420062D3C424C13`
-(529 payload files, 530 ZIP entries). Helper QA `01M5K1FBHY8JV77RQHWV2TRDZQ`
-is typed PASS, roundsUsed 0; retained focused receipt SHA-256
-`2D3536E7AE8343534909CA1D2CCBE4FAE319ADDA34982B8F551378F713FA322E`.
-This reuses exact qualified helper bytes; no helper or game build is involved.
-
-`controls-setup.ps1` factors the existing companion block out of `package.ps1`.
-It accepts an extracted, hash-verified private shared-input RC, checks its expected
-manifest hash and every payload, then packages the pinned helper separately.
-Existing stage, ZIP or sidecar paths refuse; keep outputs separate from inputs.
-The normal package producer calls the same block after its ordinary mod build.
-For a frozen mod, use only the companion producer:
+One package per release (STD-040). Shared input is a switch of the same script:
 
 ```powershell
-./tools/package/controls-setup.ps1 -PackageDirectory <frozen-extracted-mod> `
-  -ExpectedManifestSha256 E517BD95CDF26F3E10E9CE9D94B0A3916F0F3C637DC36F87DC8ADB3FEE47FEF4 `
-  -StandaloneSetupZip <exact-qualified-b12-zip> `
-  -CompanionStage <fresh-private-stage> -CompanionZip <fresh-private-zip>
+./tools/package/package.ps1 -Version X.Y.Z-rc.N -SharedInputCandidate -SharedInputShim <pinned-shim>
 ```
 
-The new private output, under ignored `artifacts/private-helper-b12ab83-20261022`, is
-`ArtOfSimRally-0.4.2-rc.29-shared-input-controls-setup-b12ab83fba5b.zip`,
-80,792,354 bytes, SHA-256
-`5FF9F66CC0EC295BD5C73B9FE2EF56177B85AFBE47B21AAEB92452B44C303D82`.
-Its companion manifest is
-`965AD091F715783D8AB6B947C3E6CB35A3C44EB8AE85685BB3AA564244D21961`
-(535 listed files, 536 ZIP entries). The helper is unmodified under `ModSetup`.
-It pairs with unchanged frozen Art source
-`3f31b6fb1d70cc81cd3206563d275666402f9fa9`, rc29 mod ZIP SHA-256
-`DC0056F46829A55508A7F5D582B7600B942E3ED6E7CBE21B77C68D6D218207A6`.
-`result.json`, `producer-refusals.json`, `settings-checks/checks.json`, full member
-hashes in `verified-companion/companion-manifest.json`, and cleanup receipts retain
-executed evidence. The first run's wrapper-only splatting failure is retained in
-`run.log`; `continue.log` verifies the already-produced ZIP without rebuilding it.
-
-Rollback is selection of the retained old rc29 companion
-`F5CB2F5BD4883EA29EBC5F4301D18A35E541390B527B012A904AC851704434AE`
-with the same frozen mod. Its original Settings failure remains historical
-([KI-51](KNOWN-ISSUES.md#ki-51--private-rc29-companion-cli-cannot-qualify-the-settings-first-launch-refusal)).
-No owner installation changed. Source rollback is an ordinary revert of this
-consumer delivery commit; do not replace or delete either candidate's evidence.
-This is a private optional companion, with no public distribution-policy change,
-publication, installed acceptance, GUI, game, device or physical qualification.
-
-The exact rc28 companion instead pins Wheelkit helper
-`a8583c59feef9f5db318d316756f64043b40fa91`, helper archive SHA-256
-`F3CF1345402CD31562B8A6112F440419DC79C6D28DDD276B4DBEDFEA084FC331`,
-bundle manifest `E9D54FFF4597DE943A2D2449071DC5DE8600416B7C3DEB7D573A66801D94A702`.
-The separate rc28 companion ZIP is `78C27DB0`; its complete hash and retained
-PS5.1 PlanOnly continuation are in Local deployment. This is an immutable private
-artifact; the following older pin and tests are historical, not rc28 qualification.
-
-Historical October15 private helper adoption pinned Wheelkit
-`44f7adbe5b816f402de1433a1eb6a2db428edcac`, ZIP
-`StandaloneModSetup-private-44f7adbe5b81-win-x64.zip`, SHA-256
-`d188c949b6d96dafaf669d0350382ec9f73704757618e38f6f751a30e6fd982f`,
-bundle manifest
-`B3DD30066BC1C2DA89D51EA4B75ECF3FEA5D0384073A45686062586C427D4009`,
-527 payload files / 528 ZIP entries. Its combined focused Core batch passed
-124/124 tests and its exact-ZIP private GUI/CLI checks include Art's pinned
-candidate Preview/Apply/refusal. Evidence is retained in the portfolio hub under
-`artifacts/shared-helper-44f7adb-20261015/run-01`.
-
-This pin-only change does not rebuild Art. Preserve the qualified Mod SHA-256
-`F98D3BDFC87BF5ED4D92D2CE872FD628B6ED479B9D3621A90D453EC1CCD81D5D`,
-built from `11a7b6b058f8994410dbba9523558c0ca6342e94` (the `2c504af`
-merge has identical `src/` and `tests/`). That DLL's ProductVersion is
-`0.4.2-dev+unpackaged`; it does not identify this helper adoption commit.
-`package.ps1` normally rebuilds and stamps a new Mod identity, so running its
-full producer would require separate qualification of those new bytes. The
-consumer companion delivery checks remain pending against the pinned helper;
-the common helper checks above are not an Art release or installed-game test.
-
-Shared-input delivery and the optional research shim probe are separate choices:
-
-```powershell
-# Normal shared-input Mod; still a private RC with pinned shim/native and candidate receipt.
-./tools/package/package.ps1 -Version 0.4.2-rc.N -SharedInputCandidate -SharedInputShim <pinned-shim>
-# Research only; explicitly includes the diagnostic probe types.
-./tools/package/package.ps1 -Version 0.4.2-rc.N -SharedInputCandidate -ResearchShimProbe -SharedInputShim <pinned-shim>
-```
-
-The first produces `-shared-input.zip`, the second `-shared-input-probe.zip`,
-with distinct stage and optional companion names. Both use the same pinned
-payload/receipt checks; the shared candidate's `build.json` records `artShimProbe`
-and the existing assembly metadata checker verifies the selected flavor.
-`-ResearchShimProbe` without `-SharedInputCandidate` refuses before building.
-Historical research recipes must add the explicit switch; old artifacts remain
-immutable. A default package still contains no shared payload or research probe.
-
-Both routes build newly stamped Mod bytes. Qualify and retain their actual
-source/hash identities; neither is the unpackaged F98 DLL merely because its
-runtime source matches. Focused checks use `tools/testing/Test-ShimPackageFlavors.ps1`
-against both extracted packages. The 44E native pin is unchanged and remains
-unlatched; package checks do not authorize an unattended game run or substitute
-managed FFB Off for the DD301 load-time mute used in earlier runtime evidence.
+It produces `-shared-input.zip` with the pinned shim and native and a candidate receipt in `build.json`.
+The private controls-setup companion ZIP (`-PrivateStandaloneSetup`) and the research shim probe flavour
+(`-ResearchShimProbe`, `ArtShimProbe`) were removed on 2026-11-07; old artifacts and their notes in
+`docs/archive/` stay as history.
 
 The October 13 source/package notice audit of pinned helper `19a5897` found the
 declared .NET, WPF-UI and CommunityToolkit notice/license files, Art and toolkit

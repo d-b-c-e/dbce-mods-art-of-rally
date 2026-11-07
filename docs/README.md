@@ -36,6 +36,6 @@
 [Telemetry](TELEMETRY.md) · [Camera](CAMERA.md) · [Verified findings](FINDINGS.md)
 
 These references include dated investigations and older experiments. For current
-user instructions, use the setup guide above. Reviews in `reviews/` preserve
+user instructions, use the setup guide above. Reviews in `archive/reviews/` preserve
 what was known/tested at the time; an old candidate receipt is not the installed
 version. [0.2.7 release notes](releases/0.2.7.md).

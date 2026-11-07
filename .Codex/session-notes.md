@@ -18,7 +18,7 @@ linked from AGENTS.md and CLAUDE.md. No transcript reconstruction is required.
 
 ## Evidence and constraints
 
-See docs/reviews/2026-10-05-release-0.4.0.md and docs/LOCAL-DEPLOYMENT.md for exact
+See docs/archive/reviews/2026-10-05-release-0.4.0.md and docs/LOCAL-DEPLOYMENT.md for exact
 hashes, reports and backups. The final source fixed raw game-preference backup:
 reg export silently omitted 21/58 values. Raw snapshot hashes, types/bytes, count
 and restored readback are verified. Preserve current display layout and settings;

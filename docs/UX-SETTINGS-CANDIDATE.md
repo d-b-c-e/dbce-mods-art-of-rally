@@ -7,7 +7,7 @@ The [engineering audit](UX-OVERNIGHT-2026-09-16.md) records coverage and remaini
 gaps. The usual installer still preserves Settings.xml; start any attended
 comparison with an extra backup of that file.
 
-The [visual grouping follow-up](reviews/2026-09-21-visual-grouping.md) puts each
+The [visual grouping follow-up](archive/reviews/2026-09-21-visual-grouping.md) puts each
 binding and its actions in one bordered group, moves optional sections behind
 Show/Hide buttons, and reduces the header. The latest successor strengthens card
 contrast, gives navigation a flat tab treatment, puts compact actions to the
@@ -26,8 +26,8 @@ checks passed the header, page buttons, all six Simple page tops, camera nested
 scrolling, timed Bind→Escape cancellation and native Quit recovery. Advanced
 Cameras top was observed; other Advanced pages, custom scales and physical input
 still need checking. See
-[RC10 results](reviews/2026-09-19-rc10-ui-smoke.md) and
-[the recorded failure and retest](reviews/2026-09-19-rc9-ui-smoke.md).
+[RC10 results](archive/reviews/2026-09-19-rc10-ui-smoke.md) and
+[the recorded failure and retest](archive/reviews/2026-09-19-rc9-ui-smoke.md).
 
 ## Open and stop
 

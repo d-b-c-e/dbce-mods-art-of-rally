@@ -97,8 +97,8 @@ Open at that checkpoint (the managed-payload/restart evidence below supersedes t
 - force feedback with the shared profile;
 - restart consumption (the saved profile becomes active at the next start, and the car follows it);
 - rebinding after a disconnect;
-- the final shared-input package bytes. `package.ps1 -SharedInputCandidate` builds with the ArtShimProbe flavour and a
-  new stamp, so it is different code from F98 (Lola 132795; the separation is under review);
+- the final shared-input package bytes. `package.ps1 -SharedInputCandidate` builds with a
+  new stamp, so it is different code from F98 (Lola 132795);
 - one shot detail: in the save run, the cleared row's "next start: Unbound" line was half cut by the scroll body, so it
   is shown by the host state and the file, not by that row's pixels.
 
@@ -141,7 +141,7 @@ staging checks passed) and reused without rebuilding.
 Evidence lives in hub `artifacts/art-f6-ui-capture-20261015/final-9B343429-a475fac/`
 (`verdict.json`, both `staged.json`, `force-check.json`, `restored.txt`, UI logs
 and shots). The durable hub result is
-`docs/reviews/2026-10-15-art-final-payload-result-livo.md`.
+`docs/archive/reviews/2026-10-15-art-final-payload-result-livo.md`.
 
 Remaining new-controls checks: real moved-control binding while foreground,
 standalone setup for an unavailable/new device, restart usability and the actual

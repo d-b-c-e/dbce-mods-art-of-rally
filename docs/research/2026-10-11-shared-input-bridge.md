@@ -6,7 +6,7 @@ Implemented source candidates, not installed or activated:
 |---|---|---|
 | Toolkit snapshots | `codex/art-shim-snapshots` / `ecc49bd`, base `25195af` | `docs/READ-SNAPSHOT-BRIDGE.md` |
 | Shared shim provider | `codex/art-shim-bridge` / `d46096c`, base `a9e1601` | `windows/docs/COPIED-INPUT-BRIDGE.md` |
-| Art adapter | `codex/art-shim-input`, base `7c1b67e` | [axis slice review](../reviews/2026-10-11-shared-input-axis-slice.md) |
+| Art adapter | `codex/art-shim-input`, base `7c1b67e` | [axis slice review](../archive/reviews/2026-10-11-shared-input-axis-slice.md) |
 
 ## Ownership and provenance
 

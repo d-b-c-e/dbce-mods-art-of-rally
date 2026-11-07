@@ -30,7 +30,7 @@ what is installed, and the GitHub releases page is authoritative for what is
 published.
 
 **The rest of this page is a historical record from 2026-09-30.** The release
-records for 0.4.0 and later are in `docs/reviews/` and `docs/LOCAL-DEPLOYMENT.md`.
+records for 0.4.0 and later are in `docs/archive/reviews/` and `docs/LOCAL-DEPLOYMENT.md`.
 
 **Historical (2026-09-30): 0.2.7 was then the stable release and installed copy.** The final-labelled clean-
 source build passed all 16 local gates. The installed files and independently
@@ -38,7 +38,7 @@ downloaded GitHub ZIP/checksum match the tested package. The owner requested
 promotion of RC2's behavior; this is not item-by-item hardware acceptance.
 Fresh T300/TSS binding, physical shift feel, crash kick at 50%, and the broader
 camera/device/motion matrix remain open. The final package has not been driven.
-See the [0.2.7 release record](reviews/2026-09-30-release-0.2.7.md),
+See the [0.2.7 release record](archive/reviews/2026-09-30-release-0.2.7.md),
 [known issues](KNOWN-ISSUES.md) and [installed identity](LOCAL-DEPLOYMENT.md).
 
 ## Previous candidates and releases
@@ -56,7 +56,7 @@ gates. The installed payload and separately downloaded GitHub assets match the
 validated archive. The owner accepted RC16 overall and requested release, but
 did not report item-by-item results for the full attended matrix. The final
 artifact has not been driven; KI-39/40/41 and hardware-specific reports remain
-open. See the [release review](reviews/2026-09-27-release-0.2.6.md),
+open. See the [release review](archive/reviews/2026-09-27-release-0.2.6.md),
 [0.2.6 notes](releases/0.2.6.md), [known issues](KNOWN-ISSUES.md) and
 [local deployment](LOCAL-DEPLOYMENT.md).
 
@@ -66,7 +66,7 @@ open. See the [release review](reviews/2026-09-27-release-0.2.6.md),
 wheel/shaker result and authorized release with landing vibration enabled by
 default at strength 5. All 16 final local gates passed; published downloads and
 installed payloads match the exact validated artifact. Settings were preserved.
-See the [0.2.5 release record](reviews/2026-09-13-release-0.2.5.md) and
+See the [0.2.5 release record](archive/reviews/2026-09-13-release-0.2.5.md) and
 [local deployment](LOCAL-DEPLOYMENT.md) for identities, checksums and receipts.
 Full attended cases, additional hardware and a separate final-artifact drive
 remain unverified; overall acceptance does not fabricate those passes.
@@ -76,14 +76,14 @@ The entries below are historical snapshots, superseded by the current handoff.
 
 **RC4 attended update (2026-09-09 UTC): strong stutter reported.** Overall drive
 feedback was good, but its stutter case is failed. [Log investigation and KI-20
-fix](reviews/2026-09-09-rc4-stutter.md) found lazy-manager polling with a large
+fix](archive/reviews/2026-09-09-rc4-stutter.md) found lazy-manager polling with a large
 ghost-download backlog. **RC5 passes all 16 automated checks locally**; its exact
 archive and new checklist are linked in that review. An attended comparison is
 required. **RC5 is now installed** with settings preserved and hashes verified;
 it has not been driven or published. [Local deployment receipt and rules](LOCAL-DEPLOYMENT.md).
 
 **0.2.4-rc.4 passes all 16 automated checks.** The
-[feedback follow-up and exact artifact](reviews/2026-09-08-feedback-review.md)
+[feedback follow-up and exact artifact](archive/reviews/2026-09-08-feedback-review.md)
 include CameraMod compatibility isolation, diagnostics, telemetry sampling and
 send-failure handling after RC2. The stutter case is failed; six cases remain pending,
 especially motion/shaker response. RC4 is now installed locally at the owner's
@@ -94,7 +94,7 @@ RC2 evidence below is historical; RC3 stopped before packaging and was supersede
 
 **0.2.4-rc.2 passes all 16 automated checks** with camera key/persistence and
 direct-input fixes. It has not been installed, driven or published. Its
-[exact artifact, results and handoff](reviews/2026-09-08-overnight.md) are separate
+[exact artifact, results and handoff](archive/reviews/2026-09-08-overnight.md) are separate
 from the published/installed 0.2.3 evidence below. [Overnight status](OVERNIGHT-QUEUE.md) and
 [extra drive checks](TEST-DRIVE.md#carry-forward-checks-from-024) describe the new scope.
 

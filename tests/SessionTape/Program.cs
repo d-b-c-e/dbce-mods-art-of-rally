@@ -1,7 +1,7 @@
 using ArtOfSimRally.Testing;
 
 // Session replay segment alignment, without Unity. Covers the edge cases from
-// docs/reviews/2026-10-04-session-replay-review.md (R1) plus transitions.
+// docs/archive/reviews/2026-10-04-session-replay-review.md (R1) plus transitions.
 int assertions = 0;
 void Check(bool ok, string what) { assertions++; if (!ok) throw new Exception("FAIL: " + what); }
 

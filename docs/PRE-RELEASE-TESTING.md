@@ -50,53 +50,6 @@ missing or failing corpus fails the run.
 
 ## Automated coverage
 
-**Clean-install companion check, 2026-10-22:** the existing
-`tools/testing/Test-ControlsSetupCompanion.ps1` now installs a separate
-never-launched fake game using the candidate's real `Install.bat` and a UMM
-stub. It checks missing settings/profile files, byte-preserving Preview and
-first-launch refusals, the controls Apply XML root/shared-input/gearbox fields,
-the complete target file set and hashes, and uninstall preservation. It also
-continues the existing cases when an optional scope lacks first-launch guidance,
-records the failures in `checks.json`, and exits nonzero.
-
-Exact rc29 package/companion from hub
-`artifacts/art-rc29-candidate-zara-20261019/RESULT.md`, ZIP hashes
-`DC0056F46829A55508A7F5D582B7600B942E3ED6E7CBE21B77C68D6D218207A6` /
-`F5CB2F5BD4883EA29EBC5F4301D18A35E541390B527B012A904AC851704434AE`:
-stock Windows PowerShell **5.1.26100.9711**, **FAIL**, 65 passing checks and two
-Settings CLI failures. Evidence:
-`results/controls-setup-06d64dd38cfb4cf69727e1f656587669/checks.json` and adjacent
-`cli-clean-*` stdout/stderr files. Controls Apply creates only the controls INI
-and a valid `<Settings>` XML with shared input and Automatic gearbox; uninstall
-preserves them. Screens requests first launch without mutation. The pinned CLI
-does not accept `--settings`, so its first-launch guidance remains unqualified
-([KI-51](KNOWN-ISSUES.md#ki-51--private-rc29-companion-cli-cannot-qualify-the-settings-first-launch-refusal)).
-The first diagnostic run stopped at that failure; the intermediate full run
-is retained in `results/controls-setup-f5a88672a035409e8aa65cdcd3455287`.
-No game, GUI, hardware, Steam, owner install, PlayerPrefs or LocalLow check is
-implied. Runtime and physical acceptance remain separate.
-
-**Separate b12 private companion, 2026-10-22:**
-`Test-ControlsSetupCompanion.ps1 -PackageDirectory <frozen-rc29> -CompanionDirectory <new-b12-companion> -SettingsOnly -EvidenceDirectory <fresh-ignored-path>`
-runs the existing disposable installer and companion integrity refusals, then
-only the missing Settings first-launch seam. It leaves the full suite unchanged.
-Stock Windows PowerShell 5.1 passed 21 focused assertions: valid PlanOnly,
-baseline refusal, modified DLL with/without rehashed manifest, unexpected member,
-source-commit mismatch, and Settings Preview/Apply exit 1 with first-launch and
-Nothing-was-written guidance, no Settings.xml, and identical full file inventory.
-The helper's qualified existing-settings Preview/Apply PASS is retained from
-its exact helper receipt; it was not rerun as unrelated consumer work.
-
-New evidence: `artifacts/private-helper-b12ab83-20261022/result.json`,
-`settings-checks/checks.json`, `target-before.txt`/`target-after.txt` beneath that
-checks folder, and `producer-refusals.json`. ZIP/sidecar and all 535 companion
-member hashes pass; all 529 helper payloads match the pinned bundle. Producer
-refuses the wrong frozen manifest, existing outputs, wrong helper ZIP hash and
-wrong sidecar before output writes. Ten existing pure checksum assertions pass.
-All owned synchronous processes returned and each owned shared lease was released.
-No Art/helper rebuild or broad 65-case repeat; the old rc29 FAIL remains intact.
-See [exact hashes and rollback](RELEASING.md#private-b12-companion-for-the-frozen-rc29-mod-2026-10-22).
-
 Landing detector/delivery/game-boundary tests run within the lifecycle checkpoint;
 the known Norway corpus case also checks the actual production detector against
 its unchanged contact/motion samples. Native finite-effect lifetime is verified

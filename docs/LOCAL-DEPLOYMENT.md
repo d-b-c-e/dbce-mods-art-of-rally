@@ -790,7 +790,7 @@ No accepted archive, payload or installation was changed for this documentation.
 Canonical consolidation (October 19): canonical `main` carries the rc28 source closure
 (`68c4e22`) and this release draft (`ba684ac`) in one merge. The product source is still `eb2316d`, with no
 non-Markdown change, and the owner's dirty `experiments/CustomVehicles/SESSION.md` was preserved. The rendered
-and physical gaps of the binding work are recorded in `docs/reviews/2026-10-17-readonly-binding-discard.md`.
+and physical gaps of the binding work are recorded in `docs/archive/reviews/2026-10-17-readonly-binding-discard.md`.
 
 ## Previous installation — 0.4.2-rc.25 (private shared-input candidate)
 
@@ -815,7 +815,7 @@ D1E9/E6DC closure. Only the changed first view is covered; the recorder's delibe
 early-close incomplete-tour outcome remains unchanged. No Save/binding workflow,
 force/performance baseline or physical click/device acceptance was repeated.
 Public release remains0.4.1; the optional bff4ce86/67DCD71C companion stays external.
-[Detailed source, qualification and view evidence](reviews/2026-10-15-controls-editor-first.md).
+[Detailed source, qualification and view evidence](archive/reviews/2026-10-15-controls-editor-first.md).
 
 ## Previous installation — 0.4.2-rc.24 (private shared-input candidate)
 
@@ -846,7 +846,7 @@ game. The force algorithms, native libraries and saved owner tune are retained.
 - **Qualification retained:** normal package's50 exact installer assertions;
   helper-r3 actual Preview/Apply/idempotence on disposable current payloads.
   The initial helper-fixture failures were retained and corrected without a
-  package rebuild. Hub review `docs/reviews/2026-10-15-art-rc23-package-result-sana.md`
+  package rebuild. Hub review `docs/archive/reviews/2026-10-15-art-rc23-package-result-sana.md`
   gives source/runtime/physical limits. No gate, suite, build or rehearsal reran
   for this installation.
 - **Reviewed installer recipe:** hub
@@ -1061,7 +1061,7 @@ candidate, not physical acceptance or a public release.
   native FFB acquisition/coexistence and force feel remain unqualified by that
   run. The installed package was not launched after deployment.
 
-Details and exact hashes: [shared steering target review](reviews/2026-10-13-shared-steering-ffb-target.md).
+Details and exact hashes: [shared steering target review](archive/reviews/2026-10-13-shared-steering-ffb-target.md).
 The shim remains a private packaging input; no public binary/source promotion,
 tag, push or release accompanied this installation.
 
@@ -1126,7 +1126,7 @@ Installed for testing only: it is not physical acceptance or a public release.
 Installed October 11, 19:46:05 UTC from source `8bc94b1`. The `.dirty` identity came
 from an index-only line-ending state. Package `B8D45C60…`, mod `F199D405`, native
 `F8361A08`. Receipt and backup: `results/ffb-reference-v2-rc13-install/`. See
-`docs/reviews/2026-10-11-ffb-reference-v2.md`.
+`docs/archive/reviews/2026-10-11-ffb-reference-v2.md`.
 
 ## Earlier installation — 0.4.2-rc.6 (profile controls)
 
@@ -1142,7 +1142,7 @@ The post-Apply live regression subsequently passed at 02:44 CT: production
 Wheelkit Apply, launch-file verification and the original session-5 playback
 (13,455 poses, zero application error), normal closure and exact owner restore.
 Physical output was muted. Raw input qualification remains pending; see
-`reviews/2026-10-09-profile-controls.md` for the capability and acceptance limits.
+`archive/reviews/2026-10-09-profile-controls.md` for the capability and acceptance limits.
 
 ## Previous installation — 0.4.2-rc.4 (KI-47 input recovery)
 
@@ -1154,7 +1154,7 @@ Every package payload, second native copy and protected settings/probe file
 was hash-checked. Game closed, no launch or physical force. Native 901 and
 accepted force tune remain unchanged. Attended control/recovery checks are
 pending; the original disappearance is not attributed to a proven USB cause.
-See [investigation](reviews/2026-10-09-input-recovery.md).
+See [investigation](archive/reviews/2026-10-09-input-recovery.md).
 
 Owner then launched at 20:30 local and confirmed steering, throttle and
 handbrake respond. Fresh-launch control operation is accepted; automatic
@@ -1178,7 +1178,7 @@ fixes. Managed toolkit remains v0.15.0; force models and owner tune are unchange
 - Physical output muted; UI rendering, device recovery and feel remain attended
   checks. Public stable remains 0.4.1; this native component pin is a local RC.
 
-See [native adoption evidence](reviews/2026-10-08-native-lifecycle-adoption.md).
+See [native adoption evidence](archive/reviews/2026-10-08-native-lifecycle-adoption.md).
 
 ## Previous installation — 0.4.2-rc.2 (KI-46 prompts + frame-rate readout)
 
@@ -1394,7 +1394,7 @@ full attended matrix remains pending.
 - No game launch, physical-force test, SimHub change or completed full attended
   matrix is implied by installation or the offline gate.
 
-See [release review](reviews/2026-09-27-release-0.2.6.md).
+See [release review](archive/reviews/2026-09-27-release-0.2.6.md).
 
 ## Previous candidate — 0.2.6-rc.16
 
@@ -1478,7 +1478,7 @@ all16 local RC gates and independent source review. Binding groups and local
 preconditions, camera keyboard/USB ownership, Show/Hide disclosures and compact
 header/Setup address the owner's clutter report. No game was launched; actual
 rendered fit and interaction remain pending (KI-41, plus existing KI-39/40).
-See the [visual grouping review](reviews/2026-09-21-visual-grouping.md).
+See the [visual grouping review](archive/reviews/2026-09-21-visual-grouping.md).
 
 - Identity: `0.2.6-rc.13+470e398b89198d60c861ce3ffad800b0ff93854a.clean`.
 - ZIP SHA-256: `E9F37818C82D957DE67EC5E039BEF89AE6FDD55B872FFFB4397993E26297A058`.
@@ -1513,7 +1513,7 @@ and hardware matrix remains pending. No public release.
 - 126 settings assertions,13 Unity Mono hook/host-size checks, both recorded
   drives and9,507 landing/crash assertions pass. Toolkit358add5/native0.8.0 and
   probe0.2.5.4 unchanged. Exact artifacts/evidence155files hash-verified in main.
-- The [smoke/correction review](reviews/2026-09-19-rc10-ui-smoke.md) distinguishes
+- The [smoke/correction review](archive/reviews/2026-09-19-rc10-ui-smoke.md) distinguishes
   RC10's narrow keyboard pass from its failed layout and RC12's limited layout pass.
 - [RC12 smoke and restoration receipt](../results/ux-rc12-smoke-d24e3e71d58f498699f4eba1ea8c28f7/receipt.json):
   readable header/all six page buttons and five Simple page tops fit the default
@@ -1538,7 +1538,7 @@ Installed **2026-09-19 20:10:28 UTC**, game closed, after all16 local gates.
 This replaces RC9's confirmed menu leakage and small4K content with reviewed
 dispatch/held-release guards and scoped Auto/UMM text scaling. Live keyboard
 isolation/recovery passed, but default4K layout clips controls (KI-40); see
-[RC10 smoke](reviews/2026-09-19-rc10-ui-smoke.md). A layout correction/retest is
+[RC10 smoke](archive/reviews/2026-09-19-rc10-ui-smoke.md). A layout correction/retest is
 pending; this is not a public release or complete UX-1 acceptance.
 
 - Identity: `0.2.6-rc.10+2ab6fb5f27be570693ebe856b48259456f55007f.clean`.
@@ -1557,7 +1557,7 @@ pending; this is not a public release or complete UX-1 acceptance.
 
 Before the next drive, explicitly select **F6 → FFB → Use steering wheel** or
 reselect the MOZA: the saved old name/index has no FFB GUID. Installation does
-not guess an output device. See [RC9 failure and successor review](reviews/2026-09-19-rc9-ui-smoke.md).
+not guess an output device. See [RC9 failure and successor review](archive/reviews/2026-09-19-rc9-ui-smoke.md).
 
 ## Previous candidate — 0.2.6-rc.9
 
@@ -1580,7 +1580,7 @@ paths; runtime source is unchanged from RC8. It is not a public release.
   guesses an output device from an old name/index. No setting was silently changed.
 - The no-output UI smoke found native-menu leakage and small4K text (KI-40).
   Normal Quit and exact settings/UMM/payload restoration completed19:52:01UTC.
-  See [the evidence and successor retest](reviews/2026-09-19-rc9-ui-smoke.md).
+  See [the evidence and successor retest](archive/reviews/2026-09-19-rc9-ui-smoke.md).
   KI-38 crash feel and KI-39 full hardware/layout remain open. Toolkit358add5
   and probe0.2.5.4 are unchanged; no recording or SimHub edit.
 
@@ -1638,7 +1638,7 @@ The stronger in-game effect still needs an attended test; KI-38 remains open.
   The native API, tests and reusable findings are pushed upstream. Probe stays
   0.2.5.4; no game launch, recording, Pit House or SimHub change.
 - UMM displays **0.2.6**; support/build metadata identifies **0.2.6-rc.6**.
-  [Implementation, upstream contribution and testing limits](reviews/2026-09-17-constant-crash.md).
+  [Implementation, upstream contribution and testing limits](archive/reviews/2026-09-17-constant-crash.md).
   Public stable is 0.2.5. Official toolkit repin and attended checks remain.
 
 Built in `E:/Source/art-of-sim-rally-timing`; exact ZIP/checksum, gate evidence,
@@ -1654,7 +1654,7 @@ same configured amplitude. Landing requests, steering and telemetry are unchange
 **Attended follow-up failed:** owner felt no crash effect at about 20 in RC4,
 while normal steering worked. Three shape-accepted commands completed without
 early managed stops. KI-38 remains open; RC4 is not release-ready.
-[Support analysis](reviews/2026-09-17-rc4-crash-feel.md).
+[Support analysis](archive/reviews/2026-09-17-rc4-crash-feel.md).
 
 - Identity: `0.2.6-rc.4+91cedd8307010c796efe79590661368a52b56d27.clean`.
 - ZIP SHA-256: `39643F929A680027937B195F2B18623DC69C289229A65C1AE27AE7AD0078F2BA`.
@@ -1672,7 +1672,7 @@ early managed stops. KI-38 remains open; RC4 is not release-ready.
   `BCA81756B5FD920802D51C111AB55D5ED7F7219FCEA40588A65707A89D226EA4`.
   Probe stays 0.2.5.4. No game launch, recording, Pit House or SimHub change.
 - UMM displays **0.2.6**; support/build metadata identifies **0.2.6-rc.4**.
-  [Candidate behavior, evidence and test plan](reviews/2026-09-17-crash-kick.md).
+  [Candidate behavior, evidence and test plan](archive/reviews/2026-09-17-crash-kick.md).
   Public stable remains 0.2.5; official toolkit repin and attended checks remain.
 
 Built in `E:/Source/art-of-sim-rally-timing`; the exact ZIP/checksum, gate evidence
@@ -1699,7 +1699,7 @@ off/default 5. Telemetry boosting is explicitly deferred; no SimHub gains change
   Toolkit remains the same local/unpublished native 0.6.1 candidate; probe remains
   0.2.5.4. No game launch or recording. Public stable is still 0.2.5.
 - UMM shows **0.2.6**; support/build metadata identifies **0.2.6-rc.3**.
-  [Change and test notes](reviews/2026-09-16-stronger-impact-effects.md).
+  [Change and test notes](archive/reviews/2026-09-16-stronger-impact-effects.md).
   Public release still needs official toolkit repin and attended checks.
 
 Built in `E:/Source/art-of-sim-rally-timing`; exact ZIP/checksum, gate evidence and
@@ -1728,7 +1728,7 @@ are unchanged. Settings are byte-identical, landing on/20 and crash off/default 
 - Separate probe remains 0.2.5.4. No game launch, recording, physical force test,
   SimHub/profile adjustment or public publication. UMM shows **0.2.6**;
   support/build metadata identifies **0.2.6-rc.2**.
-- [Investigation and attended comparison](reviews/2026-09-16-landing-startup-investigation.md).
+- [Investigation and attended comparison](archive/reviews/2026-09-16-landing-startup-investigation.md).
   Haapajarvi startup/early landing are not reproduced; normal FFB with the new
   native candidate and full attended matrix remain pending. Public stable is 0.2.5.
 
@@ -1773,7 +1773,7 @@ The accepted built-in SimHub profile and gains are unchanged.
 - [Installation receipt and RC8 backup](../results/release-025-install-2bd3016bb6334b8ea4effb6142c15c2b/receipt.json): all payloads verified, settings and separate probe 0.2.5.3 preserved. Game closed throughout; Steam/Stream Deck target unchanged.
 - [Published download verification](../results/release-025-published-b7832204b25e4f5cb6d1db48bd0adc3f/verification.json): ZIP and checksum match the exact final artifact.
 - Official toolkit v0.13.0 replaces the local pin with byte-identical RC8 binaries. No SimHub helper or recorder is shipped.
-- [Owner acceptance and release limits](reviews/2026-09-13-release-0.2.5.md): overall RC8 acceptance authorizes publication; full attended matrix and a separate final-artifact drive remain unverified.
+- [Owner acceptance and release limits](archive/reviews/2026-09-13-release-0.2.5.md): overall RC8 acceptance authorizes publication; full attended matrix and a separate final-artifact drive remain unverified.
 
 ## Crash recorder update — 2026-09-15 UTC
 
@@ -1789,7 +1789,7 @@ release package; nothing is recording and the game is closed.
   including both real drive cases and actual-Mono collision hook attachment.
 - The local rc.11 ZIP is packaging validation only, not a changed game build to
   deploy. No public release or SimHub profile change.
-- [Crash baseline, fixes and live-test limits](reviews/2026-09-15-crash-capture.md).
+- [Crash baseline, fixes and live-test limits](archive/reviews/2026-09-15-crash-capture.md).
 
 ## Documentation/installer audit — no game deployment
 
@@ -1797,7 +1797,7 @@ The 2026-09-13 audit validates revised installer/readme packaging as local
 `0.2.5-rc.10`; all 16 gates pass. It changes no game/force code. Installed stable
 0.2.5 above remains the current game payload, and published assets are unchanged.
 The new installer/template are for the next package; no game redeployment was
-needed. [Audit and exact validation evidence](reviews/2026-09-13-docs-install-audit.md).
+needed. [Audit and exact validation evidence](archive/reviews/2026-09-13-docs-install-audit.md).
 
 ## Previous candidate — RC8 restored after RC9 withdrawal
 
@@ -1806,7 +1806,7 @@ helper; its game code/plugin/profile were removed. The exact RC8 archive below
 was reinstalled, with settings/probe preserved and the Stream Deck target unchanged.
 [New receipt and RC9 backup](../results/landing-rc8-install-c9b92ca721ed45d892901e8381a45b75/receipt.json).
 SimHub now has a built-in-effects-only 30 Hz comparison profile; the original
-profile/gains are preserved. [Correction, evidence and retest](reviews/2026-09-12-builtin-shaker-correction.md).
+profile/gains are preserved. [Correction, evidence and retest](archive/reviews/2026-09-12-builtin-shaker-correction.md).
 
 **0.2.5-rc.8** was first installed on 2026-09-12 23:54 UTC. It adds opt-in landing
 vibration with independent strength to RC7. The existing settings were preserved;
@@ -1824,7 +1824,7 @@ landing vibration defaults to off, with strength 5 when enabled.
   packaging rejects local toolkit pins; official publication/repin is required.
 - [Landing A/B test](LANDING-EFFECTS.md), FFB startup/recovery, digital gauge
   clearing, quit and font scaling remain attended checks. The first nonzero
-  [owner landing test](reviews/2026-09-12-landing-wheel-test.md) logs eight accepted
+  [owner landing test](archive/reviews/2026-09-12-landing-wheel-test.md) logs eight accepted
   wheel cues. Owner says wheel FFB is fine; the desired stronger ButtKicker thud
   is a separate telemetry/haptic-output follow-up.
   No public release; stable remains 0.2.4.
@@ -1862,12 +1862,12 @@ that passed all 16 local gates **including one real recorded drive**.
 - Local DSS speed/RPM dashboard bindings were backed up and repaired. SimHub
   exited normally and restarted on 03:35 UTC; logs confirm both round displays
   reloaded their dashboard. Physical end-of-race clearing remains untested.
-- [Fixes, signal study and remaining tests](reviews/2026-09-11-bug-follow-up.md).
+- [Fixes, signal study and remaining tests](archive/reviews/2026-09-11-bug-follow-up.md).
 
 ## Previous candidate — RC5
 
 **0.2.5-rc.5** was installed after passing all 16 local checks, with settings and
-the Steam 550320 launch target preserved. [Current candidate evidence and receipt](reviews/2026-09-09-overnight-025.md).
+the Steam 550320 launch target preserved. [Current candidate evidence and receipt](archive/reviews/2026-09-09-overnight-025.md).
 The earlier 0.2.4 installation below is backed up. No candidate hardware result
 or public publication was implied by deployment. The subsequent owner drive
 reported FFB startup and telemetry gauge failures (KI-28/KI-29); RC5's attended
@@ -1887,7 +1887,7 @@ probe **0.2.5.2** is installed after correcting KI-26 and adding the KI-27 menu-
 save hook. Explicit menu-only saving and CSV hashes passed in Unity; the automatic
 quit-save path still needs a drive. RC5/settings were preserved during replacement. The probe
 was present; remove the current probe with the game closed before the comparison drive
-without instrumentation. [Capture setup and receipts](reviews/2026-09-10-attended-rc5.md).
+without instrumentation. [Capture setup and receipts](archive/reviews/2026-09-10-attended-rc5.md).
 
 ## Previous stable installation
 
@@ -1902,7 +1902,7 @@ without instrumentation. [Capture setup and receipts](reviews/2026-09-10-attende
   backed up before replacement. Published asset digests independently verified.
 - Existing Steam 550320 Stream Deck button launches this installation; developer
   recorder remains absent. No game was launched as part of deployment.
-- [Final release evidence](reviews/2026-09-09-release-0.2.4.md): all 16 local
+- [Final release evidence](archive/reviews/2026-09-09-release-0.2.4.md): all 16 local
   automated checks pass. Owner accepted RC5, which has the same production source
   and toolkit; detailed attended cases and final-labelled drive remain pending.
 

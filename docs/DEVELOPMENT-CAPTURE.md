@@ -1,5 +1,10 @@
 # Development signal capture
 
+Recording and replay are development tools only. The recorder is a separate UMM mod
+(`tools/testing/Recorder`, `ArtOfSimRally.DevRecorder.dll`, packaged on its own by
+`tools/package/session-tools.ps1`). It is never in the player ZIP and has no row in the
+F6 panel; `package.ps1` fails if the mod assembly contains recorder code.
+
 The removable developer probe 0.2.5.4 now writes schema 4. Install and control it using
 [TEST-DRIVE.md](TEST-DRIVE.md). Nothing starts automatically; no recorder is
 installed by the release package. The replay executable runs without Unity, the
@@ -13,11 +18,11 @@ is not necessarily a cold start. Existing `delta_s` timing summaries remain
 unchanged. Compare frame caps and avoid treating a threshold count as a cause.
 
 **First saved drive, 2026-09-10:** [one owner-reported jump matches one detected
-landing](reviews/2026-09-10-first-jump-capture.md). All 8,974 motion rows are
+landing](archive/reviews/2026-09-10-first-jump-capture.md). All 8,974 motion rows are
 available/aligned with no detected discontinuities. KI-31's one-unit conversion
 difference is now reproduced with actual Mono and reconciled in strict replay;
 the unchanged recording is in `results/regression-corpus/index.json`. No new
-effect or retune has shipped. [Runtime evidence](reviews/2026-09-11-bug-follow-up.md).
+effect or retune has shipped. [Runtime evidence](archive/reviews/2026-09-11-bug-follow-up.md).
 
 Probe 0.2.5.3 records `forceQuantization`: `truncate-f64-product@1` for the
 observed Mono expression, `truncate-f32-product@1` for single-rounded products.
@@ -140,7 +145,7 @@ still need verification; actual Mono hook attachment and offline tests pass.
 
 The owner's first crash baseline has 2,947 verified force/motion rows, multiple
 sharp decelerations and no body-collision callbacks (old probe 0.2.5.3).
-[Analysis and next capture](reviews/2026-09-15-crash-capture.md).
+[Analysis and next capture](archive/reviews/2026-09-15-crash-capture.md).
 
 Keep the existing force tune. Capture ordinary road, a jump/landing and a
 controlled slide, noting car/stage and approximate event times. Compare those

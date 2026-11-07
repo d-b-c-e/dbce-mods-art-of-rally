@@ -9,7 +9,7 @@ close #1 from that one workaround alone. Next local investigations are KI-41's
 rendered FFB choice layout, KI-39/40's wider settings/input matrix, KI-38's
 constant crash feel, and cold/restart Haapajarvi hitch and landing timing
 (KI-5/KI-36/37). The final artifact has not been driven; do not turn the pending
-manual checklist into passed evidence. See the [release record](reviews/2026-09-27-release-0.2.6.md).
+manual checklist into passed evidence. See the [release record](archive/reviews/2026-09-27-release-0.2.6.md).
 
 **Historical queue through 2026-09-19 UTC.** The owner later accepted RC16
 overall and requested 0.2.6 publication. Use the [roadmap](ROADMAP.md),
@@ -28,7 +28,7 @@ of findings to the shared toolkit. RC6 introduced a finite constant
 crash pulse while preserving landing5/0–40 and one active impact. Playback timing
 and stop reasons remain observable. All 16 local gates pass; upstream API/tests
 and findings are pushed at `358add5`. Stronger feel is still unaccepted. See the latest
-[gate/install receipt](LOCAL-DEPLOYMENT.md) and [candidate review](reviews/2026-09-17-constant-crash.md).
+[gate/install receipt](LOCAL-DEPLOYMENT.md) and [candidate review](archive/reviews/2026-09-17-constant-crash.md).
 Next, run the
 [front/side/off-on comparison](CRASH-EFFECTS.md). Schema-4 live collision geometry
 and SimHub input/output comparison remain pending; no motion gain change.
@@ -58,7 +58,7 @@ available in support. Both owner captures replay, with no first-five-second hitc
 and unchanged landing detection. Next: cold/restart Haapajarvi comparison, reporter
 file/video, and wheel smoke on the candidate. Public toolkit repin and attended
 checks remain prerequisites to publication. See the
-[evidence and test sequence](reviews/2026-09-16-landing-startup-investigation.md).
+[evidence and test sequence](archive/reviews/2026-09-16-landing-startup-investigation.md).
 
 ## Crash feedback follow-through — 2026-09-14
 
@@ -68,7 +68,7 @@ replay/promotion. Fixed false post-reset landing analysis (KI-34) and existing
 corpus append failure (KI-35). Next is the probe's live collision check, then
 shared periodic ownership and the independent wheel effect. No motion gain
 change is justified by the captured acceleration spikes. See
-[the follow-through](reviews/2026-09-15-crash-capture.md).
+[the follow-through](archive/reviews/2026-09-15-crash-capture.md).
 
 FR-2 now explicitly includes wheel crash vibration and SimHub motion. Source
 investigation and 48 synthetic crash scenarios are complete; see the
@@ -106,7 +106,7 @@ gate. Local DSS speed/RPM bindings have an explicit stopped-game zero fallback;
 SimHub reloaded both displays; physical retest remains pending. RC6 and probe
 0.2.5.3 are installed after all 16 local gates including the real corpus. The landing study
 finds a 5 ms pulse peak undersampled at roughly 60 Hz; no new effect is shipped.
-See [the complete handoff](reviews/2026-09-11-bug-follow-up.md).
+See [the complete handoff](archive/reviews/2026-09-11-bug-follow-up.md).
 
 Next: new-candidate attended launch/FFB, finish gauges, menu/Alt+F4 quit and
 probe-off comparison; then a sample-rate-aware landing-effect design upstream.
@@ -126,7 +126,7 @@ records the investigation as it was opened.
 4. Reconcile KI-31's one-unit Mono/offline integer conversion mismatch without
    weakening evidence checks, then promote the first saved drive to the corpus.
    One jump now has clear contact/compression/motion evidence; see
-   [the analysis](reviews/2026-09-10-first-jump-capture.md). Prototype impact
+   [the analysis](archive/reviews/2026-09-10-first-jump-capture.md). Prototype impact
    envelopes offline before considering new hardware effects. KI-27's distinct
    menu-kill save hook still needs its own attended test.
 
@@ -140,12 +140,12 @@ pre-quit save hook after the KI-26 Mono IPC fix. Explicit saving works in Unity;
 the second attempt was abandoned (zero force rows) and excluded from the corpus.
 Nothing is recording. A later retry now has a verified saved capture with one
 landing; it is diagnostic-only pending KI-31's replay reconciliation.
-[Current attended session](reviews/2026-09-10-attended-rc5.md).
+[Current attended session](archive/reviews/2026-09-10-attended-rc5.md).
 
 **Latest status (2026-09-09 UTC): all four post-0.2.4 queue items implemented
 with offline coverage, plus a telemetry lifecycle follow-up.** Published stable
 remains 0.2.4; a local 0.2.5 candidate is installed. See
-[the overnight handoff](reviews/2026-09-09-overnight-025.md) and
+[the overnight handoff](archive/reviews/2026-09-09-overnight-025.md) and
 [deployment receipt](LOCAL-DEPLOYMENT.md). Next: candidate drive, TSS/Fanatec,
 camera/motion checks and first real signal capture. No new hardware sign-off.
 Earlier release/RC entries below are historical.
@@ -193,7 +193,7 @@ that leaves the shipping payload unchanged needs no replacement game install.
 Prepared 2026-09-08 UTC after [0.2.3 publication](https://github.com/d-b-c-e/art-of-sim-rally/releases/tag/v0.2.3).
 Executed on `codex/overnight-improvements` at the owner's request. The unattended
 implementation and research items below are complete; **0.2.4-rc.2 passes all 16
-automated checks** and awaits an attended drive. [Exact artifact and handoff](reviews/2026-09-08-overnight.md).
+automated checks** and awaits an attended drive. [Exact artifact and handoff](archive/reviews/2026-09-08-overnight.md).
 Published 0.2.3 is unchanged. The later owner-requested RC4 install replaces it
 locally behind the same Stream Deck target; see the follow-up review below.
 The owner requested local deployment when finishing each feature/fix; scheduled
@@ -204,7 +204,7 @@ Read [USER-FEEDBACK.md](USER-FEEDBACK.md), [KNOWN-ISSUES.md](KNOWN-ISSUES.md) an
 pending; 0.2.3-rc.6 owner smoke passed for cameras, stutter and controls only.
 
 Later T300/TSS feedback authorized another implementation pass. See
-[the follow-up review](reviews/2026-09-08-feedback-review.md): CameraMod isolation,
+[the follow-up review](archive/reviews/2026-09-08-feedback-review.md): CameraMod isolation,
 support-log/frame-health improvements, clearer assist help, KI-16 telemetry
 correction and actual failed-send handling are now implemented beyond RC2.
 **0.2.4-rc.4 passes all 16 automated checks** with those changes; its exact

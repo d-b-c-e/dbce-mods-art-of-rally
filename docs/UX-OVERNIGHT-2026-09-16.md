@@ -5,7 +5,7 @@ hierarchy and redundant Setup page. RC14 clean source `8d37db0` applies that
 feedback and shared toolkit guidance `be55195`. All16 gates passed and the exact
 package was installed with current owner settings retained at2026-09-23
 03:59:32UTC. No game launch occurred; rendered/interaction acceptance remains
-pending. The [review](reviews/2026-09-21-visual-grouping.md) records the changes
+pending. The [review](archive/reviews/2026-09-21-visual-grouping.md) records the changes
 and checks. RC12/RC13 evidence below is historical.
 
 Updated **2026-09-19**. The filename identifies the coordinator's UX rollout,
@@ -49,7 +49,7 @@ queued pointer cancellation and first-use screens explicit. RC10 passed narrow
 live keyboard isolation/recovery but overflowed the default4K host. RC11 fixes
 host-bound widths and page wrapping without changing UMM preferences; all16
 offline gates passed, but a later row-overflow finding prevented deployment. See
-[RC10 evidence and RC11 correction](reviews/2026-09-19-rc10-ui-smoke.md).
+[RC10 evidence and RC11 correction](archive/reviews/2026-09-19-rc10-ui-smoke.md).
 This does not close UX-03's720p/custom-scale, first-use, wheel/pad or held-input
 matrix. The binary pin remains358add5, independently of documentation revisions.
 
@@ -241,7 +241,7 @@ No live game was launched during deployment. RC9 corrects the old page names
 in the installer completion console, with no runtime source changes. All 16
 gates passed again for clean `44e11dd7a7c0e6dd99cef7f2c8be0620e9ce717a`; exact
 RC9 was installed at 19:31 UTC, preserving the same files and tunes. See
-[the current receipt](LOCAL-DEPLOYMENT.md). The allocated RC9 smoke failed native-menu isolation and4K readability (KI-40); see [the exact run and successor](reviews/2026-09-19-rc9-ui-smoke.md).
+[the current receipt](LOCAL-DEPLOYMENT.md). The allocated RC9 smoke failed native-menu isolation and4K readability (KI-40); see [the exact run and successor](archive/reviews/2026-09-19-rc9-ui-smoke.md).
 
 The owner/coordinator authorized replacing RC6 on 2026-09-19; preserve its backup
 and force/settings evidence. No live slot is granted. With an allocated slot:

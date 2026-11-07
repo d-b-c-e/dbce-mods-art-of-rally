@@ -6,7 +6,7 @@ includes the original game-input investigations and dated fixes.
 
 **October 9 source candidate:** Wheelkit can translate axes/shifter fields and,
 with the new package capability, camera/menu buttons and POV directions into
-this mod's F6 XML. Read [the candidate scope and qualification limits](reviews/2026-10-09-profile-controls.md)
+this mod's F6 XML. Read [the candidate scope and qualification limits](archive/reviews/2026-10-09-profile-controls.md)
 before relying on it; live post-Apply input qualification is still pending.
 
 **Short answer: no binding utility is needed.** art of rally has a proper
@@ -189,8 +189,8 @@ objects cached by game code (`ControllerButtonDisplay`, `Arcader`) — and
 refreshing all 84 of them brought the count to zero without bringing the
 menus back. Whatever else `ResetAll()` breaks in this game's menu code was
 not found, and after four attempts across two days it was abandoned.
-**The switch stays in the code as an experiment reachable only through
-`UseDirectInputBackend` in Settings.xml; it is not in the panel.**
+**The switch (`InputBackend.cs`, `UseDirectInputBackend` in Settings.xml) was
+never in the panel and was removed from the code on 2026-11-07.**
 
 ### The fix that shipped: read the wheel directly (2026-09-03)
 

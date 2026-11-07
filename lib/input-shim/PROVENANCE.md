@@ -33,7 +33,7 @@ operation. This actual DLL path passes on .NET8 and Unity 2019 Mono.
 
 ABI 2 is not a stable version promise. Runtime adoption still requires reviewed
 native pins, exact-identity Rewired isolation and explicit profile activation.
-See `docs/reviews/2026-10-11-shared-input-axis-slice.md`.
+See `docs/archive/reviews/2026-10-11-shared-input-axis-slice.md`.
 
 ## Owned interface path follow-on
 
@@ -101,7 +101,7 @@ Native Core 169, ABI 164, copied-provider 77 and fake-COM 106 checks passed. Art
 SettingsUi 146, shared FFB startup 16, ordinary startup 14 and lifecycle 33 checks
 passed; ShimInput passed 12,327 checks each on .NET 8 and installed Unity Mono,
 including the actual new export. See the
-[review](../../docs/reviews/2026-10-13-shared-steering-ffb-target.md) for logs and limits.
+[review](../../docs/archive/reviews/2026-10-13-shared-steering-ffb-target.md) for logs and limits.
 The existing `native/WheelFfb.dll` and all force settings/tuning remain unchanged.
 Fresh shared-only runtime qualification is still pending; these offline checks
 do not establish physical FFB or general shared-input parity.
