@@ -159,8 +159,8 @@ Art's adoption commit changes:
   Before this change it called the 723E8A38 pin, then BC9B030A, "unreviewed";
 - the default pin in `Prepare-SharedInputCopy.ps1`, which now also reads `CANDIDATE.json`.
 
-The probe flavour keeps its historical latched pin (`ProbeRequest.LatchedShimSha256`,
-`Prepare-ShimProbe.ps1`).
+The probe flavour used the historical latched pin (`ProbeRequest.LatchedShimSha256`,
+`Prepare-ShimProbe.ps1`); the flavour and those runners were removed on 2026-11-07.
 
 Art checks against these bytes, all offline with device and force endpoints as fixtures,
 are in `dbce-project-mgmt/artifacts/art-shim-canonical-20261013`:

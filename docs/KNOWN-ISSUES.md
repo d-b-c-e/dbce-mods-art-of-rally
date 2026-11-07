@@ -67,6 +67,8 @@ stage HUD, and whether full-screen fades now leave the side screens unfaded.
 
 ### KI-51 — Private rc29 companion CLI cannot qualify the Settings first-launch refusal
 
+**Closed 2026-11-07: the companion ZIP was deleted (one download, STD-040).**
+
 **Offline companion gap, 2026-10-22; Wheelkit helper ownership.** The exact
 rc29 controls-setup ZIP (`F5CB2F5B`, hub
 `artifacts/art-rc29-candidate-zara-20261019/RESULT.md`) rejects both
