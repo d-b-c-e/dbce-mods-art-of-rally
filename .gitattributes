@@ -10,6 +10,7 @@ lib/toolkit/shim/*.h text eol=lf
 
 # Preserve byte-exact vendored binding presentation policy.
 src/ArtOfSimRally.Mod/Toolkit/Input/BindingEditorPolicy.cs text eol=lf
+src/ArtOfSimRally.Mod/Toolkit/Ui/DbceUi.cs text eol=lf
 
 # Toolkit manifest pins exact upstream bytes, including line endings.
 lib/toolkit/dotnet/*.xml -text

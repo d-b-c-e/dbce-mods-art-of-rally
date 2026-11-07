@@ -56,3 +56,10 @@ BindingSaveStatus lifetime and reader/writer/access policies remain unchanged.
 The shared source's F6Style28 and Art's affected plugin/presentation35/SettingsUi169
 checks passed220993; see docs/reviews/2026-10-17-readonly-binding-discard.md.
 Source/build evidence does not establish rendered, package or physical acceptance.
+
+## dbce_ui.dll wrapper (UI-4, 2026-11-07)
+
+`DbceUi.cs` is byte-exact from toolkit 7552afe7e1e35e7539c61381b6ca9516edab0e7d, `shared/ui/DbceUi.cs` (git blob
+cd2a87ceb51cb3b2e4e11859c794771e2046a592), MIT; SHA-256
+FA15A4DAC5E45436147E440E8C3A9E327E21902DF1ABA827AC789EE43ED2316B. The P/Invoke wrapper of `lib/dbce-ui/dbce_ui.dll`,
+used only by `UiHost/UiHostHook.cs` behind `[Dev] UiHost=hook`.
