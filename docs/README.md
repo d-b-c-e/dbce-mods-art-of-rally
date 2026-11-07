@@ -27,7 +27,8 @@
   [local deployment](LOCAL-DEPLOYMENT.md).
 - [Developer capture](DEVELOPMENT-CAPTURE.md) and [test drives](TEST-DRIVE.md):
   the optional recorder is separate from the released mod.
-- [F6 through the in-game hook](UI-HOST-HOOK.md): the developer-only `UiHost=hook` spike.
+- [F6 through the in-game hook](UI-HOST-HOOK.md): the developer-only `UiHost=hook` spike, and its
+  [measurements and verdict](F6-HOST-SPIKE.md) (UI-6).
 - [Crash feedback investigation](research/2026-09-14-crash-feedback.md): wheel
   effect prerequisites, SimHub motion signals and the next capture plan.
 

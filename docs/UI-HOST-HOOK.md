@@ -48,4 +48,5 @@ Cameras and press Right on Field of view: the view should widen a little at once
 are untested for the same reason.
 
 Not covered yet: the Controls, Display, Telemetry and Help rows, the F7 view toast and the camera name. The
-measurements of the spike's criteria (focus, FFB, Steam overlay, frame cost) are UI-6.
+measurements of the spike's criteria (focus, FFB, Steam overlay, frame cost) are in [F6-HOST-SPIKE.md](F6-HOST-SPIKE.md)
+(UI-6).
