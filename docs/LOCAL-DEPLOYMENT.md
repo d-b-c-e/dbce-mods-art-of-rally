@@ -1,6 +1,17 @@
 # Local deployment
 
-## Current installation - Art0.4.4-rc.40 + CV0.6.7, November5
+## Current installation - Art 0.4.4-rc.42 (shared input), November 7
+
+Cleanup build (ART-1, source `73d5757`): the shim probe flavour, InputBackend, the companion ZIP and the
+qualification runners are deleted; player behavior is unchanged. Installed with the package `install.ps1` over
+rc40 with the game closed; settings and `dbce-controls.ini` stayed byte-identical and all payload hashes match.
+ZIP SHA-256 `C5C819D74CED0DC413773CE371CE29482F2FD8BCF719054A55F88B47A80948E7`, installed Mod `BE6AEEE9E0C1B4EBBA5568497608AEDA0148E06A556122DE3864F13AE955E68F`.
+The ZIP file list equals rc40/rc41 (plain and shared-input); `build.json` no longer has `artShimProbe`.
+Rollback copy of rc40 (mod folder, Plugins native, saves, registry): `E:/Source/temp/art-0.4.4-rc.42/backup-installed-rc.40`.
+In-game launch check pending: Steam on the rig was signed out (owner signed in elsewhere) on 2026-11-07, so the
+launch stopped at the cloud-sync prompt and was cancelled. CV 0.6.7 is unchanged.
+
+## Previous installation - Art0.4.4-rc.40 + CV0.6.7, November5
 
 File-only installed from clean package source
 `4daff2175b5af16891e2d11955ed9180babfd5ea`. Retains rc39 mounted/chase changes
