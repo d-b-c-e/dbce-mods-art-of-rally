@@ -153,6 +153,7 @@ static class Program
                     "_playShapedBurst" => "PlayShapedPeriodicBurst", "_stopBurst" => "StopPeriodicBurst",
                     "_createConstantBurst" => "CreateConstantBurst", "_playConstantBurst" => "PlayConstantBurst",
                     "_stopConstantBurst" => "StopConstantBurst", "_releaseConstantBursts" => "ReleaseConstantBursts",
+                    "_readDeviceStateWithPov" => "ReadDeviceStateWithPov",
                     _ => field.Name };
                 Check(field.GetValue(null)!=null && NativeLibrary.TryGetExport(module, export, out _), "Missing binding/export " + export);
             }
