@@ -4,6 +4,299 @@
         <name>Dbce.Wheel.Telemetry</name>
     </assembly>
     <members>
+        <member name="T:Dbce.Wheel.Telemetry.CourseComparisonResult">
+            <summary>What <see cref="M:Dbce.Wheel.Telemetry.CourseComparison.Run(Dbce.Wheel.Telemetry.CoursePath,System.Collections.Generic.IList{Dbce.Wheel.Telemetry.CourseVector},System.Collections.Generic.IList{System.Double},Dbce.Wheel.Telemetry.CourseTrackerOptions)"/> measured. Pass thresholds belong to the caller.</summary>
+        </member>
+        <member name="F:Dbce.Wheel.Telemetry.CourseComparisonResult.UnflaggedBackwardSteps">
+            <summary>Steps that went backwards by more than 0.5 m outside a wrong-way span.</summary>
+        </member>
+        <member name="F:Dbce.Wheel.Telemetry.CourseComparisonResult.CourseDistanceM">
+            <summary>Forward progress along the course, metres (sum of along-course steps, jumps excluded).</summary>
+        </member>
+        <member name="F:Dbce.Wheel.Telemetry.CourseComparisonResult.PlanPathM">
+            <summary>The trajectory's own plan-view path length, metres.</summary>
+        </member>
+        <member name="F:Dbce.Wheel.Telemetry.CourseComparisonResult.GameScale">
+            <summary>Median of tracker distance / game progress where both exceed 10 m; null without game progress.</summary>
+        </member>
+        <member name="T:Dbce.Wheel.Telemetry.CourseComparison">
+            <summary>
+            Runs a <see cref="T:Dbce.Wheel.Telemetry.CourseTracker"/> over a captured trajectory on a game's own route and measures how well
+            the two agree, optionally against the game's own progress samples.
+            </summary>
+            <remarks>
+            Used offline on a route capture (for example Woden's <c>dbce.course-route@1</c>) and a recorded
+            trajectory. The game's progress unit is not assumed: its scale to metres is estimated first and reported,
+            and deltas are taken after scaling, so a unit mismatch shows as a scale rather than as a large error.
+            </remarks>
+        </member>
+        <member name="T:Dbce.Wheel.Telemetry.CourseDirection">
+            <summary>Driving direction of a course. A reversed stage is a different course.</summary>
+        </member>
+        <member name="T:Dbce.Wheel.Telemetry.CourseIdentity">
+            <summary>
+            Stable identity of one drivable course: game, venue, route or layout, direction and,
+            for user-made or generated courses, a hash of the route itself.
+            </summary>
+            <remarks>
+            <para>
+            The id is <c>dbce.&lt;game&gt;.&lt;venue&gt;.&lt;route&gt;.&lt;fwd|rev&gt;[.&lt;hash&gt;]</c>.
+            SimHub uses the id as a file name (<c>MapRecords\&lt;id&gt;.shtl</c>) after splitting it on
+            invalid file-name characters, so ':' or spaces would silently merge distinct ids.
+            Tokens are therefore limited to <c>[a-z0-9-]</c> and '.' is the only separator.
+            </para>
+            <para>
+            Never build an id from a localized display name or from the course length alone:
+            SimHub's DiRT Rally 2.0 reader keys maps by length, so two equal-length stages share
+            one map.
+            </para>
+            </remarks>
+        </member>
+        <member name="F:Dbce.Wheel.Telemetry.CourseIdentity.MaxIdBytes">
+            <summary>SimHub's <c>EnvironmentId</c> is a zero-terminated UTF8[128].</summary>
+        </member>
+        <member name="P:Dbce.Wheel.Telemetry.CourseIdentity.ContentHash">
+            <summary>Lowercase hex from <see cref="M:Dbce.Wheel.Telemetry.CourseIdentity.HashPath(System.Collections.Generic.IList{Dbce.Wheel.Telemetry.CourseVector})"/>, or null for authored courses.</summary>
+        </member>
+        <member name="M:Dbce.Wheel.Telemetry.CourseIdentity.IsToken(System.String)">
+            <summary>1..40 characters of [a-z0-9-], not starting or ending with '-'.</summary>
+        </member>
+        <member name="M:Dbce.Wheel.Telemetry.CourseIdentity.Slug(System.String)">
+            <summary>
+            Turns display text into a token: lowercase ASCII letters and digits, every other run
+            of characters becomes one '-'. Returns null when nothing usable is left.
+            </summary>
+            <remarks>
+            Adapters call this explicitly on stable internal names (asset or scene names), never
+            on localized UI text. Distinct inputs can slug to the same token ("SS 1" and "ss-1"),
+            so an adapter must not slug two names that only differ in punctuation.
+            </remarks>
+        </member>
+        <member name="M:Dbce.Wheel.Telemetry.CourseIdentity.HashPath(System.Collections.Generic.IList{Dbce.Wheel.Telemetry.CourseVector})">
+            <summary>
+            64-bit FNV-1a over the exact float32 bits of each point's north, east and up, in
+            driving order, as 16 lowercase hex characters.
+            </summary>
+            <remarks>
+            Games store authored positions as float32, so hashing those bits is deterministic
+            for the same asset and changes when any node moves or the order is reversed. Hash
+            the authored (local, unshifted) positions, not positions after a floating-origin
+            shift.
+            </remarks>
+        </member>
+        <member name="T:Dbce.Wheel.Telemetry.CourseProjection">
+            <summary>Where a position falls on a <see cref="T:Dbce.Wheel.Telemetry.CoursePath"/>.</summary>
+        </member>
+        <member name="F:Dbce.Wheel.Telemetry.CourseProjection.DistanceM">
+            <summary>Metres along the path from its first point: [0, LengthM) on a loop, [0, LengthM] otherwise.</summary>
+        </member>
+        <member name="F:Dbce.Wheel.Telemetry.CourseProjection.OffsetM">
+            <summary>Straight-line metres from the position to the closest point on the path.</summary>
+        </member>
+        <member name="T:Dbce.Wheel.Telemetry.CoursePath">
+            <summary>
+            A course reference line as a polyline in driving order: the game's own route (stage
+            waypoints, track path nodes, progress spline), never a guessed or driven line.
+            </summary>
+            <remarks>
+            <para>
+            Lengths and projections are 3D, so a bridge over another part of the course is not
+            confused with the road beneath it the way a plan-view projection would be.
+            </para>
+            <para>
+            A loop's closing segment (last point back to the first) is implicit. A point-to-point
+            path ends at its last point.
+            </para>
+            </remarks>
+        </member>
+        <member name="F:Dbce.Wheel.Telemetry.CoursePath.MinLengthM">
+            <summary>Shorter paths are rejected as a wrong unit or an empty route.</summary>
+        </member>
+        <member name="F:Dbce.Wheel.Telemetry.CoursePath.DuplicateM">
+            <summary>Consecutive points closer than this are treated as one.</summary>
+        </member>
+        <member name="M:Dbce.Wheel.Telemetry.CoursePath.Reversed">
+            <summary>
+            The same road driven the other way. A loop keeps its start point; a point-to-point
+            course starts at the old finish.
+            </summary>
+        </member>
+        <member name="M:Dbce.Wheel.Telemetry.CoursePath.ToArray">
+            <summary>The authored points, in driving order, for hashing or export.</summary>
+        </member>
+        <member name="M:Dbce.Wheel.Telemetry.CoursePath.PointAt(System.Double)">
+            <summary>The point at a distance along the path; wraps on a loop, clamps otherwise.</summary>
+        </member>
+        <member name="M:Dbce.Wheel.Telemetry.CoursePath.Project(Dbce.Wheel.Telemetry.CourseVector)">
+            <summary>Closest point over the whole path.</summary>
+        </member>
+        <member name="M:Dbce.Wheel.Telemetry.CoursePath.Project(Dbce.Wheel.Telemetry.CourseVector,System.Double,System.Double)">
+            <summary>
+            Closest point among the segments within <paramref name="windowM"/> of
+            <paramref name="nearDistanceM"/>, so a car on one branch of a crossing stays on it.
+            </summary>
+        </member>
+        <member name="M:Dbce.Wheel.Telemetry.CoursePath.Normalize(System.Double)">
+            <summary>Distance into [0, LengthM): wrapped on a loop, clamped on a point-to-point path.</summary>
+        </member>
+        <member name="T:Dbce.Wheel.Telemetry.CourseSample">
+            <summary>
+            One course snapshot beside <see cref="T:Dbce.Wheel.Telemetry.TelemetryFrame"/>: which course, where on it, and
+            the session state a course map needs. Never folded into a Forza packet.
+            </summary>
+            <remarks>
+            <para>
+            The Forza layouts have no course id, length or progression, and SimHub's Forza readers
+            report none (no map is ever recorded from them). This struct is the neutral seam a
+            game adapter fills from the game's own route data; an encoder such as
+            <see cref="T:Dbce.Wheel.Telemetry.SimHubCourseFeed"/> turns it into a wire format.
+            </para>
+            <para>
+            Units: metres, degrees, seconds. Position is on north/east/up axes (see
+            <see cref="T:Dbce.Wheel.Telemetry.CourseAxes"/>).
+            </para>
+            </remarks>
+        </member>
+        <member name="F:Dbce.Wheel.Telemetry.CourseSample.CourseId">
+            <summary>A <see cref="P:Dbce.Wheel.Telemetry.CourseIdentity.Id"/>.</summary>
+        </member>
+        <member name="F:Dbce.Wheel.Telemetry.CourseSample.CourseName">
+            <summary>Display name; may be localized. Never used for identity.</summary>
+        </member>
+        <member name="F:Dbce.Wheel.Telemetry.CourseSample.Progress01">
+            <summary>From <see cref="F:Dbce.Wheel.Telemetry.CourseProgress.Progress01"/>; exactly 1 only when a point-to-point course is finished.</summary>
+        </member>
+        <member name="F:Dbce.Wheel.Telemetry.CourseSample.YawDeg">
+            <summary>0 = north, clockwise, [0, 360).</summary>
+        </member>
+        <member name="F:Dbce.Wheel.Telemetry.CourseSample.SessionId">
+            <summary>Changes on every new session or stage restart.</summary>
+        </member>
+        <member name="M:Dbce.Wheel.Telemetry.CourseSample.From(Dbce.Wheel.Telemetry.CourseIdentity,System.String,Dbce.Wheel.Telemetry.CoursePath,Dbce.Wheel.Telemetry.CourseProgress,Dbce.Wheel.Telemetry.CourseVector,System.Double,System.Double,System.UInt64)">
+            <summary>Fills the course fields from an identity, a tracker's path and its latest progress.</summary>
+        </member>
+        <member name="M:Dbce.Wheel.Telemetry.CourseSample.TryValidate(System.String@)">
+            <summary>Checks the invariants an encoder relies on. Returns the first broken one.</summary>
+        </member>
+        <member name="T:Dbce.Wheel.Telemetry.CourseFlags">
+            <summary>What happened on one <see cref="M:Dbce.Wheel.Telemetry.CourseTracker.Update(Dbce.Wheel.Telemetry.CourseVector)"/>.</summary>
+        </member>
+        <member name="F:Dbce.Wheel.Telemetry.CourseFlags.InvalidInput">
+            <summary>The position was NaN or infinite; nothing changed.</summary>
+        </member>
+        <member name="F:Dbce.Wheel.Telemetry.CourseFlags.OffCourse">
+            <summary>Too far from the course; progress is held at the last good value.</summary>
+        </member>
+        <member name="F:Dbce.Wheel.Telemetry.CourseFlags.Discontinuity">
+            <summary>The car jumped along the course (reset, teleport, restart); no lap was counted.</summary>
+        </member>
+        <member name="F:Dbce.Wheel.Telemetry.CourseFlags.WrongWay">
+            <summary>The car has been moving backwards along the course for a while.</summary>
+        </member>
+        <member name="F:Dbce.Wheel.Telemetry.CourseFlags.LapCompleted">
+            <summary>A loop's start line was crossed forwards on this update.</summary>
+        </member>
+        <member name="F:Dbce.Wheel.Telemetry.CourseFlags.Finished">
+            <summary>A point-to-point course has been completed; progress is exactly 1.</summary>
+        </member>
+        <member name="F:Dbce.Wheel.Telemetry.CourseFlags.NoFix">
+            <summary>No position has been close enough to the course yet.</summary>
+        </member>
+        <member name="T:Dbce.Wheel.Telemetry.CourseProgress">
+            <summary>Progress on a course after one update.</summary>
+        </member>
+        <member name="F:Dbce.Wheel.Telemetry.CourseProgress.Progress01">
+            <summary>
+            0..1 along the course. A loop wraps at the start line and never reports 1; a
+            point-to-point course reports exactly 1 only once finished, as SimHub requires to
+            close a non-looping map.
+            </summary>
+        </member>
+        <member name="F:Dbce.Wheel.Telemetry.CourseProgress.DiscontinuityCount">
+            <summary>Monotonic; feeds SimHub's <c>PhysicsDiscontinuityCounter</c>.</summary>
+        </member>
+        <member name="T:Dbce.Wheel.Telemetry.CourseTrackerOptions">
+            <summary>Tolerances for <see cref="T:Dbce.Wheel.Telemetry.CourseTracker"/>, in metres.</summary>
+        </member>
+        <member name="F:Dbce.Wheel.Telemetry.CourseTrackerOptions.MaxOffsetM">
+            <summary>Beyond this distance from the course, progress is held.</summary>
+        </member>
+        <member name="F:Dbce.Wheel.Telemetry.CourseTrackerOptions.SearchWindowM">
+            <summary>How far along the course to search around the last position.</summary>
+        </member>
+        <member name="F:Dbce.Wheel.Telemetry.CourseTrackerOptions.MaxStepM">
+            <summary>A larger along-course move in one update is a jump, not driving.</summary>
+        </member>
+        <member name="F:Dbce.Wheel.Telemetry.CourseTrackerOptions.WrongWayM">
+            <summary>Continuous backwards travel before <see cref="F:Dbce.Wheel.Telemetry.CourseFlags.WrongWay"/>.</summary>
+        </member>
+        <member name="F:Dbce.Wheel.Telemetry.CourseTrackerOptions.FinishToleranceM">
+            <summary>A point-to-point course is finished this close to its end.</summary>
+        </member>
+        <member name="T:Dbce.Wheel.Telemetry.CourseTracker">
+            <summary>
+            Turns car positions into course progress, laps and completion, against the game's own
+            course line.
+            </summary>
+            <remarks>
+            <para>
+            Projection rather than distance travelled: travelled distance keeps counting through
+            resets, spins and off-road loops, while the projection is where the car is.
+            </para>
+            <para>
+            Rules, each covered by a test: the search stays near the last position so crossings and
+            hairpins cannot snap progress across; a move larger than <see cref="F:Dbce.Wheel.Telemetry.CourseTrackerOptions.MaxStepM"/>
+            is a discontinuity that never counts a lap; a lap counts only when driving enters a lap
+            the car has never been in, so reversing over the line and driving on, or a reset back
+            over it, cannot count a lap twice; a point-to-point course
+            reports 1 only when finished and then holds it until <see cref="M:Dbce.Wheel.Telemetry.CourseTracker.Restart"/>.
+            </para>
+            </remarks>
+        </member>
+        <member name="M:Dbce.Wheel.Telemetry.CourseTracker.Restart">
+            <summary>
+            Starts a new attempt (stage restart, new session) on the same course. Counts as a
+            discontinuity so consumers reset motion smoothing and map recording.
+            </summary>
+        </member>
+        <member name="T:Dbce.Wheel.Telemetry.CourseVector">
+            <summary>
+            A world position in metres on the axes SimHub's external-sim feed uses: north, east, up.
+            </summary>
+            <remarks>
+            Course code works on these named axes rather than on a game's x/y/z so a game's
+            handedness is decided once, in <see cref="T:Dbce.Wheel.Telemetry.CourseAxes"/>, and never again in the
+            projection or encoding code.
+            </remarks>
+        </member>
+        <member name="T:Dbce.Wheel.Telemetry.CourseAxes">
+            <summary>Axis conventions between game worlds, <see cref="T:Dbce.Wheel.Telemetry.CourseVector"/> and SimHub.</summary>
+        </member>
+        <member name="M:Dbce.Wheel.Telemetry.CourseAxes.FromUnity(System.Double,System.Double,System.Double)">
+            <summary>
+            Unity world position to north/east/up: north = +Z, east = +X, up = +Y.
+            </summary>
+            <remarks>
+            SimHub defines yaw as "0 = north, positive clockwise (90 = east)" and requires it to
+            agree with the north/east position fields. Unity's yaw (<c>eulerAngles.y</c>) turns
+            +Z toward +X, clockwise seen from above, so +Z north and +X east is the only mapping
+            under which Unity's own yaw already satisfies SimHub's definition.
+            </remarks>
+        </member>
+        <member name="M:Dbce.Wheel.Telemetry.CourseAxes.YawFromUnity(System.Double)">
+            <summary>Unity <c>eulerAngles.y</c> in degrees to SimHub yaw, normalized to [0, 360).</summary>
+        </member>
+        <member name="M:Dbce.Wheel.Telemetry.CourseAxes.ToSimHubCarCoordinates(Dbce.Wheel.Telemetry.CourseVector)">
+            <summary>
+            The <c>CarCoordinates</c> array SimHub builds from the three position fields:
+            [-north, up, east] (SimHub 9.13.2 <c>ExternalSimManager.GD_CarCoordinates</c>).
+            </summary>
+            <remarks>
+            Shown so tests and reviews can see what SimHub stores; the feed itself sends the
+            named fields, never this array. Whether SimHub then draws the map mirrored is an
+            on-screen check, not something this code can decide.
+            </remarks>
+        </member>
         <member name="T:Dbce.Wheel.Telemetry.ForzaLayout">
             <summary>
             The three "Data Out" packet layouts Forza titles emit, all understood by
@@ -110,6 +403,36 @@
         <member name="M:Dbce.Wheel.Telemetry.ForzaPacket.CreateBuffer">
             <summary>Allocates a correctly sized packet buffer.</summary>
         </member>
+        <member name="T:Dbce.Wheel.Telemetry.FrameRateMonitor">
+            <summary>
+            The family frame-rate readout (STD-023/024): average fps, 1% low and worst frame over ten-second
+            windows, plus a smoothed current fps for an on-screen counter. Engine-agnostic: a mod calls
+            <see cref="M:Dbce.Wheel.Telemetry.FrameRateMonitor.Tick(System.Double,System.Single)"/> from its per-frame update with the unscaled frame time and draws the strings itself.
+            </summary>
+            <remarks>
+            Owner, 2026-10-06: "the fps monitor helped, that's one to try and distribute to all the other projects
+            via the toolkit". Reference: iRacing Arcade's FrameStats. Fixed buffer, one sort per window, no
+            allocation per frame.
+            </remarks>
+        </member>
+        <member name="P:Dbce.Wheel.Telemetry.FrameRateMonitor.Summary">
+            <summary>Last completed window, e.g. "64 fps average, 1% low 31 fps, worst frame 39 ms"; "measuring" until then.</summary>
+        </member>
+        <member name="P:Dbce.Wheel.Telemetry.FrameRateMonitor.OverlayText">
+            <summary>Short text for an on-screen counter: "62 fps  ·  1% low 31".</summary>
+        </member>
+        <member name="P:Dbce.Wheel.Telemetry.FrameRateMonitor.WindowCompleted">
+            <summary>True on the tick that completed a window (log <see cref="P:Dbce.Wheel.Telemetry.FrameRateMonitor.Summary"/> then, at the mod's own rate).</summary>
+        </member>
+        <member name="T:Dbce.Wheel.Telemetry.FrameRateWindow">
+            <summary>Pure frame-time statistics behind <see cref="T:Dbce.Wheel.Telemetry.FrameRateMonitor"/>.</summary>
+        </member>
+        <member name="M:Dbce.Wheel.Telemetry.FrameRateWindow.Summarize(System.Single[],System.Int32,System.Single[])">
+            <summary>Average fps, the mean fps of the slowest 1% of frames (at least one), and the worst frame in ms.</summary>
+            <param name="frames">Frame times in seconds.</param>
+            <param name="count">How many entries of <paramref name="frames"/> to use.</param>
+            <param name="scratch">Optional buffer of at least <paramref name="count"/> floats, to avoid allocating.</param>
+        </member>
         <member name="T:Dbce.Wheel.Telemetry.IdleKeeper">
             <summary>
             Keeps a dashboard alive while no game is driving: emits zeroed frames at a
@@ -206,6 +529,82 @@
         </member>
         <member name="T:Dbce.Wheel.Telemetry.SignalSample">
             <summary>Scalar provenance alongside TelemetryFrame; never added implicitly to a Forza packet.</summary>
+        </member>
+        <member name="T:Dbce.Wheel.Telemetry.SimHubWire">
+            <summary>Wire types SimHub's external-sim parser reads (its BinaryDataType, subset used here).</summary>
+        </member>
+        <member name="F:Dbce.Wheel.Telemetry.SimHubWire.Utf8">
+            <summary>Fixed-length, zero-terminated, zero-padded UTF-8.</summary>
+        </member>
+        <member name="T:Dbce.Wheel.Telemetry.SimHubField">
+            <summary>One declared standard field: SimHub's StandardFieldType number, name and wire format.</summary>
+        </member>
+        <member name="T:Dbce.Wheel.Telemetry.SimHubHeader">
+            <summary>SimHub's 55-byte packed external-sim packet header (SimHub 9.13.2 <c>TelemetryHeader</c>).</summary>
+        </member>
+        <member name="T:Dbce.Wheel.Telemetry.SimHubDashText">
+            <summary>Text fields a dash shows beside the course: car and gear.</summary>
+        </member>
+        <member name="F:Dbce.Wheel.Telemetry.SimHubDashText.VehicleName">
+            <summary>Display name of the car; empty when the game does not provide one.</summary>
+        </member>
+        <member name="F:Dbce.Wheel.Telemetry.SimHubDashText.VehicleId">
+            <summary>Stable car id (asset name); empty when unknown.</summary>
+        </member>
+        <member name="F:Dbce.Wheel.Telemetry.SimHubDashText.Gear">
+            <summary>"R", "N" or "1".."n" (SimHub's Gear is text); see <see cref="M:Dbce.Wheel.Telemetry.SimHubCourseFeed.GearText(System.Int32)"/>.</summary>
+        </member>
+        <member name="T:Dbce.Wheel.Telemetry.SimHubCoursePacket">
+            <summary>The decoded values of one packet, for offline checks and tests.</summary>
+        </member>
+        <member name="T:Dbce.Wheel.Telemetry.SimHubCourseFeed">
+            <summary>
+            Draft "dbce course + dash v1" layout for a SimHub external-sim definition, and its encoder.
+            Nothing here opens a socket or touches SimHub's files.
+            </summary>
+            <remarks>
+            <para>
+            SimHub 9.11.5 added external-sim definitions (<c>.simdef</c>); this layout was read off
+            SimHub 9.13.2. A packet is the 55-byte header followed by each declared field in
+            definition order, little-endian, packed. SimHub rejects a packet whose length or
+            signatures differ from the definition.
+            </para>
+            <para>
+            Field order is ascending StandardFieldType because SimHub's editor sorts standard
+            fields that way (<c>TelemetryDefinition.NormalizeOrder</c>). It also means a standard
+            field added later lands in the middle of the packet, not at the end: that is a major
+            layout change. So this draft declares the full dash set now (speed, rpm, pedals, gear,
+            car, lap times) beside the course fields, and a course feed can carry a game's
+            dashboard once SimHub selects the definition for that game's process.
+            </para>
+            <para>
+            Signatures are not computed here. SimHub's editor computes them for the definition;
+            the emitter copies them into <see cref="T:Dbce.Wheel.Telemetry.SimHubHeader"/>. The editor's own generated
+            code is the contract this draft must be compared with before any live use.
+            </para>
+            </remarks>
+        </member>
+        <member name="F:Dbce.Wheel.Telemetry.SimHubCourseFeed.Fields">
+            <summary>Declared fields, wire types and sizes as SimHub 9.13.2 defines them.</summary>
+        </member>
+        <member name="M:Dbce.Wheel.Telemetry.SimHubCourseFeed.GearText(System.Int32)">
+            <summary>Gear as SimHub's text: negative = "R", 0 = "N", otherwise the number.</summary>
+            <remarks>
+            <see cref="F:Dbce.Wheel.Telemetry.TelemetryFrame.Gear"/> cannot be used directly: Forza reports both reverse
+            and neutral as 0. The adapter converts the game's own gear to this signed form.
+            </remarks>
+        </member>
+        <member name="M:Dbce.Wheel.Telemetry.SimHubCourseFeed.TryWrite(System.Byte[],Dbce.Wheel.Telemetry.SimHubHeader,Dbce.Wheel.Telemetry.CourseSample,Dbce.Wheel.Telemetry.TelemetryFrame,Dbce.Wheel.Telemetry.SimHubDashText,System.String@)">
+            <summary>
+            Writes one packet. The header's session id, replay, control, spectator and
+            discontinuity fields are taken from <paramref name="course"/> so the two cannot disagree.
+            </summary>
+        </member>
+        <member name="M:Dbce.Wheel.Telemetry.SimHubCourseFeed.TryRead(System.Byte[],System.UInt32,System.UInt32,Dbce.Wheel.Telemetry.SimHubCoursePacket@,System.String@)">
+            <summary>
+            Decodes a packet the way SimHub's parser checks it: exact length, then game
+            signature, then telemetry signature, then the fields in order.
+            </summary>
         </member>
         <member name="T:Dbce.Wheel.Telemetry.WheelValues">
             <summary>Per-wheel values, always front-left, front-right, rear-left, rear-right.</summary>

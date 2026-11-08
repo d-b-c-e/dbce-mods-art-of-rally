@@ -1,0 +1,57 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Dbce.Wheel.Recording</name>
+    </assembly>
+    <members>
+        <member name="P:Dbce.Wheel.Recording.RecordingOptions.QueueCapacity">
+            <summary>Queued records, plus at most one record being written.</summary>
+        </member>
+        <member name="P:Dbce.Wheel.Recording.RecordingOptions.MaxFileBytes">
+            <summary>Total on-disk cap, including the header, footer and line endings.</summary>
+        </member>
+        <member name="P:Dbce.Wheel.Recording.RecordingOptions.MaxRecordBytes">
+            <summary>Serialized UTF-8 size per header/sample/marker, excluding the newline.</summary>
+        </member>
+        <member name="T:Dbce.Wheel.Recording.SessionReader">
+            <summary>Streaming validation for replay consumers. Enumerate to the end to validate completion.</summary>
+        </member>
+        <member name="M:Dbce.Wheel.Recording.SessionReader.Read(System.String)">
+            <summary>Yields independent DTOs. Invalid, unsupported or interrupted files throw SessionReadException.
+            A footer is only yielded after checking that it is the final line.</summary>
+        </member>
+        <member name="T:Dbce.Wheel.Recording.SessionRecorder">
+            <summary>Bounded, best-effort diagnostic capture. Producer calls never wait for the writer.</summary>
+        </member>
+        <member name="M:Dbce.Wheel.Recording.SessionRecorder.#ctor(System.String,Dbce.Wheel.Recording.SessionMetadata,Dbce.Wheel.Recording.RecordingOptions)">
+            <summary>Creates a new file; never overwrites an existing recording. Parent directory must exist.</summary>
+        </member>
+        <member name="M:Dbce.Wheel.Recording.SessionRecorder.TryRecord(System.Double,System.Collections.Generic.IDictionary{System.String,System.Double})">
+            <summary>Copies finite channel values. Time must be nonnegative and monotonic across samples/markers;
+            sample times must strictly increase. Do not mutate the dictionary concurrently with this call.</summary>
+        </member>
+        <member name="M:Dbce.Wheel.Recording.SessionRecorder.Stop">
+            <summary>Stops acceptance immediately; waits at most 250 ms. If Status is still Stopping,
+            the worker retains ownership of the file and continues draining. Check Status/Error before consuming it.</summary>
+        </member>
+        <member name="M:Dbce.Wheel.Recording.SessionRecorder.Stop(System.TimeSpan)">
+            <summary>Returns true when drain/close finished (including failure), false on timeout.
+            Timeout never abandons the queue or disposes a stream in use. Inspect Status/Error for success.</summary>
+        </member>
+        <member name="T:Dbce.Wheel.Recording.RecordingCounters">
+            <summary>A detached snapshot. During recording, fields can reflect adjacent instants.</summary>
+        </member>
+        <member name="P:Dbce.Wheel.Recording.RecordingCounters.RejectedAfterStop">
+            <summary>Calls after acceptance closes; the footer freezes this at finalization.</summary>
+        </member>
+        <member name="P:Dbce.Wheel.Recording.RecordingCounters.DataBytesWritten">
+            <summary>UTF-8 bytes including line endings before the footer (not the footer itself).</summary>
+        </member>
+        <member name="P:Dbce.Wheel.Recording.SessionFooter.Completed">
+            <summary>True for an orderly explicit stop. Inspect drops even when true.</summary>
+        </member>
+        <member name="P:Dbce.Wheel.Recording.SessionFooter.StopReason">
+            <summary>stopped, durationLimit, fileSizeLimit, or recordSizeLimit.</summary>
+        </member>
+    </members>
+</doc>

@@ -65,6 +65,85 @@
             does not distinguish a rising force from a falling one.
             </remarks>
         </member>
+        <member name="T:Dbce.Wheel.Ffb.MotionSample">
+            <summary>One physics tick of the player's car: time, position and velocity (any consistent units, metres).</summary>
+        </member>
+        <member name="T:Dbce.Wheel.Ffb.CrashDetector">
+            <summary>
+            Crash detection from a body contact with art of rally's <c>CrashSignal</c> rules (STD-025): the car
+            must be tracked continuously (no duplicate tick, no gap over <see cref="F:Dbce.Wheel.Ffb.CrashDetector.MaxGapSeconds"/>, no position
+            jump over 5 m from the last velocity), the contact must be no older than <see cref="F:Dbce.Wheel.Ffb.CrashDetector.MaxContactAgeSeconds"/>
+            and at least <see cref="F:Dbce.Wheel.Ffb.CrashDetector.SettleSeconds"/> into the tracked epoch, the other collider must not be road,
+            and the normal mostly horizontal. Intensity rises from 0 at <see cref="F:Dbce.Wheel.Ffb.CrashDetector.MinSpeed"/> m/s along the normal
+            to 1 at <see cref="F:Dbce.Wheel.Ffb.CrashDetector.FullSpeed"/>. One hit's manifold contacts merge for <see cref="F:Dbce.Wheel.Ffb.CrashDetector.MergeSeconds"/> unless a
+            stronger one arrives within <see cref="F:Dbce.Wheel.Ffb.CrashDetector.ReplaceSeconds"/>.
+            </summary>
+            <remarks>
+            Revised 2026-10-06 after Codex's review (knowledge/CRASH-PORT-REVIEW-2026-10-06.md): the first port
+            omitted motion continuity and contact age and produced full cues where art of rally gives none.
+            When <see cref="M:Dbce.Wheel.Ffb.CrashDetector.Track(Dbce.Wheel.Ffb.MotionSample)"/> breaks the epoch it sets <see cref="P:Dbce.Wheel.Ffb.CrashDetector.Discontinuous"/>; the caller must clear any
+            playing cue then.
+            </remarks>
+        </member>
+        <member name="P:Dbce.Wheel.Ffb.CrashDetector.LastNormalSpeed">
+            <summary>Normal speed of the last accepted contact, m/s.</summary>
+        </member>
+        <member name="P:Dbce.Wheel.Ffb.CrashDetector.Discontinuous">
+            <summary>The last <see cref="M:Dbce.Wheel.Ffb.CrashDetector.Track(Dbce.Wheel.Ffb.MotionSample)"/> (or <see cref="M:Dbce.Wheel.Ffb.CrashDetector.Reset"/>) started a new epoch: clear any playing cue.</summary>
+        </member>
+        <member name="P:Dbce.Wheel.Ffb.CrashDetector.Epoch">
+            <summary>Epochs started so far, for recordings.</summary>
+        </member>
+        <member name="M:Dbce.Wheel.Ffb.CrashDetector.Track(Dbce.Wheel.Ffb.MotionSample)">
+            <summary>Every physics tick while the player's car is live.</summary>
+        </member>
+        <member name="M:Dbce.Wheel.Ffb.CrashDetector.Observe(System.Double,System.Single,System.Single,System.Boolean)">
+            <param name="time">Physics time of the contact, seconds.</param>
+            <param name="normalSpeed">Relative speed along the contact normal, m/s (sign ignored).</param>
+            <param name="verticalShare">|normal.y| / |normal|: 1 for ground under the car, 0 for a wall.</param>
+            <param name="road">The other collider is the driving surface.</param>
+            <returns>Intensity 0..1 for a new or stronger cue; 0 when nothing should play.</returns>
+        </member>
+        <member name="T:Dbce.Wheel.Ffb.CrashEffects">
+            <summary>The two independent effects of art of rally's crash cue, for a native sink that can play them.</summary>
+        </member>
+        <member name="T:Dbce.Wheel.Ffb.CrashCue">
+            <summary>
+            art of rally's crash cue, the shape the owner picked on the wheel (CrashFeel, 2026-10-05): an independent
+            <see cref="F:Dbce.Wheel.Ffb.CrashCue.PushMs"/> ms constant push of magnitude M, and an independent <see cref="F:Dbce.Wheel.Ffb.CrashCue.RattleHz"/> Hz sine of
+            amplitude <see cref="F:Dbce.Wheel.Ffb.CrashCue.RattleShare"/> x M starting at phase zero, lasting <see cref="F:Dbce.Wheel.Ffb.CrashCue.RattleMs"/> ms and fading
+            linearly over its last <see cref="F:Dbce.Wheel.Ffb.CrashCue.RattleFadeMs"/> ms. For M = 0.5 that is art of rally's +0.50 push and 0.25 rattle.
+            </summary>
+            <remarks>
+            Art-equivalent delivery is the two native finite effects described by <see cref="M:Dbce.Wheel.Ffb.CrashCue.Requests(System.Single)"/>, scheduled by
+            the wheel library. <see cref="M:Dbce.Wheel.Ffb.CrashCue.Sample(System.Double)"/> is a labelled fallback (<see cref="F:Dbce.Wheel.Ffb.CrashCue.FallbackModel"/>) for native
+            libraries without those effects: the push held for 120 ms plus the rattle averaged over each update
+            interval, so a slow update rate loses the rattle instead of aliasing it into a constant push. Adding it to
+            the steering command clips differently for each steering sign; the fallback must be qualified separately,
+            never called art-equivalent.
+            </remarks>
+        </member>
+        <member name="F:Dbce.Wheel.Ffb.CrashCue.FallbackModel">
+            <summary>Model label for recordings when the cue is rendered through the constant-force fallback.</summary>
+        </member>
+        <member name="P:Dbce.Wheel.Ffb.CrashCue.Played">
+            <summary>Cues accepted since construction.</summary>
+        </member>
+        <member name="P:Dbce.Wheel.Ffb.CrashCue.Magnitude">
+            <summary>Magnitude 0..1 of the current or last cue.</summary>
+        </member>
+        <member name="M:Dbce.Wheel.Ffb.CrashCue.Requests(System.Single)">
+            <summary>The independent effect requests for magnitude 0..1 (e.g. intensity x CrashStrength / 100).</summary>
+        </member>
+        <member name="M:Dbce.Wheel.Ffb.CrashCue.Trigger(System.Single,System.Double)">
+            <summary>Starts (or restarts, if stronger) a cue at physics time <paramref name="now"/>.</summary>
+        </member>
+        <member name="M:Dbce.Wheel.Ffb.CrashCue.Sample(System.Double)">
+            <summary>
+            Fallback rendering at one update, -1..1: the push plus the rattle averaged since the previous call
+            (instantaneous at the first update of a cue, where the sine is zero). Call it once per update.
+            </summary>
+        </member>
         <member name="T:Dbce.Wheel.Ffb.DevicePreference">
             <summary>
             Which device the user meant. Accepts <c>vid:pid</c> hex (the precise,
@@ -708,6 +787,18 @@
         </member>
         <member name="M:Dbce.Wheel.Ffb.WheelFfbNative.ListAllDevices">
             <summary>Every attached game controller, force feedback or not.</summary>
+        </member>
+        <member name="P:Dbce.Wheel.Ffb.WheelFfbNative.SupportsPovRead">
+            <summary>Whether the loaded module supports coherent axes/buttons/four-POV snapshots (native 0.9.0).</summary>
+        </member>
+        <member name="M:Dbce.Wheel.Ffb.WheelFfbNative.Read(System.Int32,System.Int32[],System.Byte[],System.Int32[])">
+            <summary>
+            Reads one coherent snapshot: exactly eight axes, zero to 128 buttons (null allowed), and exactly four POVs.
+            POVs are clockwise hundredths of degrees, north=0/east=9000; -1 means neutral, absent or invalid angle.
+            Returns false if unavailable or failed; all supplied managed arrays are cleared (POV to -1).
+            Zero axes on failure are NOT neutral pedal values: gate all mapped output on the return value.
+            Serialize with device lifecycle; open FFB before its shared reader, or close/reopen readers when promoting to FFB.
+            </summary>
         </member>
     </members>
 </doc>

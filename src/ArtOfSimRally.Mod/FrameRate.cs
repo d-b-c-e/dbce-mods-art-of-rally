@@ -3,7 +3,7 @@ using UnityEngine;
 namespace ArtOfSimRally.Mod
 {
     /// <summary>
-    /// The family frame-rate readout (STD-023/024, toolkit FrameRateMonitor, vendored in Toolkit/): average fps, 1% low
+    /// The family frame-rate readout (STD-023/024, the toolkit FrameRateMonitor in Dbce.Wheel.Telemetry): average fps, 1% low
     /// and worst frame over ten seconds in the settings panel's Cameras page and the log, and an optional counter at the
     /// top right of the centre screen. Separate from <see cref="FrameHealth"/>, which counts hitches for support files.
     /// </summary>
