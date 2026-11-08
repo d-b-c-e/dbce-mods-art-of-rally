@@ -17,7 +17,7 @@ RC3 and shaped RC4 both failed the owner's feel test (KI-38). RC4 accepted three
 full-intensity commands with no early managed stops, but no felt crash effect;
 ordinary steering worked. The owner preferred the standalone constant pulse
 (method A) at 40%, but requested more strength. The next candidate uses that
-route. [Investigation](archive/reviews/2026-09-17-constant-crash.md).
+route. Investigation.
 
 Pause, open **F6 → Advanced → FFB → Crash kick (experimental)**,
 and choose **Crash strength**. New settings default to **50**, with a **0–100**
@@ -74,7 +74,7 @@ expiry starts after playback returns, avoiding truncation by a slow native call.
 
 ## Evidence and limits
 
-The [owner baseline](archive/reviews/2026-09-15-crash-capture.md) has 2,947 force/motion
+The owner baseline has 2,947 force/motion
 rows and owner-labelled front/side impacts. A roughly 145→4 km/h event has nearly
 zero steering output. It was recorded with schema 3: it contains **no body-contact
 normals or callback events**, so it supports adding a separate cue but cannot
@@ -100,7 +100,7 @@ views first, as described in the [motion investigation](research/2026-09-14-cras
 **Current acceptance limit:** the owner preferred the standalone constant pulse
 at 40%, but has not accepted the stronger range or its in-game integration.
 The Desktop tester now starts at 50 and offers manual choices through 100.
-See [candidate evidence and deployment](archive/reviews/2026-09-17-constant-crash.md).
+See candidate evidence and deployment.
 
 1. With crash kick **off**, verify ordinary steering and one jump still feel
    as before. Note stage/car. Drive one front impact and one glancing side impact.
@@ -121,4 +121,4 @@ See [candidate evidence and deployment](archive/reviews/2026-09-17-constant-cras
 See [local deployment](LOCAL-DEPLOYMENT.md) for the owner's exact installed build
 and [0.2.6 release notes](releases/0.2.6.md). These records do not establish
 the full attended hardware matrix.
-See [RC3 evidence and shaped-candidate review](archive/reviews/2026-09-17-crash-kick.md).
+See RC3 evidence and shaped-candidate review.

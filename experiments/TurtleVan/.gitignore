@@ -1,7 +1,0 @@
-assets/*.blend1
-previews/*.log
-dist/
-artifacts/
-bin/
-obj/
-__pycache__/

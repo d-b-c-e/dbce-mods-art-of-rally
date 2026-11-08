@@ -57,7 +57,7 @@ Build 17584229 updates wheel contact in `Wheel.FixedUpdate` (raycast length
 do not establish visual timing or wheel-driver latency. The saved Norway jump
 has first contact 16.67 ms before recorded compression/all-wheel contact;
 the T300/Haapajarvi early report remains unconfirmed. See the
-[investigation](archive/reviews/2026-09-16-landing-startup-investigation.md).
+investigation.
 
 ## Menu quit addendum — 2026-09-10 local time
 
@@ -65,7 +65,7 @@ the T300/Haapajarvi early report remains unconfirmed. See the
 release does not depend on a pending developer recording. Actual isolated Unity
 Mono reproduced the old probe's blocked pipe/cleanup hang and the one-unit
 float-to-int capture mismatch. Fixed teardown and explicit replay conversion
-contracts pass. See [the evidence](archive/reviews/2026-09-11-bug-follow-up.md).
+contracts pass. See the evidence.
 
 In game build 17584229, `ExitGame.Exit` calls
 `Process.GetCurrentProcess().Kill()` outside the editor. The ordinary Quit
@@ -73,11 +73,11 @@ button therefore bypasses Unity shutdown callbacks. A recording held only in
 memory is lost even when the player quits normally; this occurred during the
 owner's RC5 jump drive. Probe 0.2.5.2 intercepts that entry point to release
 outputs/save first; explicit Stop and on-disk verification remain the recommended
-capture procedure. See KI-27 and the [attended report](archive/reviews/2026-09-10-attended-rc5.md).
+capture procedure. See KI-27 and the attended report.
 
 ## Lazy manager factory addendum — 2026-09-09 UTC
 
-[RC4 log review](archive/reviews/2026-09-09-rc4-stutter.md) verifies that
+RC4 log review verifies that
 `GameEntryPoint.EventManager` can construct managers from menus. Its constructor's
 catch starts a ghost replay request; subsequent derived-constructor failure leaves
 the singleton null. Repeated mod reads and ghost callbacks can amplify the work.
@@ -87,7 +87,7 @@ The owner's drive had a strong hitch near a crowd; the causal timing is unproven
 
 ## Camera lifecycle addendum — 2026-09-06
 
-Later [feedback review](archive/reviews/2026-09-08-feedback-review.md) records the
+Later feedback review records the
 CameraMod 0.3.1 slot conflict and support/telemetry corrections. In build 17584229,
 `SettingsManager.SetSteerAssist` reads a saved boolean; `SetSteerCorrection` uses
 a separate numeric setting. Our legacy `DisableSteerAssist` is a one-way Start

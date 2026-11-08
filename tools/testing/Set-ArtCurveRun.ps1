@@ -1,6 +1,6 @@
 # First curved Art drive, for that run only: -Apply sets CurveRadiusMm (TripleScreen.xml) and DiagnosticLogging
 # (Settings.xml) after a hash-verified backup; -Restore puts both files back byte-exact and proves it by hash.
-# Recipe: docs/archive/reviews/2026-10-29-curved-drive-recipe.md. -SelfTest runs both against a throwaway copy.
+# Recipe: git history: docs/archive/reviews/2026-10-29-curved-drive-recipe.md. -SelfTest runs both against a throwaway copy.
 param(
     [switch]$Apply,
     [switch]$Restore,

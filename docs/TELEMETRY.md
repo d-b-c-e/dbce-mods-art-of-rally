@@ -193,7 +193,7 @@ removed. Existing **Impacts** and **Road impacts** use velocity and suspension
 data already exported by the mod. Tune their frequency/response in SimHub;
 wheel landing strength does not control the ButtKicker. The local built-in
 30 Hz comparison profile preserves original gains. See the
-[findings and A/B procedure](archive/reviews/2026-09-12-builtin-shaker-correction.md).
+findings and A/B procedure.
 
 In 0.2.5, enable telemetry and configure its destination while
 paused or in a menu. The idle watchdog opens the connection after releasing

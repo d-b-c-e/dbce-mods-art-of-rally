@@ -91,11 +91,11 @@ Dated reports and unsent drafts below preserve their original context; replace
 old version references before sending them. No new public reply was sent.
 Owner tested 0.2.6-rc.3 with crashes on/19.52381 and reported no distinct crash
 effect. Its 13 accepted commands motivate the new shaped kick (KI-38); see
-[review](archive/reviews/2026-09-17-crash-kick.md) and [current installation](LOCAL-DEPLOYMENT.md).
+review and [current installation](LOCAL-DEPLOYMENT.md).
 The reporter's feedback and public download remain 0.2.5.
 Owner's next RC4 test likewise felt no crash output at about 20; normal steering
 worked. The support file confirms three full-intensity shaped commands and zero
-early managed stops. See [analysis](archive/reviews/2026-09-17-rc4-crash-feel.md); do not
+early managed stops. See analysis; do not
 describe the changed waveform as a successful physical fix.
 
 Owner subsequently completed standalone A/B/C tests. Only constant pulse A
@@ -103,7 +103,7 @@ was faintly felt at 20%; at 40% A was preferred but still too weak. Owner reques
 crash default50/range0–100 and sharing the findings upstream. The next candidate
 uses a finite constant pulse; the updated Desktop tester already offers those
 levels. No 50–100% physical acceptance is recorded. See the
-[constant-pulse follow-through](archive/reviews/2026-09-17-constant-crash.md).
+constant-pulse follow-through.
 
 ## 0.2.5 T300/TSS follow-up — received 2026-09-16
 
@@ -168,7 +168,7 @@ one light side impact. Saved/verified 2,947 motion/force samples while paused;
 replay passes exactly. The largest head-on deceleration has almost no steering
 output, supporting an independent crash cue. Body-event capture is added in
 probe 0.2.5.4 for the next drive. SimHub receiver/output data was not captured.
-[Evidence and limits](archive/reviews/2026-09-15-crash-capture.md).
+Evidence and limits.
 
 Owner requests more noticeable crashes in wheel FFB and motion telemetry, and
 confirmed **SimHub** drives the motion platform. Track under FR-2. Source review
@@ -197,7 +197,7 @@ removed and RC8 restored. Prioritize built-in Impacts/Road impacts tuning under
 FR-2, keeping physical telemetry accurate. A 30 Hz comparison profile is ready.
 Logs were preserved while paused; no
 new recording was running. Full lifecycle checks remain pending.
-[Corrected attended evidence](archive/reviews/2026-09-12-landing-wheel-test.md).
+Corrected attended evidence.
 
 Owner requested implementation/testing before the next release. FR-2 now has
 an opt-in landing-vibration candidate with an independent strength control.
@@ -262,7 +262,7 @@ mention whether the PS5 pad and Nexus camera mod were active.
 
 Recorded 2026-09-08 UTC after publishing 0.2.3. Reports describe their own builds
 and setups; they are not all tests of 0.2.3. Implementation work is ordered in
-[OVERNIGHT-QUEUE.md](OVERNIGHT-QUEUE.md); defects remain in
+OVERNIGHT-QUEUE.md; defects remain in
 [KNOWN-ISSUES.md](KNOWN-ISSUES.md).
 
 Overnight follow-through: camera key remapping and save recovery are implemented
@@ -342,7 +342,7 @@ shows close third-person driving and the separate lever. No torque, frame timing
 current mod build or complete driver preset was established from those samples.
 No video download or complete narrated transcript was obtained.
 
-[Implementation and evidence](archive/reviews/2026-09-08-feedback-review.md) ·
+Implementation and evidence ·
 [Short reply ready to paste](replies/2026-09-08-t300-tss.md). Nothing sent externally.
 
 ## Camera controls without a numpad — FR-1 (original request)

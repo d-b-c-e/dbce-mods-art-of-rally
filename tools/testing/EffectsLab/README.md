@@ -11,7 +11,7 @@ both hypothetical torque directions are evaluated and clipping is reported.
 Study gains/amplitudes are not wheel settings or calibrated impact measurements.
 Output goes only to CSV/JSON. The first real study found the 5 ms pulse peak
 undersampled by the game's roughly 60 Hz force updates; see
-[the report](../../../docs/archive/reviews/2026-09-11-bug-follow-up.md).
+the report.
 
 Calls only the pinned toolkit's managed `ImpactMixer` and `SignalSample`. No game,
 Unity, native loader, wheel/device output or production dependency. A fresh output

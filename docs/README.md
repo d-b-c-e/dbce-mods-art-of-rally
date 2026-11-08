@@ -13,16 +13,14 @@
 
 ## Development and validation
 
-- [Simple/Advanced settings guide](UX-SETTINGS-CANDIDATE.md) and
-  [UX-1 audit](UX-OVERNIGHT-2026-09-16.md): detailed controls and remaining
-  acceptance cases. The public 0.2.7 download includes these settings pages.
+- [Simple/Advanced settings guide](UX-SETTINGS-CANDIDATE.md). The public 0.2.7 download includes these settings pages.
 
 - [Experimental crash kick](CRASH-EFFECTS.md): optional wheel effect and short
   attended comparison; off by default in 0.2.6.
 
 - [Building](BUILDING.md): local prerequisites and commands.
 - [Known issues](KNOWN-ISSUES.md): defects and hardware cases awaiting confirmation.
-- [Roadmap](ROADMAP.md) and [investigation queue](OVERNIGHT-QUEUE.md).
+- [Roadmap](ROADMAP.md).
 - [Release procedure](RELEASING.md), [testing](PRE-RELEASE-TESTING.md) and
   [local deployment](LOCAL-DEPLOYMENT.md).
 - [Developer capture](DEVELOPMENT-CAPTURE.md) and [test drives](TEST-DRIVE.md):

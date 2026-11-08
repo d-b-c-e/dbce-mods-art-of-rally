@@ -154,13 +154,13 @@ Wheelkit's matching adapter writes those fields and existing axis/shifter fields
 through its real Apply service. Independent complete XML expectations, exact
 restoration and fake raw-device input tests pass. Live consumption and the
 remaining generic actions are not qualified. Do not call the portfolio complete.
-See [candidate and evidence](archive/reviews/2026-10-09-profile-controls.md).
+See candidate and evidence.
 
 October 10 raw testing found a separate title entry gap: the applied Start and
 Confirm bindings reached the reader, but the title listens to a Rewired release
 event outside the existing GetButton hooks. A guarded title-release bridge has
 source tests; its runtime check remains pending. See
-[raw input evidence](archive/reviews/2026-10-10-raw-controls-title.md).
+raw input evidence.
 
 ### KI-47 — Shared wheel handle does not recover after device disappearance
 
@@ -184,7 +184,7 @@ outage; reader reopen/failed retries do not replenish it. A half second of
 healthy observations or an explicit identity change permits a new outage.
 No native pin, force curve, binding or geometry changes. Tests pass. Owner
 confirmed controls respond on a fresh rc4 launch; recovery after a new device
-interruption remains pending. [Evidence and validation](archive/reviews/2026-10-09-input-recovery.md).
+interruption remains pending. Evidence and validation.
 
 
 ### KI-46 — Menu button prompts overlap and show gamepad symbols for a wheel
@@ -276,7 +276,7 @@ screenshot still shows the device selector expanded as full-width command bars
 and Refresh as a full-width button. Released 0.2.6 bounds the picker, shows
 explicit choice markers and makes Refresh compact. The owner accepted RC16
 overall; focused rendered acceptance of those FFB choices is still pending. See
-[changes and exact checks](archive/reviews/2026-09-21-visual-grouping.md). Do not close
+changes and exact checks. Do not close
 this issue based solely on a build or policy-height assertion.
 
 ### KI-40 — Settings input reaches native menus; default 4K content is too small
@@ -294,9 +294,9 @@ scrolling, timed Bind→Escape cancellation and native Quit recovery. The valid
 cancel request arrived at8.218s, before the10s capture timeout; the panel stayed
 open and the native menu did not react. Advanced Cameras top was observed;
 the full Advanced, custom-scale and broader input matrix remains pending.
-See [RC10/RC12 evidence](archive/reviews/2026-09-19-rc10-ui-smoke.md).
+See RC10/RC12 evidence.
 Offline checks alone do not close this issue. Exact evidence, restored settings
-and the required retest are in [the smoke review](archive/reviews/2026-09-19-rc9-ui-smoke.md).
+and the required retest are in the smoke review.
 
 ### KI-39 — Settings UX runtime and layout acceptance is incomplete
 
@@ -306,7 +306,7 @@ strict FFB following, and a guarded route to the game's controls panel. Source
 fixtures do not establish real UMM scrolling/focus, device behavior or physical
 stop/recovery. At 720p/high DPI, walk all pages and test fresh/legacy settings,
 calibration/cancellation, binding writes and USB reconnect. See the
-[adoption audit and exact pending checklist](UX-OVERNIGHT-2026-09-16.md).
+adoption audit and exact pending checklist.
 
 Review found and fixed three pre-deployment defects: failed binding writes became
 effective despite an unchanged file, and Restore numpad defaults could conflict
@@ -368,7 +368,7 @@ full-lifetime fade, using the upstream shaped-burst API. Peak limits, collision
 detection, steering and motion signals remain unchanged. Managed expiry now starts
 after native Play returns; per-event timing/reason diagnostics distinguish
 expiry, replacement and lifecycle cancellation. Parameter readback cannot prove
-physical waveform. See [evidence and test plan](archive/reviews/2026-09-17-crash-kick.md).
+physical waveform. See evidence and test plan.
 
 RC4's original support file and UMM log contain three unique full-intensity
 head-on cues at .1952, all accepted with exact requested-shape readback. Managed
@@ -379,7 +379,7 @@ every absent cue. The support file repeats log tails; do not double-count them.
 Single-axis Cartesian direction zero is Microsoft's documented setup, not a
 proven zero-force defect. In-game native PLAYING status and physical output were
 unmeasured, leading to the standalone comparison below.
-[RC4 evidence](archive/reviews/2026-09-17-rc4-crash-feel.md).
+RC4 evidence.
 
 The first standalone tester falsely blocked BorderlessGaming.exe as a game,
 so the owner's A/B/C attempt never reached acquisition. Developer-tool fix
@@ -400,7 +400,7 @@ and sharing the findings in the toolkit. The tester now offers that range;
 installed RC6 uses a finite constant pulse with independent cached
 handles and one active impact. Landing stays default5/range0–40. No stronger
 physical or in-game acceptance yet. All 16 local gates pass; saved strength19.52381
-is preserved. See [follow-through](archive/reviews/2026-09-17-constant-crash.md).
+is preserved. See follow-through.
 
 ### KI-37 — Native force tracing performs synchronous driving I/O by default
 
@@ -415,7 +415,7 @@ attached during upstream smoke; this is not a live FFB or stutter verification.
 The consumer now pins official toolkit v0.15.0 with binaries identical to the
 tested local candidate. This removes the packaging blocker, but does not prove
 the reported in-game stutter is fixed; a cold-stage comparison remains pending.
-See [investigation and evidence](archive/reviews/2026-09-16-landing-startup-investigation.md).
+See investigation and evidence.
 
 ### KI-36 — Landing vibration may precede visible touchdown on Haapajarvi
 
@@ -432,12 +432,12 @@ wheels. The Norway difference is 16.67 ms; it is not a prescribed correction.
 Candidate support diagnostics retain the last detector event's mask, compression
 fraction and time to compression/all-wheel contact. These are physics proxies,
 not video or measured actuator timing. Detection and output are unchanged.
-See [findings and reproduction plan](archive/reviews/2026-09-16-landing-startup-investigation.md).
+See findings and reproduction plan.
 
 Release note 2026-09-13: owner accepted RC8 and authorized 0.2.5 with default-on
 wheel landing vibration. The built-in SimHub thud felt better; amplifier CLIP was
 observed. This overall acceptance does not resolve the individual unverified
-hardware cases below. [Release evidence](archive/reviews/2026-09-13-release-0.2.5.md).
+hardware cases below. Release evidence.
 
 ### KI-32 — Settings explanations ignore Mod Manager font scaling
 
@@ -461,7 +461,7 @@ shipping mod now releases outputs before menu Quit. Probe 0.2.5.3 corrects a
 shutdown hang reproduced with actual Mono (KI-30). KI-29's two local DSS gauge
 screens now have stopped-game zero bindings and SimHub has reloaded both
 displays; physical retest is pending. RC5's failed receipt remains unchanged. See
-[current fixes and evidence](archive/reviews/2026-09-11-bug-follow-up.md).
+current fixes and evidence.
 
 ### KI-30 — Alt+F4 hangs with the developer probe installed
 
@@ -537,7 +537,7 @@ actual Harmony attachment to ExitGame.Exit. The new probe loads in Unity and
 explicit START/STOP produced a menu-only capture with verified hashes. An abandoned
 retry saved through Unity quit callbacks (zero force rows), but the separate
 process-kill menu hook is still untested. Until confirmed, pause, issue STOP, verify
-the saved manifest/CSVs, then quit. [Drive evidence](archive/reviews/2026-09-10-attended-rc5.md).
+the saved manifest/CSVs, then quit. Drive evidence.
 
 ### KI-25 — Telemetry connection work runs from physics; disabling can leave live output
 
@@ -656,7 +656,7 @@ suspends our mounted views/tuning. Settings remain intact and the panel explains
 the choice. To use our mounts, disable that mod before a fresh game launch. Tests
 cover both initialization orders and normal mounts without it. This is supported
 isolation, not simultaneous operation of both camera editors. See the
-[feedback review](archive/reviews/2026-09-08-feedback-review.md).
+feedback review.
 
 ### KI-17 — Legacy steering-assist checkbox is not a live numeric override
 
@@ -853,7 +853,7 @@ not the wheel. Eight wheel-driver accepted cues do not measure shaker output.
 RC9's extra SimHub helper was rejected and removed. Investigate built-in Impacts
 and Road impacts tuning using existing telemetry under FR-2. A 30 Hz comparison
 profile is prepared; physical improvement remains untested.
-[Evidence and next comparison](archive/reviews/2026-09-12-landing-wheel-test.md).
+Evidence and next comparison.
 Full hardware validation remains open; see [LANDING-EFFECTS.md](LANDING-EFFECTS.md).
 
 | | |
@@ -1040,7 +1040,7 @@ The new case files were copied/verified but the original one-case index remained
 intact. Use `[NullString]::Value` and test appending a second case while preserving
 the first. The owner's interrupted promotion was recovered from its validated
 temporary index with both recordings rechecked. No original evidence was changed.
-[Crash capture follow-through](archive/reviews/2026-09-15-crash-capture.md).
+Crash capture follow-through.
 
 ### KI-34 — Offline analysis mistakes post-reset ground contact for a landing
 
@@ -1050,7 +1050,7 @@ reported as a landing candidate. The analyzer cleared prior history but armed
 again without observing ground contact after the reset. Require that contact
 before an airborne transition can qualify. Spawn/reset regressions now cover
 this case. Shipping landing detection is unchanged and already has ground arming.
-[Evidence](archive/reviews/2026-09-15-crash-capture.md).
+Evidence.
 
 ### KI-33 — Installer entry points and removal prerequisites
 
@@ -1087,7 +1087,7 @@ The recorded float 0.4123999774456024 multiplied by 10,000 at double precision
 truncates to 4,123; rounding the product to single precision first yields 4,124.
 Double-product conversion of recorded outputs matches every observed integer.
 Actual Mono now confirms this conversion contract. No tolerance was relaxed or
-force tune changed. [Original evidence and landing analysis](archive/reviews/2026-09-10-first-jump-capture.md).
+force tune changed. Original evidence and landing analysis.
 
 
 ### KI-26 — Developer recorder reports ready but its control pipe never opens
@@ -1107,7 +1107,7 @@ startup and external commands. After the owner quit normally, the fixed probe
 loaded in Unity and STATUS/START succeeded; both frame and force counts increased
 without an incomplete flag. That run then exposed KI-27 on menu quit; no detailed
 drive capture was saved. No shipping mod or toolkit change was required.
-See [the capture session](archive/reviews/2026-09-10-attended-rc5.md).
+See the capture session.
 
 ### KI-20 — State polling constructs game managers and floods ghost downloads
 
@@ -1135,7 +1135,7 @@ accepted for release; its 197,466-byte Unity log has one normal initialization a
 zero constructor errors, connection failures or exceptions. This resolves the
 observed error flood, without assigning every crowd-side or T300 hitch this cause.
 The full attended matrix remains incomplete.
-See [the log review](archive/reviews/2026-09-09-rc4-stutter.md) for exact counts and limits.
+See the log review for exact counts and limits.
 
 
 Kept because each one cost real time to find, and because a regression in any of

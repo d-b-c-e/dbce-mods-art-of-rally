@@ -197,7 +197,7 @@ poses, finish, results and final menu. An independent 12-second synthetic physic
 capture also completed format-3 replay: 721 driving poses, zero reported position
 application error. Its 721 force samples passed 27,453 offline checks with no
 native-magnitude mismatches. Identity and zero-gain trials passed. See the
-[validation record](archive/reviews/2026-10-04-playback-validation.md).
+validation record.
 
 Legacy formats 1/2 lack semantic buttons, completion seals, exact RPM and resolved
 scene snapshots; their menus depend on preferences and controlled random seeds.

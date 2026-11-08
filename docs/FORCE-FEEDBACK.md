@@ -7,7 +7,7 @@ The technical history below explains how the current force curve was established
 equivalent to former 30 by changing the default force reference to 19,166.67 N.
 Explicit saved tunes stay unchanged; crash/landing/shift controls remain
 independent. Source and original-input checks pass; installation and physical
-acceptance remain. See [the v2 calibration](archive/reviews/2026-10-11-ffb-reference-v2.md).
+acceptance remain. See the v2 calibration.
 
 Version 0.2.6 adds an opt-in [constant-force crash kick](CRASH-EFFECTS.md),
 with one active impact at a time across cached sine and constant handles.

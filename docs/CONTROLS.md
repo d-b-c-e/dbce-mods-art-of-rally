@@ -6,7 +6,7 @@ includes the original game-input investigations and dated fixes.
 
 **October 9 source candidate:** Wheelkit can translate axes/shifter fields and,
 with the new package capability, camera/menu buttons and POV directions into
-this mod's F6 XML. Read [the candidate scope and qualification limits](archive/reviews/2026-10-09-profile-controls.md)
+this mod's F6 XML. Read the candidate scope and qualification limits
 before relying on it; live post-Apply input qualification is still pending.
 
 **Short answer: no binding utility is needed.** art of rally has a proper

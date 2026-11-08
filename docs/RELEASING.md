@@ -173,7 +173,7 @@ need to rebuild the archive.
    overwrite a published candidate to insert fixes; use a new version instead.
 
 The existing 0.2.4-rc.4 ZIP was already built and tested locally; its
-[exact identity and reports](archive/reviews/2026-09-08-feedback-review.md) remain valid.
+exact identity and reports remain valid.
 Changing the upload procedure does not require rebuilding it or imply that its
 pending attended checks have passed.
 

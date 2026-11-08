@@ -32,7 +32,7 @@ Niru's shared NativeAction table and Active-only accessor are prerequisites.
 Source inspection only during owner UAT; focused fixtures/build and rendered
 acceptance remain deferred. Existing unchecked/partial rows, including the
 previously noted missing STD-037 adoption, are unchanged. See
-[the scoped review](docs/archive/reviews/2026-10-15-owned-controls-glyphs.md).
+the scoped review.
 
 Which entries of the wheel toolkit's standards ledger
 (`E:\Source\toolkits\dbce-wheel-mod-toolkit\STANDARDS.md`) this mod has brought in.
@@ -88,7 +88,7 @@ Mono tests. The October 13 disposable startup (with `723E8A38`) resolved the con
 qualification, attached and accepted a shared frame using the test-only muted
 DD301314 native; exact owner/copy restoration passed. Production 44E46799 force
 acquisition, input/FFB coexistence and physical behavior remain unqualified. See
-[the bounded review](docs/archive/reviews/2026-10-13-shared-steering-ffb-target.md).
+the bounded review.
 This narrow result does not upgrade general parity or the historical ledger rows.
 
 The shared frame consumer and copied bridge stay dormant in normal launches.
@@ -98,12 +98,12 @@ no-force latch. An explicit second Apply probe requires a matching receipt;
 unknown identities/paths refuse. The exact owned HID path plus product join now
 has source/fake checks and keeps Core/RawInput GUID namespaces separate; its
 first muted compatibility proof remains open. See the
-[copy-only probe recipe](docs/research/2026-10-11-shim-muted-probe.md).
+copy-only probe recipe.
 All existing WheelInput tests pass before any publication. Source checks do not
 upgrade STD-033/034's live qualification. There is no settings/backend migration,
 installation or change to the accepted Art v2 force producer or original captures.
-The [slice review](docs/archive/reviews/2026-10-11-shared-input-axis-slice.md) records the
-outstanding ledger rows and [native bridge implementation](docs/research/2026-10-11-shared-input-bridge.md).
+The slice review records the
+outstanding ledger rows and native bridge implementation.
 
 ## Steering reference update (2026-10-11)
 
@@ -111,15 +111,15 @@ STD-031 is **partial**: the new default reference makes new50 match legacy30
 before clamp/filter; explicit saved tunes and historical replay stay unchanged.
 Build, settings/recorder checks and paired trials on 11,921 original owner force
 rows pass. Package/runtime adoption and physical feel remain. See
-[reference v2](docs/archive/reviews/2026-10-11-ffb-reference-v2.md).
+reference v2.
 
 ## Custom-vehicle experiment evidence (2026-10-08)
 
-The separate, uninstalled [Custom Vehicles candidate](experiments/CustomVehicles/README.md)
+The separate, uninstalled Custom Vehicles candidate
 adds process-latched network and local result/ghost/progression guards for proposed
 physical overrides. Production prefixes and native hook contracts are checked
 offline; physical activation remains hard-locked pending attended donor/guard
-qualification. See [the evidence and remaining checks](experiments/CustomVehicles/QUALIFICATION.md).
+qualification. The experiment was deleted on 2026-11-08 (ART-L); its source is in git history.
 This is experiment-scoped STD-018 progress, not adoption by the parent release;
 the global STD-018 row remains unchecked. No main-mod settings, native FFB, game
 preferences or installed payloads changed for this candidate.

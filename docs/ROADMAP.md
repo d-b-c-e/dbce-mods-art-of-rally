@@ -3,11 +3,11 @@
 Status reviewed 2026-09-30 after the 0.2.7 stable release. Official toolkit
 v0.15.0, the final local gate, installation and published-download verification
 are complete. The final package has not been driven, and the full attended
-matrix remains open. See [release review](archive/reviews/2026-09-30-release-0.2.7.md),
+matrix remains open. See release review,
 [0.2.7 release notes](releases/0.2.7.md)
 and [installed identity](LOCAL-DEPLOYMENT.md).
 The defect register is [KNOWN-ISSUES.md](KNOWN-ISSUES.md); the implementation review
-is [2026-09-06-rc-review.md](archive/reviews/2026-09-06-rc-review.md).
+is 2026-09-06-rc-review.md.
 
 ## Released feature — landing vibration
 
@@ -43,7 +43,7 @@ calibration, USB mod/camera buttons, strict FFB follow/override, atomic connecti
 drafts and support guidance are integrated and installed as RC16. The owner
 reported the native game-bindings handoff working and accepted the current build
 overall. The complete layout/focus/device matrix across resolutions and hardware
-is still open. See the [inventory and test record](UX-OVERNIGHT-2026-09-16.md).
+is still open. See the inventory and test record.
 
 **Current focus: FR-2 crash feedback in wheel FFB and SimHub motion.** The game
 has a collision callback suitable for passive observation; 48 new synthetic
@@ -70,13 +70,13 @@ crash-specific physical acceptance remains open.
 The subsequent 0.2.7-rc.1 drive log contains a full-intensity head-on command,
 but the saved crash slider was still 19.52381%; its submitted magnitude was
 0.1952. Compare the unchanged crash cue at 50% before retuning it.
-See [implementation and evidence](archive/reviews/2026-09-17-constant-crash.md) and the latest
+See implementation and evidence and the latest
 [gate/install receipt](LOCAL-DEPLOYMENT.md). Next: retest crash feel and ordinary
 landing/steering/lifecycle behavior. The consumer now pins official toolkit
 v0.15.0 with binary-identical payloads. SimHub motion
 amplification remains explicitly deferred. See
 [findings and validation sequence](research/2026-09-14-crash-feedback.md) and
-[drive evidence](archive/reviews/2026-09-15-crash-capture.md).
+drive evidence.
 
 1. **RWD snapback/tankslap investigation (KI-6):** capture steering/slip recovery
    before deciding whether an optional damper is justified.
@@ -115,9 +115,9 @@ tabled telemetry boosting on 2026-09-16: put the wheel range through testing
 first and wait for feedback. Keep motion telemetry/profile gains unchanged.
 Physics contact, rendered wheel position and the stock game's all-wheel cue are
 different signals; the saved jump's 16.67 ms gap is a lead, not an automatic delay.
-See [investigation](archive/reviews/2026-09-16-landing-startup-investigation.md).
+See investigation.
 
-The four post-0.2.4 [overnight items](OVERNIGHT-QUEUE.md) are implemented with
+The four post-0.2.4 overnight items are implemented with
 offline coverage: USB identity/idle recovery, retained diagnostic summaries,
 reproduced lifecycle fixes, and separate development signal captures. Additional
 telemetry connection/disable work (KI-25) follows that audit. Manual hardware
@@ -126,7 +126,7 @@ replay and is preserved in the regression corpus. FFB startup/exit and probe
 shutdown fixes are installed in 0.2.5; local gauge idle bindings were reloaded and
 need a physical retest. Landing detection passes 30/60/120 Hz cases; the finite
 vibration has owner acceptance, with the full hardware matrix still incomplete.
-See [the follow-up](archive/reviews/2026-09-11-bug-follow-up.md). Synchronous UDP send
+See the follow-up. Synchronous UDP send
 remains a potential future bounded-worker task, requiring measured need and
 careful park/drop/shutdown behavior; it is not a confirmed stutter diagnosis.
 [USER-FEEDBACK.md](USER-FEEDBACK.md) records the T300/TSS report, camera-key
@@ -135,10 +135,10 @@ Implemented for the **0.2.4 release**: camera-tuner save retry/logging (KI-14),
 keyboard remapping (FR-1), and analog-handbrake regression coverage (KI-13) with
 cache/Flip/assignment fixes (KI-15). Camera and input harnesses pass offline;
 RC4 was installed and driven; overall feedback was good with a strong stutter.
-[KI-20 investigation](archive/reviews/2026-09-09-rc4-stutter.md) corrected a lazy-manager
+KI-20 investigation corrected a lazy-manager
 polling defect in RC5. Its owner retest was accepted and the error flood was absent; full attended checks remain pending. Rotation and effect-signal
 investigations are documented in [the signal audit](research/2026-09-08-wheel-signals.md).
-The [follow-up implementation](archive/reviews/2026-09-08-feedback-review.md) adds
+The follow-up implementation adds
 CameraMod isolation, bounded support logs/frame-hitch counts, clearer assist help,
 telemetry sampling correction (KI-16) and actual failed-send handling. These have
 offline coverage; motion/shaker and combined-camera-mod tests remain pending.

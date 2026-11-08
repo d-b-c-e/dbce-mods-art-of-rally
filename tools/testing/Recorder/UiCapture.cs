@@ -13,7 +13,7 @@ using UnityModManagerNet;
 namespace ArtOfSimRally.Testing
 {
     /// <summary>
-    /// Developer-only F6 visual and shared-binding messaging capture (recorder <c>mode=ui</c>; docs/archive/F6-UI-CAPTURE-RECIPE.md,
+    /// Developer-only F6 visual and shared-binding messaging capture (recorder <c>mode=ui</c>; git history: docs/archive/F6-UI-CAPTURE-RECIPE.md,
     /// sana 124216/124479 with kiki 124440's freeze criteria). A frame-stepped script over the mod's own panel through
     /// reflection: it opens Wheel settings, walks every page in Simple and Advanced, both text-size modes and a narrow UMM
     /// width, and drives the shared-binding host's explicit calls (listen, cancel, draft, discard, save, the close intent).

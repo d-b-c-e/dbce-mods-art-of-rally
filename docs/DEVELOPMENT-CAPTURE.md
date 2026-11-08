@@ -17,12 +17,12 @@ Unlike live frame health, old captures lack focus/stage identifiers; a segment
 is not necessarily a cold start. Existing `delta_s` timing summaries remain
 unchanged. Compare frame caps and avoid treating a threshold count as a cause.
 
-**First saved drive, 2026-09-10:** [one owner-reported jump matches one detected
-landing](archive/reviews/2026-09-10-first-jump-capture.md). All 8,974 motion rows are
+**First saved drive, 2026-09-10:** one owner-reported jump matches one detected
+landing. All 8,974 motion rows are
 available/aligned with no detected discontinuities. KI-31's one-unit conversion
 difference is now reproduced with actual Mono and reconciled in strict replay;
 the unchanged recording is in `results/regression-corpus/index.json`. No new
-effect or retune has shipped. [Runtime evidence](archive/reviews/2026-09-11-bug-follow-up.md).
+effect or retune has shipped. Runtime evidence.
 
 Probe 0.2.5.3 records `forceQuantization`: `truncate-f64-product@1` for the
 observed Mono expression, `truncate-f32-product@1` for single-rounded products.
@@ -145,7 +145,7 @@ still need verification; actual Mono hook attachment and offline tests pass.
 
 The owner's first crash baseline has 2,947 verified force/motion rows, multiple
 sharp decelerations and no body-collision callbacks (old probe 0.2.5.3).
-[Analysis and next capture](archive/reviews/2026-09-15-crash-capture.md).
+Analysis and next capture.
 
 Keep the existing force tune. Capture ordinary road, a jump/landing and a
 controlled slide, noting car/stage and approximate event times. Compare those

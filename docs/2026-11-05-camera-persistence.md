@@ -87,7 +87,7 @@ no compilation/test occurred during preparation.
 ## Remaining gates
 
 Successor CV0.6.7/Art rc40 closes the companion store/imported-key gap offline
-and is installed file-only; see [CV cockpit persistence](../experiments/CustomVehicles/COCKPIT-PERSISTENCE.md). Stable stock
+and is installed file-only; see CV cockpit persistence. Stable stock
 view indices, measured meshes, actual hotkey/UI dispatch, callback handoffs,
 stage/car/restart rendering, final extreme-lens behavior and owner seating/
 comfort require later bounded runtime/owner evidence. Existing ready_for_test
