@@ -1,6 +1,19 @@
 # Local deployment
 
-## Current installation - Art 0.4.4-rc.48 (shared input), November 8
+## Current installation - Art 0.4.4-rc.49 (shared input), November 8
+
+ART-L build (source `c8cf27f`): the dev recorder takes `Dbce.Wheel.Playback.dll` from `lib/toolkit` (toolkit `804b2a6`)
+and `lib/playback` is gone; no player DLL changed except the version label. Test-Rc passed. Installed with the
+package `install.ps1` from a fresh extract of the ZIP over rc.48 with the game closed; settings, `TripleScreen.xml`,
+`dbce-controls.ini` and UMM `Params.xml` stayed byte-identical and all 9 mod payload hashes match.
+ZIP SHA-256 `2E32D6C9F4F9F0B09278A8A0271469393FE028234D146A25C02DC3812ABEB734`, installed Mod
+`66AB70B777055C8B96D4D143ECAFF37E999214EF4128AC1E26E3A41D9B7AEA39`. Rollback copy of rc.48 and the user-state backup:
+`E:/Source/temp/art-l/launch49/backup`. Launch-checked 2026-11-08 16:13 through Steam with force feedback muted: mod
+active, both wheel devices opened, shared profile attached, no exceptions in the UMM log; all four captures (F6 closed,
+open, closed again) passed Test-GamePicture `-Menu` on three screens. State restored (only the expected
+`remotecache.vdf` difference).
+
+## Previous installation - Art 0.4.4-rc.48 (shared input), November 8
 
 ART-L build (source `33770c4`, which includes CFG-2's store read `ecbd6d1`): the triple-screen core and contracts now
 come from `lib/toolkit/triple` through Sync-Toolkit's triple part (same code as before), on top of rc.46's managed
