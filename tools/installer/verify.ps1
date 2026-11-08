@@ -51,8 +51,8 @@ $UmmManagerFiles = @('UnityModManager.dll', '0Harmony.dll', 'dnlib.dll', 'Config
 $PayloadFiles += @($UmmGameFiles + $UmmManagerFiles + 'PROVENANCE.md' +
     @('UnityModManager-MIT.txt', 'UnityDoorstop-LGPL-2.1.txt', 'Harmony-MIT.txt', 'dnlib-MIT.txt' | ForEach-Object { 'licenses/' + $_ }) |
     ForEach-Object { 'UnityModManager/' + $_ })
-# Shipped only by a private shared-input candidate (package.ps1 -SharedInputCandidate), whose
-# build.json pins it and the native it reads through.
+# The shared-input shim; build.json's sharedInputCandidate record pins it and the native it reads through.
+# Older packages without it still verify.
 $OptionalPayloadFiles = @('ArtOfSimRally/dbce_shim.dll')
 
 function Assert-Payload([string]$Directory) {

@@ -3,7 +3,7 @@ using System;
 namespace ArtOfSimRally.Mod.Shim
 {
     // Wire contract only: profile parsing, device identity, calibration, rearm and
-    // normalization remain in shared Core. See lib/input-shim/PROVENANCE.md.
+    // normalization remain in shared Core. The header is lib/toolkit/shim/dbce_shim.h.
     internal enum ShimStatus : byte
     {
         Unbound, Invalid, Unsupported, DeviceMissing, ProductMismatch, ObjectMissing,

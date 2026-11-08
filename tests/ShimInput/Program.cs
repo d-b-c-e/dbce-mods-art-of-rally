@@ -430,7 +430,7 @@ internal static class Program
         var recovered = ProfileObjects.Parse("[Controls]\nconfirm = axis 1 dev=" + R12 + "\nconfirm = button 2 dev=" + R12 + "\n");
         Check(recovered.Count == 1 && ProfileObjects.BoundBy(recovered, "button", 2, 0, r12) == "confirm", "an invalid first line blocked a valid later binding");
     }
-    // lib/input-shim/CONTROLS.json is the Wheelkit-facing contract a candidate's build.json carries (romi 33009).
+    // tools/package/shared-input-controls.json is the Wheelkit-facing contract build.json carries.
     // It must name exactly the actions this build delivers and the ones it refuses, with the same reasons.
     [System.Runtime.Serialization.DataContract]
     private sealed class ControlsContract
@@ -458,10 +458,10 @@ internal static class Program
         string path = null;
         for (var d = new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory); d != null && path == null; d = d.Parent)
         {
-            string candidate = Path.Combine(d.FullName, "lib", "input-shim", "CONTROLS.json");
+            string candidate = Path.Combine(d.FullName, "tools", "package", "shared-input-controls.json");
             if (File.Exists(candidate)) path = candidate;
         }
-        Check(path != null, "lib/input-shim/CONTROLS.json not found above the test binary");
+        Check(path != null, "tools/package/shared-input-controls.json not found above the test binary");
         ControlsContract contract;
         var settings = new System.Runtime.Serialization.Json.DataContractJsonSerializerSettings { UseSimpleDictionaryFormat = true };
         using (var stream = File.OpenRead(path))

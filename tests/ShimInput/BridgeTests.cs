@@ -145,7 +145,7 @@ internal static class BridgeTests
     // The ordinary pin, 574bb88 (7DDC9621), refuses every open flag on the copied-provider bridge;
     // f38b855 (0D10F913, reviewed by romi 28531) admits a fenced latched open, and so does the reviewed
     // private-candidate pin (toolkit c6594fa, BC9B030A when adopted). That pin is read from
-    // lib/input-shim/CANDIDATE.json, so this gate cannot fall behind the record again. Any other build
+    // lib/toolkit/MANIFEST.txt, so this gate cannot fall behind the vendored shim. Any other build
     // is unreviewed here, so admitting latched control stays a reviewed change, not a surprise.
     internal const string OrdinaryShim = "7DDC962132819EDAE76EF84CE6509F1936B8C38177A36D498B8ABBCFDCFFBCAF";
     internal const string LatchedShim = "0D10F913C998C97D7DDF3A8F5F470D010092C3681152059DC88D7E0A7BB0386B";
@@ -153,13 +153,13 @@ internal static class BridgeTests
     {
         for (var dir = new DirectoryInfo(Path.GetDirectoryName(typeof(BridgeTests).Assembly.Location)); dir != null; dir = dir.Parent)
         {
-            string record = Path.Combine(dir.FullName, "lib", "input-shim", "CANDIDATE.json");
+            string record = Path.Combine(dir.FullName, "lib", "toolkit", "MANIFEST.txt");
             if (!File.Exists(record)) continue;
-            var pin = System.Text.RegularExpressions.Regex.Match(File.ReadAllText(record), "\"shimSha256\"\\s*:\\s*\"([0-9A-F]{64})\"");
-            Check(pin.Success, "CANDIDATE.json declares no shimSha256");
-            return pin.Groups[1].Value;
+            var pin = System.Text.RegularExpressions.Regex.Match(File.ReadAllText(record), "([0-9A-Fa-f]{64})\\s+shim/dbce_shim\\.dll");
+            Check(pin.Success, "lib/toolkit/MANIFEST.txt pins no shim/dbce_shim.dll");
+            return pin.Groups[1].Value.ToUpperInvariant();
         }
-        Check(false, "lib/input-shim/CANDIDATE.json not found above the test assembly");
+        Check(false, "lib/toolkit/MANIFEST.txt not found above the test assembly");
         return null;
     }
     private static void LatchedBridgeGate(string dll)

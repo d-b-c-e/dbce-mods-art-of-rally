@@ -125,13 +125,9 @@ the [0.4.2 release draft](releases/0.4.2.md) separates the remaining publication
 decision from untested hardware extras. This documentation update changes no
 runtime files or accepted artifact.
 
-**Current stable producer restrictions remain in force:** `package.ps1` rejects
-a stable version with `-SharedInputCandidate`, and also rejects a final package
-using the current `local+c8ec2ee` toolkit pin. Public distribution of the pinned
-shim binary/source and the optional helper remains an explicit owner decision.
-Do not remove either guard, fake an official pin, replace the accepted native,
-or build a different baseline flavor just to obtain a stable label. Resolve
-the public packaging/provenance scope in an assigned implementation first.
+**Current stable producer restriction:** `package.ps1` rejects a final package
+whose toolkit pin is not an official release (`vX.Y.Z`). Do not fake an official
+pin or replace the accepted native just to obtain a stable label.
 
 The owner has standing authorization to keep the local test installation current.
 As a checklist item when finishing a feature or bug fix, deploy its artifact after
@@ -198,16 +194,9 @@ Package it with `tools/package/session-tools.ps1 -Version X.Y.Z` from the same
 clean source. Publish its ZIP/checksum as a separate optional asset; never add
 probe dependencies to the player mod. Preserve original captures privately.
 
-One package per release (STD-040). Shared input is a switch of the same script:
-
-```powershell
-./tools/package/package.ps1 -Version X.Y.Z-rc.N -SharedInputCandidate -SharedInputShim <pinned-shim>
-```
-
-It produces `-shared-input.zip` with the pinned shim and native and a candidate receipt in `build.json`.
-The private controls-setup companion ZIP (`-PrivateStandaloneSetup`) and the research shim probe flavour
-(`-ResearchShimProbe`, `ArtShimProbe`) were removed on 2026-11-07; old artifacts and their notes in
-`docs/archive/` stay as history.
+One package per release (STD-040). It always carries the shared-input shim and native from `lib/toolkit`,
+with their pins and Wheelkit's controls contract (`tools/package/shared-input-controls.json`) in `build.json`
+under `sharedInputCandidate`, the key Wheelkit reads. Shared input stays off until the player opts in.
 
 The October 13 source/package notice audit of pinned helper `19a5897` found the
 declared .NET, WPF-UI and CommunityToolkit notice/license files, Art and toolkit

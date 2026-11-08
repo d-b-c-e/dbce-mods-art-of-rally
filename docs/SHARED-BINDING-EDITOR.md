@@ -97,8 +97,8 @@ Open at that checkpoint (the managed-payload/restart evidence below supersedes t
 - force feedback with the shared profile;
 - restart consumption (the saved profile becomes active at the next start, and the car follows it);
 - rebinding after a disconnect;
-- the final shared-input package bytes. `package.ps1 -SharedInputCandidate` builds with a
-  new stamp, so it is different code from F98 (Lola 132795);
+- the final shared-input package bytes. `package.ps1` builds with a new stamp, so it is different code from F98
+  (Lola 132795);
 - one shot detail: in the save run, the cleared row's "next start: Unbound" line was half cut by the scroll body, so it
   is shown by the host state and the file, not by that row's pixels.
 
