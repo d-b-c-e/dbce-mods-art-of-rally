@@ -250,8 +250,8 @@ internal sealed class ProjectionController
     private string CurveDescription => _curve.Note != null ? " " + SafeMessage(_curve.Note) : "";
 
     // Bezel gap and curve come only from the local measurements (set in Advanced setup or by Wheelkit), so an imported
-    // layout renders as before. The eye distance is to the glass middle; a curved rig places the chord one sagitta
-    // closer (toolkit TripleRigDefinition). An unusable curve keeps the flat rig and is reported by ConfigureViews.
+    // layout renders as before. The eye distance is to the plane through the center panel's edges (STD-047, toolkit
+    // TripleRigDefinition); curvature changes only the warp. An unusable curve keeps the flat rig and is reported by ConfigureViews.
     private static double SavedCurve(Settings settings) =>
         settings.UseLocalLayout && settings.CurveRadiusMm > 0f && !float.IsInfinity(settings.CurveRadiusMm) ? settings.CurveRadiusMm : 0d;
 

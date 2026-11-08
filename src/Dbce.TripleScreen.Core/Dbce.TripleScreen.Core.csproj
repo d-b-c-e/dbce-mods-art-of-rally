@@ -9,5 +9,11 @@
     <RootNamespace>Dbce.TripleScreen</RootNamespace>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);1591</NoWarn>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
+  <!-- dbce-triple-screen-toolkit's core, vendored unedited by tools/Sync-Toolkit.ps1 (part "triple") and checked
+       against lib/toolkit/MANIFEST.txt by package.ps1 and Test-Rc. Never edit it here. -->
+  <ItemGroup>
+    <Compile Include="..\..\lib\toolkit\triple\core\*.cs" LinkBase="Core" />
+  </ItemGroup>
 </Project>

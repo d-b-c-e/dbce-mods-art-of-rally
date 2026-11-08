@@ -5,12 +5,14 @@
    -LocalRepo records its full revision and dirty state; it never claims a release tag.
    Source parts: shared (shared/ plus the Dbce.Wheel.Input sources as shared/input), unity (the shared
    Unity layer and Dbce.Unity.props) and installer. shim (the built dbce_shim.dll and headers) comes from a release archive.
+   triple (dbce-triple-screen-toolkit's core sources as triple/core, no project or bin, and contracts as triple/contracts)
+   comes from the triple checkout beside -LocalRepo, or -TripleRepo; the manifest header records its revision.
    -Check changes nothing: it fails when a vendored file differs from MANIFEST.txt, is missing, or is not listed.
    Run it in the consumer's build so a local edit to a vendored copy stops the build. #>
 [CmdletBinding()]
 param([string]$Version, [string]$LocalRepo, [string]$Destination,
       [string[]]$Parts = @('native','dotnet'), [switch]$Force, [switch]$Check,
-      [string]$Repo = 'd-b-c-e/dbce-wheel-mod-toolkit')
+      [string]$Repo = 'd-b-c-e/dbce-wheel-mod-toolkit', [string]$TripleRepo)
 $ErrorActionPreference = 'Stop'
 if ($Check) {
     if (-not $Destination) { $Destination = Join-Path (Split-Path -Parent $PSScriptRoot) 'lib/toolkit' }
@@ -35,7 +37,7 @@ if ($Check) {
     return
 }
 $Parts = @($Parts | ForEach-Object { $_ -split ',' } | Where-Object { $_ } | Select-Object -Unique)
-$valid = @('native','native-x86','include','profiles','powershell','dotnet','tools','knowledge','shared','unity','installer','shim')
+$valid = @('native','native-x86','include','profiles','powershell','dotnet','tools','knowledge','shared','unity','installer','shim','triple')
 if ($Parts.Count -eq 0 -or @($Parts | Where-Object { $_ -notin $valid }).Count) { throw 'Unknown or empty Parts selection' }
 if ([bool]$Version -eq [bool]$LocalRepo) { throw 'Specify exactly one of -Version or -LocalRepo' }
 $root = Split-Path -Parent $PSScriptRoot
@@ -65,6 +67,7 @@ $staged = Join-Path $transaction 'next'
 $backup = Join-Path $transaction 'previous'
 $keepRecovery = $false
 $under = @{}
+$tripleVer = $null
 try {
     if ($LocalRepo) {
         $LocalRepo = [IO.Path]::GetFullPath($LocalRepo)
@@ -94,7 +97,19 @@ try {
         }
         # Release archives already hold the Input sources at shared/input (tools/package/package.ps1).
         $under[(Join-Path $LocalRepo 'dotnet/Dbce.Wheel.Input')] = 'input'
+        if ($Parts -contains 'triple') {
+            if (-not $TripleRepo) { $TripleRepo = Join-Path (Split-Path -Parent $LocalRepo) 'dbce-triple-screen-toolkit' }
+            $TripleRepo = [IO.Path]::GetFullPath($TripleRepo)
+            $tripleRevision = & git -C $TripleRepo rev-parse HEAD
+            if ($LASTEXITCODE -ne 0) { throw 'TripleRepo must be a git checkout' }
+            $tripleDirty = @(& git -C $TripleRepo status --porcelain)
+            if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect TripleRepo state' }
+            $tripleVer = 'local+' + $tripleRevision + $(if ($tripleDirty.Count) { '.dirty' } else { '.clean' })
+            $core = Join-Path $TripleRepo 'src/Dbce.TripleScreen.Core'; $contracts = Join-Path $TripleRepo 'contracts'
+            $src.triple = @($core, $contracts); $under[$core] = 'core'; $under[$contracts] = 'contracts'
+        }
     } else {
+        if ($Parts -contains 'triple') { throw 'The triple part comes from a triple-screen toolkit checkout; use -LocalRepo' }
         New-Item -ItemType Directory -Path $download | Out-Null
         & gh release download $Version --repo $Repo --pattern 'dbce-wheel-mod-toolkit-*.zip' --dir $download
         if ($LASTEXITCODE -ne 0) { throw 'Release download failed' }
@@ -172,7 +187,7 @@ try {
         if ((Get-FileHash -LiteralPath $target).Hash -ne $item.hash) { throw "Staged copy changed: $relative" }
         $recorded[$relative] = $item.hash
     }
-    @("# Sync-Toolkit SHA-256; selected parts: $($Parts -join ','); toolkit $ver") +
+    @("# Sync-Toolkit SHA-256; selected parts: $($Parts -join ','); toolkit $ver" + $(if ($tripleVer) { "; triple $tripleVer" })) +
         @($recorded.Keys | Sort-Object | ForEach-Object { "$($recorded[$_])  $_" }) |
         Set-Content -LiteralPath (Join-Path $staged 'MANIFEST.txt') -Encoding UTF8
     Set-Content -LiteralPath (Join-Path $staged 'VERSION') -Value @($ver, [DateTime]::UtcNow.ToString('O')) -Encoding UTF8

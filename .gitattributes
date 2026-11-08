@@ -9,3 +9,4 @@ tests/SettingsUi/golden/*.xml -text
 
 # Vendored toolkit sources keep the exact bytes MANIFEST.txt pins (Sync-Toolkit.ps1 -Check).
 lib/toolkit/shared/** -text
+lib/toolkit/triple/** -text
