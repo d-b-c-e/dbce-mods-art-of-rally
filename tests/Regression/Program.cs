@@ -15,60 +15,10 @@ static class Program
     static void Same(float actual, float expected, string message)
         => Check(float.IsFinite(actual) && Math.Abs(actual - expected) <= 0.000001f, message + $": {actual:R} != {expected:R}");
 
-    // Frozen from our v0.2.2 inline formula. Crucially this calls the game's actual
-    // managed Mathf, rather than using the extracted ForceCurve as its own oracle.
-    static float Baseline(float fy, float slip, float ideal, float speed, float reference, float gain, bool invert, float smooth, float previous)
-    {
-        float trail = Mathf.Lerp(1f, .6f, Mathf.Clamp01(slip / (2f * Mathf.Max(1f, ideal))));
-        float n = fy * trail / Mathf.Max(1f, reference);
-        n *= gain;
-        n *= Mathf.SmoothStep(0f, 1f, (speed - 3f) / 9f);
-        if (invert) n = -n;
-        n = Mathf.Clamp(n, -1f, 1f);
-        return Mathf.Lerp(n, previous, Mathf.Clamp01(smooth));
-    }
-
     static void Curve()
     {
         StandardReference();
-        var random = new System.Random(550320);
-        foreach (float smoothing in new[] { 0f, .2f, .5f, .95f, 1f })
-        foreach (float gain in new[] { 0f, .3f, .52f, 1f, 2f })
-        foreach (bool invert in new[] { false, true })
-        {
-            float expected = 0, actual = 0, portable = 0;
-            for (int i = 0; i < 2000; i++)
-            {
-                float fy = (float)(random.NextDouble() * 80000 - 40000);
-                float speed = i % 5 == 0 ? 0 : (float)(random.NextDouble() * 16);
-                float ideal = i % 7 == 0 ? 0 : 8.5f;
-                float slip = (float)(random.NextDouble() * 45);
-                if (i % 251 == 0) expected = actual = portable = 0; // stage/reset boundary
-                expected = Baseline(fy, slip, ideal, speed, 11500, gain, invert, smoothing, expected);
-                actual = ForceCurve.Smooth(actual, ForceCurve.Normalised(fy, slip, ideal, speed, 11500, gain, invert), smoothing);
-                portable = ArtOfSimRally.Testing.LegacyForceCurve.Evaluate(fy,slip,ideal,speed,11500,gain,invert,smoothing,portable);
-                Same(portable,expected,"portable baseline differs from game Mathf");
-                Check((int)(portable*10000)==(int)(expected*10000),"portable baseline changed device magnitude");
-                Same(actual, expected, $"dynamic curve step {i}");
-                Check((int)(actual * 10000) == (int)(expected * 10000), "device magnitude changed");
-            }
-        }
-        // Change user tune and reset state within a sequence too, including the
-        // Reddit user's 15/0.50 settings. These remain independent filter states.
-        float priorBaseline=0, priorToolkit=0;
-        for (int i=0;i<25000;i++)
-        {
-            float fy=(float)(random.NextDouble()*100000-50000);
-            float speed=(float)(random.NextDouble()*60), slip=(float)(random.NextDouble()*50);
-            float gain=new[] { .3f, .52f, 1f, 2f }[i%4];
-            float smoothing=new[] { 0f,.2f,.5f,1f }[(i/7)%4];
-            bool invert=(i/101)%2==1;
-            if(i%103==0) priorBaseline=priorToolkit=0;
-            priorBaseline=Baseline(fy,slip,8.5f,speed,11500,gain,invert,smoothing,priorBaseline);
-            priorToolkit=ForceCurve.Smooth(priorToolkit,ForceCurve.Normalised(fy,slip,8.5f,speed,11500,gain,invert),smoothing);
-            Same(priorToolkit,priorBaseline,"changing settings sequence");
-            Check((int)(priorToolkit*10000)==(int)(priorBaseline*10000),"changing settings changed device force");
-        }
+        // The curve's outputs are pinned by docs/force-curve-vector.csv (Test-Rc's vector step).
         Check(ForceCurve.Normalised(40000, 0, 8.5f, 3, 11500, 2, false) == 0, "fade start");
         Check(ForceCurve.Normalised(40000, 0, 8.5f, 12, 11500, 2, false) == 1, "saturation");
         Same(ForceCurve.Normalised(1, 0, 0, 12, 0, 1, true), -1, "reference floor/inversion");
@@ -79,27 +29,7 @@ static class Program
         var cfg = new Settings();
         Check(cfg.Strength == 50 && cfg.GainFromStrength == 1, "standard steering slider midpoint changed");
         Check(cfg.CrashStrength == 50 && cfg.LandingStrength == 5 && cfg.ShiftStrength == 5, "steering calibration altered independent effect defaults");
-        foreach (float smoothing in new[] { 0f, .2f, .95f })
-        foreach (bool invert in new[] { false, true })
-        {
-            float legacy = 0, standard = 0;
-            for (int i = 0; i < 2400; i++)
-            {
-                // Both signs, saturating inputs, standstill/fade, reversal, release
-                // and explicit reset. Oracle uses old tune and frozen game math.
-                float fy = i % 17 == 0 ? 0 : (float)(System.Math.Sin(i * .037) * 48000);
-                float slip = i % 40, speed = i % 150;
-                if (i % 233 == 0) legacy = standard = 0;
-                legacy = Baseline(fy, slip, 8.5f, speed, 11500, .6f, invert, smoothing, legacy);
-                standard = ForceCurve.Smooth(standard, ForceCurve.Normalised(fy, slip, 8.5f, speed,
-                    cfg.FyReference, cfg.GainFromStrength, invert), smoothing);
-                Same(standard, legacy, "standard50 differs from legacy30");
-                Check(System.Math.Abs((int)(standard * 10000) - (int)(legacy * 10000)) <= 1,
-                    "standard50 differs by more than one native quantization unit");
-            }
-        }
-        // High forces must retain full range: scaling an old clipped output by
-        // .6 would incorrectly yield .6 here rather than legacy30's full force.
+        // High forces must retain full range: the reference is calibrated before the output is clipped.
         Same(ForceCurve.Normalised(100000, 0, 8.5f, 60, cfg.FyReference, cfg.GainFromStrength, false), 1,
             "reference calibrated after output clipping");
     }

@@ -81,7 +81,7 @@ namespace ArtOfSimRally.Mod
         private static void Validate(XElement x, DateTime now)
         {
             int? schema=(int?)x.Attribute("schema");
-            if (x.Name != "frameHealth" || (schema != 1 && schema != 2) || x.HasElements || !string.IsNullOrWhiteSpace(x.Value))
+            if (x.Name != "frameHealth" || schema != 2 || x.HasElements || !string.IsNullOrWhiteSpace(x.Value))
                 throw new InvalidDataException("Unknown diagnostic format");
             if (!Guid.TryParse((string)x.Attribute("session"), out var session) || session == Guid.Empty ||
                 string.IsNullOrEmpty((string)x.Attribute("build")) || ((string)x.Attribute("build")).Length > 256)
@@ -100,7 +100,6 @@ namespace ArtOfSimRally.Mod
             if (frames <= 0 || early < 0 || later < 0 || early > frames || later > frames - early ||
                 double.IsNaN(maximum) || double.IsInfinity(maximum) || maximum < 0)
                 throw new InvalidDataException("Invalid frame counters");
-            if (schema==2)
             {
                 var first=ReadWindow(x,"first5"); var next=ReadWindow(x,"next10"); var late=ReadWindow(x,"later");
                 if (first.Frames>frames || next.Frames>frames-first.Frames || late.Frames!=frames-first.Frames-next.Frames ||
@@ -138,8 +137,6 @@ namespace ArtOfSimRally.Mod
             {
                 foreach (var attribute in _previous.Attributes())
                     output.AppendLine(attribute.Name + ": " + attribute.Value);
-                if ((int?)_previous.Attribute("schema")==1)
-                    output.AppendLine("Legacy snapshot: 33/50ms and first-five-second counts were not recorded.");
             }
             if (LastError != null) output.AppendLine("Current snapshot retention: " + LastError);
             output.AppendLine("Aggregates do not identify a stutter cause. No per-frame timeline is retained.");

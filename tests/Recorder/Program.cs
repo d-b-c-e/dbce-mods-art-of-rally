@@ -19,7 +19,7 @@ static class Program
         {
             if (i == 2) { session.Reset(); previous = 0; }
             float fy = i % 2 == 0 ? 8000 : -1500;
-            float output = LegacyForceCurve.Evaluate(fy, 8, 8.5f, 40, 11500, .3f, false, .5f, previous);
+            float output = Dbce.Wheel.Ffb.AxleForceCurve.Smooth(previous, Dbce.Wheel.Ffb.AxleForceCurve.Normalised(fy, 8, 8.5f, 40, 11500, .3f, false), .5f);
             session.Force(new ForceSample { Time = i + 1, Fy = fy, Slip = 8, Ideal = 8.5f, Speed = 40, Reference = 11500, Gain = .3f, Smoothing = .5f, Previous = previous, Output = output, Device = (int)(output * 10000), Invert = 0,
                 Motion = new MotionSample { Valid = 1, PhysicsTime = i * .02f, ContactMask = 15, Qx = 0, Qy = 0, Qz = 0, Qw = 1,
                     Px = 0, Py = 0, Pz = i * .2f, Vx = 0, Vy = 0, Vz = 10, LocalVx = 0, LocalVy = 0, LocalVz = 10,
@@ -185,7 +185,7 @@ static class Program
         cfg.GetType().GetField("FyReference").SetValue(cfg, 11500f);
         cfg.GetType().GetField("Strength").SetValue(cfg, 30);
         tune = access.ReadTune();
-        Check(tune.Reference == 11500 && tune.Gain == .6f, "probe substitutes the new default for an explicit legacy tune");
+        Check(tune.Reference == 11500 && tune.Gain == .6f, "probe substitutes the default for an explicit saved tune");
     }
     // carInput=shared leaves the car to the mod's shared input and ends on the probe's receipt or a bound.
     static void Policy()

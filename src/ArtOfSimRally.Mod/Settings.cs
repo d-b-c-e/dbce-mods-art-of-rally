@@ -90,7 +90,7 @@ namespace ArtOfSimRally.Mod
 
         public int Strength = 50;
 
-        // STD-031: the new reference at 50 reproduces legacy Strength 30.
+        // STD-031 steering reference: Strength 50 is the standard force.
         // Calibrate before clamp/filter; never multiply an already clipped output.
         public const string SteeringReferenceId = "art-of-rally-50-v2";
         public const float DefaultFyReference = 11500f / .6f;
@@ -100,7 +100,7 @@ namespace ArtOfSimRally.Mod
         /// </summary>
         /// <remarks>
         /// 50 maps to 1.0. The force reference sets the midpoint calibration;
-        /// saved reference values remain explicit and preserve their old tune.
+        /// a saved FyReference is used as saved.
         /// </remarks>
         public float GainFromStrength => Strength / 50f;
 
@@ -113,11 +113,8 @@ namespace ArtOfSimRally.Mod
         /// is a different thing from how strong the wheel feels, and having two
         /// dials for one sensation - one of them inverted, where lower means
         /// stronger - confused everyone who met it. Strength is the only dial now;
-        /// this stays as the reference it scales against. Legacy 11,500 N: a hard corner
-        /// at 100 km/h measured 6,000-7,000 N (2026-09-02); 6,000 then 8,000 were both
-        /// judged too strong at Strength 50 on a MOZA R12 (the owner settled at 20
-        /// with 8,000). STD-031 changes the default to 11,500 / 0.6 N so new
-        /// Strength 50 matches old Strength 30. Saved values are not migrated.
+        /// this stays as the reference it scales against. A hard corner at 100 km/h
+        /// measured 6,000-7,000 N (2026-09-02); the default is 11,500 / 0.6 N (STD-031).
         /// </remarks>
         public float FyReference = DefaultFyReference;
 

@@ -41,7 +41,7 @@ static class Program
         }
         Check(frames[0] == "frame,time_s,delta_s,driving,direct_input,steer,throttle,brake,clutch,handbrake", "frame schema mismatch");
         Check(forces[0] == "time_s,fy_n,slip_deg,ideal_deg,speed_kmh,reference_n,gain,invert,smoothing,previous,output,device" + (schema >= 2 ? ",epoch" : ""), "force schema mismatch");
-        float time = -1, baselineState = 0, toolkitState = 0, maxFloatDelta = 0;
+        float time = -1, toolkitState = 0;
         var forceRows = new List<float[]>();
         int epoch = -1, resets = 0, runtimeRoundingDifferences = 0;
         foreach (string line in forces.Skip(1))
@@ -50,20 +50,16 @@ static class Program
             Check(p.Length == (schema >= 2 ? 13 : 12) && p.All(float.IsFinite), "invalid force row");
             Check(p[0] >= 0 && p[0] >= time && (p[7] == 0 || p[7] == 1), "invalid force time/inversion"); time = p[0];
             Check(Math.Abs(p[9]) <= 1 && Math.Abs(p[10]) <= 1, "force history/output outside normalized range");
-            if (schema == 1 || epoch < 0) { baselineState = toolkitState = p[9]; }
+            if (schema == 1 || epoch < 0) toolkitState = p[9];
             if (schema >= 2)
             {
                 Check(p[12] >= 0 && p[12] == (int)p[12] && p[12] >= epoch, "invalid reset epoch");
-                if (epoch >= 0 && p[12] != epoch) { baselineState = toolkitState = 0; resets++; }
+                if (epoch >= 0 && p[12] != epoch) { toolkitState = 0; resets++; }
                 epoch = (int)p[12];
                 Same(toolkitState, p[9], "filter history is discontinuous");
             }
-            baselineState = LegacyForceCurve.Evaluate(p[1], p[2], p[3], p[4], p[5], p[6], p[7] == 1, p[8], baselineState);
             toolkitState = ForceCurve.Smooth(toolkitState, ForceCurve.Normalised(p[1], p[2], p[3], p[4], p[5], p[6], p[7] == 1), p[8]);
-            maxFloatDelta = Math.Max(maxFloatDelta, Math.Abs(toolkitState - baselineState));
-            Same(toolkitState, baselineState, "before/after force comparison");
             Same(toolkitState, p[10], "offline force replay");
-            Check((int)(toolkitState * 10000) == (int)(baselineState * 10000), "adoption changed device magnitude");
             Check(p[11] == (int)p[11] && Math.Abs(p[11]) <= 10000, "invalid native magnitude");
             Check(ForceDelivery.Quantise(p[10], deliveryContract) == p[11], "recorded output/device conversion mismatch");
             if ((int)(toolkitState * 10000) != p[11]) runtimeRoundingDifferences++;
@@ -100,7 +96,6 @@ static class Program
             pipeline = "AxleForceCurve@" + AxleForceCurve.CompatibilityVersion,
             candidateForceLibrarySha256 = ArtifactHash.FileHash(typeof(AxleForceCurve).Assembly.Location),
             captureBuild = (string?)manifest.Element("build"),
-            maxFloatDelta,
             deviceMismatches = 0,
             deliveryContract,
             runtimeRoundingDifferences,

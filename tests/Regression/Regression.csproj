@@ -7,7 +7,6 @@
   <ItemGroup>
     <Compile Include="../../src/ArtOfSimRally.Mod/WheelPovInput.cs" Link="WheelPovInput.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/PovSnapshotReader.cs" Link="PovSnapshotReader.cs" />
-    <Compile Include="../reference/LegacyForceCurve.cs" Link="LegacyForceCurve.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/ForceCurve.cs" Link="ForceCurve.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/WheelInput.Binding.cs" Link="WheelInput.Binding.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/FfbNative.cs" Link="FfbNative.cs" />

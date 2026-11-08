@@ -53,7 +53,7 @@ static class FrameHealthRetentionTests
         var legacy=XElement.Parse(valid);legacy.SetAttributeValue("schema",1);
         foreach(var a in legacy.Attributes().Where(a=>a.Name.LocalName.StartsWith("first5")||a.Name.LocalName.StartsWith("next10")||a.Name.LocalName.StartsWith("later")&&a.Name.LocalName!="laterHitches").ToArray())a.Remove();
         File.WriteAllText(path,legacy.ToString());
-        Check(Summary(new FrameHealthStore(path,"new",start.AddHours(1))).Contains("Legacy snapshot"),"schema-1 history no longer readable");
+        Check(Summary(new FrameHealthStore(path,"new",start.AddHours(1))).Contains("unavailable"),"old schema-1 history still read");
         File.WriteAllText(path,valid);
         var fresh=new FrameHealthStore(path,"next-build",start.AddHours(1));
         health.Observe(true,true,0); health.Observe(true,true,.1);
