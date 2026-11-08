@@ -101,8 +101,7 @@ Single-screen players keep the game's behaviour; the Game/Realistic choice only 
   one 7680x1440 window at x -2560, no Surround needed). No separate-window fallback: the owner judged it extra plumbing
   that is hard to maintain and another mode to test. Surround and non-Surround then share one code path. AC's margin 4
   gives about 3.3 mm between images (we use the measured 8 mm).
-  Done in Art (rc.35 source): the separate-windows mode and its side-display selection/proof code are removed; a saved
-  `EnableSeparateDisplayPrototype` turns the span on once at load.
+  Done in Art (rc.35 source): the separate-windows mode and its side-display selection/proof code are removed.
 - **Ultrawide (32:9) users stay a goal**: proper cylindrical projection for curved ultrawides, as SimCurve does. This
   fits the same pipeline: a curved ultrawide is a few virtual flat slices on a cylinder, each an off-axis view, warped
   by the curve, all in one window.

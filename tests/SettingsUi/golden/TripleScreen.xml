@@ -2,7 +2,6 @@
 <Settings xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
   <EnableCenterPanelPreview>false</EnableCenterPanelPreview>
   <EnableThreeViewPrototype>false</EnableThreeViewPrototype>
-  <EnableSeparateDisplayPrototype>false</EnableSeparateDisplayPrototype>
   <OverrideFieldOfView>false</OverrideFieldOfView>
   <CockpitRealistic>true</CockpitRealistic>
   <BumperRealistic>true</BumperRealistic>

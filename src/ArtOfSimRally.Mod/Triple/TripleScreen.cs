@@ -8,15 +8,11 @@ using UnityModManagerNet;
 namespace ArtOfSimRally.Mod.Triple;
 
 /// <summary>
-/// Triple-screen rendering, formerly the separate DbceTripleScreenArtOfRally mod
-/// (0.3.12). <see cref="ArtOfSimRally.Mod.Main"/> drives it; it has no UMM entry
-/// of its own. Settings stay in their own file (TripleScreen.xml) so the
-/// accepted 0.3.12 values migrate unchanged.
+/// Triple-screen rendering. <see cref="ArtOfSimRally.Mod.Main"/> drives it; it has no UMM entry
+/// of its own. Settings stay in their own file (TripleScreen.xml).
 /// </summary>
 internal static class TripleScreen
 {
-    internal const string LegacyModId = "DbceTripleScreenArtOfRally";
-
     private static UnityModManager.ModEntry _modEntry;
     private static Settings _settings;
     private static LayoutSource Layout;
@@ -26,7 +22,6 @@ internal static class TripleScreen
     private static RenderDiagnostics _renderDiagnostics;
     private static readonly MenuCenteringController MenuCentering = new();
     private static bool _enabled;
-    private static bool _blockedByLegacyMod;
     private static int _frame;
     private static readonly RacingWindowLanding Landing = new(new NativeWindowLandingHost());
     private static ProjectionOutcome _lastOutcome;
@@ -35,7 +30,6 @@ internal static class TripleScreen
     internal static void Load(UnityModManager.ModEntry modEntry)
     {
         _modEntry = modEntry;
-        MigrateFromLegacyMod(modEntry);
         try
         {
             _settings = UnityModManager.ModSettings.Load<Settings>(modEntry);
@@ -44,13 +38,6 @@ internal static class TripleScreen
         {
             modEntry.Logger.Warning("Triple screens: could not load settings; safe defaults are active: " + exception.Message);
             _settings = new Settings();
-        }
-        if (_settings.EnableSeparateDisplayPrototype)
-        {
-            _settings.EnableSeparateDisplayPrototype = false;
-            _settings.EnableThreeViewPrototype = true;
-            Save();
-            modEntry.Logger.Log("Triple screens: separate windows replaced by one window across the monitors");
         }
 
         _status = new StatusPublisher(modEntry.Logger);
@@ -63,7 +50,6 @@ internal static class TripleScreen
                             " (visible=" + File.Exists(Path.Combine(modEntry.Path, "desired-layout.json")) + ").");
         Layout.Refresh(true);
         _enabled = true;
-        _blockedByLegacyMod = LegacyModActive();
 
         var layout = EffectiveLayout.Resolve(Layout.Current, _settings);
         _lastOutcome = _settings.EnableThreeViewPrototype || _settings.EnableCenterPanelPreview
@@ -71,42 +57,6 @@ internal static class TripleScreen
             : ProjectionOutcome.Inactive(layout, "FEATURE_DISABLED", "Triple-screen rendering is disabled; stock rendering is unchanged.");
         _status.Publish(_lastOutcome, Application.version, true);
         modEntry.Logger.Log("Triple screens: loaded v" + AdapterConstants.AdapterVersion + ".");
-    }
-
-    // The old standalone mod must not render alongside this one. The installer
-    // retires it; a manual or drag-and-drop install may still leave it loaded.
-    private static bool LegacyModActive()
-    {
-        var legacy = UnityModManager.FindMod(LegacyModId);
-        return legacy != null && legacy.Active;
-    }
-
-    // First load after upgrading: copy the accepted settings and staged layout
-    // from the old mod folder. Never overwrites, never deletes the originals.
-    private static void MigrateFromLegacyMod(UnityModManager.ModEntry modEntry)
-    {
-        try
-        {
-            var modsDir = Path.GetDirectoryName(modEntry.Path.TrimEnd('\\', '/')) ?? "";
-            foreach (var legacyDir in new[] { Path.Combine(modsDir, LegacyModId),
-                                              Path.Combine(Path.GetDirectoryName(modsDir) ?? "", "Mods-retired", LegacyModId) })
-            {
-                if (!Directory.Exists(legacyDir)) continue;
-                CopyIfMissing(Path.Combine(legacyDir, "Settings.xml"), new Settings().GetPath(modEntry), modEntry);
-                CopyIfMissing(Path.Combine(legacyDir, "desired-layout.json"), Path.Combine(modEntry.Path, "desired-layout.json"), modEntry);
-            }
-        }
-        catch (Exception exception)
-        {
-            modEntry.Logger.Warning("Triple screens: settings migration skipped: " + exception.Message);
-        }
-    }
-
-    private static void CopyIfMissing(string from, string to, UnityModManager.ModEntry modEntry)
-    {
-        if (!File.Exists(from) || File.Exists(to)) return;
-        File.Copy(from, to);
-        modEntry.Logger.Log("Triple screens: migrated " + Path.GetFileName(from) + " from " + Path.GetDirectoryName(from) + ".");
     }
 
     // F7 (owner 2026-10-31, simplified framing): toggles Realistic for bonnet and bumper views, saved. Shift+F7 is the
@@ -327,20 +277,13 @@ internal static class TripleScreen
             if (_frame % 120 == 0)
             {
                 LogLayoutRefresh(Layout.Refresh(false));
-                _blockedByLegacyMod = LegacyModActive();
             }
             // The span window (SpanWindow) covers the whole row; the home-display landing would pull it back.
-            if (_enabled && !_blockedByLegacyMod && _frame % 30 == 0 && !SpanWindow.Engaged) Landing.Update();
+            if (_enabled && _frame % 30 == 0 && !SpanWindow.Engaged) Landing.Update();
             var layout = EffectiveLayout.Resolve(Layout.Current, _settings);
             ProjectionOutcome outcome;
             if (!_enabled)
                 outcome = ProjectionOutcome.Inactive(layout, "MOD_DISABLED", "The UMM mod is disabled; stock rendering is active.");
-            else if (_blockedByLegacyMod)
-            {
-                Projection.Release();
-                outcome = ProjectionOutcome.Inactive(layout, "LEGACY_MOD_ACTIVE",
-                    "The old DBCE triple-screen mod is still installed. Disable or remove it in Unity Mod Manager.");
-            }
             else
             {
                 if (_sessionKey != SessionKey()) { SessionStep = null; _sessionKey = SessionKey(); }
@@ -359,7 +302,7 @@ internal static class TripleScreen
             _lastOutcome = outcome;
             _status.Publish(outcome, Application.version);
             _renderDiagnostics.Sample(outcome, Projection);
-            if (_frame % 30 == 0) MenuCentering.Update(_enabled && !_blockedByLegacyMod && _settings.CenterMenusOnMiddleScreen, layout);
+            if (_frame % 30 == 0) MenuCentering.Update(_enabled && _settings.CenterMenusOnMiddleScreen, layout);
         }
         catch (Exception exception)
         {
@@ -375,9 +318,6 @@ internal static class TripleScreen
     internal static void DrawSettings(Dbce.Wheel.Ui.Unity.F6Widgets w)
     {
         if (_settings == null) return;
-        if (_blockedByLegacyMod)
-            w.StatusCard("triple-legacy", "The old triple-screen mod is still installed",
-                "Disable or remove \"DBCE triple-screen for art of rally\" in Unity Mod Manager; this mod now includes triple screens.", true, null);
         if (float.IsNaN(_settings.ViewWidthScale) || float.IsInfinity(_settings.ViewWidthScale))
             _settings.ViewWidthScale = 1f;
         // One window across the monitors (Surround, or SpanWindow on separate monitors) is the only mode (owner 2026-11-01).

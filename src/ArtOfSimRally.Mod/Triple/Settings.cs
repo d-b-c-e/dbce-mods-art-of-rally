@@ -5,8 +5,7 @@ namespace ArtOfSimRally.Mod.Triple;
 
 public sealed class Settings : UnityModManager.ModSettings
 {
-    // Own file beside the wheel's Settings.xml; the XML root stays <Settings>,
-    // so the old standalone mod's Settings.xml loads unchanged.
+    // Own file beside the wheel's Settings.xml.
     public override string GetPath(UnityModManager.ModEntry modEntry) =>
         Path.Combine(modEntry.Path, "TripleScreen.xml");
 
@@ -16,10 +15,6 @@ public sealed class Settings : UnityModManager.ModSettings
     // One wide output with three direct camera viewports. Never enabled
     // automatically by an imported layout or a package update.
     public bool EnableThreeViewPrototype;
-
-    // Legacy (owner 2026-11-01): the separate-windows mode was removed; one window across the monitors is the only
-    // triple-screen mode. Read once on load: true turns EnableThreeViewPrototype on and is cleared (TripleScreen.Load).
-    public bool EnableSeparateDisplayPrototype;
 
     // Owner policy 2026-10-29 (ISS-0005): the game's field of view is the default framing for every camera; the
     // measured perspective (true) is opt-in. Saved files keep their value.
