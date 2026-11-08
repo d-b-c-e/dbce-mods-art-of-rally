@@ -5,8 +5,6 @@
 <Reference Include="Dbce.Wheel.Playback"><HintPath>../../../lib/playback/Dbce.Wheel.Playback.dll</HintPath><Private>true</Private></Reference>
 <Reference Include="Dbce.Wheel.Telemetry"><HintPath>../../../lib/toolkit/dotnet/Dbce.Wheel.Telemetry.dll</HintPath><Private>false</Private></Reference>
 <Compile Include="../Common/ArtifactHash.cs" Link="ArtifactHash.cs" />
-<Compile Include="../../../lib/session-ui/SessionStatusPresentation.cs" Link="SessionStatusPresentation.cs" />
-<Compile Include="../../../lib/session-ui/SessionStatusHud.cs" Link="SessionStatusHud.cs" />
 <Compile Include="../../../src/ArtOfSimRally.Mod/NativeDiagnostics.cs" Link="NativeDiagnostics.cs" />
 <Reference Include="Assembly-CSharp"><HintPath>$(ManagedDir)/Assembly-CSharp.dll</HintPath><Private>false</Private></Reference>
 <Reference Include="UnityEngine.CoreModule"><HintPath>$(ManagedDir)/UnityEngine.CoreModule.dll</HintPath><Private>false</Private></Reference>

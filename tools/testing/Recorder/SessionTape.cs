@@ -9,7 +9,6 @@ using HarmonyLib;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using Dbce.Wheel.Playback;
-using Dbce.Wheel.Ui;
 
 namespace ArtOfSimRally.Testing
 {
@@ -59,18 +58,6 @@ namespace ArtOfSimRally.Testing
         private static Harmony _harmony;
         // Set when a replay is armed and never cleared in this process.
         private static bool _muteOutputs;
-        private static SessionDisplayState _displayEnd;
-        private static float _startedAt;
-
-        internal static SessionStatusLine HudLine
-        {
-            get
-            {
-                var state = _mode == Mode.Record ? (_incomplete == null ? SessionDisplayState.Recording : SessionDisplayState.Incomplete)
-                    : _mode == Mode.Replay ? SessionDisplayState.Playback : _displayEnd;
-                return SessionStatusPresentation.Describe(state, Time.realtimeSinceStartup - _startedAt, _muteOutputs);
-            }
-        }
 
         // Recording.
         private static readonly Dictionary<string, string> _frameValues = new Dictionary<string, string>();
@@ -146,7 +133,6 @@ namespace ArtOfSimRally.Testing
         internal static void TryArm(Action<string> log)
         {
             _log = log;
-            _displayEnd = SessionDisplayState.Off;
             // Every request starts with its opt-in diagnostics off; nothing carries over from an earlier one (sana 47008).
             _diagnostics = RecordingDiagnostics.Off;
             IdentityProbe.Disarm();
@@ -207,7 +193,6 @@ namespace ArtOfSimRally.Testing
                 else throw new InvalidDataException("mode must be record or replay");
                 PatchInputs();
                 _mode = replay ? Mode.Replay : Mode.Record;
-                _startedAt = Time.realtimeSinceStartup;
                 Event(replay ? "replay started: " + _frames.Total + " frames, " + _car.Total + " car rows, " + _frames.SegmentCount +
                                " segments, " + _shiftsByTick.Values.Sum(l => l.Count) + " shifts; force and telemetry muted; " +
                                (_trajectory ? "trajectory playback (recorded poses)" : "input diagnostic (physics divergence checked)")
@@ -218,7 +203,6 @@ namespace ArtOfSimRally.Testing
                 // Remove input hooks; keep the output mutes if they went in.
                 try { _harmony?.UnpatchAll(HarmonyId); if (_muteOutputs) PatchOutputs(); } catch (Exception muteError) { _log?.Invoke("OUTPUT MUTE FAILURE: " + muteError); }
                 _mode = Mode.Off;
-                _displayEnd = replay ? SessionDisplayState.PlaybackFailed : SessionDisplayState.StartFailed;
                 _inputWriter?.Dispose(); _carWriter?.Dispose(); _shiftWriter?.Dispose(); _nativeWriter?.Dispose();
                 try { _sharedWriter?.Dispose(); } catch { }
                 _sharedWriter = null;
@@ -996,7 +980,6 @@ namespace ArtOfSimRally.Testing
                     catch (Exception ex) { MarkIncomplete("completion seal: " + ex.Message); }
                 }
                 _mode = Mode.Off;
-                _displayEnd = _incomplete == null ? SessionDisplayState.Saved : SessionDisplayState.Incomplete;
             }
             else if (_mode == Mode.Replay && _result == null)
                 Finish(_frames.Finished && _car.SkippedWhere(m => m.EndsWith("|UNDERWAY")) == 0 ? Verdict(why) : "aborted: " + why);
@@ -1042,7 +1025,6 @@ namespace ArtOfSimRally.Testing
             _eventWriter?.Dispose(); _eventWriter = null;
             // Inputs return to the player; force and telemetry stay muted.
             _mode = Mode.Off;
-            _displayEnd = result.StartsWith("failed", StringComparison.OrdinalIgnoreCase) ? SessionDisplayState.PlaybackFailed : SessionDisplayState.PlaybackEnded;
         }
 
         private static void MarkIncomplete(string why)

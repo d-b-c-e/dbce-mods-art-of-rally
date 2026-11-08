@@ -30,10 +30,8 @@ mod. Close the game before installing or removing this developer probe.
 ```
 
 Record from launch, choose a stage, drive, then press **F11** to stop and save
-without closing the game. The optional recorder shows a persistent **REC** timer
-and the F11 reminder at the top center of the center display, including menus
-and driving. **Recording saved** appears only after the tape is closed and
-sealed; an incomplete recording is labeled separately. Wheelkit's Stop recording
+without closing the game. The recorder draws nothing on screen; its state and the
+saved or incomplete result are in the UMM log. Wheelkit's Stop recording
 button and a normal game exit also save. F11 does not start a new recording.
 Normal recording retains
 the owner's physical output settings. Add `-MuteOutputs` to mute the wheel and
