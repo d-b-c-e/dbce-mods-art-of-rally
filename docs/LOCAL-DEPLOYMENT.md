@@ -1,6 +1,19 @@
 # Local deployment
 
-## Current installation - Art 0.4.4-rc.46 (shared input), November 8
+## Current installation - Art 0.4.4-rc.48 (shared input), November 8
+
+ART-L build (source `33770c4`, which includes CFG-2's store read `ecbd6d1`): the triple-screen core and contracts now
+come from `lib/toolkit/triple` through Sync-Toolkit's triple part (same code as before), on top of rc.46's managed
+DLL re-sync; player behavior is unchanged. Installed with the package `install.ps1` from a fresh extract of the ZIP over
+rc.47 with the game closed; settings and `dbce-controls.ini` stayed byte-identical and all payload hashes match.
+ZIP SHA-256 `DA29B4037DC757624E71435C7EDB2B1FE8A850C1A9C67D1752AB20DB08D3606A`, installed Mod
+`7632C10F8D7133F5B8B90C43714C143B349E0228DD0E3579E7BC16F8BADF9A06`. Rollback copy of rc.47 and the user-state backup:
+`E:/Source/temp/art-l/launch48/backup`. Launch-checked 2026-11-08 16:00 through Steam with force feedback muted, as
+for rc.46: mod active, both wheel devices opened, all captures passed Test-GamePicture `-Menu` on three screens; state
+restored (only the expected `remotecache.vdf` difference). rc.47 (main at `47e98d6`) was installed and checked the same
+way at 15:55 in between.
+
+## Previous installation - Art 0.4.4-rc.46 (shared input), November 8
 
 ART-L build (source `a1c0862`): the toolkit's managed DLLs are re-synced through `lib/toolkit/MANIFEST.txt` (toolkit
 `591ad47`) and art's own copy of FrameRateMonitor is gone; player behavior is unchanged. Installed with the package
