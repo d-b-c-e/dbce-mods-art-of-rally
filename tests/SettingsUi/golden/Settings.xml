@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Settings xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <SettingsView>Simple</SettingsView>
+  <SettingsPage>0</SettingsPage>
+  <SettingsFollowHostScale>true</SettingsFollowHostScale>
+  <SettingsKey>F6</SettingsKey>
+  <SettingsButtonBinding />
+  <StopFfbButtonBinding />
+  <CameraButtonBindings>
+    <string xsi:nil="true" />
+    <string xsi:nil="true" />
+    <string xsi:nil="true" />
+    <string xsi:nil="true" />
+    <string xsi:nil="true" />
+    <string xsi:nil="true" />
+    <string xsi:nil="true" />
+    <string xsi:nil="true" />
+    <string xsi:nil="true" />
+    <string xsi:nil="true" />
+    <string xsi:nil="true" />
+  </CameraButtonBindings>
+  <FfbDeviceMode />
+  <DirectSteering>true</DirectSteering>
+  <ZeroAxisDeadzone>true</ZeroAxisDeadzone>
+  <GlyphTextFallback>true</GlyphTextFallback>
+  <BindAnyDevice>true</BindAnyDevice>
+  <DisableSteerAssist>false</DisableSteerAssist>
+  <SharedInput>false</SharedInput>
+  <WheelInputEnabled>false</WheelInputEnabled>
+  <SteerBinding />
+  <ThrottleBinding />
+  <BrakeBinding />
+  <ClutchBinding />
+  <HandbrakeBinding />
+  <HandbrakeButtonBinding />
+  <CameraSwitchBinding />
+  <ConfirmBinding />
+  <BackBinding />
+  <StartBinding />
+  <NavUpBinding />
+  <NavDownBinding />
+  <NavLeftBinding />
+  <NavRightBinding />
+  <HornBinding />
+  <LookBackBinding />
+  <RecoverCarBinding />
+  <RepairPunctureBinding />
+  <QuickRestartBinding />
+  <LookLeftBinding />
+  <LookRightBinding />
+  <LookForwardBinding />
+  <TransmissionMode>Follow game</TransmissionMode>
+  <ForceFeedbackEnabled>true</ForceFeedbackEnabled>
+  <Strength>50</Strength>
+  <FyReference>19166.666</FyReference>
+  <Smoothing>0.2</Smoothing>
+  <Invert>false</Invert>
+  <LandingEffectsEnabled>true</LandingEffectsEnabled>
+  <LandingStrength>5</LandingStrength>
+  <CrashEffectsEnabled>false</CrashEffectsEnabled>
+  <CrashStrength>50</CrashStrength>
+  <ShiftEffectsEnabled>false</ShiftEffectsEnabled>
+  <ShiftStrength>5</ShiftStrength>
+  <DiagnosticLogging>false</DiagnosticLogging>
+  <ShowFrameRate>false</ShowFrameRate>
+  <PreferredDevice />
+  <PreferredDeviceIndex>-1</PreferredDeviceIndex>
+  <PreferredDeviceGuid />
+  <BonnetCameraEnabled>true</BonnetCameraEnabled>
+  <BonnetHeight>0.95</BonnetHeight>
+  <BonnetForward>1</BonnetForward>
+  <BonnetSide>0</BonnetSide>
+  <BonnetPitch>3</BonnetPitch>
+  <BonnetFOV>75</BonnetFOV>
+  <BonnetLean>0.1</BonnetLean>
+  <BumperCameraEnabled>true</BumperCameraEnabled>
+  <BumperHeight>0.45</BumperHeight>
+  <BumperForward>1.9</BumperForward>
+  <BumperSide>0</BumperSide>
+  <BumperPitch>2</BumperPitch>
+  <BumperFOV>80</BumperFOV>
+  <CameraMounts />
+  <BonnetFovOffset>0</BonnetFovOffset>
+  <BumperFovOffset>0</BumperFovOffset>
+  <BonnetFovRealisticOffset>0</BonnetFovRealisticOffset>
+  <BumperFovRealisticOffset>0</BumperFovRealisticOffset>
+  <ChaseFovOffsets />
+  <ChaseFovRealisticOffsets />
+  <ChaseCameraPoses />
+  <CameraTuningKeys>true</CameraTuningKeys>
+  <CameraMoveStep>0.02</CameraMoveStep>
+  <CameraTiltStep>1</CameraTiltStep>
+  <CameraFovStep>2</CameraFovStep>
+  <KeyUp>Keypad9</KeyUp>
+  <KeyDown>Keypad3</KeyDown>
+  <KeyForward>Keypad8</KeyForward>
+  <KeyBack>Keypad2</KeyBack>
+  <KeyLeft>Keypad4</KeyLeft>
+  <KeyRight>Keypad6</KeyRight>
+  <KeyPitchDown>Keypad7</KeyPitchDown>
+  <KeyPitchUp>Keypad1</KeyPitchUp>
+  <KeyFovUp>KeypadMinus</KeyFovUp>
+  <KeyFovDown>KeypadPlus</KeyFovDown>
+  <KeyReset>Keypad5</KeyReset>
+  <ShifterEnabled>false</ShifterEnabled>
+  <ShifterIsHPattern>false</ShifterIsHPattern>
+  <ShifterDeviceIndex>-1</ShifterDeviceIndex>
+  <ShifterDeviceName />
+  <ShifterDeviceGuid />
+  <SkipNeutral>true</SkipNeutral>
+  <ShiftUpButton>-1</ShiftUpButton>
+  <ShiftDownButton>-1</ShiftDownButton>
+  <GearReverseButton>-1</GearReverseButton>
+  <Gear1Button>-1</Gear1Button>
+  <Gear2Button>-1</Gear2Button>
+  <Gear3Button>-1</Gear3Button>
+  <Gear4Button>-1</Gear4Button>
+  <Gear5Button>-1</Gear5Button>
+  <Gear6Button>-1</Gear6Button>
+  <TelemetryEnabled>true</TelemetryEnabled>
+  <TelemetryHost>127.0.0.1</TelemetryHost>
+  <TelemetryPort>8000</TelemetryPort>
+</Settings>

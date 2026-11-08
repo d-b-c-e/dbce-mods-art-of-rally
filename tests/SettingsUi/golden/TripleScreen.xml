@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Settings xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <EnableCenterPanelPreview>false</EnableCenterPanelPreview>
+  <EnableThreeViewPrototype>false</EnableThreeViewPrototype>
+  <EnableSeparateDisplayPrototype>false</EnableSeparateDisplayPrototype>
+  <OverrideFieldOfView>false</OverrideFieldOfView>
+  <CockpitRealistic>true</CockpitRealistic>
+  <BumperRealistic>true</BumperRealistic>
+  <ChaseRealistic>false</ChaseRealistic>
+  <ViewWidthScale>1</ViewWidthScale>
+  <ChaseUsesGameFov>true</ChaseUsesGameFov>
+  <CurveRadiusMm>0</CurveRadiusMm>
+  <BezelGapMm>0</BezelGapMm>
+  <UseLocalLayout>false</UseLocalLayout>
+  <ManualSetupConfirmed>false</ManualSetupConfirmed>
+  <PanelWidthPx>2560</PanelWidthPx>
+  <PanelHeightPx>1440</PanelHeightPx>
+  <PanelWidthMm>598</PanelWidthMm>
+  <PanelHeightMm>336</PanelHeightMm>
+  <EyeDistanceMm>600</EyeDistanceMm>
+  <LeftYawDegrees>45</LeftYawDegrees>
+  <RightYawDegrees>45</RightYawDegrees>
+  <AllowOutputResolutionMismatch>false</AllowOutputResolutionMismatch>
+  <CenterMenusOnMiddleScreen>false</CenterMenusOnMiddleScreen>
+</Settings>

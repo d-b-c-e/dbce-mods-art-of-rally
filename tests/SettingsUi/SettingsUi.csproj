@@ -5,6 +5,7 @@
     <GameDir Condition="'$(GameDir)' == ''">D:\Program Files (x86)\Steam\steamapps\common\artofrally</GameDir>
   </PropertyGroup>
   <ItemGroup>
+    <None Update="golden/*.xml" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../docs/SETTINGS-INVENTORY.json" Link="SETTINGS-INVENTORY.json" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="../../src/ArtOfSimRally.Mod/Triple/Settings.cs" Link="Triple/Settings.cs" />
     <Compile Remove="Stubs.cs" />

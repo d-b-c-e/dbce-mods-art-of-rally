@@ -235,9 +235,30 @@ static class Program
         }
         finally{Directory.Delete(dir,true);}
     }
+    // Golden bytes of what the mod writes: default Settings.xml and TripleScreen.xml (SettingsPersistence uses UMM's
+    // XmlSerializer format). A removal may only delete keys; every other key and value stays byte-identical.
+    static void Golden()
+    {
+        var dir=Path.Combine(AppContext.BaseDirectory,"golden");
+        foreach(var (value,name) in new (object,string)[]{(new Settings(),"Settings.xml"),(new ArtOfSimRally.Mod.Triple.Settings(),"TripleScreen.xml")})
+        {
+            var tmp=Path.Combine(Path.GetTempPath(),"art-golden-"+Guid.NewGuid().ToString("N")+".xml");
+            try
+            {
+                SettingsPersistence.Write(value,tmp);
+                var expected=File.ReadAllBytes(Path.Combine(dir,name));
+                if(!File.ReadAllBytes(tmp).SequenceEqual(expected)){File.Copy(tmp,Path.Combine(dir,name+".actual"),true);Check(false,"written "+name+" differs from tests/SettingsUi/golden; see "+name+".actual in the output folder");}
+                assertions++;
+                // A saved file reads back and writes the same bytes: every key carries over.
+                using(var stream=new MemoryStream(expected)) SettingsPersistence.Write(new XmlSerializer(value.GetType()).Deserialize(stream),tmp);
+                Check(File.ReadAllBytes(tmp).SequenceEqual(expected),"round trip of "+name+" changed its bytes");
+            }
+            finally{File.Delete(tmp);}
+        }
+    }
     static int Main()
     {
-        try{ElementBytes();Inventory();TripleSave();TelemetryDefault();Views();SelectionAndMigration();Runtime();MenuIsolation();Display();Console.WriteLine(JsonSerializer.Serialize(new{status="passed",assertions,hardwareOutput=false,visualInspection=false}));return 0;}
+        try{Golden();ElementBytes();Inventory();TripleSave();TelemetryDefault();Views();SelectionAndMigration();Runtime();MenuIsolation();Display();Console.WriteLine(JsonSerializer.Serialize(new{status="passed",assertions,hardwareOutput=false,visualInspection=false}));return 0;}
         catch(Exception e){Console.Error.WriteLine(e);return 1;}
     }
     static void ElementBytes()
