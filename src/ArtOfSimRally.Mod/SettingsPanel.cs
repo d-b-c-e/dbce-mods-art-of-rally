@@ -7,7 +7,7 @@ using UnityEngine;
 namespace ArtOfSimRally.Mod
 {
     /// <summary>
-    /// The F6 settings panel inside UMM's window, drawn with the shared toolkit F6 rows (Toolkit/Ui/F6Widgets.cs, the
+    /// The F6 settings panel inside UMM's window, drawn with the shared toolkit F6 rows (lib/toolkit/shared/ui/unity/F6Widgets.cs, the
     /// same rows as #DRIVE Rally): title with Close, page tabs with the Simple/Advanced switch, aligned setting rows, and a
     /// footer outside the scrolling body with the force state and Stop FFB. Page content, settings, saving and every action
     /// stay here and in their owners; the shared rows only draw and report edits. UMM keeps its own chrome and scale.

@@ -14,7 +14,7 @@
     <Compile Include="../../src/ArtOfSimRally.Mod/WheelInput.Binding.cs" Link="Production/WheelInput.Binding.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/GlyphFallback.cs" Link="Production/GlyphFallback.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/PromptGlyphFallback.cs" Link="Production/PromptGlyphFallback.cs" />
-    <Compile Include="../../src/ArtOfSimRally.Mod/Toolkit/Input/ControlBinding.cs" Link="Production/ControlBinding.cs" />
-    <Compile Include="../../src/ArtOfSimRally.Mod/Toolkit/Ui/SettingsPresentation.cs" Link="Production/SettingsPresentation.cs" />
+    <Compile Include="../../lib/toolkit/shared/input/ControlBinding.cs" Link="Production/ControlBinding.cs" />
+    <Compile Include="../../lib/toolkit/shared/ui/SettingsPresentation.cs" Link="Production/SettingsPresentation.cs" />
   </ItemGroup>
 </Project>

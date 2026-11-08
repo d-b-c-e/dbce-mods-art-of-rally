@@ -55,22 +55,8 @@ $toolkitPin = (Get-Content -LiteralPath (Join-Path $toolkit 'VERSION') -First 1)
 if ($Version -notmatch '-rc\.' -and $toolkitPin -notmatch '^v\d+\.\d+\.\d+$') {
     throw 'Final release requires an official toolkit release pin; local toolkit builds are for development candidates only'
 }
-$entries = 0
-foreach ($line in Get-Content -LiteralPath (Join-Path $toolkit 'MANIFEST.txt')) {
-    if ($line.StartsWith('#') -or [string]::IsNullOrWhiteSpace($line)) { continue }
-    if ($line -notmatch '^([A-Fa-f0-9]{64})\s+(.+)$') { throw 'Malformed toolkit manifest' }
-    $hash = $Matches[1]; $relative = $Matches[2]
-    $vendorPath = [IO.Path]::GetFullPath((Join-Path $toolkit $relative))
-    if (-not $vendorPath.StartsWith([IO.Path]::GetFullPath($toolkit) + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'Invalid toolkit path' }
-    if ((Get-FileHash -LiteralPath $vendorPath -Algorithm SHA256).Hash -ne $hash) { throw "Toolkit hash mismatch: $relative" }
-    $entries++
-}
-if ($entries -lt 3) { throw 'Incomplete toolkit manifest' }
-$toolkitComponents = Get-Content -LiteralPath (Join-Path $toolkit 'COMPONENT-PROVENANCE.json') -Raw | ConvertFrom-Json
-if ($toolkitComponents.schemaVersion -ne 1 -or
-    $toolkitComponents.nativeSha256 -cne (Get-FileHash -LiteralPath (Join-Path $toolkit 'native/WheelFfb.dll')).Hash) {
-    throw 'Native component provenance does not match the packaged toolkit bytes'
-}
+# Every vendored toolkit file must match lib/toolkit/MANIFEST.txt: no local edits, nothing missing or unlisted.
+& (Join-Path $root 'tools/Sync-Toolkit.ps1') -Check
 $toolkitShim = Join-Path $toolkit 'shim/dbce_shim.dll'
 $sharedInput = [ordered]@{
     shimSha256 = (Get-FileHash -LiteralPath $toolkitShim -Algorithm SHA256).Hash
@@ -123,7 +109,6 @@ foreach ($relative in $PayloadFiles | Where-Object { $_.StartsWith('UnityModMana
     Copy-Item -LiteralPath (Join-Path $root ('tools/installer/' + $relative)) -Destination $to
 }
 $build = [ordered]@{ schema=1; release=$Version; modVersion=$modVersion; identity=$identity; sourceRevision=$revision; sourceState=$sourceState; toolkitPin=$toolkitPin; builtUtc=[DateTime]::UtcNow.ToString('o') }
-  $build['toolkitComponents'] = $toolkitComponents
   # Data-only capability used by Wheelkit; older packages do not receive fields
   # that their runtime ignores merely because the catalog knows newer keys.
   $build['controlsProfileSchema'] = 1

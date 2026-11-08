@@ -2,14 +2,40 @@
    edit is checked before replacing the destination. Failed commits roll back.
    -Force retains local edits alongside the replacement. Unselected files and their
    manifest entries survive partial syncs. Load supports renamed native DLLs in 0.12+.
-   -LocalRepo records its full revision and dirty state; it never claims a release tag. #>
+   -LocalRepo records its full revision and dirty state; it never claims a release tag.
+   Source parts: shared (shared/ plus the Dbce.Wheel.Input sources as shared/input), unity (the shared
+   Unity layer and Dbce.Unity.props) and installer. shim (the built dbce_shim.dll and headers) comes from a release archive.
+   -Check changes nothing: it fails when a vendored file differs from MANIFEST.txt, is missing, or is not listed.
+   Run it in the consumer's build so a local edit to a vendored copy stops the build. #>
 [CmdletBinding()]
 param([string]$Version, [string]$LocalRepo, [string]$Destination,
-      [string[]]$Parts = @('native','dotnet'), [switch]$Force,
+      [string[]]$Parts = @('native','dotnet'), [switch]$Force, [switch]$Check,
       [string]$Repo = 'd-b-c-e/dbce-wheel-mod-toolkit')
 $ErrorActionPreference = 'Stop'
+if ($Check) {
+    if (-not $Destination) { $Destination = Join-Path (Split-Path -Parent $PSScriptRoot) 'lib/toolkit' }
+    $Destination = [IO.Path]::GetFullPath($Destination).TrimEnd('\','/')
+    $manifestPath = Join-Path $Destination 'MANIFEST.txt'
+    if (-not (Test-Path -LiteralPath $manifestPath)) { throw "No MANIFEST.txt in $Destination" }
+    $listed = @{}; $problems = @()
+    foreach ($line in Get-Content -LiteralPath $manifestPath) {
+        if (-not $line.Trim() -or $line.TrimStart().StartsWith('#')) { continue }
+        if ($line -notmatch '^([A-Fa-f0-9]{64})\s+(.+)$') { throw "Malformed manifest line: $line" }
+        $relative = $Matches[2].Replace('\','/'); $listed[$relative] = $true
+        $path = Join-Path $Destination $relative
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { $problems += "missing: $relative" }
+        elseif ((Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash -ne $Matches[1].ToUpperInvariant()) { $problems += "edited: $relative" }
+    }
+    foreach ($file in Get-ChildItem -LiteralPath $Destination -Recurse -File) {
+        $relative = $file.FullName.Substring($Destination.Length + 1).Replace('\','/')
+        if ($relative -notin @('MANIFEST.txt','VERSION') -and -not $listed.ContainsKey($relative)) { $problems += "not listed: $relative" }
+    }
+    if ($problems.Count) { throw ("Vendored toolkit differs from MANIFEST.txt; re-sync instead of editing:`n  " + ($problems -join "`n  ")) }
+    Write-Host "Vendored toolkit matches MANIFEST.txt ($($listed.Count) files)."
+    return
+}
 $Parts = @($Parts | ForEach-Object { $_ -split ',' } | Where-Object { $_ } | Select-Object -Unique)
-$valid = @('native','native-x86','include','profiles','powershell','dotnet','tools','knowledge','shim')
+$valid = @('native','native-x86','include','profiles','powershell','dotnet','tools','knowledge','shared','unity','installer','shim')
 if ($Parts.Count -eq 0 -or @($Parts | Where-Object { $_ -notin $valid }).Count) { throw 'Unknown or empty Parts selection' }
 if ([bool]$Version -eq [bool]$LocalRepo) { throw 'Specify exactly one of -Version or -LocalRepo' }
 $root = Split-Path -Parent $PSScriptRoot
@@ -38,6 +64,7 @@ $transaction = Join-Path $parent ('.toolkit-transaction-' + [guid]::NewGuid().To
 $staged = Join-Path $transaction 'next'
 $backup = Join-Path $transaction 'previous'
 $keepRecovery = $false
+$under = @{}
 try {
     if ($LocalRepo) {
         $LocalRepo = [IO.Path]::GetFullPath($LocalRepo)
@@ -52,10 +79,21 @@ try {
             include = @((Join-Path $LocalRepo 'native/wheelffb/include'),(Join-Path $LocalRepo 'native/forza'),(Join-Path $LocalRepo 'native/forcemodel'),(Join-Path $LocalRepo 'native/dinput-proxy'))
             profiles = @(Join-Path $LocalRepo 'profiles')
             powershell = @(Join-Path $LocalRepo 'tools/powershell')
-            dotnet = @(Join-Path $LocalRepo 'dotnet/Dbce.Wheel.Ffb/bin/Release/netstandard2.0')
+            # Source builds include the unreleased recorder. -Version below only
+            # copies archive contents, so published v0.12.0 needs no Recording DLL.
+            # Ui's output also carries Dbce.Wheel.Input.dll, its dependency.
+            dotnet = @((Join-Path $LocalRepo 'dotnet/Dbce.Wheel.Ffb/bin/Release/netstandard2.0'),
+                       (Join-Path $LocalRepo 'dotnet/Dbce.Wheel.Recording/bin/Release/netstandard2.0'),
+                       (Join-Path $LocalRepo 'dotnet/Dbce.Wheel.Ui/bin/Release/netstandard2.0'),
+                       (Join-Path $LocalRepo 'dotnet/Dbce.Wheel.Display/bin/Release/netstandard2.0'))
             tools = @(Join-Path $LocalRepo 'tools')
             knowledge = @(Join-Path $LocalRepo 'knowledge')
+            shared = @((Join-Path $LocalRepo 'shared'), (Join-Path $LocalRepo 'dotnet/Dbce.Wheel.Input'))
+            unity = @(Join-Path $LocalRepo 'unity')
+            installer = @(Join-Path $LocalRepo 'installer')
         }
+        # Release archives already hold the Input sources at shared/input (tools/package/package.ps1).
+        $under[(Join-Path $LocalRepo 'dotnet/Dbce.Wheel.Input')] = 'input'
     } else {
         New-Item -ItemType Directory -Path $download | Out-Null
         & gh release download $Version --repo $Repo --pattern 'dbce-wheel-mod-toolkit-*.zip' --dir $download
@@ -95,13 +133,16 @@ try {
                 'include' { @(Get-ChildItem -LiteralPath $from -Filter '*.h' -File) }
                 'powershell' { @(Get-ChildItem -LiteralPath $from -Filter '*.psm1' -File) }
                 'dotnet' { @(Get-ChildItem -LiteralPath $from -File | Where-Object { $_.Name -like 'Dbce.Wheel.*.dll' -or $_.Name -like 'Dbce.Wheel.*.xml' }) }
+                # A project folder (dotnet/Dbce.Wheel.Input) gives its top-level sources, never the project or bin/obj.
+                { $under.ContainsKey($from) } { @(Get-ChildItem -LiteralPath $from -File | Where-Object { $_.Extension -ne '.csproj' }) }
                 default { @(Get-ChildItem -LiteralPath $from -Recurse -File) }
             }
             if ($files.Count -eq 0) { throw "Empty requested part source: $from" }
             if ($part -eq 'dotnet' -and @($files | Where-Object Extension -eq '.dll').Count -eq 0) { throw 'No managed assemblies in dotnet part' }
             foreach ($file in $files) {
                 Assert-Unlinked $file.FullName
-                $relative = $to + '/' + $file.FullName.Substring($from.TrimEnd('\','/').Length + 1).Replace('\','/')
+                $prefix = if ($under.ContainsKey($from)) { $to + '/' + $under[$from] } else { $to }
+                $relative = $prefix + '/' + $file.FullName.Substring($from.TrimEnd('\','/').Length + 1).Replace('\','/')
                 if ($plan.ContainsKey($relative)) { throw "Duplicate destination: $relative" }
                 $target = Join-Path $Destination $relative
                 $hash = (Get-FileHash -LiteralPath $file.FullName).Hash

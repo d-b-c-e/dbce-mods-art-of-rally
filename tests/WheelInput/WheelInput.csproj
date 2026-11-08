@@ -25,9 +25,9 @@
          tests/SharedBindings (BindingSampleClock comes with Shim/*.cs above). -->
     <Compile Include="../../src/ArtOfSimRally.Mod/SharedBindingCaptureHost.cs" Link="SharedBindingCaptureHost.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/SharedBindingDraft.cs" Link="SharedBindingDraft.cs" />
-    <Compile Include="../../src/ArtOfSimRally.Mod/Toolkit/Input/*.cs" Link="Toolkit/%(Filename)%(Extension)" />
-    <Compile Include="../../src/ArtOfSimRally.Mod/Toolkit/Ui/SettingsPresentation.cs" Link="SettingsPresentation.cs" />
-    <Compile Include="../../src/ArtOfSimRally.Mod/Toolkit/Ui/BindingSaveStatus.cs" Link="BindingSaveStatus.cs" />
+    <Compile Include="../../lib/toolkit/shared/input/BindingCapture.cs;../../lib/toolkit/shared/input/BindingCaptureFlow.cs;../../lib/toolkit/shared/input/BindingEditorContract.cs;../../lib/toolkit/shared/input/BindingEditorPolicy.cs;../../lib/toolkit/shared/input/ControlBinding.cs;../../lib/toolkit/shared/input/ControlProfileDocument.cs;../../lib/toolkit/shared/input/ControlProfileDraft.cs;../../lib/toolkit/shared/input/DeclaredControlExtras.cs" Link="Toolkit/%(Filename)%(Extension)" />
+    <Compile Include="../../lib/toolkit/shared/ui/SettingsPresentation.cs" Link="SettingsPresentation.cs" />
+    <Compile Include="../../lib/toolkit/shared/ui/BindingSaveStatus.cs" Link="BindingSaveStatus.cs" />
     <Reference Include="UnityEngine.CoreModule"><HintPath>$(GameDir)/artofrally_Data/Managed/UnityEngine.CoreModule.dll</HintPath></Reference>
     <Reference Include="UnityModManager"><HintPath>../../lib/umm/UnityModManager.dll</HintPath></Reference>
   </ItemGroup>

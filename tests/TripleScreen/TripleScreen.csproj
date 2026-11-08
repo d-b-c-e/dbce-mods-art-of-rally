@@ -23,9 +23,9 @@
     <Compile Include="..\..\src\ArtOfSimRally.Mod\Triple\CameraOverlay.cs" Link="CameraOverlay.cs" />
     <Compile Include="..\..\src\ArtOfSimRally.Mod\Triple\LayoutSource.cs" Link="LayoutSource.cs" />
     <Compile Include="..\..\src\ArtOfSimRally.Mod\Triple\OutputResolution.cs" Link="OutputResolution.cs" />
-    <Compile Include="..\..\lib\display\WindowLanding.cs" Link="Toolkit\Display\WindowLanding.cs" />
-    <Compile Include="..\..\lib\display\RacingRow.cs" Link="RacingRow.cs" />
-    <Compile Include="..\..\lib\display\WindowsMonitors.cs" Link="WindowsMonitors.cs" />
+    <Compile Include="..\..\lib\toolkit\shared\display\WindowLanding.cs" Link="Toolkit\Display\WindowLanding.cs" />
+    <Compile Include="..\..\lib\toolkit\shared\display\RacingRow.cs" Link="RacingRow.cs" />
+    <Compile Include="..\..\lib\toolkit\shared\display\WindowsMonitors.cs" Link="WindowsMonitors.cs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,16 +1,11 @@
 
-# Exact source-vendored session presentation.
-lib/display/*.cs text eol=lf
-lib/display/LICENSE text eol=lf
-lib/toolkit/shim/*.h text eol=lf
-
-# Preserve byte-exact vendored binding presentation policy.
-src/ArtOfSimRally.Mod/Toolkit/Input/BindingEditorPolicy.cs text eol=lf
-src/ArtOfSimRally.Mod/Toolkit/Ui/DbceUi.cs text eol=lf
-
 # Toolkit manifest pins exact upstream bytes, including line endings.
+lib/toolkit/shim/*.h text eol=lf
 lib/toolkit/dotnet/*.xml -text
 lib/toolkit/shim/build-receipt.json -text
 
 # Golden bytes of the settings files the mod writes.
 tests/SettingsUi/golden/*.xml -text
+
+# Vendored toolkit sources keep the exact bytes MANIFEST.txt pins (Sync-Toolkit.ps1 -Check).
+lib/toolkit/shared/** -text

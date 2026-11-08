@@ -1,0 +1,47 @@
+# Shared vectors for the racing-row selector. Every implementation runs them, and reasons compare exactly:
+#   RacingRow.cs (C#), whose wide-primary rule is fixed at 2.9:1, runs every vector with aspect 2.9;
+#   dbce_racing_row.hpp (C++), which takes the aspect from its caller, runs all of them.
+# Fields are separated by " | ":
+#   row | name | wide-primary aspect | monitors | kind x,y,width,height | displays | reason
+# monitors: "x,y,width,height", with ",primary" on the primary, separated by "; " in enumeration order ("-" for none).
+# displays: the selected monitors' positions in that list, left to right ("-" for none).
+# The owner's rig (2026-10-13): three 2560x1440 displays at x = -2560, 0, 2560 and a 1920x1080 display at (314, -1080).
+
+row | actual four-display layout | 2.9 | -2560,0,2560,1440; 0,0,2560,1440,primary; 2560,0,2560,1440; 314,-1080,1920,1080 | Separate -2560,0,7680,1440 | 0 1 2 | three equal displays with the primary in the center (2560x1440@-2560,0, 2560x1440@0,0 primary, 2560x1440@2560,0)
+row | enumeration order does not matter | 2.9 | 314,-1080,1920,1080; 2560,0,2560,1440; 0,0,2560,1440,primary; -2560,0,2560,1440 | Separate -2560,0,7680,1440 | 3 2 1 | three equal displays with the primary in the center (2560x1440@-2560,0, 2560x1440@0,0 primary, 2560x1440@2560,0)
+row | the unchanged three-display row | 2.9 | -2560,0,2560,1440; 0,0,2560,1440,primary; 2560,0,2560,1440 | Separate -2560,0,7680,1440 | 0 1 2 | three equal displays with the primary in the center (2560x1440@-2560,0, 2560x1440@0,0 primary, 2560x1440@2560,0)
+row | a display below the row is ignored too | 2.9 | -2560,0,2560,1440; 0,0,2560,1440,primary; 2560,0,2560,1440; 0,1440,1920,1080 | Separate -2560,0,7680,1440 | 0 1 2 | three equal displays with the primary in the center (2560x1440@-2560,0, 2560x1440@0,0 primary, 2560x1440@2560,0)
+row | a display beyond the row's corner, outside its band | 2.9 | -2560,0,2560,1440; 0,0,2560,1440,primary; 2560,0,2560,1440; 5120,-1080,1920,1080 | Separate -2560,0,7680,1440 | 0 1 2 | three equal displays with the primary in the center (2560x1440@-2560,0, 2560x1440@0,0 primary, 2560x1440@2560,0)
+
+row | Surround primary | 2.9 | 0,0,7680,1440,primary | Surround 0,0,7680,1440 | 0 | the primary display is at least 2.9:1 wide, used as one surface (7680x1440@0,0 primary)
+row | Surround with a diagnostic display | 2.9 | 0,0,7680,1440,primary; 2880,-1080,1920,1080 | Surround 0,0,7680,1440 | 0 | the primary display is at least 2.9:1 wide, used as one surface (7680x1440@0,0 primary)
+row | Surround stays distinct: a side display is never added to it | 2.9 | 0,0,7680,1440,primary; 7680,0,2560,1440 | Surround 0,0,7680,1440 | 0 | the primary display is at least 2.9:1 wide, used as one surface (7680x1440@0,0 primary)
+row | 5120x1440 (3.6:1) is past the 2.9:1 Surround rule | 2.9 | 0,0,5120,1440,primary | Surround 0,0,5120,1440 | 0 | the primary display is at least 2.9:1 wide, used as one surface (5120x1440@0,0 primary)
+
+row | single display | 2.9 | 0,0,2560,1440,primary | None 0,0,0,0 | - | a single display row: no display beside the primary
+row | single display plus the diagnostic one | 2.9 | 0,0,2560,1440,primary; 314,-1080,1920,1080 | None 0,0,0,0 | - | a single display row: no display beside the primary
+row | primary at the left end | 2.9 | 0,0,2560,1440,primary; 2560,0,2560,1440; 5120,0,2560,1440 | None 0,0,0,0 | - | no equal-size display directly on the left of the primary (missing, gap, overlap, offset or different size)
+row | missing right | 2.9 | -2560,0,2560,1440; 0,0,2560,1440,primary | None 0,0,0,0 | - | no equal-size display directly on the right of the primary (missing, gap, overlap, offset or different size)
+row | different sizes on both sides | 2.9 | -1920,0,1920,1080; 0,0,2560,1440,primary; 2560,0,1920,1080 | None 0,0,0,0 | - | no equal-size display directly on either side of the primary (missing, gap, overlap, offset or different size)
+row | gap on the left | 2.9 | -2570,0,2560,1440; 0,0,2560,1440,primary; 2560,0,2560,1440 | None 0,0,0,0 | - | no equal-size display directly on the left of the primary (missing, gap, overlap, offset or different size)
+row | vertical offset on the right | 2.9 | -2560,0,2560,1440; 0,0,2560,1440,primary; 2560,10,2560,1440 | None 0,0,0,0 | - | no equal-size display directly on the right of the primary (missing, gap, overlap, offset or different size)
+row | different size on the left | 2.9 | -1920,0,1920,1080; 0,0,2560,1440,primary; 2560,0,2560,1440 | None 0,0,0,0 | - | no equal-size display directly on the left of the primary (missing, gap, overlap, offset or different size)
+row | left overlapping the primary | 2.9 | -2500,0,2560,1440; 0,0,2560,1440,primary; 2560,0,2560,1440 | None 0,0,0,0 | - | no equal-size display directly on the left of the primary (missing, gap, overlap, offset or different size)
+row | four panels in one row | 2.9 | -5120,0,2560,1440; -2560,0,2560,1440; 0,0,2560,1440,primary; 2560,0,2560,1440 | None 0,0,0,0 | - | another display shares the racing row's band (2560x1440@-5120,0); the row is ambiguous, so nothing is spanned
+row | five panels in one row | 2.9 | -2560,0,2560,1440; 0,0,2560,1440,primary; 2560,0,2560,1440; -5120,0,2560,1440; 5120,0,2560,1440 | None 0,0,0,0 | - | another display shares the racing row's band (2560x1440@-5120,0, 2560x1440@5120,0); the row is ambiguous, so nothing is spanned
+row | a display overlapping the row | 2.9 | -2560,0,2560,1440; 0,0,2560,1440,primary; 2560,0,2560,1440; 1000,500,1920,1080 | None 0,0,0,0 | - | another display shares the racing row's band (1920x1080@1000,500); the row is ambiguous, so nothing is spanned
+row | a mirrored copy of the primary | 2.9 | -2560,0,2560,1440; 0,0,2560,1440,primary; 2560,0,2560,1440; 0,0,2560,1440 | None 0,0,0,0 | - | another display shares the racing row's band (2560x1440@0,0); the row is ambiguous, so nothing is spanned
+row | two candidates for the left | 2.9 | -2560,0,2560,1440; -2560,0,2560,1440; 0,0,2560,1440,primary; 2560,0,2560,1440 | None 0,0,0,0 | - | two displays claim the same side of the primary
+row | no primary | 2.9 | -2560,0,2560,1440; 0,0,2560,1440; 2560,0,2560,1440 | None 0,0,0,0 | - | no primary display
+row | two primaries | 2.9 | -2560,0,2560,1440,primary; 0,0,2560,1440,primary; 2560,0,2560,1440 | None 0,0,0,0 | - | more than one primary display
+row | an empty rectangle | 2.9 | -2560,0,2560,1440; 0,0,2560,1440,primary; 2560,0,2560,1440; 0,-10,0,0 | None 0,0,0,0 | - | a display reports an empty rectangle
+row | an empty rectangle is reported before a missing primary | 2.9 | -2560,0,2560,1440; 0,0,0,0 | None 0,0,0,0 | - | a display reports an empty rectangle
+row | nothing reported | 2.9 | - | None 0,0,0,0 | - | no primary display
+
+# A consumer with a 4:1 wide-primary rule (the Sonic CrossWorlds renderer and ADRIFT before adoption): only the wide
+# path changes; the separate-display row is the same.
+row | 4:1 consumer: the actual four-display layout | 4 | -2560,0,2560,1440; 0,0,2560,1440,primary; 2560,0,2560,1440; 314,-1080,1920,1080 | Separate -2560,0,7680,1440 | 0 1 2 | three equal displays with the primary in the center (2560x1440@-2560,0, 2560x1440@0,0 primary, 2560x1440@2560,0)
+row | 4:1 consumer: a 7680x1440 primary is one surface | 4 | 0,0,7680,1440,primary; 314,-1080,1920,1080 | Surround 0,0,7680,1440 | 0 | the primary display is at least 4:1 wide, used as one surface (7680x1440@0,0 primary)
+row | 4:1 consumer: exactly 4:1 is one surface | 4 | 0,0,5760,1440,primary | Surround 0,0,5760,1440 | 0 | the primary display is at least 4:1 wide, used as one surface (5760x1440@0,0 primary)
+row | 4:1 consumer: 5120x1440 (3.6:1) stays a single display | 4 | 0,0,5120,1440,primary | None 0,0,0,0 | - | a single display row: no display beside the primary
+row | an aspect that is not a positive number refuses | 0 | -2560,0,2560,1440; 0,0,2560,1440,primary; 2560,0,2560,1440 | None 0,0,0,0 | - | the wide-primary aspect is not a positive number

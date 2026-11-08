@@ -9,7 +9,7 @@ Read, acquire or enumerate devices. An observer exception detaches that observer
 The host copies the data it retains, uses object masks and known ranges, rejects invalid/out-of-range frames, and cancels
 capture on lost focus, closed settings/main menu, stale data, disconnect, generation change, timeout or explicit Cancel.
 
-`Toolkit/Input/BindingEditorContract.cs` (`Dbce.Wheel.Input.ISharedBindingHost`) is the shared panel seam agreed with Toto.
+`lib/toolkit/shared/input/BindingEditorContract.cs` (`Dbce.Wheel.Input.ISharedBindingHost`) is the shared panel seam agreed with Toto.
 It is vendored from toolkit `3427ab1dc34ca03f87f3fc905c18a5f76e12314d`; no Art-specific interface is maintained. Values are distinct:
 
 - Active is the frozen startup value.

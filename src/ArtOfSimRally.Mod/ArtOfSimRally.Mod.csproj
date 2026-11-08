@@ -72,14 +72,16 @@
     <EmbeddedResource Include="UiHost\art-hook.settings.json" LogicalName="ArtOfSimRally.Mod.UiHost.settings.json" />
   </ItemGroup>
 
-  <!-- Exact toolkit source (lib/display/provenance.json): the shared racing-row selector, used read-only by
-       RenderDiagnostics to report the observed racing row beside Unity's display list. -->
+  <!-- Toolkit sources, vendored unedited by tools/Sync-Toolkit.ps1 (part "shared") and checked against
+       lib/toolkit/MANIFEST.txt by package.ps1 and Test-Rc (Sync-Toolkit.ps1 -Check). Never edit them here. -->
   <ItemGroup>
-    <Compile Include="..\..\lib\display\WindowLanding.cs" Link="Toolkit\Display\WindowLanding.cs" />
-    <Compile Include="..\..\lib\display\RacingRow.cs" Link="Toolkit\Display\RacingRow.cs" />
-    <Compile Include="..\..\lib\display\WindowsMonitors.cs" Link="Toolkit\Display\WindowsMonitors.cs" />
+    <Compile Include="..\..\lib\toolkit\shared\display\WindowLanding.cs" Link="Toolkit\Display\WindowLanding.cs" />
+    <Compile Include="..\..\lib\toolkit\shared\display\RacingRow.cs" Link="Toolkit\Display\RacingRow.cs" />
+    <Compile Include="..\..\lib\toolkit\shared\display\WindowsMonitors.cs" Link="Toolkit\Display\WindowsMonitors.cs" />
+    <Compile Include="..\..\lib\toolkit\shared\input\BindingCapture.cs;..\..\lib\toolkit\shared\input\BindingCaptureFlow.cs;..\..\lib\toolkit\shared\input\BindingEditorContract.cs;..\..\lib\toolkit\shared\input\BindingEditorPolicy.cs;..\..\lib\toolkit\shared\input\ControlBinding.cs;..\..\lib\toolkit\shared\input\ControlProfileDocument.cs;..\..\lib\toolkit\shared\input\ControlProfileDraft.cs;..\..\lib\toolkit\shared\input\DeclaredControlExtras.cs" LinkBase="Toolkit\Input" />
+    <Compile Include="..\..\lib\toolkit\shared\ui\BindingSaveStatus.cs;..\..\lib\toolkit\shared\ui\DbceUi.cs;..\..\lib\toolkit\shared\ui\F6Style.cs;..\..\lib\toolkit\shared\ui\SettingsPresentation.cs;..\..\lib\toolkit\shared\ui\unity\F6Widgets.cs" LinkBase="Toolkit\Ui" />
+    <Compile Include="..\..\lib\toolkit\shared\support\SupportReport.cs" Link="Toolkit\Support\SupportReport.cs" />
   </ItemGroup>
-
   <!--
     Private=false everywhere: these must NOT be copied to the output folder. The
     game already has them loaded, and shipping a second copy of UnityEngine or

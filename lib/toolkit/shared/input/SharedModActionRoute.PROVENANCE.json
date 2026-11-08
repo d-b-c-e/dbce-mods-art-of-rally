@@ -1,0 +1,26 @@
+{
+  "sourceRepository": "dbce-mods-iracing-arcade",
+  "sourcePath": "components/wheel/src/IRacingArcadeWheel.Plugin/ShimModActionRoute.cs",
+  "sourceCommit": "3c83fa173d0a7e3029d55efd19b6523e3745ad7c",
+  "sourceSha256": "05F89349F4658E1BA37B98731B83C3BA431530362718F295A26ED1DE433C040D",
+  "changes": [
+    "public shared namespace/type names",
+    "game-owned effect dispatch excluded",
+    "edge algorithm unchanged"
+  ],
+  "consumers": [
+    "iRacing original source retained",
+    "Truckful wheel settings successor"
+  ],
+  "sharedSha256": "F850C7A97BBA4F3C4BC6213D0375F0EDBA3F7EF706DA38A9112B20263A212458",
+  "qualification": {
+    "testedSharedSource": "d410c88b9fb9e3549c5150f81d1c51e1a6c24223",
+    "gameSource": "67ebc78295d002667b30fc81e053ce995c552c70",
+    "consumerFixture": "existing Truckful Wheel.Offline --settings-only",
+    "consumerChecks": 26,
+    "actualPluginCompile": "PASS net6.0; zero warnings/errors",
+    "sourceSha256": "F850C7A97BBA4F3C4BC6213D0375F0EDBA3F7EF706DA38A9112B20263A212458",
+    "evidence": "dbce-project-mgmt/artifacts/truckful-wheel-settings-20261016/RESULT.md",
+    "runtimeQualified": false
+  }
+}
