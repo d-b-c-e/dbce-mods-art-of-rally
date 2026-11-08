@@ -1,6 +1,18 @@
 # Local deployment
 
-## Current installation - Art 0.4.4-rc.43 (shared input), November 7
+## Current installation - Art 0.4.4-rc.46 (shared input), November 8
+
+ART-L build (source `a1c0862`): the toolkit's managed DLLs are re-synced through `lib/toolkit/MANIFEST.txt` (toolkit
+`591ad47`) and art's own copy of FrameRateMonitor is gone; player behavior is unchanged. Installed with the package
+`install.ps1` from a fresh extract of the ZIP over rc.44 with the game closed; settings and `dbce-controls.ini` stayed
+byte-identical and all payload hashes match. ZIP SHA-256 `CFB3E54BEDCB218D1465274A88921C24B73482DB1EC50E6003B71E4435FDF20C`,
+installed Mod `C8CF3A3D98D04BEA993AEC874CA4045BC4CD7CE51FF9C1EF70B3F1550C832E82`. Rollback copy of rc.44 and the user-state backup:
+`E:/Source/temp/art-l/launch46/backup`. Launch-checked 2026-11-08 15:50 through Steam with force feedback muted: the UMM
+log showed `Patches applied.` and `Active.`, both wheel devices opened, and every capture (F6 closed, open, closed again)
+passed Test-GamePicture `-Menu` on all three screens. Settings, saves and registry were restored; ArtUserState reported
+only the expected `remotecache.vdf` difference.
+
+## Previous installation - Art 0.4.4-rc.43 (shared input), November 7
 
 UI-4 build (source `8f53874`): adds the developer-only `[Dev] UiHost=hook` F6 (docs/UI-HOST-HOOK.md); the player
 default is unchanged and the ZIP's file list equals rc.42's. Installed with the package `install.ps1` over rc.42 with
