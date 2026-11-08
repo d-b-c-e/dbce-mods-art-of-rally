@@ -147,7 +147,10 @@ namespace ArtOfSimRally.Mod
                 Help("Assigned USB controls are Off, including a separate handbrake. Game-bound wheel and pedals may still work. Turn On to use the handbrake.");
             if (!WheelInput.Assigning.HasValue) Help(WheelInput.Status);
             // Players without a shared profile (no Wheelkit) bind everything below; the option stays out of their way.
-            if (shared || c.SharedInput || SharedInputStartup.ProfilePresent)
+            if (SharedInputStartup.FromStore)
+                Help("Profile from Wheelkit" + (SharedInputStartup.StoreProfileName == null ? "" : ": " + SharedInputStartup.StoreProfileName) +
+                    ". Change it in Wheelkit before launch.");
+            else if (shared || c.SharedInput || SharedInputStartup.ProfilePresent)
             {
                 c.SharedInput = Toggle(c.SharedInput, "Use shared profile");
                 if (c.SharedInput != SharedInputStartup.RequestedAtStartup) Help("Restart the game to " + (c.SharedInput ? "use" : "stop using") + " the shared profile.");

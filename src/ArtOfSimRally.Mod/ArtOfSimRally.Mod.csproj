@@ -81,6 +81,7 @@
     <Compile Include="..\..\lib\toolkit\shared\input\BindingCapture.cs;..\..\lib\toolkit\shared\input\BindingCaptureFlow.cs;..\..\lib\toolkit\shared\input\BindingEditorContract.cs;..\..\lib\toolkit\shared\input\BindingEditorPolicy.cs;..\..\lib\toolkit\shared\input\ControlBinding.cs;..\..\lib\toolkit\shared\input\ControlProfileDocument.cs;..\..\lib\toolkit\shared\input\ControlProfileDraft.cs;..\..\lib\toolkit\shared\input\DeclaredControlExtras.cs" LinkBase="Toolkit\Input" />
     <Compile Include="..\..\lib\toolkit\shared\ui\BindingSaveStatus.cs;..\..\lib\toolkit\shared\ui\DbceUi.cs;..\..\lib\toolkit\shared\ui\F6Style.cs;..\..\lib\toolkit\shared\ui\SettingsPresentation.cs;..\..\lib\toolkit\shared\ui\unity\F6Widgets.cs" LinkBase="Toolkit\Ui" />
     <Compile Include="..\..\lib\toolkit\shared\support\SupportReport.cs" Link="Toolkit\Support\SupportReport.cs" />
+    <Compile Include="..\..\lib\toolkit\shared\mod\DbceModFile.cs;..\..\lib\toolkit\shared\mod\DbceStore.cs;..\..\lib\toolkit\shared\mod\DbceStoreControls.cs" LinkBase="Toolkit\Mod" />
   </ItemGroup>
   <!--
     Private=false everywhere: these must NOT be copied to the output folder. The

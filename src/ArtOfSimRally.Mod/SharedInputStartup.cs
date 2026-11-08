@@ -5,7 +5,8 @@ using UnityEngine;
 
 namespace ArtOfSimRally.Mod
 {
-    // Opt-in ordinary shared input (Settings.SharedInput, read at startup). Never active with the
+    // Ordinary shared input: Wheelkit's store profile when the store exists, else the opt-in
+    // Settings.SharedInput with dbce-controls.ini (both read at startup). Never active with the
     // diagnostic probe and never constructed otherwise. It qualifies once, idle in the menus, with the
     // same sequence the probe qualified; any refusal before the first accepted frame releases what it
     // took and leaves Art's bindings in charge with a stated reason. After the first accepted frame a
@@ -43,6 +44,11 @@ namespace ArtOfSimRally.Mod
         internal static bool RequestedAtStartup { get; private set; }
         // A shared profile was beside the mod at startup. Without one, F6 hides the shared-profile option (STD-040).
         internal static bool ProfilePresent { get; private set; }
+        // Wheelkit's profile store (%LOCALAPPDATA%\Wheelkit\store\profiles.json); tests point this elsewhere.
+        internal static string StorePath = Dbce.Wheel.Mod.DbceStore.ProfilesPath();
+        // The store decided art's profile at startup (Wheelkit is its editor), and that profile's name.
+        internal static bool FromStore { get; private set; }
+        internal static string StoreProfileName { get; private set; }
 
         private static void Enter(SharedInputStatus.Phase next)
         {
@@ -55,28 +61,42 @@ namespace ArtOfSimRally.Mod
         // inspection only; no host, provider, reader or force acquisition here.
         internal static void Prepare(string modDirectory)
         {
-            SharedBindingCaptureHost.Configure(Path.Combine(modDirectory, ProfileFileName), null,
-                () => Time.realtimeSinceStartup, () => Main.Enabled && Main.SettingsVisible && !SettingsPanel.LegacyEditing && Main.HasFocus() &&
-                    !GameState.IsDriving && ShimInput.Consumer.Started);
+            string profilePath = Path.Combine(modDirectory, ProfileFileName);
+            // Wheelkit's store, when present, decides art's profile; F6 then shows it but does not edit it.
+            StoreProfileSource store = null; string storeError = null;
+            try { store = StoreProfileSource.Read(StorePath); }
+            catch (Exception ex) { storeError = ex.Message; }
+            FromStore = store != null || storeError != null;
+            StoreProfileName = store?.Name;
+            ConfigureBindingHost(profilePath, null);
             session = null; reason = waitingFor = null; startedLogged = stopLogged = false; restoreAttempts = 0;
-            RequestedAtStartup = Main.Settings != null && Main.Settings.SharedInput;
-            ProfilePresent = File.Exists(Path.Combine(modDirectory, ProfileFileName));
+            RequestedAtStartup = FromStore || Main.Settings != null && Main.Settings.SharedInput;
+            ProfilePresent = FromStore || File.Exists(profilePath);
             FfbSelection.PrepareShared(RequestedAtStartup);
             if (!RequestedAtStartup) { Enter(SharedInputStatus.Phase.Off); return; }
             try
             {
-                string profilePath = Path.Combine(modDirectory, ProfileFileName);
                 shimPath = Path.Combine(modDirectory, ShimFileName);
-                // Wheelkit (0.6.23 or later) writes this file; without it, players use Art's own F6 bindings (STD-040).
-                if (!File.Exists(profilePath)) { Refuse("no shared profile beside the mod. Turn off Use shared profile, restart, and bind your controls in F6 Controls."); return; }
+                if (storeError != null) { Refuse("the Wheelkit profile store could not be read (" + storeError + ")."); return; }
+                if (store != null)
+                {
+                    ModLog.Info("Shared input: Wheelkit profile '" + store.Name + "' (" + store.Transmission + ") from " + StorePath +
+                        (store.Why.Length == 0 ? "." : "; " + store.Why + "."));
+                    if (store.Profile == null) { Refuse("the Wheelkit profile '" + store.Name + "' cannot be used: " + store.Why + "."); return; }
+                    if (store.Gearbox != null && Main.Settings != null) Main.Settings.TransmissionMode = store.Gearbox;
+                }
+                // Without Wheelkit's store, players use this file or Art's own F6 bindings.
+                else if (!File.Exists(profilePath)) { Refuse("no shared profile beside the mod. Turn off Use shared profile, restart, and bind your controls in F6 Controls."); return; }
                 if (!File.Exists(shimPath)) { Refuse(ShimFileName + " is missing beside the mod."); return; }
                 if (!String.Equals(ProbeRequest.Hash(shimPath), ExpectedShimSha256, StringComparison.OrdinalIgnoreCase)) { Refuse(ShimFileName + " is not the qualified build."); return; }
-                var info = new FileInfo(profilePath);
-                if (info.Length == 0 || info.Length > 1024 * 1024) { Refuse("the shared profile is empty or larger than 1 MiB."); return; }
-                profile = File.ReadAllBytes(profilePath);
-                SharedBindingCaptureHost.Configure(profilePath, profile,
-                    () => Time.realtimeSinceStartup, () => Main.Enabled && Main.SettingsVisible && !SettingsPanel.LegacyEditing && Main.HasFocus() &&
-                        !GameState.IsDriving && ShimInput.Consumer.Started);
+                if (store != null) profile = store.Profile;
+                else
+                {
+                    var info = new FileInfo(profilePath);
+                    if (info.Length == 0 || info.Length > 1024 * 1024) { Refuse("the shared profile is empty or larger than 1 MiB."); return; }
+                    profile = File.ReadAllBytes(profilePath);
+                }
+                ConfigureBindingHost(profilePath, profile);
                 // This byte array also goes to Begin later. Never reread the file after FFB selection,
                 // copy it into legacy SteerBinding, or schedule recovery after the readers attach.
                 string configuredTarget;
@@ -96,6 +116,12 @@ namespace ArtOfSimRally.Mod
             }
             catch (Exception ex) { Refuse("the shared profile could not be read: " + ex.Message); }
         }
+
+        // F6's shared binding editor edits dbce-controls.ini; a store profile is edited in Wheelkit only.
+        private static void ConfigureBindingHost(string profilePath, byte[] active) =>
+            SharedBindingCaptureHost.Configure(profilePath, active,
+                () => Time.realtimeSinceStartup, () => !FromStore && Main.Enabled && Main.SettingsVisible && !SettingsPanel.LegacyEditing && Main.HasFocus() &&
+                    !GameState.IsDriving && ShimInput.Consumer.Started);
 
         private static bool startedLogged, stopLogged;
         // Watchdog Update. Qualifies in the menus only; once attached, only reports (once each).

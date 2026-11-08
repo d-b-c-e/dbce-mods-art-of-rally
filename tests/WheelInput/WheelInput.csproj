@@ -9,6 +9,8 @@
     <Compile Include="../../src/ArtOfSimRally.Mod/Shim/*.cs" Link="Shim/%(Filename)%(Extension)" />
     <Compile Include="../../src/ArtOfSimRally.Mod/Shifter.cs" Link="Shifter.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/SharedInputStartup.cs" Link="SharedInputStartup.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/StoreProfileSource.cs" Link="StoreProfileSource.cs" />
+    <Compile Include="../../lib/toolkit/shared/mod/DbceModFile.cs;../../lib/toolkit/shared/mod/DbceStore.cs;../../lib/toolkit/shared/mod/DbceStoreControls.cs" Link="Toolkit/%(Filename)%(Extension)" />
     <Compile Include="../../src/ArtOfSimRally.Mod/FfbSelection.cs" Link="FfbSelection.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/WheelInput.cs" Link="WheelInput.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/WheelInput.Shim.cs" Link="WheelInput.Shim.cs" />

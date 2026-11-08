@@ -430,6 +430,45 @@ static class Program
             if (File.Exists(Path.Combine(dir.FullName, "ArtOfSimRally.sln"))) return Path.Combine(dir.FullName, "lib", "toolkit", "shim", "dbce_shim.dll");
         return "dbce_shim.dll";
     }
+    // Wheelkit's store decides art's profile when it exists (CFG-2): no opt-in needed, the profile's transmission sets
+    // TransmissionMode, a profile without steering refuses, and F6 does not edit it.
+    static void StoreCases(string mod, string storePath, Func<string> text)
+    {
+        const string wheel = "\"InstanceGuid\": \"d71b8350-61b7-11f1-8001-444553540000\", \"ProductGuid\": \"0006346e-0000-0000-0000-504944564944\", \"DeviceName\": \"Wheel\"";
+        const string shifter = "\"InstanceGuid\": \"e71b8350-61b7-11f1-8001-444553540000\", \"ProductGuid\": \"1006346e-0000-0000-0000-504944564944\", \"DeviceName\": \"Shifter\"";
+        string Store(string assigned, string extra = "") =>
+            "{ \"Schema\": 2, \"ActiveId\": \"seq\", \"Profiles\": [" +
+            "{ \"Id\": \"seq\", \"Profile\": { \"Name\": \"Store Seq\", \"Transmission\": \"Sequential\", \"Bindings\": {" +
+            "\"steer\": { " + wheel + ", \"Kind\": \"Axis\", \"Index\": 0, \"Direction\": 1, \"Rest\": 32768, \"Minimum\": 0, \"Maximum\": 65535 }," +
+            "\"shiftUp\": { " + shifter + ", \"Kind\": \"Button\", \"Index\": 4 }," +
+            "\"select\": { " + wheel + ", \"Kind\": \"Button\", \"Index\": 9 } } } }," +
+            "{ \"Id\": \"pedals\", \"Profile\": { \"Name\": \"No Steering\", \"Transmission\": \"Automatic\", \"Bindings\": {" +
+            "\"throttle\": { " + wheel + ", \"Kind\": \"Axis\", \"Index\": 1, \"Direction\": 1, \"Rest\": 0, \"Minimum\": 0, \"Maximum\": 65535 } } } }" +
+            "], \"Games\": { \"art-of-rally\": { \"Profile\": \"" + assigned + "\" } }" + extra + " }";
+        Directory.CreateDirectory(Path.GetDirectoryName(storePath));
+        Host.Settings.SharedInput = false; Host.Settings.TransmissionMode = "Follow game";
+        File.WriteAllText(storePath, Store("seq", ", \"FutureField\": { \"x\": 1 }"));
+        var source = StoreProfileSource.Read(storePath);
+        string written = System.Text.Encoding.UTF8.GetString(source.Profile);
+        Check(source.Name == "Store Seq" && written.Contains("Profile = Store Seq\r\n") && written.Contains("\r\nshiftUp = button 4 ") &&
+            !written.Contains("select") && source.Gearbox == "Sequential", "store text: " + written);
+        SharedInputStartup.Prepare(mod);
+        Check(SharedInputStartup.Active && SharedInputStartup.FromStore && SharedInputStartup.RequestedAtStartup && SharedInputStartup.StoreProfileName == "Store Seq" &&
+            Host.Settings.TransmissionMode == "Sequential" && text().Contains("waiting"), "store preflight: " + text());
+        Check(SharedBindingCaptureHost.Instance.Access != Dbce.Wheel.Input.SharedBindingAccess.Editable, "F6 can edit a store profile");
+        File.WriteAllText(storePath, Store("pedals")); Host.Settings.TransmissionMode = "Follow game";
+        SharedInputStartup.Prepare(mod);
+        Check(!SharedInputStartup.Active && text().Contains("'No Steering' cannot be used") && Host.Settings.TransmissionMode == "Follow game", "store without steering: " + text());
+        File.WriteAllText(storePath, "{");
+        SharedInputStartup.Prepare(mod);
+        Check(!SharedInputStartup.Active && SharedInputStartup.FromStore && text().Contains("store could not be read"), "unreadable store: " + text());
+        Check(StoreProfileSource.GearboxFor("[Controls]\r\nneutral = button 1\r\n", "H-pattern") == null &&
+            StoreProfileSource.GearboxFor("[Controls]\r\ngear1 = button 1\r\n", "H-pattern") == "H-pattern" &&
+            StoreProfileSource.GearboxFor("[Controls]\r\nsteer = axis 0\r\n", "Sequential") == null, "gearbox rule");
+        Directory.Delete(Path.GetDirectoryName(storePath), true);
+        Host.Settings.SharedInput = true;
+    }
+
     static void SharedStartupPaths()
     {
         // The qualified copied-provider build (7DDC9621), preserved with the October 12 Apply evidence.
@@ -437,6 +476,9 @@ static class Program
         Check(File.Exists(dll), "candidate dbce_shim.dll unavailable for the startup test: " + dll);
         var mod = Path.Combine(Path.GetTempPath(), "art-shared-startup-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(mod);
         SharedInputStartup.RunRoot = Path.Combine(mod, "runs");
+        // Without Wheelkit's store (the machine's own store never counts here).
+        string storePath = Path.Combine(mod, "store", "profiles.json");
+        SharedInputStartup.StorePath = storePath;
         string profilePath = Path.Combine(mod, SharedInputStartup.ProfileFileName), shimPath = Path.Combine(mod, SharedInputStartup.ShimFileName);
         string profile = "[Controls]\nSchema = 1\nProfile = Startup\nRevision = r1\nTransmission = Sequential\nsteer = axis 0 dev={d71b8350-61b7-11f1-8001-444553540000} prod={0006346e-0000-0000-0000-504944564944} range=0..65535 rest=32768 travel=+1\n";
         string Text() => string.Join(" | ", SharedInputStartup.Lines());
@@ -455,6 +497,9 @@ static class Program
         SharedInputStartup.Prepare(mod); Check(!SharedInputStartup.Active && Text().Contains("empty"), "empty profile: " + Text());
         File.WriteAllText(profilePath, profile);
         SharedInputStartup.Prepare(mod); Check(SharedInputStartup.Active && Text().Contains("waiting"), "valid preflight: " + Text());
+        Check(!SharedInputStartup.FromStore, "a missing store counted");
+        StoreCases(mod, storePath, Text);
+        SharedInputStartup.Prepare(mod); Check(SharedInputStartup.Active && !SharedInputStartup.FromStore, "file preflight after the store cases: " + Text());
         // No qualification while driving or before Rewired is ready; nothing acquired meanwhile.
         GameState.IsDriving = true; Rewired.ReInput.isReady = true; SharedInputStartup.Tick();
         GameState.IsDriving = false; Rewired.ReInput.isReady = false; SharedInputStartup.Tick();
