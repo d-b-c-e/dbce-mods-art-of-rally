@@ -261,7 +261,7 @@ try {
     $probe = Join-Path $game 'Mods/ArtOfSimRally.DevRecorder'
     $probeFiles = @('ArtOfSimRally.DevRecorder.dll','Info.json','Dbce.Wheel.Playback.dll')
     Assert (@(Compare-Object @($probeFiles | Sort-Object) @((Get-ChildItem -LiteralPath $probe -File).Name | Sort-Object)).Count -eq 0) 'Probe payload differs from explicit allowlist'
-    Assert ((Get-FileHash (Join-Path $probe 'Dbce.Wheel.Playback.dll')).Hash -eq (Get-FileHash (Join-Path $root 'lib/playback/Dbce.Wheel.Playback.dll')).Hash) 'Probe playback dependency differs from pin'
+    Assert ((Get-FileHash (Join-Path $probe 'Dbce.Wheel.Playback.dll')).Hash -eq (Get-FileHash (Join-Path $root 'lib/toolkit/dotnet/Dbce.Wheel.Playback.dll')).Hash) 'Probe playback dependency differs from pin'
     Set-Content -LiteralPath (Join-Path $probe 'user-notes.txt') -Value 'keep'
     $null = Run 'probe-uninstall' $shell @('-NoProfile','-File',$probeInstaller,'-GameDir',$game,'-Uninstall')
     Assert (-not (Test-Path -LiteralPath (Join-Path $probe 'ArtOfSimRally.DevRecorder.dll'))) 'Probe uninstall left recorder DLL'

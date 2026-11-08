@@ -55,7 +55,7 @@ internal static class ForceTrial
             scope = "Same original physics signals and reset epochs; initial filter history retained. Offline steering request comparison only. Does not change owner settings, physics, telemetry or physical output."
         };
         File.WriteAllText(Path.Combine(output, "report.json"), JsonSerializer.Serialize(result));
-        ArtifactSeal.Complete(output, new[] { "forces.csv", "tune.json", "report.json" });
+        CaptureComplete.Write(output, new[] { "forces.csv", "tune.json", "report.json" });
         return result;
     }
 }

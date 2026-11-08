@@ -40,7 +40,7 @@ function Start-Process { param([string]$FilePath)
         # An automated capture seals by itself, or the game exits without a seal.
         if ($request.captureDriver) {
             if ($global:ArtPathTest.exitWithoutSeal) { $global:ArtPathTest.dieAfter = 2 }
-            else { Set-Content -LiteralPath (Join-Path $request.tape 'complete.tsv') -Value 'dbce-playback-seal-v1' }
+            else { Set-Content -LiteralPath (Join-Path $request.tape 'complete.txt') -Value 'files=session.txt' }
         }
     } elseif ($request.mode -eq 'replay') {
         # A one-line result must be interpreted as a line, not the first character.

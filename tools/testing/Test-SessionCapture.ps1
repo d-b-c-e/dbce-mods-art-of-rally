@@ -29,7 +29,7 @@ try {
     Restore-SessionPresentation $backup
     & (Join-Path $PSScriptRoot 'Session.ps1') -Record -Name $Name -ScriptedFrom $Seed
     $deadline = [DateTime]::UtcNow.AddMinutes(3)
-    while (-not (Test-Path -LiteralPath (Join-Path $tape 'complete.tsv'))) {
+    while (-not (Test-Path -LiteralPath (Join-Path $tape 'complete.txt'))) {
         if (Test-Path -LiteralPath (Join-Path $tape 'incomplete.txt')) { throw (Get-Content -LiteralPath (Join-Path $tape 'incomplete.txt') -Raw) }
         if (-not (Get-Process artofrally -ErrorAction SilentlyContinue)) { throw 'Game exited before capture completed.' }
         if ([DateTime]::UtcNow -gt $deadline) { throw 'Synthetic capture timed out.' }

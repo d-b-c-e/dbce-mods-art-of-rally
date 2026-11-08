@@ -1,9 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><TreatWarningsAsErrors>true</TreatWarningsAsErrors></PropertyGroup>
   <ItemGroup>
-<Reference Include="Dbce.Wheel.Playback"><HintPath>../../../lib/playback/Dbce.Wheel.Playback.dll</HintPath></Reference>
+<Reference Include="Dbce.Wheel.Playback"><HintPath>../../../lib/toolkit/dotnet/Dbce.Wheel.Playback.dll</HintPath></Reference>
     <Compile Include="../Recorder/CollisionFormat.cs" Link="CollisionFormat.cs" />
 <Compile Include="../Common/ArtifactHash.cs" Link="ArtifactHash.cs" />
+<Compile Include="../Common/CaptureComplete.cs" Link="CaptureComplete.cs" />
 <Compile Include="../../../src/ArtOfSimRally.Mod/ForceCurve.cs" Link="ForceCurve.cs" />
 <Compile Include="../../../src/ArtOfSimRally.Mod/FrameHealth.cs" Link="FrameHealth.cs" />
 <Reference Include="Dbce.Wheel.Ffb"><HintPath>../../../lib/toolkit/dotnet/Dbce.Wheel.Ffb.dll</HintPath></Reference>

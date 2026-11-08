@@ -449,16 +449,9 @@ dist/
 # silently stayed untracked through the whole of 0.2.2.
 lib/*
 
-# Vendored dbce-wheel-mod-toolkit artifacts, pinned by lib/toolkit/VERSION
+# Vendored toolkit and triple-screen toolkit files, pinned by lib/toolkit/MANIFEST.txt
 !lib/toolkit/
 !lib/toolkit/**
-!lib/playback/
-!lib/playback/**
-!lib/input-shim/
-!lib/input-shim/**
-# Exact toolkit source, pinned by lib/display/provenance.json (the shared racing-row selector).
-!lib/display/
-!lib/display/**
 # dbce_ui.dll, the toolkit's in-process F6 core, for the developer-only UiHost=hook spike (lib/dbce-ui/PROVENANCE.md).
 !lib/dbce-ui/
 !lib/dbce-ui/**

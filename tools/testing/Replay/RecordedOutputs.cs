@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Xml.Linq;
+using ArtOfSimRally.Testing;
 using Dbce.Wheel.Playback;
 
 internal static class RecordedOutputs
@@ -17,7 +18,7 @@ internal static class RecordedOutputs
         int count = 0, active = 0, effects = 0;
         if (File.Exists(packets))
         {
-            ArtifactSeal.Verify(directory, "telemetry.tsv", "effects.tsv", "forces.csv", "manifest.xml");
+            CaptureComplete.Require(directory, "telemetry.tsv", "effects.tsv", "forces.csv", "manifest.xml");
             double last = -1;
             foreach (string line in File.ReadLines(packets).Skip(1))
             {

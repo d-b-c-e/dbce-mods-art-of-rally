@@ -146,7 +146,7 @@ switch ($PSCmdlet.ParameterSetName) {
             Start-Game
             Write-Output "Recording automated session '$Name' from route '$ScriptedFrom' into $tape (outputs muted)"
             $deadline = (Get-Date).AddMinutes($TimeoutMinutes)
-            while (-not (Test-Path -LiteralPath (Join-Path $tape 'complete.tsv')) -and -not (Test-Path -LiteralPath (Join-Path $tape 'incomplete.txt'))) {
+            while (-not (Test-Path -LiteralPath (Join-Path $tape 'complete.txt')) -and -not (Test-Path -LiteralPath (Join-Path $tape 'incomplete.txt'))) {
                 if (-not (Get-Process artofrally -ErrorAction SilentlyContinue)) { Start-Sleep 2; break }
                 if ((Get-Date) -gt $deadline) {
                     $status = try { Send-Probe 'SESSION-STATUS' } catch { 'status unavailable: ' + $_.Exception.Message }
@@ -154,7 +154,7 @@ switch ($PSCmdlet.ParameterSetName) {
                 }
                 Start-Sleep -Seconds 2
             }
-            $sealed = (Test-Path -LiteralPath (Join-Path $tape 'complete.tsv')) -and -not (Test-Path -LiteralPath (Join-Path $tape 'incomplete.txt'))
+            $sealed = (Test-Path -LiteralPath (Join-Path $tape 'complete.txt')) -and -not (Test-Path -LiteralPath (Join-Path $tape 'incomplete.txt'))
         } catch { $failure = $_ } finally {
             Remove-Item -LiteralPath $request -ErrorAction SilentlyContinue
             # Close only a game this run launched; one it never launched is not its to close (sana 38425).
@@ -184,10 +184,8 @@ switch ($PSCmdlet.ParameterSetName) {
         }
         if (Test-Path -LiteralPath (Join-Path $tape 'incomplete.txt')) { throw "Tape is marked incomplete: $(Get-Content -LiteralPath (Join-Path $tape 'incomplete.txt'))" }
         $metadata = Get-Content -LiteralPath (Join-Path $tape 'session.txt') -Raw
-        if ($metadata -match '(?m)^format=3\s*$') {
-            $null = [Reflection.Assembly]::LoadFrom((Join-Path $root 'lib/playback/Dbce.Wheel.Playback.dll'))
-            [Dbce.Wheel.Playback.ArtifactSeal]::Verify($tape, [string[]]@('session.txt','input.tape','car.tape','markers.tsv','end.txt'))
-        }
+        # Format 3 tapes end with complete.txt, written after every stream closed.
+        if ($metadata -match '(?m)^format=3\s*$' -and -not (Test-Path -LiteralPath (Join-Path $tape 'complete.txt'))) { throw 'Tape is incomplete, missing complete.txt' }
         Assert-GameClosed
         Assert-TestSlot
         $out = if ($OutputDirectory) { $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputDirectory) } else { Join-Path $tape ('replay-' + (Get-Date -Format 'yyyyMMdd-HHmmss')) }

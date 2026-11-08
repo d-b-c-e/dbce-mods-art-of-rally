@@ -275,7 +275,7 @@ namespace ArtOfSimRally.Testing
             {
                 var required = new List<string> { "session.txt", "markers.tsv", "input.tape", "car.tape", "shifts.tape", "end.txt" };
                 if (_sceneSelections) required.AddRange(Directory.GetFiles(_dir, "load-*.json").Select(Path.GetFileName));
-                ArtifactSeal.Verify(_dir, required.ToArray());
+                CaptureComplete.Require(_dir, required.ToArray());
             }
             if (!session.TryGetValue("fixedDeltaTime", out var fixedDelta) ||
                 Math.Abs(float.Parse(fixedDelta, CultureInfo.InvariantCulture) - Time.fixedDeltaTime) > 0.000001f)
@@ -972,10 +972,10 @@ namespace ArtOfSimRally.Testing
                     try
                     {
                         File.WriteAllText(Path.Combine(_dir, "end.txt"), "reason=" + why + "\nframes=" + _frame + "\nsteps=" + _fixedStep + "\n" + sharedOutcome);
-                        var sealedFiles = Directory.GetFiles(_dir).Select(Path.GetFileName).Where(n => n != "complete.tsv" && !n.EndsWith(".tmp")).ToList();
+                        var sealedFiles = Directory.GetFiles(_dir).Select(Path.GetFileName).Where(n => n != CaptureComplete.FileName && !n.EndsWith(".tmp")).ToList();
                         var environment = Path.Combine(_dir, "environment-at-start");
                         if (Directory.Exists(environment)) sealedFiles.AddRange(Directory.GetFiles(environment).Select(p => "environment-at-start/" + Path.GetFileName(p)));
-                        ArtifactSeal.Complete(_dir, sealedFiles.ToArray());
+                        CaptureComplete.Write(_dir, sealedFiles);
                     }
                     catch (Exception ex) { MarkIncomplete("completion seal: " + ex.Message); }
                 }

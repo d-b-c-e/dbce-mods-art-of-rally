@@ -82,11 +82,12 @@ try {
             include = @((Join-Path $LocalRepo 'native/wheelffb/include'),(Join-Path $LocalRepo 'native/forza'),(Join-Path $LocalRepo 'native/forcemodel'),(Join-Path $LocalRepo 'native/dinput-proxy'))
             profiles = @(Join-Path $LocalRepo 'profiles')
             powershell = @(Join-Path $LocalRepo 'tools/powershell')
-            # Source builds include the unreleased recorder. -Version below only
-            # copies archive contents, so published v0.12.0 needs no Recording DLL.
+            # Source builds include the unreleased recorder and Playback (dev recorders only).
+            # -Version below only copies archive contents, so published v0.12.0 needs neither.
             # Ui's output also carries Dbce.Wheel.Input.dll, its dependency.
             dotnet = @((Join-Path $LocalRepo 'dotnet/Dbce.Wheel.Ffb/bin/Release/netstandard2.0'),
                        (Join-Path $LocalRepo 'dotnet/Dbce.Wheel.Recording/bin/Release/netstandard2.0'),
+                       (Join-Path $LocalRepo 'dotnet/Dbce.Wheel.Playback/bin/Release/netstandard2.0'),
                        (Join-Path $LocalRepo 'dotnet/Dbce.Wheel.Ui/bin/Release/netstandard2.0'),
                        (Join-Path $LocalRepo 'dotnet/Dbce.Wheel.Display/bin/Release/netstandard2.0'))
             tools = @(Join-Path $LocalRepo 'tools')

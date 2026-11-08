@@ -6,8 +6,9 @@ $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 $revision = (& git -C $root rev-parse HEAD).Trim()
 if ($LASTEXITCODE -ne 0) { throw 'Cannot identify source' }
 if (@(& git -C $root status --porcelain --untracked-files=all).Count -ne 0) { throw 'SessionTools requires clean source' }
-$pin = Get-Content (Join-Path $root 'lib/playback/provenance.json') -Raw | ConvertFrom-Json
-if ((Get-FileHash (Join-Path $root 'lib/playback/Dbce.Wheel.Playback.dll')).Hash -ne $pin.sha256) { throw 'Playback library differs from pin' }
+# The Playback DLL is vendored in lib/toolkit; its MANIFEST.txt pins it.
+& (Join-Path $root 'tools/Sync-Toolkit.ps1') -Check
+$toolkitPin = (Get-Content -LiteralPath (Join-Path $root 'lib/toolkit/VERSION') -First 1).Trim()
 $stage = Join-Path $root "dist/session-tools-$Version"
 $zip = Join-Path $root "dist/ArtOfSimRally-SessionTools-$Version.zip"
 if ((Test-Path -LiteralPath $stage) -or (Test-Path -LiteralPath $zip)) { throw 'Artifact exists; choose a new version' }
@@ -18,7 +19,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Analysis build failed' }
 $map = [ordered]@{}
 foreach ($path in @('tools/testing/Session.ps1','tools/testing/SessionEnvironment.ps1','tools/testing/ReplayInputIsolation.ps1','tools/testing/RouteEnvironment.ps1','tools/testing/Install-Recorder.ps1',
     'tools/testing/Recorder/Info.json','tools/testing/Recorder/bin/Release/net48/ArtOfSimRally.DevRecorder.dll',
-    'lib/playback/Dbce.Wheel.Playback.dll','lib/playback/provenance.json','lib/playback/LICENSE','LICENSE','docs/SESSION-REPLAY.md')) { $map[$path] = $path }
+    'lib/toolkit/dotnet/Dbce.Wheel.Playback.dll','LICENSE','docs/SESSION-REPLAY.md')) { $map[$path] = $path }
 foreach ($name in @('Replay.dll','Replay.deps.json','Replay.runtimeconfig.json','Dbce.Wheel.Ffb.dll','Dbce.Wheel.Playback.dll')) {
     $map["analysis/$name"] = "tools/testing/Replay/bin/Release/net8.0/$name"
 }
@@ -66,11 +67,8 @@ included. This is development tooling and trajectory playback, not deterministic
 physics input replay or a physical force measurement. Keep captured evidence private.
 '@
 Set-Content -LiteralPath (Join-Path $stage 'README.md') -Value $readme -Encoding UTF8
-[ordered]@{ schema=1; release=$Version; sourceRevision=$revision; sourceState='clean'; playback=$pin } |
+[ordered]@{ schema=1; release=$Version; sourceRevision=$revision; sourceState='clean'; toolkitPin=$toolkitPin } |
     ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $stage 'build.json') -Encoding UTF8
-$null = [Reflection.Assembly]::LoadFrom((Join-Path $root 'lib/playback/Dbce.Wheel.Playback.dll'))
-[Dbce.Wheel.Playback.ArtifactSeal]::Complete($stage, [string[]](@($map.Keys) + @('README.md','build.json')))
-[Dbce.Wheel.Playback.ArtifactSeal]::Verify($stage, [string[]]@('build.json','tools/testing/Recorder/bin/Release/net48/ArtOfSimRally.DevRecorder.dll'))
 Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zip
 (Get-FileHash -LiteralPath $zip).Hash | Set-Content -LiteralPath "$zip.sha256" -Encoding ASCII
 Write-Output "Packaged $zip"

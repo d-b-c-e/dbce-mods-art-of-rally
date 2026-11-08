@@ -398,13 +398,30 @@ static class Program
         Check(Broken(r => r[0][2] = "0") == "PASSED " + Verdict(clean, Car(clean), out _), "menu row judged");
         Check(NativeEvidence.Evaluate(new[] { "frame\tmarker" }, Car(clean), m => true, out passed) == "native.tape header differs" && !passed, "foreign header accepted");
     }
+    // Session tapes and force trials end with complete.txt, written last; a reader refuses a tape without it.
+    static void Completion(string root)
+    {
+        Directory.CreateDirectory(root);
+        File.WriteAllText(Path.Combine(root, "session.txt"), "format=3");
+        File.WriteAllText(Path.Combine(root, "end.txt"), "frames=1");
+        bool Refused(Action read) { try { read(); return false; } catch (InvalidDataException) { return true; } }
+        Check(Refused(() => CaptureComplete.Require(root, "session.txt")), "tape without complete.txt accepted");
+        Check(Refused(() => CaptureComplete.Write(root, new[] { "session.txt", "missing.tape" })), "complete.txt listed a missing file");
+        Check(!File.Exists(Path.Combine(root, CaptureComplete.FileName)), "failed completion left complete.txt");
+        CaptureComplete.Write(root, new[] { "session.txt", "end.txt" });
+        CaptureComplete.Require(root, "session.txt", "end.txt");
+        Check(File.ReadAllText(Path.Combine(root, CaptureComplete.FileName)) == "files=session.txt,end.txt\n", "complete.txt text differs");
+        Check(Refused(() => CaptureComplete.Require(root, "input.tape")), "unlisted required file accepted");
+        File.Delete(Path.Combine(root, "end.txt"));
+        Check(Refused(() => CaptureComplete.Require(root, "end.txt")), "deleted listed file accepted");
+    }
     static int Main(string[] args)
     {
         try
         {
             string root = Path.GetFullPath(args[0]);
             Check(!Directory.Exists(root), "use a fresh test evidence directory");
-            string capture = Capture(root); Pipe(); Quit(Path.Combine(root, "quit-cases")); Policy(); Diagnostics(); Native(); assertions += SharedEvidenceTests.Run(Path.Combine(root, "shared-evidence"), (ok, why) => { if (!ok) throw new Exception(why); });
+            string capture = Capture(root); Pipe(); Quit(Path.Combine(root, "quit-cases")); Policy(); Diagnostics(); Native(); Completion(Path.Combine(root, "completion")); assertions += SharedEvidenceTests.Run(Path.Combine(root, "shared-evidence"), (ok, why) => { if (!ok) throw new Exception(why); });
             if (args.Length == 3) Contract(args[1], args[2]);
             Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions, syntheticCapture = capture })); return 0;
         }

@@ -1002,8 +1002,7 @@ local test candidate, not physical acceptance or a public release.
   `B0F36FF0C8FDEDBA43FA6041DC4A8CF5DA119BC8FCFF50660DBB8F1403112F4C`.
   - Installed mod `7CB24EE8025D59CB43D233FCBB56C59019C06A83E875F52A215057B35F567EC7`.
   - Shim `BC9B030A25834D8CCE562F22588EC5E0D3F5C1FA026AD7AD984776D60CD6254B`, toolkit
-    `c6594fa` built at `421bd4b`. The private copy and its provenance are described in
-    [lib/input-shim/PROVENANCE.md](../lib/input-shim/PROVENANCE.md).
+    `c6594fa` built at `421bd4b`.
   - Both force native copies remain `44E46799`.
 - **Gates:**
   - The first complete gate, throwaway rc.923 on `b1af29f`, stopped at `game-bindings`.

@@ -88,8 +88,9 @@ Sessions live under `results/sessions/<name>`:
   scale and is labelled separately in analysis.
 - `effects.tsv`: requested play/update effect arguments before muting. These are
   commands, not physical waveforms or a complete stop/duration timeline.
-- `end.txt`, `complete.tsv`: counts and hashes written after background writers
-  close. Truncated, modified or incomplete tapes are refused. Queue overflow
+- `end.txt`, `complete.txt`: counts and the file list, written after background
+  writers close. A tape without `complete.txt` is refused; `manifest.xml` carries
+  the content hashes, so a modified or truncated capture is refused too. Queue overflow
   invalidates the tape rather than silently dropping rows.
 - **Optional diagnostics, only when a request asks** (`rewiredInventory=1`,
   `identityProbe=1`; recording only, reset for every request):
@@ -147,7 +148,7 @@ and the recording continues.
     whether keyboard steering was kept);
   - the owned shared buttons held.
 
-  It is sealed with the other members. Replay never reads it. The phase, freshness,
+  It is listed in `complete.txt` with the other members. Replay never reads it. The phase, freshness,
   isolation and held columns describe the row's own frame. The composition columns are
   the mod's last composition, made in the frame named by `lastFrame`: normally the
   previous rendered frame, because the recorder ticks before the car reads input.
@@ -199,7 +200,7 @@ application error. Its 721 force samples passed 27,453 offline checks with no
 native-magnitude mismatches. Identity and zero-gain trials passed. See the
 validation record.
 
-Legacy formats 1/2 lack semantic buttons, completion seals, exact RPM and resolved
+Legacy formats 1/2 lack semantic buttons, completion markers, exact RPM and resolved
 scene snapshots; their menus depend on preferences and controlled random seeds.
 Use fresh captures for reusable cases. Settings edits, arbitrary pointer motion
 and every third-party mod are not covered. This adapter seeds randomness at state
@@ -208,6 +209,7 @@ multi-stage coverage is not established by the tested cases. Synthetic drives
 are labelled separately from owner drives. Force CSV capture requires the normal
 FFB calculation path enabled and ready; physical muting preserves that path.
 
-The shared `Dbce.Wheel.Playback` core owns ordering, bounded writing, seals and
+The shared `Dbce.Wheel.Playback` core owns ordering, bounded writing and
 statistics. This adapter owns Unity hooks, scene snapshots, units and restoration.
-Its separate version/provenance in `lib/playback` does not replace the native pin.
+Playback is vendored in `lib/toolkit/dotnet` with the other toolkit DLLs, pinned by
+`lib/toolkit/MANIFEST.txt`.
