@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Xml.Serialization;
 using UnityEngine;
 using UnityModManagerNet;
 
@@ -30,7 +31,7 @@ namespace ArtOfSimRally.Mod
         public string StopFfbButtonBinding = "";
         // Same action order as CameraKeys.Bindings; separate from keyboard keys.
         public string[] CameraButtonBindings = new string[11];
-        // Empty migrates existing explicit selections; a new config follows Steering.
+        // "explicit" targets PreferredDeviceGuid; otherwise FFB follows Steering unless a GUID was picked.
         public string FfbDeviceMode = "";
         // ---- Steering -------------------------------------------------------
 
@@ -137,7 +138,9 @@ namespace ArtOfSimRally.Mod
         public bool ShiftEffectsEnabled = false;
         public float ShiftStrength = 5f;
 
-        public bool DiagnosticLogging = false;
+        // Support detail logging is for one reproduction, so it is never saved and starts off each launch
+        // (left on, it kept writing FFB traces for weeks after a support request, 2026-10-05).
+        [XmlIgnore] public bool DiagnosticLogging = false;
         /// <summary>Frame-rate counter at the top right of the centre screen (STD-024).</summary>
         public bool ShowFrameRate = false;
 
@@ -147,7 +150,7 @@ namespace ArtOfSimRally.Mod
         public string PreferredDevice = "";
 
         public int PreferredDeviceIndex = -1;
-        // Set only by an explicit picker selection; old name/index settings remain readable.
+        // Set only by an explicit picker selection; FFB targets this identity, never the name or index.
         public string PreferredDeviceGuid = "";
 
         // ---- Camera ---------------------------------------------------------
@@ -194,9 +197,7 @@ namespace ArtOfSimRally.Mod
         public bool CameraTuningKeys = true;
 
         // Per-press shortcut steps (toolkit STD-006: 0.02 m, 1 deg tilt, 2 deg FOV).
-        // Holding a key repeats the step at a bounded rate (CameraTuner). These
-        // replace the old held speeds TuneMoveSpeed/TuneAngleSpeed; a stale field
-        // in an old Settings.xml is ignored by the XML reader.
+        // Holding a key repeats the step at a bounded rate (CameraTuner).
         public float CameraMoveStep = 0.02f;
         public float CameraTiltStep = 1f;
         public float CameraFovStep  = 2f;

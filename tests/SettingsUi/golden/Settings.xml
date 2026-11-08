@@ -61,7 +61,6 @@
   <CrashStrength>50</CrashStrength>
   <ShiftEffectsEnabled>false</ShiftEffectsEnabled>
   <ShiftStrength>5</ShiftStrength>
-  <DiagnosticLogging>false</DiagnosticLogging>
   <ShowFrameRate>false</ShowFrameRate>
   <PreferredDevice />
   <PreferredDeviceIndex>-1</PreferredDeviceIndex>

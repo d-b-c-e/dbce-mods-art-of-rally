@@ -63,22 +63,6 @@ namespace ArtOfSimRally.Mod
 
             SharedInputStartup.Prepare(modEntry.Path); // frozen profile/FFB target inspection, before recovery or reader qualification
             SharedInputStartup.ForceSettled = () => !ForceReconnect.Pending;
-            if (SettingsMigration.NeedsHandbrakeSplit(Settings))
-            {
-                try
-                {
-                    string path = Path.Combine(modEntry.Path, "Settings.xml");
-                    if (File.Exists(path)) File.Copy(path, path + ".pre-ux-" + Guid.NewGuid().ToString("N") + ".bak");
-                    SettingsMigration.SplitHandbrake(Settings);
-                    MarkSettingsDirty();
-                }
-                catch (Exception ex) { ModLog.Warning("Handbrake migration deferred; original binding kept: " + ex.Message); }
-            }
-            if (SettingsMigration.EndSessionOnlySettings(Settings))
-            {
-                ModLog.Info("Log detail for support was left on from an earlier session; it starts off each launch.");
-                MarkSettingsDirty();
-            }
             if (CameraKeys.MigratePreviousDefaults(Settings))
             {
                 ModLog.Info("Camera keys were an earlier default set; moved to the numpad layout " +

@@ -16,8 +16,7 @@ namespace ArtOfSimRally.Mod
             sharedReason = reason ?? "The shared steering target is unavailable. Check the shared profile and restart.";
         }
         public static bool FollowsSteering(Settings cfg) => cfg.FfbDeviceMode == "steering" ||
-            (cfg.FfbDeviceMode != "explicit" && string.IsNullOrEmpty(cfg.PreferredDeviceGuid) &&
-             string.IsNullOrEmpty(cfg.PreferredDevice) && cfg.PreferredDeviceIndex < 0);
+            (cfg.FfbDeviceMode != "explicit" && string.IsNullOrEmpty(cfg.PreferredDeviceGuid));
         public static bool TryTarget(Settings cfg, out string name, out int index, out string guid, out string reason)
         {
             name = cfg.PreferredDevice; index = cfg.PreferredDeviceIndex; guid = cfg.PreferredDeviceGuid;

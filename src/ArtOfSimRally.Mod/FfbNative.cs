@@ -102,7 +102,7 @@ namespace ArtOfSimRally.Mod
                 if (!Guid.TryParse(settings.PreferredDeviceGuid, out Guid guid)) return -1;
                 return new DevicePreference { InstanceGuid = guid }.Choose(_devices);
             }
-            return -1; // Legacy name/index is unverified, never display a different row as saved.
+            return -1; // Only a GUID identifies the saved wheel; never display a different row as saved.
         }
 
         public static bool Reinitialise(string modDir, string name, int index, string guid = "")

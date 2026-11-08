@@ -13,7 +13,6 @@
     <Compile Include="../../src/ArtOfSimRally.Mod/Settings.cs" Link="Settings.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/SettingsPersistence.cs" Link="SettingsPersistence.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/SettingsViewPolicy.cs" Link="SettingsViewPolicy.cs" />
-    <Compile Include="../../src/ArtOfSimRally.Mod/SettingsMigration.cs" Link="SettingsMigration.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/FfbSelection.cs" Link="FfbSelection.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/Main.SettingsUi.cs" Link="Main.SettingsUi.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/DraftCloseGuard.cs" Link="DraftCloseGuard.cs" />

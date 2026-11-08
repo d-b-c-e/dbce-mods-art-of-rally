@@ -71,19 +71,18 @@ static class Program
         oldAgain.ResetFfbTuning();
         Check(oldAgain.FyReference == Settings.DefaultFyReference && oldAgain.Strength == 50, "explicit reset did not adopt the new reference");
         var c=Read("<Settings><ForceFeedbackEnabled>false</ForceFeedbackEnabled><Smoothing>0.61</Smoothing><CrashStrength>19.52381</CrashStrength><LandingStrength>20</LandingStrength><BonnetHeight>1.4</BonnetHeight><PreferredDeviceGuid>"+Wheel+"</PreferredDeviceGuid></Settings>");
-        Check(!SettingsViewPolicy.Advanced(c)&&SettingsViewPolicy.Page(c)==0,"legacy Setup did not open Simple Controls");
+        Check(!SettingsViewPolicy.Advanced(c)&&SettingsViewPolicy.Page(c)==0,"new settings did not open Simple Controls");
         Check(SettingsViewPolicy.CustomFfb(c)&&SettingsViewPolicy.CustomCamera(c),"custom tune hidden without summary");
         Check(!SettingsViewPolicy.CustomControls(c),"default controls labelled custom");
         c.DirectSteering=false;Check(SettingsViewPolicy.CustomControls(c),"custom controls hidden");c.DirectSteering=true;
         Check(SettingsViewPolicy.Select(c,true,2,false),"Advanced selection failed");
-        var again=Read(Xml(c));Check(SettingsViewPolicy.Advanced(again)&&again.SettingsPage==3&&SettingsViewPolicy.Page(again)==2,"view/page not persistent");
-        Check(!SettingsViewPolicy.Select(c,false,0,true)&&c.SettingsPage==3&&SettingsViewPolicy.Advanced(c),"edit guard discarded current page");
+        var again=Read(Xml(c));Check(SettingsViewPolicy.Advanced(again)&&again.SettingsPage==2&&SettingsViewPolicy.Page(again)==2,"view/page not persistent");
+        Check(!SettingsViewPolicy.Select(c,false,0,true)&&c.SettingsPage==2&&SettingsViewPolicy.Advanced(c),"edit guard discarded current page");
         SettingsViewPolicy.Select(c,false,0,false);
-        Check(c.SettingsPage==1&&c.Smoothing==.61f&&c.CrashStrength==19.52381f&&c.LandingStrength==20&&c.BonnetHeight==1.4f&&!c.ForceFeedbackEnabled,
+        Check(c.SettingsPage==0&&c.Smoothing==.61f&&c.CrashStrength==19.52381f&&c.LandingStrength==20&&c.BonnetHeight==1.4f&&!c.ForceFeedbackEnabled,
             "view normalization changed runtime settings");
-        c.SettingsPage=1;Check(SettingsViewPolicy.Page(c)==0,"saved Controls page moved");
-        c.SettingsPage=2;Check(SettingsViewPolicy.Page(c)==1,"saved FFB page moved");
-        c.SettingsPage=5;Check(SettingsViewPolicy.Page(c)==4,"saved Help page moved");
+        c.SettingsPage=1;Check(SettingsViewPolicy.Page(c)==1,"saved FFB page moved");
+        c.SettingsPage=4;Check(SettingsViewPolicy.Page(c)==4,"saved Help page moved");
         c.SettingsView="unknown";c.SettingsPage=999;
         Check(!SettingsViewPolicy.Advanced(c)&&SettingsViewPolicy.Page(c)==0&&!c.ForceFeedbackEnabled,"unknown presentation reset tune");
         var network=new ConnectionEdit();string oldHost=c.TelemetryHost;int oldPort=c.TelemetryPort;
@@ -105,7 +104,7 @@ static class Program
         Check(FfbSelection.TryTarget(c,out _,out _,out guid,out _)&&guid==explicitGuid,"steering rebind stole override");
         c.FfbDeviceMode="steering";Check(FfbSelection.TryTarget(c,out name,out _,out guid,out _)&&name=="Other"&&guid!=explicitGuid,"follow did not follow rebind");
         c.FfbDeviceMode="explicit";c.PreferredDeviceGuid="";c.PreferredDevice="Wheel";c.PreferredDeviceIndex=0;
-        Check(!FfbSelection.TryTarget(c,out _,out _,out _,out _),"unverified legacy index accepted");
+        Check(!FfbSelection.TryTarget(c,out _,out _,out _,out _),"explicit name/index without a GUID accepted");
         string settingsBefore = Xml(c);
         var sharedGuid = Guid.NewGuid().ToString("D");
         FfbSelection.PrepareShared(true, "Shared steering", sharedGuid);
@@ -120,15 +119,12 @@ static class Program
         FfbSelection.PrepareShared(false);
         Check(FfbSelection.TryTarget(c,out _,out _,out guid,out _)&&guid!=sharedGuid,"ordinary startup did not restore legacy follow semantics");
         c.FfbDeviceMode="explicit";c.PreferredDeviceGuid="";
-        c.HandbrakeBinding=$"TSS|4|button:2|0|1|guid:{Wheel}";string legacy=c.HandbrakeBinding;
-        Check(SettingsMigration.NeedsHandbrakeSplit(c),"legacy button not identified");SettingsMigration.SplitHandbrake(c);
-        Check(c.HandbrakeButtonBinding==legacy&&c.HandbrakeBinding==""&&!c.ForceFeedbackEnabled,"legacy split lost binding or tune");
-        c.HandbrakeBinding=$"TSS|4|axis:2|65535|0|guid:{Wheel}";string axis=c.HandbrakeBinding;SettingsMigration.SplitHandbrake(c);
-        Check(c.HandbrakeBinding==axis&&c.HandbrakeButtonBinding==legacy,"axis/button coexistence migrated incorrectly");
-        Check(Read(Xml(c)).HandbrakeButtonBinding==legacy,"button XML persistence failed");
+        string button=$"TSS|4|button:2|0|1|guid:{Wheel}";c.HandbrakeButtonBinding=button;
+        c.HandbrakeBinding=$"TSS|4|axis:2|65535|0|guid:{Wheel}";string axis=c.HandbrakeBinding;
+        Check(Read(Xml(c)).HandbrakeButtonBinding==button&&Read(Xml(c)).HandbrakeBinding==axis,"handbrake XML persistence failed");
         c.DiagnosticLogging=true;var leftOn=Read(Xml(c));
-        Check(leftOn.DiagnosticLogging&&SettingsMigration.EndSessionOnlySettings(leftOn)&&!leftOn.DiagnosticLogging,"saved support logging survived launch");
-        Check(!SettingsMigration.EndSessionOnlySettings(leftOn)&&leftOn.HandbrakeBinding==axis&&leftOn.Smoothing==c.Smoothing&&leftOn.HandbrakeButtonBinding==legacy,"logging reset reported again or touched other settings");
+        Check(!leftOn.DiagnosticLogging&&leftOn.HandbrakeBinding==axis&&leftOn.Smoothing==c.Smoothing,"support logging was saved or a save touched other settings");
+        Check(!Read("<Settings><DiagnosticLogging>true</DiagnosticLogging></Settings>").DiagnosticLogging,"an old saved support logging setting survived launch");
         c.DiagnosticLogging=false;
         c.BonnetHeight=1.9f;c.BumperHeight=1.2f;c.LandingStrength=20;c.KeyUp=KeyCode.U;
         c.ResetCameraMount(false);
