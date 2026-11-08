@@ -24,7 +24,7 @@ Output: `src/ArtOfSimRally.Mod/bin/Release/ArtOfSimRally.Mod.dll`. Keep the clas
 With the game closed: `tools/installer/Install.bat` from the built ZIP (also `tools/testing/Test-Installer.ps1` for installer checks). Procedure and rollback: `docs/LOCAL-DEPLOYMENT.md`. `tools/installer/Uninstall.bat` removes only the mod's files; settings stay.
 
 ## Shared code
-`lib/toolkit/` is vendored from dbce-wheel-mod-toolkit (native `WheelFfb.dll` shipped as `UnityForceFeedback.dll`, `Dbce.Wheel.Ffb.dll`, `Dbce.Wheel.Telemetry.dll`; pin in `lib/toolkit/VERSION`). Refresh with `tools/Sync-Toolkit.ps1 -Version vX.Y.Z`. Change shared code in the toolkit and re-sync; never edit the vendored copy.
+`lib/toolkit/` is vendored from dbce-wheel-mod-toolkit (native `WheelFfb.dll` shipped as `UnityForceFeedback.dll`, `Dbce.Wheel.Ffb.dll`, `Dbce.Wheel.Telemetry.dll`, the shim, and the input, ui, display and support sources under `lib/toolkit/shared`), every file pinned in `lib/toolkit/MANIFEST.txt`. `tools/Sync-Toolkit.ps1` is the toolkit's own script: refresh with `-LocalRepo <clean toolkit checkout> -Parts shared` (or `-Version vX.Y.Z`); `package.ps1` runs `-Check` and refuses edited, missing or unlisted files. Change shared code in the toolkit and re-sync; never edit the vendored copy.
 
 ## Game-specific rules
 - Online leaderboards exist: no physics or assist changes; FFB, camera and telemetry are fair-play neutral.
