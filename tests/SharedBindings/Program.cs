@@ -136,7 +136,7 @@ internal static class Program
             for (int i = 0; i < 120; i++) { time += .1; masks.ObserveAccepted("Masked fixture", "owned-mask-path", metadata, Sample()); }
             Check(masks.CapturingAction == null && masks.HasDraft, "timeout with fresh unchanged samples preserves an earlier draft");
             var missing = new SharedBindingCaptureHost(path, null, () => time, () => true, () => sourceNow);
-            Check(missing.Access == SharedBindingAccess.Missing && missing.AccessReason.Contains("Controls Setup"), "missing profile gives a no-Wheelkit standalone route");
+            Check(missing.Access == SharedBindingAccess.Missing && missing.AccessReason.Contains("No shared profile"), "a missing profile says so");
             var repeated = new SharedBindingCaptureHost(path, Encoding.UTF8.GetBytes(text), () => time, () => true, () => sourceNow);
             repeated.ObserveAccepted("Fixture", "owned-repeat-path", metadata, Sample(readSequence: 1000));
             repeated.BeginCapture("confirm");

@@ -8,6 +8,7 @@ Portfolio rules: `E:\Source\dbce-project-mgmt\HOW-WE-WORK.md` (read first; it re
 - Wheel and pedals (direct input for devices Rewired cannot read), force feedback from the tyre model, Forza-format UDP telemetry, bonnet camera, F6 settings panel, triple screens. Public repo.
 
 ## Build
+- **One command:** `pwsh build.ps1` at the repo root builds and runs every offline test, with no arguments. Run it before pushing.
 ```powershell
 # once: copy UnityModManager.dll and 0Harmony.dll from <game>\artofrally_Data\Managed\UnityModManager into lib\umm (git-ignored)
 dotnet build ArtOfSimRally.sln -c Release -warnaserror "-p:GameDir=D:\Program Files (x86)\Steam\steamapps\common\artofrally"
