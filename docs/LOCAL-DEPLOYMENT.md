@@ -1,6 +1,8 @@
 # Local deployment
+## Current installation - Art 0.4.5-rc.1 (shared F6 panel), November 10
+F6 is now the shared panel drawn in the game (`dbce_ui.dll`, in the package): Force feedback, Display, Cameras, Telemetry and Help, with the active Wheelkit profile and Report a problem on Help. The developer switch is gone. The Unity Mod Manager window (Ctrl+F10) still holds the old setup and binding pages. Test-Rc passed. Installed from a fresh extract of the ZIP over rc.49 with the game closed; `Settings.xml`, `TripleScreen.xml` and `dbce-controls.ini` stayed byte-identical. ZIP SHA-256 `EE8936269FD0A4283F2399334B35D908F22850E123AD3C946F9B4556A7FF8936`, installed Mod `86D9B064397BCF606C7A5775C2D5E9D784068FDDEE0935B2BE071FF3FDB9B9D9`. Launch-checked with the hub's `tools/Invoke-LaunchCheck.ps1 -Repo art-of-rally` (menus only): the panel opened on the center screen, the Telemetry and Help pages showed, and the picture checks passed with F6 closed; registry, saves and settings were restored.
 
-## Current installation - Art 0.4.4-rc.49 (shared input), November 8
+## Previous installation - Art 0.4.4-rc.49 (shared input), November 8
 
 ART-L build (source `c8cf27f`): the dev recorder takes `Dbce.Wheel.Playback.dll` from `lib/toolkit` (toolkit `804b2a6`)
 and `lib/playback` is gone; no player DLL changed except the version label. Test-Rc passed. Installed with the

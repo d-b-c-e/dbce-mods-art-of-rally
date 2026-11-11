@@ -18,16 +18,16 @@
   "notes": "Menus only: art has no force-feedback test switch, and its force starts only while driving, so this check never enters a stage.",
   "steps": [
     {
-      "timeout": 180,
-      "until": "\\[ArtOfSimRally\\] Loaded - directSteering"
+      "until": "\\[ArtOfSimRally\\] Loaded - directSteering",
+      "timeout": 180
     },
     {
       "wait": 30
     },
     {
+      "menu": true,
       "capture": "menu",
-      "screens": 3,
-      "menu": true
+      "screens": 3
     },
     {
       "key": "F6"
@@ -36,10 +36,46 @@
       "wait": 2
     },
     {
+      "menu": true,
       "capture": "f6-open",
-      "info": true,
       "screens": 3,
-      "menu": true
+      "info": true
+    },
+    {
+      "key": "Right"
+    },
+    {
+      "wait": 1
+    },
+    {
+      "key": "Right"
+    },
+    {
+      "wait": 1
+    },
+    {
+      "key": "Right"
+    },
+    {
+      "wait": 1
+    },
+    {
+      "menu": true,
+      "capture": "f6-telemetry",
+      "screens": 3,
+      "info": true
+    },
+    {
+      "key": "Right"
+    },
+    {
+      "wait": 1
+    },
+    {
+      "menu": true,
+      "capture": "f6-help",
+      "screens": 3,
+      "info": true
     },
     {
       "key": "F6"
@@ -48,17 +84,20 @@
       "wait": 2
     },
     {
+      "menu": true,
       "capture": "f6-closed",
-      "screens": 3,
-      "menu": true
+      "screens": 3
     }
   ],
   "expect": [
     "\\[ArtOfSimRally\\] Loaded - directSteering",
-    "Triple screens: loaded"
+    "Triple screens: loaded",
+    "F6 panel: drawn in the game by dbce_ui\\.dll",
+    "dbce_ui: Art of Rally Wheel Mod 0\\.4\\.5"
   ],
   "forbid": [
     "Harmony patching failed",
-    "Could not load settings"
+    "Could not load settings",
+    "F6 opens the Unity Mod Manager panel instead"
   ]
 }
