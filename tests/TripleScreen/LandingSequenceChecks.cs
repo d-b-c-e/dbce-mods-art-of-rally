@@ -36,14 +36,12 @@ internal static class LandingSequenceChecks
     internal static void Run(Action<bool,string> check)
     {
         PersistenceChecks.Run(check);
-        check(LandingLaunchPolicy.Block(null,null,false,false,false,Array.Empty<string>())==null,"ordinary launch admitted");
-        check(LandingLaunchPolicy.Block("1",null,false,false,false,Array.Empty<string>())!=null,"muted launch suppressed");
-        check(LandingLaunchPolicy.Block(null,"probe",false,false,false,Array.Empty<string>())!=null,"shim launch suppressed");
-        check(LandingLaunchPolicy.Block(null,null,true,false,false,Array.Empty<string>())!=null,"recorder even before load suppressed");
-        check(LandingLaunchPolicy.Block(null,null,false,true,false,Array.Empty<string>())!=null,"session request suppressed");
-        check(LandingLaunchPolicy.Block(null,null,false,false,true,Array.Empty<string>())!=null,"editor suppressed");
+        check(LandingLaunchPolicy.Block(null,null,false,Array.Empty<string>())==null,"ordinary launch admitted");
+        check(LandingLaunchPolicy.Block("1",null,false,Array.Empty<string>())!=null,"muted launch suppressed");
+        check(LandingLaunchPolicy.Block(null,"shim-probe marker",false,Array.Empty<string>())=="shim-probe marker","the game's developer marker (shim probe, recorder, session request) suppressed");
+        check(LandingLaunchPolicy.Block(null,null,true,Array.Empty<string>())!=null,"editor suppressed");
         foreach(var flag in new[]{"-batchmode","-nographics","-runTests"})
-            check(LandingLaunchPolicy.Block(null,null,false,false,false,new[]{flag})!=null,"test argument suppressed: "+flag);
+            check(LandingLaunchPolicy.Block(null,null,false,new[]{flag})!=null,"test argument suppressed: "+flag);
         // Surround is uniquely identifiable, unlike the equal-size separate row below.
         Host PersistenceHost() => new Host {
             Monitors=new[]{new MonitorRect(0,0,3000,700,true),new MonitorRect(0,-600,800,600,false)},

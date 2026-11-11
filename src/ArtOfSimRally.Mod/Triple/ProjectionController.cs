@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Dbce.TripleScreen;
 using Dbce.TripleScreen.Protocol;
+using Dbce.Wheel.Display.Unity;
 using UnityEngine;
 using UnityEngine.Rendering.PostProcessing;
 

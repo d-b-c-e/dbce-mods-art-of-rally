@@ -1,5 +1,12 @@
 # Racing-row selector (vendorable source)
 
+**Unity games (2026-11-10):** `unity/RacingWindow.cs` is the game window on the racing row for Unity Mono plugins,
+extracted from art of rally and used by art and #DRIVE Rally: `SpanWindow` (one borderless window across separate
+monitors, STD-047), `UnityWindowLandingHost` for the engine-free `RacingWindowLanding.cs` sequence (the window lands
+on the row's home display and Unity's start monitor is saved when certain, STD-038) and `MenuCentering` (menus on the
+middle screen, STD-019). The game decides when each runs. `dotnet/Dbce.Wheel.UnityUi` compiles them against
+UnityEngine 2021.3 in `build.ps1`; art of rally's `tests/TripleScreen` runs the landing sequence's cases.
+
 `RacingRow.cs` decides which displays a triple-screen mod spans, from the observed monitor rectangles and the primary
 display alone. `WindowsMonitors.cs` reads those rectangles (`EnumDisplayMonitors` + `GetMonitorInfoW`); it is kept
 apart so the policy stays pure and testable anywhere. Neither file changes a display setting, profile or window.

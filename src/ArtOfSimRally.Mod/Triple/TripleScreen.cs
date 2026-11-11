@@ -2,6 +2,8 @@ using System;
 using HarmonyLib;
 using System.IO;
 using Dbce.TripleScreen.Protocol;
+using Dbce.Wheel.Display;
+using Dbce.Wheel.Display.Unity;
 using UnityEngine;
 using UnityModManagerNet;
 
@@ -20,16 +22,17 @@ internal static class TripleScreen
     private static readonly ProjectionController Projection = new();
     private static StatusPublisher _status;
     private static RenderDiagnostics _renderDiagnostics;
-    private static readonly MenuCenteringController MenuCentering = new();
+    private static readonly MenuCentering MenuCentering = new();
     private static bool _enabled;
     private static int _frame;
-    private static readonly RacingWindowLanding Landing = new(new NativeWindowLandingHost());
+    private static readonly RacingWindowLanding Landing = new(new UnityWindowLandingHost(ModLog.Info, DeveloperLaunch));
     private static ProjectionOutcome _lastOutcome;
     private static bool _showAdvanced;
 
     internal static void Load(UnityModManager.ModEntry modEntry)
     {
         _modEntry = modEntry;
+        SpanWindow.Log = ModLog.Info;
         try
         {
             _settings = UnityModManager.ModSettings.Load<Settings>(modEntry);
@@ -302,7 +305,7 @@ internal static class TripleScreen
             _lastOutcome = outcome;
             _status.Publish(outcome, Application.version);
             _renderDiagnostics.Sample(outcome, Projection);
-            if (_frame % 30 == 0) MenuCentering.Update(_enabled && _settings.CenterMenusOnMiddleScreen, layout);
+            if (_frame % 30 == 0) MenuCentering.Update(_enabled && _settings.CenterMenusOnMiddleScreen && ThreePanelOutput(layout));
         }
         catch (Exception exception)
         {
@@ -310,6 +313,32 @@ internal static class TripleScreen
             _lastOutcome = ProjectionOutcome.Error(EffectiveLayout.Resolve(Layout.Current, _settings), "ADAPTER_UPDATE_ERROR", SafeMessage(exception.Message));
             _status.Publish(_lastOutcome, Application.version);
         }
+    }
+
+    // The window landing never saves the start monitor in art's developer launches (toolkit UnityWindowLandingHost adds
+    // the muted, editor and batch launches): a shim probe, the dev recorder or a session request, even disabled or stale.
+    private static string DeveloperLaunch()
+    {
+        if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DBCE_ART_SHIM_REQUEST"))) return "shim-probe marker";
+        var root = Path.GetDirectoryName(Application.dataPath);
+        var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        if (string.IsNullOrEmpty(root) || string.IsNullOrEmpty(local)) return "launch classification unavailable";
+        bool recorder = LandingPersistence.MarkerPresent(Path.Combine(root, "Mods", "ArtOfSimRally.DevRecorder"), File.GetAttributes) ||
+            Array.Exists(AppDomain.CurrentDomain.GetAssemblies(), a => a.GetName().Name == "ArtOfSimRally.DevRecorder");
+        bool request = LandingPersistence.MarkerPresent(Path.Combine(local, "ArtOfSimRally", "session-request.txt"), File.GetAttributes);
+        return recorder || request ? "developer recorder/session marker" : null;
+    }
+
+    // Menus go to the middle screen only on a three-panel window the layout describes (Surround or the span window).
+    private static bool ThreePanelOutput(LayoutLoadResult result)
+    {
+        if (!result.IsSuccess || result.Document?.Output == null || result.Document.Panel == null) return false;
+        var output = result.Document.Output;
+        var panel = result.Document.Panel;
+        return panel.Count == 3 &&
+               (output.Mode == "nvidia-surround" || output.Mode == "borderless-span") &&
+               output.CombinedWidthPx == Screen.width && output.CombinedHeightPx == Screen.height &&
+               (long)panel.NativeWidthPx * 3 == Screen.width && panel.NativeHeightPx == Screen.height;
     }
 
     /// <summary>Drawn inside the Cameras page of the wheel settings panel, on the panel's shared rows

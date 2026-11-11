@@ -78,6 +78,7 @@
     <Compile Include="..\..\lib\toolkit\shared\display\WindowLanding.cs" Link="Toolkit\Display\WindowLanding.cs" />
     <Compile Include="..\..\lib\toolkit\shared\display\RacingRow.cs" Link="Toolkit\Display\RacingRow.cs" />
     <Compile Include="..\..\lib\toolkit\shared\display\WindowsMonitors.cs" Link="Toolkit\Display\WindowsMonitors.cs" />
+    <Compile Include="..\..\lib\toolkit\shared\display\RacingWindowLanding.cs;..\..\lib\toolkit\shared\display\unity\RacingWindow.cs" LinkBase="Toolkit\Display" />
     <Compile Include="..\..\lib\toolkit\shared\input\BindingCapture.cs;..\..\lib\toolkit\shared\input\BindingCaptureFlow.cs;..\..\lib\toolkit\shared\input\BindingEditorContract.cs;..\..\lib\toolkit\shared\input\BindingEditorPolicy.cs;..\..\lib\toolkit\shared\input\ControlBinding.cs;..\..\lib\toolkit\shared\input\ControlProfileDocument.cs;..\..\lib\toolkit\shared\input\ControlProfileDraft.cs;..\..\lib\toolkit\shared\input\DeclaredControlExtras.cs" LinkBase="Toolkit\Input" />
     <Compile Include="..\..\lib\toolkit\shared\ui\BindingSaveStatus.cs;..\..\lib\toolkit\shared\ui\DbceUi.cs;..\..\lib\toolkit\shared\ui\F6Style.cs;..\..\lib\toolkit\shared\ui\SettingsPresentation.cs;..\..\lib\toolkit\shared\ui\unity\F6Widgets.cs;..\..\lib\toolkit\shared\ui\unity\FrameRateReadout.cs" LinkBase="Toolkit\Ui" />
     <Compile Include="..\..\lib\toolkit\shared\support\SupportReport.cs" Link="Toolkit\Support\SupportReport.cs" />

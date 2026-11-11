@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using ArtOfSimRally.Mod.Triple;
+using Dbce.Wheel.Display;
 
 namespace Dbce.TripleScreen.Tests;
 internal static class PersistenceChecks

@@ -59,7 +59,7 @@ keeping those UI canvases and backgrounds on the center 2560 of the span (the
 
 **Source candidate, 2026-10-29, untested in game.** The game's main `UI` and `HUD` canvas scalers match
 height (1920x1080 and 1720x880 reference, read from `resources.assets`), so on a 7680 span anything anchored
-to the edges lands on the side screens and stretched backgrounds span all three. `MenuCenteringController`
+to the edges lands on the side screens and stretched backgrounds span all three. `MenuCentering` (toolkit `shared/display/unity/RacingWindow.cs` since 2026-11-10)
 now maps the horizontal anchors of each full-span root canvas's top-level elements into the center third
 (restored on release), replacing the three hard-coded menu offsets. Same `CenterMenusOnMiddleScreen`
 setting, relabelled "Keep menus and HUD on the middle screen". Needs a Surround check: menus, loading,
