@@ -3,27 +3,21 @@ using HarmonyLib;
 namespace ArtOfSimRally.Mod
 {
     /// <summary>
-    /// Applies the separate shifter's selected gear to the car each physics step.
+    /// Applies the shared profile's gears to the player's car once per physics step: H-pattern gates or sequential presses,
+    /// through the same <c>Drivetrain.Shift</c> call as the game's own sequential path.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// Runs on <c>CarDynamics.FixedUpdate</c> alongside force feedback and
-    /// telemetry, so gear selection is sampled at the physics rate rather than the
-    /// frame rate.
-    /// </para>
-    /// <para>
-    /// Only while the player is driving: the end-of-stage cutscene drives the car
-    /// itself, and forcing gears into an AI-driven car would fight it - the same
-    /// mistake that had the wheel pulling to full lock after the finish line.
-    /// </para>
+    /// Only the profile's own transmission mode applies, never while the gearbox is automatic, and at most one change per
+    /// step. The current car's gear-ratio range is checked every time; a missing gear is ignored, never clamped (see
+    /// <see cref="Shim.ShimTransmission"/>). Only while the player is driving: the end-of-stage cutscene drives the car
+    /// itself, and forcing gears into it would fight it. Gear indices: reverse 0, neutral 1, first 2.
     /// </remarks>
     [HarmonyPatch(typeof(CarDynamics), "FixedUpdate")]
-    internal static class ShifterPatch
+    internal static class ProfileGears
     {
         private static CarDynamics _cachedFor;
         private static Drivetrain _drivetrain;
-
-        private static int _sharedApplied = int.MinValue;
+        private static int _applied = int.MinValue;
         // Start-of-stage evidence (owner 2026-10-31: 1st held at the start still not engaged on rc.19): what the shared
         // lever and the gearbox look like, logged on change, at most 12 lines per stage.
         private static int _diagLeft;
@@ -32,51 +26,26 @@ namespace ArtOfSimRally.Mod
         [HarmonyPostfix]
         private static void ApplyGear(CarDynamics __instance)
         {
-            // A started shared session owns transmission input; Art's own shifter
-            // reader is never opened alongside it, so the two never both apply.
-            if (Shim.ShimInput.Consumer.Started) { ApplySharedGear(__instance); return; }
-            var cfg = Main.Settings;
-            if (!Main.Enabled || cfg == null || !cfg.ShifterEnabled) return;
-            if (!Shifter.IsOpen) return;
-
-            if (!GameState.IsDriving) { Shifter.Reset(); return; }
-
+            var consumer = Shim.ShimInput.Consumer;
+            if (!consumer.Started) return;
+            if (!Main.Enabled || Main.Settings == null || !GameState.IsDriving)
+            { consumer.ClearShifts(); _applied = int.MinValue; _diagLeft = 12; _lastDiag = null; return; }
             if (!ReferenceEquals(_cachedFor, __instance))
             {
-                _cachedFor = __instance;
-                _drivetrain = __instance.GetComponent<Drivetrain>();
-                Shifter.Reset();
-            }
-
-            Shifter.Update(_drivetrain);
-        }
-
-        // Shared gates or sequential presses, through the same Drivetrain.Shift call as
-        // Art's shifter and the game's own sequential path. Only the shared profile's own
-        // transmission mode applies, never while the gearbox is automatic, and at most one
-        // change per physics step. The current car's gear-ratio range is checked every time;
-        // a missing gear is ignored, never clamped.
-        private static void ApplySharedGear(CarDynamics car)
-        {
-            var consumer = Shim.ShimInput.Consumer;
-            if (!Main.Enabled || Main.Settings == null || !GameState.IsDriving)
-            { consumer.ClearShifts(); _sharedApplied = int.MinValue; _diagLeft = 12; _lastDiag = null; return; }
-            if (!ReferenceEquals(_cachedFor, car))
-            {
-                _cachedFor = car; _drivetrain = car.GetComponent<Drivetrain>();
-                consumer.ClearShifts(); _sharedApplied = int.MinValue;
+                _cachedFor = __instance; _drivetrain = __instance.GetComponent<Drivetrain>();
+                consumer.ClearShifts(); _applied = int.MinValue;
             }
             if (_drivetrain == null) return;
             // A press made in a panel or while unfocused must not shift on return.
             if (Main.SettingsVisible || !UnityEngine.Application.isFocused) { consumer.ClearShifts(); return; }
-            WheelInput.EnsureSharedFrame();
-            var mode = WheelInput.SharedTransmission;
+            WheelReaders.EnsureSharedFrame();
+            var mode = WheelReaders.SharedTransmission;
             bool sequential = mode == Shim.ShimTransmission.Mode.Sequential && !_drivetrain.automatic;
             int step = sequential ? consumer.TakeShift() : 0;
             if (!sequential) consumer.ClearShifts();
             var gate = mode == Shim.ShimTransmission.Mode.HPattern ? Shim.ShimTransmission.Gate(consumer, UnityEngine.Time.frameCount) : null;
             int max = _drivetrain.gearRatios != null ? _drivetrain.gearRatios.Length - 1 : -1;
-            var target = Shim.ShimTransmission.Next(mode, _drivetrain.automatic, _drivetrain.gear, gate, ref _sharedApplied, step, Main.Settings.SkipNeutral, max,
+            var target = Shim.ShimTransmission.Next(mode, _drivetrain.automatic, _drivetrain.gear, gate, ref _applied, step, Main.Settings.SkipNeutral, max,
                 _drivetrain.changingGear);
             if (target.HasValue) _drivetrain.Shift(target.Value, true);
             if (_diagLeft > 0 && mode == Shim.ShimTransmission.Mode.HPattern)

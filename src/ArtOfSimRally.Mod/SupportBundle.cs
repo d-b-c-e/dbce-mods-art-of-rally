@@ -168,13 +168,11 @@ namespace ArtOfSimRally.Mod
 
         private static void WriteRuntimeInputs(StringBuilder sb)
         {
-            sb.AppendLine("--- direct inputs (cached latest sample; not a history) ---");
-            sb.AppendLine("direct input enabled: " + WheelInput.Enabled);
-            sb.AppendLine("device state: " + WheelInput.DeviceSummary);
-            sb.AppendLine("assignment status: " + WheelInput.Status);
-            foreach (var channel in WheelInput.Channels)
-                sb.AppendLine(channel + ": " + WheelInput.Describe(channel) + "; value=" +
-                    WheelInput.Value(channel).ToString("F4", System.Globalization.CultureInfo.InvariantCulture));
+            sb.AppendLine("--- shared profile and wheel readers (latest observation; not a history) ---");
+            foreach (var line in SharedInputStartup.Lines()) sb.AppendLine(line);
+            sb.AppendLine("readers open for the profile: " + WheelReaders.Enabled);
+            sb.AppendLine("device state: " + WheelReaders.DeviceSummary);
+            if (!string.IsNullOrEmpty(WheelReaders.Status)) sb.AppendLine("reader status: " + WheelReaders.Status);
             sb.AppendLine("game restart active: " + GameState.IsRestarting);
             sb.AppendLine("other CameraMod loaded: " + Main.OtherCameraModLoaded);
             try

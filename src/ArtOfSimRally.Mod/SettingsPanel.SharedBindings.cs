@@ -52,15 +52,15 @@ namespace ArtOfSimRally.Mod
                     names[0] = "Saved device";
                     for (int i = 0; i < devices.Count; i++) names[i + 1] = devices[i].Name;
                     selected = SharedDeviceSelection.Mode == SharedBindingSelectionMode.Saved ? 0 : SharedDeviceSelection.SelectedIndex < 0 ? -1 : SharedDeviceSelection.SelectedIndex + 1;
-                    int pick = W.ChoiceRow("binding-device-next", BindingPresentation.BindFrom, "Which open device the next Bind listens to.", names, selected, !LegacyEditing);
+                    int pick = W.ChoiceRow("binding-device-next", BindingPresentation.BindFrom, "Which open device the next Bind listens to.", names, selected, !KeyOrConnectionEditing);
                     if (pick == 0) SharedDeviceSelection.SelectSaved();
                     else if (pick > 0 && pick <= devices.Count) SharedDeviceSelection.SelectDevice(devices[pick - 1].InstanceGuid, devices);
                 }
                 if (SharedDeviceSelection.UnavailableReason.Length > 0) Help(SharedDeviceSelection.UnavailableReason);
             }
-            // Mutually exclusive with every other edit (an Art calibration, camera or Settings key capture, a connection edit):
+            // Mutually exclusive with every other edit (a camera or Settings key capture, a connection edit):
             // shared actions start only when nothing else is being edited (kiki 123770).
-            bool idle = !LegacyEditing && capturing == null;
+            bool idle = !KeyOrConnectionEditing && capturing == null;
             var rows = host.Rows;
             for (int i = 0; rows != null && i < rows.Count; i++) BindingRow(host, rows[i], access, capturing, idle, currentDevices.Count > 0);
             if (host.HasDraft || host.SavedPendingRestart)

@@ -363,43 +363,15 @@ static partial class Program
         CameraTuner.Flush(shutdown: true); Check(Host.Saves == 5, "double shutdown saved twice");
         GameState.IsDriving = false;
     }
-    static void UsbCameraButtons()
-    {
-        var cfg=Host.Settings;Keys.Release();WheelInput.Held.Clear();CameraTuner.Update(BonnetCamera.View.Bonnet);
-        foreach(bool bumper in new[]{false,true})
-        {
-            var view=bumper?BonnetCamera.View.Bumper:BonnetCamera.View.Bonnet;
-            int[] targets={0,0,1,1,2,2,3,3,4,4};int[] directions={1,-1,1,-1,-1,1,1,-1,1,-1};
-            for(int i=0;i<10;i++)
-            {
-                var before=MountValues(cfg,bumper);var other=MountValues(cfg,!bumper);
-                WheelInput.Held.Add(WheelInput.CameraChannel(i));CameraTuner.Update(view);WheelInput.Held.Clear();
-                var after=MountValues(cfg,bumper);
-                for(int f=0;f<5;f++)Check(Math.Abs(after[f]-before[f]-(f==targets[i]?directions[i]*Step(cfg,i):0))<.00001f,"USB camera adjustment mapping wrong");
-                Check(MountValues(cfg,!bumper).SequenceEqual(other),"USB adjustment moved inactive mount");
-            }
-        }
-        float height=cfg.BonnetHeight;Host.SettingsVisible=true;WheelInput.Held.Add(WheelInput.Channel.CameraUp);CameraTuner.Update(BonnetCamera.View.Bonnet);
-        Host.SettingsVisible=false;CameraTuner.Update(BonnetCamera.View.Bonnet);Check(cfg.BonnetHeight==height,"captured/held USB camera button leaked through close");
-        WheelInput.Held.Clear();CameraTuner.Update(BonnetCamera.View.Bonnet);WheelInput.Held.Add(WheelInput.Channel.CameraUp);
-        CameraTuner.Update(BonnetCamera.View.Bonnet);Check(cfg.BonnetHeight>height,"released USB camera button never resumed");
-        height=cfg.BonnetHeight;ArtOfSimRally.Mod.Application.isFocused=false;CameraTuner.Update(BonnetCamera.View.Bonnet);
-        ArtOfSimRally.Mod.Application.isFocused=true;CameraTuner.Update(BonnetCamera.View.Bonnet);Check(cfg.BonnetHeight==height,"focus return used held camera button");
-        WheelInput.Held.Clear();CameraTuner.Update(BonnetCamera.View.Bonnet);
-        cfg.BumperHeight=1.8f;cfg.BonnetHeight=2.4f;
-        WheelInput.Pressed.Add(WheelInput.Channel.CameraReset);CameraTuner.ReadResetButton();CameraTuner.Update(BonnetCamera.View.Bonnet);
-        Check(cfg.BonnetHeight==.95f&&cfg.BumperHeight==1.8f,"USB reset scope wrong");
-        cfg.BonnetHeight=1.3f;CameraTuner.Update(BonnetCamera.View.Bonnet);Check(cfg.BonnetHeight==1.3f,"USB reset repeated from one edge");
-    }
     static void FreshCameraFixture()
     {
-        Keys.Release(); WheelInput.Held.Clear(); WheelInput.Pressed.Clear(); CameraKeys.Cancel();
+        Keys.Release(); CameraKeys.Cancel();
         Host.Enabled = true; Host.SettingsVisible = false; ArtOfSimRally.Mod.Application.isFocused = true;
         CameraTuner.Flush(shutdown: true);
         var release = typeof(ChaseFov).GetMethod("Release", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
         if (release == null) ChaseFov.Remove(); else release.Invoke(null, null);
         Host.Settings = new Settings();
-        CameraTuner.ReadResetButton(); CameraTuner.Update(BonnetCamera.View.Bonnet);
+        CameraTuner.Update(BonnetCamera.View.Bonnet);
         ArtOfSimRally.Mod.Triple.TripleScreen.Realistic = false;
         Clock.unscaledTime += 2;
     }
@@ -436,11 +408,6 @@ static partial class Program
             Check(CameraKeys.Bindings[i].Get(cfg) == KeyCode.F7 && File.ReadAllText(Host.Path) == saved,
                 "reserved imported binding was rewritten");
             Keys.Release(); CameraTuner.Update(BonnetCamera.View.Bonnet);
-            if (i == 10) { WheelInput.Pressed.Add(WheelInput.Channel.CameraReset); CameraTuner.ReadResetButton(); }
-            else WheelInput.Held.Add(WheelInput.CameraChannel(i));
-            CameraTuner.Update(BonnetCamera.View.Bonnet);
-            Check(!MountValues(cfg, false).SequenceEqual(bonnet), "F7 reservation blocked independent wheel action " + i);
-            WheelInput.Held.Clear();
         }
     }
     static (CarCameras rig, ArtOfSimRally.Mod.Camera camera) ChaseFixture()
@@ -484,25 +451,26 @@ static partial class Program
     {
         var (rig, cam) = ChaseFixture(); var cfg = Host.Settings;
         cfg.ChaseFovOffsets.AddRange(new[] { 12f, 7f }); cfg.ChaseFovRealisticOffsets.AddRange(new[] { 3f, 5f });
-        WheelInput.Pressed.Add(WheelInput.Channel.CameraReset); CameraTuner.ReadResetButton(); ChaseFov.Apply(rig, cfg);
+        // The reset key: only the active view/set, one press at a time.
+        Keys.Pressed.Add(cfg.KeyReset); ChaseFov.Apply(rig, cfg); Keys.Release();
         Check(cfg.ChaseFovOffsets.SequenceEqual(new[] { 0f, 7f }) && cfg.ChaseFovRealisticOffsets.SequenceEqual(new[] { 3f, 5f }) && cam.fieldOfView == 80,
-            "chase did not consume wheel reset for only the active view/set"); ChaseFov.Remove();
+            "chase reset changed more than the active view/set"); ChaseFov.Remove();
         cfg.ChaseFovOffsets[0] = 9; ChaseFov.Apply(rig, cfg);
-        Check(cfg.ChaseFovOffsets[0] == 9, "chase replayed a consumed wheel edge"); ChaseFov.Remove();
+        Check(cfg.ChaseFovOffsets[0] == 9, "chase reset repeated without a fresh press"); ChaseFov.Remove();
+        var resetKey = cfg.KeyReset;
         cfg.KeyReset = KeyCode.F7; Keys.Pressed.Add(KeyCode.F7); ChaseFov.Apply(rig, cfg);
         Check(cfg.ChaseFovOffsets[0] == 9, "chase imported F7 reset collided with set key"); Keys.Release(); ChaseFov.Remove();
+        cfg.KeyReset = resetKey;
         ArtOfSimRally.Mod.Triple.TripleScreen.Realistic = true;
-        WheelInput.Pressed.Add(WheelInput.Channel.CameraReset); CameraTuner.ReadResetButton(); ChaseFov.Apply(rig, cfg);
+        Keys.Pressed.Add(cfg.KeyReset); ChaseFov.Apply(rig, cfg); Keys.Release();
         Check(cfg.ChaseFovRealisticOffsets[0] == 0 && cfg.ChaseFovOffsets[0] == 9 && cfg.ChaseFovRealisticOffsets[1] == 5 && cam.fieldOfView == 34,
-            "Realistic wheel reset changed another set/view or failed calculated FOV"); ChaseFov.Remove();
-        // Capture and focus loss consume an edge, then require physical release.
+            "Realistic reset changed another set/view or failed calculated FOV"); ChaseFov.Remove();
+        // A reset pressed during a key capture or while unfocused does nothing, then or later.
         cfg.ChaseFovRealisticOffsets[0] = 4; CameraKeys.Begin(0);
-        WheelInput.Held.Add(WheelInput.Channel.CameraReset); WheelInput.Pressed.Add(WheelInput.Channel.CameraReset);
-        CameraTuner.ReadResetButton(); ChaseFov.Apply(rig, cfg); CameraKeys.Cancel();
+        Keys.Pressed.Add(cfg.KeyReset); ChaseFov.Apply(rig, cfg); CameraKeys.Cancel(); Keys.Release();
         ChaseFov.Apply(rig, cfg); Check(cfg.ChaseFovRealisticOffsets[0] == 4, "capture reset leaked into chase"); ChaseFov.Remove();
-        WheelInput.Held.Clear(); ChaseFov.Apply(rig, cfg); ChaseFov.Remove();
         ArtOfSimRally.Mod.Application.isFocused = false;
-        WheelInput.Pressed.Add(WheelInput.Channel.CameraReset); CameraTuner.ReadResetButton(); ChaseFov.Apply(rig, cfg); ChaseFov.Remove();
+        Keys.Pressed.Add(cfg.KeyReset); ChaseFov.Apply(rig, cfg); Keys.Release(); ChaseFov.Remove();
         ArtOfSimRally.Mod.Application.isFocused = true; ChaseFov.Apply(rig, cfg); ChaseFov.Remove();
         Check(cfg.ChaseFovRealisticOffsets[0] == 4, "unfocused reset replayed on focus return");
         CameraTuner.Flush(shutdown: true);
@@ -526,7 +494,7 @@ static partial class Program
             else if (mode == "--chase-pose") ChasePosePersistence();
             else if (mode == "--persistence") Persistence();
             else if (mode != null) throw new ArgumentException("Unknown fixture mode");
-            else { Saves(); Bindings(); Layout(); NativeKeyboardConflicts(); KeyEffects(); UsbCameraButtons(); Steps(); F7Capture(); F7Dispatch(); FovLimits(); ChaseReset(); Persistence(); }
+            else { Saves(); Bindings(); Layout(); NativeKeyboardConflicts(); KeyEffects(); Steps(); F7Capture(); F7Dispatch(); FovLimits(); ChaseReset(); Persistence(); }
             Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
         }
         catch (Exception ex) { Console.Error.WriteLine(ex); return 1; }

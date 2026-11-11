@@ -104,6 +104,10 @@ or physical acceptance is inferred.
 
 ### KI-50 — Local clutch rest jitter can bypass stock auto-clutch
 
+**0.4.6: the Art-local clutch is gone** (ART-G deleted Art's own bindings). The
+shared profile's clutch keeps its own processing and `max(game, profile)`; the
+`ordinary` scenario of `tests/SharedInput` covers it. The history below is kept.
+
 **Source finding, 2026-10-22; not yet observed at the rig.** Decompiled
 `CarController.Update` writes `1f - clutchInput` to the clutch whenever the input
 is nonzero (or auto-clutch is off). `Drivetrain` only auto-engages with
@@ -123,12 +127,15 @@ assist, drivetrain or game-default change is included.
 `aeae6c9828c1a3cc254dd2b7540b75755bf03e19` is on `main`; no clutch side
 branch or worktree remains. The focused runner
 `dotnet run --project tests/WheelInput/WheelInput.csproj -c Release --no-restore`
-passed 620 assertions. Its separate `--no-build -- --ordinary-fallback-only`
+(that project became `tests/SharedInput` in 0.4.6) passed 620 assertions. Its separate `--no-build -- --ordinary-fallback-only`
 run passed 87 assertions, including the shared-snapshot local clutch fallback.
 This is offline source evidence only; no release, package publication or
 game-install write was performed. Runtime and physical acceptance remain open.
 
 ### KI-49 — Local clutch overrides the game's start-line hold
+
+**0.4.6:** as for KI-50, only the shared profile's clutch remains, composed as
+`max(game, profile)`, which keeps the start-line hold.
 
 **Source finding, 2026-10-22; not yet observed at the rig.** Decompiled
 `AxisCarController.GetInput` forces `clutchInput = 1f` during

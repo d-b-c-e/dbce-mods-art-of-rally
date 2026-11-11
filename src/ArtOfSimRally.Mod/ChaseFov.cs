@@ -68,7 +68,6 @@ namespace ArtOfSimRally.Mod
         /// <summary>From the mounted-camera postfix, for a stock chase view only.</summary>
         internal static void Apply(CarCameras rig, Settings cfg, bool allowPose = true)
         {
-            bool resetButton = CameraTuner.TakeResetButton();
             var cam = UIManager.Instance?.PanelManager?.mainCamera;
             var list = Angles(rig);
             if (cam == null || list == null || rig.CurrentCameraAngle == null) { Release(); return; }
@@ -90,7 +89,7 @@ namespace ArtOfSimRally.Mod
             {
                 float now = Time.unscaledTime, step = CameraRepeat.Bounded(cfg.CameraFovStep, .5f, 10f, 2f);
                 float delta = (Up.Tick(CameraKeys.Held(8), now) ? step : 0f) - (Down.Tick(CameraKeys.Held(9), now) ? step : 0f);
-                bool reset = CameraKeys.Pressed(10) || resetButton;
+                bool reset = CameraKeys.Pressed(10);
                 float next = reset ? 0f : offsets[index] + delta;
                 bool changed = false;
                 if ((delta != 0f || reset) && !float.IsNaN(next) && !float.IsInfinity(next))

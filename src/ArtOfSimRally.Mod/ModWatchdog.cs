@@ -52,7 +52,7 @@ namespace ArtOfSimRally.Mod
         private void Update()
         {
             SharedInputStartup.Tick();
-            ReadWheelInputs();
+            ReadWheels();
             Main.TickSettingsUi();
             ObserveFrameHealth();
             TickFrameRate();
@@ -60,8 +60,6 @@ namespace ArtOfSimRally.Mod
             if (!Main.Enabled)
             {
                 ImpactController.Tick();
-                WheelInput.FlushLearnedRanges();
-                Shifter.FlushSelection();
                 CameraTuner.Flush();
                 FrameHealthPersistence.Flush();
                 return;
@@ -88,34 +86,27 @@ namespace ArtOfSimRally.Mod
                 FfbNative.SetForce(0);
                 FfbController.Reset();
                 TelemetryPump.Park();
-
-                // The moment the player stops driving is the right one to write
-                // anything to disk. WheelInput learns each axis's full range as
-                // the control is first used, which is the opening seconds of a
-                // stage; saving it there could contribute to the reported KI-5 hitch.
             }
             Main.RecoverForceFeedback();
             // Native effect allocation, like acquisition, follows force release.
             ImpactController.Tick();
             TelemetryPump.Prepare();
-            // Retry failed writes at most once per five seconds, only while idle.
-            WheelInput.FlushLearnedRanges();
-            Shifter.FlushSelection();
+            // Writes happen only here, while not driving (KI-5: a disk write mid-stage can hitch).
             CameraTuner.Flush();
             FrameHealthPersistence.Flush();
         }
 
         // Unity may stop Update while unfocused. Re-arm on a fresh release even
         // if there was no background frame in which to observe focus loss.
-        private void OnApplicationFocus(bool focused) { if (!focused) WheelInput.ResetGameButtons(); }
-        private void OnApplicationPause(bool paused) { if (paused) WheelInput.ResetGameButtons(); }
+        private void OnApplicationFocus(bool focused) { if (!focused) ProfileButtons.Reset(); }
+        private void OnApplicationPause(bool paused) { if (paused) ProfileButtons.Reset(); }
 
         private void LateUpdate() => BonnetCamera.ReleaseIfInactive();
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
-        private static void ReadWheelInputs()
+        private static void ReadWheels()
         {
-            WheelInput.EnsureUpdatedThisFrame();
+            WheelReaders.EnsureUpdatedThisFrame();
             // Scene/menu transitions belong here, never inside a Rewired query.
             GameButtonInput.TickTitle();
         }
@@ -169,12 +160,9 @@ namespace ArtOfSimRally.Mod
             TelemetryPump.Park();
             TelemetryPump.Shutdown();
             BonnetCamera.Release(unloading);
-            Shifter.Close();
-            WheelInput.Close();
+            WheelReaders.Close();
             FfbNative.ReleaseInputs();
             // No file writes until force and telemetry outputs are released.
-            try { WheelInput.FlushLearnedRanges(shutdown: true); } catch { }
-            try { Shifter.FlushSelection(shutdown: true); } catch { }
             try { CameraTuner.Flush(shutdown: true); } catch { }
             try { FrameHealthPersistence.Flush(shutdown: true); } catch { }
         }

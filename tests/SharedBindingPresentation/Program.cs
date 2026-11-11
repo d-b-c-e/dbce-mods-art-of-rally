@@ -46,9 +46,9 @@ replacement.CapturingAction = "steer"; replacement.RowList.Add(Row("throttle"));
 var listening = SettingsPanel.Draw(replacement);
 Check(listening.Buttons["bind-steer"] && listening.Labels["bind-steer"].StartsWith("Cancel") && !listening.Buttons["bind-throttle"] && !listening.Buttons["clear-steer"] && !listening.Buttons["invert-steer"], "capture preserves Cancel and locks other row edits");
 SettingsPanel.Draw(replacement, click: "bind-steer"); Check(replacement.Calls.Last() == "cancel", "actual Cancel reaches only the existing host cancellation");
-SettingsPanel.LegacyEditing = true; var locked = SettingsPanel.Draw(replacement);
+SettingsPanel.KeyOrConnectionEditing = true; var locked = SettingsPanel.Draw(replacement);
 Check(!locked.Buttons["bind-steer"] && !locked.Buttons["clear-steer"] && !locked.Buttons["invert-steer"], "legacy calibration/editor lock remains");
-SettingsPanel.LegacyEditing = false; replacement.Access = SharedBindingAccess.ReadOnly; var readOnly = SettingsPanel.Draw(replacement);
+SettingsPanel.KeyOrConnectionEditing = false; replacement.Access = SharedBindingAccess.ReadOnly; var readOnly = SettingsPanel.Draw(replacement);
 Check(!readOnly.Buttons["bind-steer"] && !readOnly.Buttons["clear-steer"], "read-only profile still refuses edits");
 Check(readOnly.StatusIds.SequenceEqual(new[] { "bindings-access" }) && readOnly.Texts.Contains("Shared profile is read-only") && readOnly.Texts.Contains(replacement.AccessReason), "actual production read-only status card keeps its title and host reason");
 replacement.Access = SharedBindingAccess.Missing; var missingProfile = SettingsPanel.Draw(replacement);
@@ -80,9 +80,9 @@ Check(recovery.Buttons["bindings-discard"] && !recovery.Buttons["bindings-save"]
     "lost reader retains Discard while checked Save stays disabled");
 lostReader.CapturingAction = "steer";
 Check(!SettingsPanel.Draw(lostReader).Buttons["bindings-discard"], "capture still locks Discard");
-lostReader.CapturingAction = null; SettingsPanel.LegacyEditing = true;
+lostReader.CapturingAction = null; SettingsPanel.KeyOrConnectionEditing = true;
 Check(!SettingsPanel.Draw(lostReader).Buttons["bindings-discard"], "legacy editing still locks Discard");
-SettingsPanel.LegacyEditing = false;
+SettingsPanel.KeyOrConnectionEditing = false;
 var discarded = SettingsPanel.Draw(lostReader, click: "bindings-discard");
 Check(lostReader.Calls.SequenceEqual(new[] { "discard" }) && !lostReader.HasDraft && lostReader.SavedPendingRestart &&
     discarded.Texts.Contains("Saved. Restart the game to use these bindings."),

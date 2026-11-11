@@ -86,7 +86,7 @@ function Set-RouteEnvironment([string]$Route, [string]$Saved) {
     $env:LOCALAPPDATA = Join-Path $fixture 'local data'
     Set-Location -LiteralPath $fixture
     $game = Join-Path $fixture "game's & copy"
-    # Owner settings with every input path on: shared profile, direct wheel, shifter, device shortcuts, force.
+    # Owner settings with force feedback on (the default), keys from before 0.4.6 and an unknown element.
     $settingsPath = Join-Path $game 'Mods/ArtOfSimRally/Settings.xml'
     New-Item -ItemType Directory -Path (Split-Path $settingsPath) -Force | Out-Null
     $ownerSettings = "<?xml version=`"1.0`" encoding=`"utf-8`"?>`r`n<Settings><!--owner--><SharedInput>true</SharedInput><WheelInputEnabled>true</WheelInputEnabled>" +
@@ -111,27 +111,21 @@ function Set-RouteEnvironment([string]$Route, [string]$Saved) {
     Check ($global:ArtPathTest.launches[-1].playback -eq 'trajectory') 'Replay did not retain trajectory mode'
     Check (Test-Path -LiteralPath (Join-Path $result 'owner-environment/restored.txt')) 'Replay did not restore the saved environment'
     Check (-not $global:ArtPathTest.running) 'Replay did not close its game'
-    # sana 36236: the replay launch reads no input or force device, and nothing else in the settings changes.
+    # sana 36236: the replay launch sends no force, and nothing else in the settings changes.
     $launched = [xml]$global:ArtPathTest.settingsAtLaunch[-1]
-    foreach ($flag in 'SharedInput', 'WheelInputEnabled', 'ShifterEnabled', 'ForceFeedbackEnabled') {
-        Check (@($launched.Settings.ChildNodes | Where-Object { $_.LocalName -eq $flag }).Count -eq 1 -and $launched.Settings.$flag -eq 'false') "Replay launched with $flag not off"
-    }
-    Check ([string]$launched.Settings.SettingsButtonBinding -eq '' -and [string]$launched.Settings.StopFfbButtonBinding -eq '') 'Replay launched with a device shortcut bound'
-    Check (@($launched.Settings.CameraButtonBindings.ChildNodes | Where-Object { $_.InnerText -ne '' }).Count -eq 0 -and
-        @($launched.Settings.CameraButtonBindings.ChildNodes).Count -eq 3) 'Replay launched with a camera shortcut bound'
-    Check ($launched.Settings.SteerBinding -eq 'native wheel binding' -and $launched.Settings.Unknown.a -eq 'keep' -and $launched.Settings.Unknown.Part -eq 'data' -and
-        $global:ArtPathTest.settingsAtLaunch[-1].Contains('<!--owner-->')) 'Replay isolation changed unrelated settings'
+    Check (@($launched.Settings.ChildNodes | Where-Object { $_.LocalName -eq 'ForceFeedbackEnabled' }).Count -eq 1 -and $launched.Settings.ForceFeedbackEnabled -eq 'false') 'Replay launched with ForceFeedbackEnabled not off'
+    Check ($launched.Settings.SteerBinding -eq 'native wheel binding' -and $launched.Settings.SharedInput -eq 'true' -and $launched.Settings.Unknown.a -eq 'keep' -and
+        $launched.Settings.Unknown.Part -eq 'data' -and $global:ArtPathTest.settingsAtLaunch[-1].Contains('<!--owner-->')) 'Replay isolation changed unrelated settings'
     $evidence = Get-Content -LiteralPath (Join-Path $result 'replay-input.json') -Raw | ConvertFrom-Json
-    Check ($evidence.recorded.SharedInput -eq 'true' -and $evidence.recorded.WheelInputEnabled -eq 'true' -and $evidence.recorded.ShifterEnabled -eq 'true' -and
-        $evidence.recorded.ForceFeedbackEnabled -eq '(default)' -and $evidence.recorded.SettingsButtonBinding -eq 'bound' -and $evidence.recorded.StopFfbButtonBinding -eq 'unbound' -and
-        $evidence.recorded.CameraButtonBindings -eq '2 bound' -and $evidence.applied.SharedInput -eq 'false') 'Replay input evidence differs'
+    Check ($evidence.recorded.ForceFeedbackEnabled -eq '(default)' -and $evidence.applied.ForceFeedbackEnabled -eq 'false') 'Replay input evidence differs'
     # A malformed settings file is refused before any launch, and is left as it was.
     $global:ArtPathTest.running = $false
-    Set-Content -LiteralPath $settingsPath -Value '<Settings><SharedInput>true</SharedInput><SharedInput>false</SharedInput></Settings>' -NoNewline
+    $ambiguous = '<Settings><ForceFeedbackEnabled>true</ForceFeedbackEnabled><ForceFeedbackEnabled>false</ForceFeedbackEnabled></Settings>'
+    Set-Content -LiteralPath $settingsPath -Value $ambiguous -NoNewline
     $launches = $global:ArtPathTest.launches.Count; $refusedAmbiguous = $false
-    try { & $runner -Replay -Name owner-drive -SessionsRoot './my tape library' -OutputDirectory './ambiguous playback result' -GameDir $game } catch { $refusedAmbiguous = $_.Exception.Message -like '*Ambiguous Art setting SharedInput*' }
+    try { & $runner -Replay -Name owner-drive -SessionsRoot './my tape library' -OutputDirectory './ambiguous playback result' -GameDir $game } catch { $refusedAmbiguous = $_.Exception.Message -like '*Ambiguous Art setting ForceFeedbackEnabled*' }
     Check ($refusedAmbiguous -and $global:ArtPathTest.launches.Count -eq $launches) 'Ambiguous settings were not refused before launch'
-    Check ((Get-Content -LiteralPath $settingsPath -Raw) -ceq '<Settings><SharedInput>true</SharedInput><SharedInput>false</SharedInput></Settings>') 'Refused isolation changed the settings'
+    Check ((Get-Content -LiteralPath $settingsPath -Raw) -ceq $ambiguous) 'Refused isolation changed the settings'
     Set-Content -LiteralPath $settingsPath -Value $ownerSettings -NoNewline
     # sana 36495: the partial outcome exits 0 after the normal cleanup and restore; failed stays 1.
     foreach ($case in @(@{ text = "partial:post-stage-divergence: all 9 driving rows played (fixture); frames waited 120 s for 'x'`nstatus`nscope=stage-only`nfullSessionPassed=false"; code = 0; dir = 'partial result' },
@@ -174,11 +168,11 @@ function Set-RouteEnvironment([string]$Route, [string]$Saved) {
     Check ($global:ArtPathTest.launches[-1].muteOutputs -eq '1' -and $global:ArtPathTest.launches[-1].captureDriver -eq (Join-Path $library 'route-a')) 'Automated request lost its mute or route'
     $order = @("save:$ownerEnv", "route:$(Join-Path $library 'route-a')|$ownerEnv", "save:$(Join-Path $auto 'environment-at-start')", "restore:$ownerEnv")
     Check (($global:ArtPathTest.calls -join ';') -eq ($order -join ';')) "Automated environment order: $($global:ArtPathTest.calls -join '; ')"
-    # The synthetic route is the only input and no force device starts: the replay isolation, before the launch.
+    # No force device starts for the synthetic route: the replay isolation, before the launch.
     $autoLaunch = [xml]$global:ArtPathTest.settingsAtLaunch[-1]
-    foreach ($flag in 'SharedInput', 'WheelInputEnabled', 'ShifterEnabled', 'ForceFeedbackEnabled') { Check ($autoLaunch.Settings.$flag -eq 'false') "Automated recording launched with $flag not off" }
+    Check ($autoLaunch.Settings.ForceFeedbackEnabled -eq 'false') 'Automated recording launched with ForceFeedbackEnabled not off'
     $autoIsolation = Get-Content -LiteralPath (Join-Path $auto 'automation/replay-input.json') -Raw | ConvertFrom-Json
-    Check ($autoIsolation.recorded.SharedInput -eq 'true' -and $autoIsolation.applied.ForceFeedbackEnabled -eq 'false') 'Automated isolation evidence differs'
+    Check ($autoIsolation.recorded.ForceFeedbackEnabled -eq '(default)' -and $autoIsolation.applied.ForceFeedbackEnabled -eq 'false') 'Automated isolation evidence differs'
     Set-Content -LiteralPath $settingsPath -Value $ownerSettings -NoNewline
     Check (Test-Path -LiteralPath (Join-Path $ownerEnv 'restored.txt')) 'Automated recording did not restore the owner environment'
     # Isolation is opt-in for plumbing checks (sana 37927): a plain automated recording keeps the owner's settings and
@@ -202,9 +196,8 @@ function Set-RouteEnvironment([string]$Route, [string]$Saved) {
     # as they were, with the restore receipt, and launch nothing.
     $prefs = Join-Path $fixture 'preferences.txt'; Set-Content -LiteralPath $prefs -Value 'owner preferences' -NoNewline
     $global:ArtPathTest.prefs = $prefs; $global:ArtPathTest.snapshot = $true
-    $ambiguous = '<Settings><SharedInput>true</SharedInput><SharedInput>false</SharedInput></Settings>'
     foreach ($case in @(@{ name = 'auto-route-throw'; failure = 'throw'; settings = $ownerSettings; message = '*route failure after a partial write*' },
-                        @{ name = 'auto-isolation-throw'; failure = 'write'; settings = $ambiguous; message = '*Ambiguous Art setting SharedInput*' })) {
+                        @{ name = 'auto-isolation-throw'; failure = 'write'; settings = $ambiguous; message = '*Ambiguous Art setting ForceFeedbackEnabled*' })) {
         Set-Content -LiteralPath $settingsPath -Value $case.settings -NoNewline
         $global:ArtPathTest.routeFailure = $case.failure; $launches = $global:ArtPathTest.launches.Count; $failed = ''
         try { & $runner -Record -MuteOutputs -IsolateDevices -ScriptedFrom route-a -Name $case.name -SessionsRoot './my tape library' -GameDir $game } catch { $failed = $_.Exception.Message }

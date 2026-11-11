@@ -38,8 +38,7 @@ namespace ArtOfSimRally.Testing
                     assemblies.Single(a => a.GetName().Name == "Dbce.Wheel.Ffb"));
                 server = new ControlServer("ArtOfSimRally.DevRecorder." + Process.GetCurrentProcess().Id);
                 SessionTape.TryArm(m => entry.Logger.Log(m));
-                ControlsProbe.TryArm(subject.Mod, m => entry.Logger.Log(m));
-                entry.OnUpdate = (mod, delta) => { server?.Pump(Command); SessionTape.Tick(); ControlsProbe.Tick(); UiCapture.Tick(); };
+                entry.OnUpdate = (mod, delta) => { server?.Pump(Command); SessionTape.Tick(); UiCapture.Tick(); };
                 entry.OnUnload = Unload;
                 entry.Logger.Log("Developer capture probe ready. Use tools/testing/Record-Drive.ps1; no recording starts automatically.");
                 return true;
@@ -118,8 +117,6 @@ namespace ArtOfSimRally.Testing
         }
         private static string Command(string command)
         {
-            var controls = ControlsProbe.Command(command);
-            if (controls != null) return controls;
             var tape = SessionTape.Command(command);
             if (tape != null) return tape;
             if (command == "STATUS") return "OK " + Session.Describe;
@@ -135,7 +132,6 @@ namespace ArtOfSimRally.Testing
         }
         private static bool Unload(UnityModManager.ModEntry entry)
         {
-            ControlsProbe.Close("probe unload");
             UiCapture.Abort("recorder unloaded before the capture completed");   // restores and leaves incomplete evidence
             SessionTape.Unload();
             if (Session.Pending && !Session.Stop(subject.Driving())) { entry.Logger.Warning(Session.Status); return false; }
@@ -255,7 +251,6 @@ namespace ArtOfSimRally.Testing
         // Runs after the shipping watchdog has released all force/input resources.
         private static void Shutdown()
         {
-            ControlsProbe.Close("game shutdown");
             SessionTape.Stop("game shutdown");
             if (Session.Pending) { Session.Stop(false); log?.Invoke(Session.Status); }
             if (!Session.Pending) { server?.Dispose(); server = null; }

@@ -34,7 +34,7 @@ namespace ArtOfSimRally.Testing
             var main = mod.GetType("ArtOfSimRally.Mod.Main", true);
             var controller = mod.GetType("ArtOfSimRally.Mod.FfbController", true);
             var state = mod.GetType("ArtOfSimRally.Mod.GameState", true);
-            var input = mod.GetType("ArtOfSimRally.Mod.WheelInput", true);
+            var input = mod.GetType("ArtOfSimRally.Mod.WheelReaders", true);
             var watchdog = mod.GetType("ArtOfSimRally.Mod.ModWatchdog", true);
             var native = force.GetType("Dbce.Wheel.Ffb.WheelFfbNative", true);
             Drive = Method(controller, "DriveWheel"); Reset = Method(controller, "Reset");
@@ -73,9 +73,13 @@ namespace ArtOfSimRally.Testing
                 Expression.Bind(typeof(Tune).GetProperty("Gain"), Expression.Property(cfg, "GainFromStrength")),
                 Expression.Bind(typeof(Tune).GetProperty("Smoothing"), Expression.Field(cfg, "Smoothing")),
                 Expression.Bind(typeof(Tune).GetProperty("Invert"), Expression.Field(cfg, "Invert")))).Compile();
-            var value = Method(input, "Value"); var channel = value.GetParameters()[0].ParameterType;
+            // The shared profile's applied driving values from the mod's last composition (ShimInput.Last), the mod's
+            // one input route: steer, throttle, brake, clutch, handbrake.
+            var last = mod.GetType("ArtOfSimRally.Mod.Shim.ShimInput", true).GetField("Last", Flags) ?? throw new MissingFieldException("ShimInput.Last");
+            string[] applied = { "AppliedSteer", "AppliedThrottle", "AppliedBrake", "AppliedClutch", "AppliedHandbrake" };
             for (int i = 0; i < channels.Length; i++)
-                channels[i] = Expression.Lambda<Func<float>>(Expression.Call(value, Expression.Constant(Enum.ToObject(channel, i), channel))).Compile();
+                channels[i] = Expression.Lambda<Func<float>>(Expression.Field(Expression.Field(null, last),
+                    last.FieldType.GetField(applied[i], BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic) ?? throw new MissingFieldException("ShimInput.Composition." + applied[i]))).Compile();
         }
         private static MethodInfo Method(Type type, string name) => type.GetMethod(name, Flags) ?? throw new MissingMethodException(type.FullName, name);
         private static Func<T> Getter<T>(Type type, string name) => Expression.Lambda<Func<T>>(Expression.Property(null, type.GetProperty(name, Flags))).Compile();

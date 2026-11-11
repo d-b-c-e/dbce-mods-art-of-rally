@@ -7,7 +7,7 @@ using ArtOfSimRally.Testing;
 // binds to the loaded mod (sana 36236). Only members the recorder reads exist here.
 namespace ArtOfSimRally.Mod
 {
-    internal sealed class FixtureSettings { public bool SharedInput = true, WheelInputEnabled, ShifterEnabled, ForceFeedbackEnabled = true; }
+    internal sealed class FixtureSettings { public bool ForceFeedbackEnabled = true; }
     internal static class Main { internal static FixtureSettings Settings = new FixtureSettings(); }
     internal enum FixturePhase { Off, Waiting, Isolating, Attached, Refused, CleanupFailed }
     internal static class SharedInputStartup
@@ -71,7 +71,7 @@ static class SharedEvidenceTests
         var identity = SharedEvidence.Identity(shared, null, mod, native).Split('\n').Where(l => l.Length > 0)
             .Select(l => l.Split(new[] { '=' }, 2)).ToDictionary(p => p[0], p => p[1]);
         Check(identity["inputModIdentity"] == "0.4.2-rc.17+fixture.clean" && identity["inputModSha256"] == "absent", "mod identity");
-        Check(identity["settingSharedInput"] == "true" && identity["settingWheelInputEnabled"] == "false" && identity["settingForceFeedbackEnabled"] == "true", "input settings");
+        Check(identity["settingForceFeedbackEnabled"] == "true" && !identity.ContainsKey("settingSharedInput") && !identity.ContainsKey("settingWheelInputEnabled"), "input settings");
         Check(identity["sharedInputRequested"] == "true" && identity["sharedEvidence"] == "bound", "shared request");
         Check(identity["controlsProfile"] == "Rig = Main" && identity["controlsRevision"] == "abc123" && identity["controlsTransmission"] == "H-pattern", "controls header: " + identity["controlsProfile"]);
         Check(identity["controlsSha256"].Length == 64 && identity["shimSha256"] == "039058C6F2C0CB492C533B0A4D14EF77CC0F78ABCCCED5287D84A1A2011CFB81" &&

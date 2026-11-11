@@ -6,7 +6,7 @@ public class PauseScreen { public void UpdateMe() { } }
 public class ReplayManager { private void Update() { } }
 namespace ArtOfSimRally.Mod
 {
-    // The production action router is exercised in WheelInput/GameButtonTests.
+    // The production action router is exercised in SharedInput/GameButtonTests.
     internal static class GameButtonInput { internal static void Observe(int h,int v,int s,int c) { } }
 }
 namespace Rewired.Integration.UnityUI

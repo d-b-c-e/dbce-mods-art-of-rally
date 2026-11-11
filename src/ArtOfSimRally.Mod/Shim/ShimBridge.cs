@@ -80,8 +80,8 @@ namespace ArtOfSimRally.Mod.Shim
             catch { native.Stop(); throw; }
         }
 
-        // Copies this frame's physical values into Art's legacy cache, allowing
-        // its existing shortcuts/FFB observations to share the SAME read.
+        // Reads every slot once, ticks Core and publishes the frame; then hands each slot's accepted sample to
+        // the caller (Art keeps its validity for the force feedback read health) and to the capture observer.
         internal bool ReadFrame(int gameFrame, Action<int, byte[]> cache)
         {
             if (System.Threading.Thread.CurrentThread.ManagedThreadId != ownerThread) throw new InvalidOperationException("bridge read called on another thread");

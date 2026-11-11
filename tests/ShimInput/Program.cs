@@ -258,26 +258,28 @@ internal static class Program
     private static void SharedStatus()
     {
         string[] Lines(SharedInputStatus.Facts f) => SharedInputStatus.Lines(f);
-        Check(Lines(new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.Off })[0].Contains("is off") , "off text");
-        var refused = Lines(new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.Refused, Reason = "no shared profile beside the mod." });
-        Check(refused.Length == 1 && refused[0].Contains("no shared profile") && refused[0].Contains("Art bindings are used"), "refusal text");
+        var off = Lines(new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.Off });
+        Check(off.Length == 1 && off[0] == SharedInputStatus.NoProfile && off[0].Contains("game's own controls apply") && off[0].Contains("Wheelkit"), "no-profile text");
+        var refused = Lines(new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.Refused, Reason = "dbce_shim.dll is missing beside the mod." });
+        Check(refused.Length == 1 && refused[0].Contains("dbce_shim.dll is missing") && refused[0].Contains("game's own controls apply"), "refusal text");
+        Check(!string.Join("|", refused).Contains("Art bindings"), "refusal names the deleted Art bindings");
         const string identityReason = "native isolation unqualified: Rewired joystick identity unavailable: cannot exclude a duplicate mapped wheel; no name/index fallback";
         var identityFacts = new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.Refused, Reason = identityReason };
         var unidentified = Lines(identityFacts);
-        Check(unidentified.Length == 3 && unidentified[0].Contains("for this session") && unidentified[0].Contains("could not be identified") && unidentified[0].Contains("Art bindings are used"), "identity refusal does not explain the session fallback");
+        Check(unidentified.Length == 3 && unidentified[0].Contains("for this session") && unidentified[0].Contains("could not be identified") && unidentified[0].Contains("game's own controls apply"), "identity refusal does not explain the session fallback");
         Check(unidentified[1].Contains("with that controller disconnected") && unidentified[1].Contains("If you use Steam Input") && unidentified[1].Contains("Restart the game") && unidentified[1].Contains("may be the cause"), "identity workaround assumes Steam Input or omits restart");
         Check(unidentified[2] == "Details: " + identityReason, "identity diagnostic lost");
         Check(string.Join("|", SharedInputStatus.Lines(identityFacts, false)) == string.Join("|", unidentified), "compact F6 hides the refusal workaround");
         Check(!string.Join("|", refused).Contains("Steam Input"), "unrelated refusal gets controller workaround");
         var identityCleanup = Lines(new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.CleanupFailed, Reason = identityReason, RestoreStatus = "restore pending", Retrying = true });
-        Check(identityCleanup.Length == 1 && identityCleanup[0].Contains("still off") && !identityCleanup[0].Contains("Art bindings are used") && !identityCleanup[0].Contains("Steam Input"), "identity cleanup failure claims fallback or offers premature workaround");
+        Check(identityCleanup.Length == 1 && identityCleanup[0].Contains("still off") && !identityCleanup[0].Contains("controls apply") && !identityCleanup[0].Contains("Steam Input"), "identity cleanup failure claims fallback or offers premature workaround");
         Check(Lines(new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.Waiting })[0].Contains("waiting") && Lines(new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.Isolating })[0].Contains("isolating"), "pending text");
         var attached = Lines(new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.Attached, ProfileName = "Moza KS Pro Triple", Transmission = "Sequential",
             ArtTransmissionMode = "Sequential", Devices = new[] { "MOZA R12 Base", "DS-8X Shifter" } });
         var compact = SharedInputStatus.Lines(new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.Attached, ProfileName = "Moza KS Pro Triple" }, false);
         Check(compact.Length == 1 && compact[0].Contains("Moza KS Pro Triple") && compact[0].Contains("Saved bindings apply after a restart"), "compact active state lost profile/restart meaning");
         Check(attached[0].Contains("Moza KS Pro Triple") && attached[0].Contains("Keyboard stays native") && attached[1].Contains("MOZA R12 Base, DS-8X Shifter"), "attached identity text");
-        Check(Array.IndexOf(attached, SharedInputStatus.ArtOnly) > 0 && attached[0].Contains("look back, recover car, horn"), "scope caveats missing");
+        Check(attached[0].Contains("look back, recover car, horn") && !Array.Exists(attached, l => l.Contains("Art binding")), "scope text missing or names the deleted Art bindings");
         Check(!Array.Exists(attached, l => l.Contains("Not available") || l.Contains("select")), "attached text describes the hidden select action");
         Check(attached[attached.Length - 2].Contains("Gears follow the profile (Sequential)") && attached[attached.Length - 1] == SharedInputStatus.Editors, "manual gear/editor text");
         var onAutomatic = Lines(new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.Attached, ProfileName = "p", Transmission = "Sequential", ArtTransmissionMode = "Sequential", CarAutomatic = true });
@@ -290,51 +292,13 @@ internal static class Program
         Check(transport[0].Contains("refused physical batch") && transport[0].Contains("keyboard driving continues") && !transport[0].Contains("alike"), "transport stop text");
         Check(Lines(new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.Waiting, WaitingFor = "force feedback to finish connecting" })[0].Contains("for force feedback to finish connecting"), "waiting cause missing");
         var cleanup = Lines(new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.CleanupFailed, Reason = "x.", RestoreStatus = "one or more joystick flags could not be restored", Retrying = true });
-        Check(cleanup.Length == 1 && cleanup[0].Contains("still off (one or more joystick flags") && cleanup[0].Contains("retrying") && !cleanup[0].Contains("Art bindings are used"), "cleanup failure text claimed a handback");
+        Check(cleanup.Length == 1 && cleanup[0].Contains("still off (one or more joystick flags") && cleanup[0].Contains("retrying") && !cleanup[0].Contains("controls apply"), "cleanup failure text claimed a handback");
         Check(Lines(new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.CleanupFailed, Reason = "x.", RestoreStatus = "s", Retrying = false })[0].Contains("restart the game"), "exhausted cleanup text");
         Check(SharedInputStatus.Gears("Sequential", "Automatic", null).Contains("ignored"), "Art Automatic not flagged");
         Check(SharedInputStatus.Gears("Sequential", "Follow game", null).Contains("only while the game's own transmission option is manual"), "Follow game not explained");
         Check(SharedInputStatus.Gears("H-pattern", "H-pattern", true).Contains("automatic now"), "automatic car not flagged");
         Check(SharedInputStatus.Gears("Automatic", "Sequential", false).Contains("not used") && SharedInputStatus.Gears(null, "Sequential", false).Contains("names no transmission"), "non-manual profile claimed gears");
         Check(SharedInputStatus.Gears("H-pattern", "Sequential", false).Contains("Gears follow the profile (H-pattern)"), "manual mismatch text");
-    }
-    // The profile's physical controls, for refusing Art fallbacks that would make one control drive two actions.
-    private static void ProfileControls()
-    {
-        var objects = ProfileObjects.Parse(BridgeTests.DriveProfile + "navDown = hat 0 18000 dev={d71b8350-61b7-11f1-8001-444553540000}\n" + "; comment = axis 9 dev={x}\nProfile = Drive\n");
-        var r12 = new Guid("d71b8350-61b7-11f1-8001-444553540000"); var ds8x = new Guid("d9b1d890-6f3f-11f1-8002-444553540000");
-        Check(objects.Count == 7, "profile controls parsed: " + objects.Count);
-        Check(ProfileObjects.BoundBy(objects, "axis", 2, 0, r12) == "throttle" && ProfileObjects.BoundBy(objects, "button", 9, 0, ds8x) == "shiftUp", "bound controls not found");
-        Check(ProfileObjects.BoundBy(objects, "axis", 3, 0, r12) == null && ProfileObjects.BoundBy(objects, "button", 9, 0, r12) == null && ProfileObjects.BoundBy(objects, "axis", 2, 0, ds8x) == null, "free control, other device or kind reported bound");
-        // Inclusive 4500 presses: sectors exactly 9000 apart share their boundary angle (romi 31616).
-        Check(ProfileObjects.BoundBy(objects, "hat", 0, 22500, r12) == "navDown" && ProfileObjects.BoundBy(objects, "hat", 0, 27000, r12) == "navDown" &&
-            ProfileObjects.BoundBy(objects, "hat", 0, 9000, r12) == "navDown" && ProfileObjects.BoundBy(objects, "hat", 0, 27001, r12) == null &&
-            ProfileObjects.BoundBy(objects, "hat", 0, 8999, r12) == null && ProfileObjects.BoundBy(objects, "hat", 0, 0, r12) == null && ProfileObjects.BoundBy(objects, "hat", 1, 18000, r12) == null, "hat sectors");
-        Check(ProfileObjects.Parse(null).Count == 0 && ProfileObjects.BoundBy(null, "axis", 0, 0, r12) == null, "empty profile");
-        // Core's grammar: tabs separate like spaces; a quoted name is one token (its text never binds); comments,
-        // unknown actions, misfitting kinds, unbraced device ids, a second binding of an action and other
-        // sections bind nothing; an invalid first line does not block a valid later one.
-        string R12 = "{d71b8350-61b7-11f1-8001-444553540000}", DS8X = "{d9b1d890-6f3f-11f1-8002-444553540000}";
-        var grammar = ProfileObjects.Parse("\uFEFF[Other]\nconfirm = button 1 dev=" + R12 + "\n[ Controls ]\n" +
-            "\tsteer\t=\taxis\t0\tdev=" + R12 + "\trange=0..65535 rest=32768 travel=+1\r\n" +
-            "brake = axis 5 name=\"Pedal dev=" + DS8X + " \\\"left\\\"\" dev=" + R12 + " range=0..65535 rest=0 travel=+1\n" +
-            "# throttle = axis 2 dev=" + R12 + "\n; clutch = axis 3 dev=" + R12 + "\n" +
-            "turbo = button 4 dev=" + R12 + "\nconfirm = axis 1 dev=" + R12 + "\nback = button 6 dev=d71b8350-61b7-11f1-8001-444553540000\n" +
-            "start = button 8 dev=" + R12 + "\nstart = button 9 dev=" + R12 + "\nnavUp = hat 0 0\tdev=" + DS8X + "\n[Wheelkit]\nreset = button 10 dev=" + R12 + "\n");
-        Check(grammar.Count == 4, "grammar entries: " + grammar.Count + " " + string.Join(",", grammar.ConvertAll(o => o.Action)));
-        Check(ProfileObjects.BoundBy(grammar, "axis", 0, 0, r12) == "steer" && ProfileObjects.BoundBy(grammar, "axis", 5, 0, r12) == "brake" &&
-            ProfileObjects.BoundBy(grammar, "axis", 5, 0, ds8x) == null, "tab-separated or quoted-name binding misread");
-        Check(ProfileObjects.BoundBy(grammar, "axis", 2, 0, r12) == null && ProfileObjects.BoundBy(grammar, "axis", 3, 0, r12) == null &&
-            ProfileObjects.BoundBy(grammar, "button", 4, 0, r12) == null && ProfileObjects.BoundBy(grammar, "axis", 1, 0, r12) == null &&
-            ProfileObjects.BoundBy(grammar, "button", 6, 0, r12) == null && ProfileObjects.BoundBy(grammar, "button", 1, 0, r12) == null &&
-            ProfileObjects.BoundBy(grammar, "button", 10, 0, r12) == null, "comment, unknown action, misfit, unbraced id or other section bound");
-        Check(ProfileObjects.BoundBy(grammar, "button", 8, 0, r12) == "start" && ProfileObjects.BoundBy(grammar, "button", 9, 0, r12) == null &&
-            ProfileObjects.BoundBy(grammar, "hat", 0, 0, ds8x) == "navUp", "duplicate action or tab before dev");
-        // navUp at 0: 0/9000 both press at 4500 and 27000/0 wrap to meet at 31500 (romi 31674); one step further does not.
-        Check(ProfileObjects.BoundBy(grammar, "hat", 0, 9000, ds8x) == "navUp" && ProfileObjects.BoundBy(grammar, "hat", 0, 27000, ds8x) == "navUp" &&
-            ProfileObjects.BoundBy(grammar, "hat", 0, 9001, ds8x) == null && ProfileObjects.BoundBy(grammar, "hat", 0, 26999, ds8x) == null, "touching or wrapped hat sectors");
-        var recovered = ProfileObjects.Parse("[Controls]\nconfirm = axis 1 dev=" + R12 + "\nconfirm = button 2 dev=" + R12 + "\n");
-        Check(recovered.Count == 1 && ProfileObjects.BoundBy(recovered, "button", 2, 0, r12) == "confirm", "an invalid first line blocked a valid later binding");
     }
     // tools/package/shared-input-controls.json is the Wheelkit-facing contract build.json carries.
     // It must name exactly the actions this build delivers and the ones it refuses, with the same reasons.
@@ -523,7 +487,7 @@ internal static class Program
                 Console.WriteLine("PASS " + assertions + " focused shared input status checks; no native, device, game or file writes.");
                 return 0;
             }
-            Decode(); Consumption(); KeyboardSteerRule(); StatusesAndFailures(); SharedActions(); SharedStatus(); ProfileControls(); ControlsContractMatches();
+            Decode(); Consumption(); KeyboardSteerRule(); StatusesAndFailures(); SharedActions(); SharedStatus(); ControlsContractMatches();
             AcceptedSnapshots();
             assertions += BridgeTests.Fake();
             assertions += IsolationTests.Run();

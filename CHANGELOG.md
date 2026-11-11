@@ -7,6 +7,28 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed (0.4.6-rc.1, one input route)
+
+- The wheel, pedals, handbrake, shifter, menu buttons and wheel shortcuts come only
+  from the shared profile: the one Wheelkit assigns to art of rally, or
+  `dbce-controls.ini` beside the mod. With no profile the mod reads no wheel controls
+  and the game's own controls apply. The "Use shared profile" switch is gone.
+- Removed with Art's own input route: its wheel and pedal bindings and calibration,
+  the separate shifter setup, the USB buttons for Settings, Stop FFB and camera
+  adjustment, and the Art-only wheel buttons the profile has no action for
+  (handbrake button, repair puncture, quick restart, look left/right/forward).
+  Camera adjustment and the Settings key are keyboard keys; F8 still stops FFB, and
+  the profile's Mod menu and Mute force feedback buttons work.
+- FFB "Follow" follows the shared profile's steering wheel; with no profile, select
+  the FFB wheel explicitly.
+- Removed: "Disable steering limiter on car spawn (legacy)", the off switch for the
+  KI-46 button-prompt fix (the fix stays), the move of an untouched camera key set
+  from 0.4.4-rc.31 or earlier to the numpad layout (such a set now stays as saved),
+  and the conversion of camera mounts adjusted before 0.4.4-rc.25 (those start from
+  the calculated placement).
+- Saved settings: every remaining key loads as before. Keys for the removed
+  features are ignored and drop out of Settings.xml at its next save.
+
 ### Changed (source, not yet packaged)
 
 - art of rally 0.4.4-rc.35 (2026-11-01, owner decision): the "Separate monitors" triple-screen mode is removed; F6 > Cameras is now one Off/On toggle, "Triple screens: one window across the monitors" (Surround, or one borderless window across separate monitors). A saved Separate monitors choice switches to it once.

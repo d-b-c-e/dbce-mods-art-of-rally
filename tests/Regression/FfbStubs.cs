@@ -8,11 +8,3 @@ namespace ArtOfSimRally.Mod
         public static void Error(string message) { }
     }
 }
-
-namespace ArtOfSimRally.Mod
-{
-    internal static partial class WheelInput
-    {
-        private static readonly string[] AxisNames = { "X", "Y", "Z", "Rx", "Ry", "Rz", "Slider 1", "Slider 2" };
-    }
-}

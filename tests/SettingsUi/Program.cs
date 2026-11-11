@@ -94,15 +94,13 @@ static class Program
     }
     static void SelectionAndMigration()
     {
+        // Force feedback follows the shared profile's steering wheel (frozen at startup), or an explicit GUID choice.
         var c=new Settings{ForceFeedbackEnabled=false};
-        Check(FfbSelection.FollowsSteering(c)&&!FfbSelection.TryTarget(c,out _,out _,out _,out _),"new unbound config chose first wheel");
-        c.SteerBinding=$"Wheel|9|axis:0|32767|65535|guid:{Wheel}";
-        Check(FfbSelection.TryTarget(c,out var name,out _,out var guid,out _)&&name=="Wheel"&&guid==Wheel&&!c.ForceFeedbackEnabled,"follow lost identity or enabled FFB");
-        c.PreferredDeviceGuid=Guid.NewGuid().ToString();string explicitGuid=c.PreferredDeviceGuid;
-        Check(!FfbSelection.FollowsSteering(c)&&FfbSelection.TryTarget(c,out _,out _,out guid,out _)&&guid==explicitGuid,"legacy explicit target changed");
-        c.SteerBinding=$"Other|0|axis:0|20000|60000|guid:{Guid.NewGuid()}";
-        Check(FfbSelection.TryTarget(c,out _,out _,out guid,out _)&&guid==explicitGuid,"steering rebind stole override");
-        c.FfbDeviceMode="steering";Check(FfbSelection.TryTarget(c,out name,out _,out guid,out _)&&name=="Other"&&guid!=explicitGuid,"follow did not follow rebind");
+        FfbSelection.PrepareShared(false);
+        Check(FfbSelection.FollowsSteering(c)&&!FfbSelection.TryTarget(c,out _,out _,out _,out var noProfile)&&noProfile.Contains("No shared profile"),"new config without a profile chose a wheel");
+        c.PreferredDeviceGuid=Wheel;
+        Check(!FfbSelection.FollowsSteering(c)&&FfbSelection.TryTarget(c,out _,out _,out var guid,out _)&&guid==Wheel&&!c.ForceFeedbackEnabled,"explicit target lost or enabled FFB");
+        string explicitGuid=c.PreferredDeviceGuid;
         c.FfbDeviceMode="explicit";c.PreferredDeviceGuid="";c.PreferredDevice="Wheel";c.PreferredDeviceIndex=0;
         Check(!FfbSelection.TryTarget(c,out _,out _,out _,out _),"explicit name/index without a GUID accepted");
         string settingsBefore = Xml(c);
@@ -111,27 +109,35 @@ static class Program
         Check(!FfbSelection.TryTarget(c,out _,out _,out _,out _),"invalid explicit override fell through to shared steering");
         Check(Xml(c)==settingsBefore,"shared target preparation wrote settings or enabled FFB");
         c.FfbDeviceMode="steering";
-        Check(FfbSelection.TryTarget(c,out name,out var sharedIndex,out guid,out _)&&name=="Shared steering"&&sharedIndex==-1&&guid==sharedGuid,"shared steering did not override stale legacy binding");
+        Check(FfbSelection.TryTarget(c,out var name,out var sharedIndex,out guid,out _)&&name=="Shared steering"&&sharedIndex==-1&&guid==sharedGuid,"follow did not take the shared steering wheel");
         c.FfbDeviceMode="explicit";c.PreferredDeviceGuid=explicitGuid;
         Check(FfbSelection.TryTarget(c,out _,out _,out guid,out _)&&guid==explicitGuid,"shared startup stole explicit override");
         c.FfbDeviceMode="steering";FfbSelection.PrepareShared(true, reason:"Install the matching Art shared-input package and restart.");
-        Check(!FfbSelection.TryTarget(c,out _,out _,out guid,out var sharedWhy)&&guid==""&&sharedWhy.Contains("matching Art"),"missing extension fell back to stale legacy target");
+        Check(!FfbSelection.TryTarget(c,out _,out _,out guid,out var sharedWhy)&&guid==""&&sharedWhy.Contains("matching Art"),"missing steering report fell back to another target");
         FfbSelection.PrepareShared(false);
-        Check(FfbSelection.TryTarget(c,out _,out _,out guid,out _)&&guid!=sharedGuid,"ordinary startup did not restore legacy follow semantics");
+        Check(!FfbSelection.TryTarget(c,out _,out _,out guid,out _)&&guid=="","a start without a profile followed a stale target");
         c.FfbDeviceMode="explicit";c.PreferredDeviceGuid="";
-        string button=$"TSS|4|button:2|0|1|guid:{Wheel}";c.HandbrakeButtonBinding=button;
-        c.HandbrakeBinding=$"TSS|4|axis:2|65535|0|guid:{Wheel}";string axis=c.HandbrakeBinding;
-        Check(Read(Xml(c)).HandbrakeButtonBinding==button&&Read(Xml(c)).HandbrakeBinding==axis,"handbrake XML persistence failed");
+        // A save from before 0.4.6 still loads: the deleted route's keys are ignored, everything else reads as saved,
+        // and the next full save no longer writes them.
+        var old=Read("<Settings><SharedInput>true</SharedInput><WheelInputEnabled>true</WheelInputEnabled><SteerBinding>W|0|axis:0|0|65535</SteerBinding>" +
+            "<ShifterEnabled>true</ShifterEnabled><Gear1Button>0</Gear1Button><DisableSteerAssist>true</DisableSteerAssist><GlyphTextFallback>false</GlyphTextFallback>" +
+            "<CameraButtonBindings><string>x</string></CameraButtonBindings><Strength>26</Strength><TransmissionMode>H-pattern</TransmissionMode><SkipNeutral>false</SkipNeutral>" +
+            "<CameraMounts><CameraMount><Car>car</Car><Offsets><float>0.5</float></Offsets><Values><float>1</float></Values><Tuned>true</Tuned></CameraMount></CameraMounts></Settings>");
+        Check(old.Strength==26&&old.TransmissionMode=="H-pattern"&&!old.SkipNeutral&&old.CameraMounts.Count==1&&old.CameraMounts[0].Car=="car"&&old.CameraMounts[0].Offsets[0]==.5f,
+            "an older save lost a current setting");
+        string rewritten=Xml(old);
+        foreach(string gone in new[]{"SharedInput","WheelInputEnabled","SteerBinding","ShifterEnabled","Gear1Button","DisableSteerAssist","GlyphTextFallback","CameraButtonBindings","<Values","<Tuned"})
+            Check(!rewritten.Contains(gone),"a deleted key was written again: "+gone);
         c.DiagnosticLogging=true;var leftOn=Read(Xml(c));
-        Check(!leftOn.DiagnosticLogging&&leftOn.HandbrakeBinding==axis&&leftOn.Smoothing==c.Smoothing,"support logging was saved or a save touched other settings");
+        Check(!leftOn.DiagnosticLogging&&leftOn.Smoothing==c.Smoothing,"support logging was saved or a save touched other settings");
         Check(!Read("<Settings><DiagnosticLogging>true</DiagnosticLogging></Settings>").DiagnosticLogging,"an old saved support logging setting survived launch");
         c.DiagnosticLogging=false;
         c.BonnetHeight=1.9f;c.BumperHeight=1.2f;c.LandingStrength=20;c.KeyUp=KeyCode.U;
         c.ResetCameraMount(false);
         Check(c.BonnetHeight==.95f&&c.BumperHeight==1.2f&&c.LandingStrength==20&&c.KeyUp==KeyCode.U,"camera reset escaped selected pose");
         c.ResetFfbTuning();
-        Check(!c.ForceFeedbackEnabled&&c.PreferredDevice=="Wheel"&&c.HandbrakeBinding==axis&&c.BumperHeight==1.2f&&c.KeyUp==KeyCode.U,
-            "FFB reset changed preference/device/controls/camera");
+        Check(!c.ForceFeedbackEnabled&&c.PreferredDevice=="Wheel"&&c.BumperHeight==1.2f&&c.KeyUp==KeyCode.U,
+            "FFB reset changed preference/device/camera");
         Check(c.Strength==50&&c.Smoothing==.2f&&c.LandingStrength==5&&c.CrashStrength==50&&!c.CrashEffectsEnabled,"FFB reset missed tuning");
     }
     static void Runtime()
@@ -146,9 +152,9 @@ static class Program
         SettingsViewPolicy.Select(Host.Settings,true,1,false);Host.TickSettingsUi();Check(FfbNative.Stops==1&&!Host.Settings.ForceFeedbackEnabled,"view switch affected FFB");
         FfbNative.Ready=false;Host.SelectForceDevice();Check(Host.Requests==0&&!Host.Settings.ForceFeedbackEnabled,"picker cleared Off");
         Host.SetFeedbackEnabled(true);Check(Host.Requests==1&&Host.Settings.ForceFeedbackEnabled,"explicit On cannot resume");
-        WheelInput.Pressed.Add(WheelInput.Channel.StopFfbButton);Host.TickSettingsUi();Check(!Host.Settings.ForceFeedbackEnabled,"USB stop failed to save Off");
+        ProfileButtons.Down.Add(ProfileButtons.MuteFfb);Host.TickSettingsUi();Check(!Host.Settings.ForceFeedbackEnabled,"the profile's Mute force feedback button failed to save Off");
         Check(offNotices.Count==2,"the wheel Stop button switched force feedback off silently");Host.StopFeedback();Check(offNotices.Count==2,"an already-off stop was reported again");
-        WheelInput.Pressed.Add(WheelInput.Channel.SettingsButton);Host.TickSettingsUi();Check(Ui.Instance.Opened,"USB Settings did not open same UI");Host.CloseSettings();
+        ProfileButtons.Down.Add(ProfileButtons.ModMenu);Host.TickSettingsUi();Check(Ui.Instance.Opened,"the profile's Mod menu button did not open the same UI");Host.CloseSettings();
         Host.ToggleSettings();Check(Ui.Instance.Opened&&Ui.Instance.Selected==0&&Ui.Instance.Filter=="fixture","F6 route did not select same mod panel");
         SettingsPanel.Editing=true;Host.CloseSettings();Check(Ui.Instance.Opened&&!SettingsPanel.Editing,"close did not cancel first");
         Host.CloseSettings();Check(!Ui.Instance.Opened,"second close failed");
@@ -318,9 +324,7 @@ static class Program
         Check(StockUiInput.Blocked,"keyboard cancel released to native quit");
         Input.Held.Clear();Input.Held.Add(KeyCode.Mouse0);Time.frameCount++;
         Check(StockUiInput.Blocked,"held pointer released to native UI");
-        Input.Held.Clear();WheelInput.SettingsHeld=1;Time.frameCount++;
-        Check(StockUiInput.Blocked,"held Settings button bypassed close barrier");
-        WheelInput.SettingsHeld=0;ArtOfSimRally.Mod.Application.isFocused=false;Time.frameCount++;
+        Input.Held.Clear();ArtOfSimRally.Mod.Application.isFocused=false;Time.frameCount++;
         Check(StockUiInput.Blocked,"unfocused input was treated as released");
         ArtOfSimRally.Mod.Application.isFocused=true;Rewired.ReInput.isReady=false;Time.frameCount++;
         Check(StockUiInput.Blocked,"Rewired teardown treated as release");
@@ -335,7 +339,6 @@ static class Program
         Ui.Instance.Opened=true;Time.frameCount++;Check(StockUiInput.Blocked,"reopening lost ownership");
         Ui.Instance.Opened=false;StockUiInput.Reset();
         Input.Held.Add(KeyCode.Mouse0);Check(StockUiInput.HandoffHeld(),"mouse press did not hold programmatic handoff");Input.Held.Clear();
-        WheelInput.SettingsHeld=1;Check(StockUiInput.HandoffHeld(),"USB Settings press did not hold programmatic handoff");WheelInput.SettingsHeld=0;
         Input.Held.Add(KeyCode.JoystickButton0);Check(!StockUiInput.HandoffHeld(),"parked joystick button trapped programmatic handoff");Input.Held.Clear();
         // Build17584229 ReplayManager.Update polls24/25 only inside active
         // playback. Hold each through close; native Axis must remain zero.

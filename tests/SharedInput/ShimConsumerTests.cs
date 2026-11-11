@@ -4,7 +4,7 @@ using ArtOfSimRally.Mod.Shim;
 using Host = ArtOfSimRally.Mod.Main;
 using Clock = ArtOfSimRally.Mod.Time;
 
-// Goes through the actual production WheelInputPatch after all legacy tests.
+// Goes through the actual production car-input postfix (CarInputPatch), publishing to the consumer directly.
 internal static class ShimConsumerTests
 {
     internal static int Run()
@@ -28,11 +28,11 @@ internal static class ShimConsumerTests
         object[] Input()
         {
             var args = new object[] { new AxisCarController { SteeringOutOfAlignmentEffect = .1f }, .95f, .1f, .9f, .2f, .1f, true };
-            typeof(WheelInputPatch).GetMethod("Override", BindingFlags.NonPublic | BindingFlags.Static).Invoke(null, args);
+            typeof(CarInputPatch).GetMethod("Override", BindingFlags.NonPublic | BindingFlags.Static).Invoke(null, args);
             return args;
         }
         Host.Enabled = true; Host.SettingsVisible = false; ArtOfSimRally.Mod.Application.isFocused = true;
-        GameEntryPoint.EventManager = new EventManager(); Host.Settings.WheelInputEnabled = false;
+        GameEntryPoint.EventManager = new EventManager();
         string saved = File.ReadAllText(Host.Path); int saves = Host.Saves;
         int reads = Dbce.Wheel.Ffb.WheelFfbNative.Reads;
         Clock.frameCount = 20000; ShimInput.IsolatedFrame = Clock.frameCount;

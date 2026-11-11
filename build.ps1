@@ -13,22 +13,20 @@ $game = "-p:GameDir=$GameDir"
 
 Step 'ArtOfSimRally.sln' { dotnet build ArtOfSimRally.sln -c Release -warnaserror $game --nologo -v q }
 foreach ($t in 'ForceLifecycle', 'GameBindings', 'GameState', 'Landing', 'Lifecycle', 'Regression', 'RuntimeCompatibility',
-               'SessionTape', 'SettingsUi', 'SharedBindingPresentation', 'Signals', 'Support', 'TripleScreen', 'UiHost', 'WheelInput', 'CameraTuning') {
+               'SessionTape', 'SettingsUi', 'SharedBindingPresentation', 'Signals', 'Support', 'TripleScreen', 'UiHost', 'CameraTuning') {
     Step $t { dotnet run --project "tests/$t/$t.csproj" -c Release -v q $game }
+}
+# The shared profile route, one scenario per process (each attaches the process-wide shared consumer).
+Step 'SharedInput build' { dotnet build tests/SharedInput/SharedInput.csproj -c Release --nologo -warnaserror -v q $game }
+foreach ($s in 'read', 'actions', 'buttons', 'startup', 'ffb', 'lifecycle', 'transport', 'ordinary', 'keyboard', 'consumer', 'isolation') {
+    Step "SharedInput $s" { dotnet run --no-build --project tests/SharedInput/SharedInput.csproj -c Release $game -- $s }
 }
 # These build for both net8.0 and the game's Mono; the net8.0 run is the offline one.
 foreach ($t in 'PromptGlyphs', 'SharedBindings', 'ShimInput') {
     Step $t { dotnet run --project "tests/$t/$t.csproj" -f net8.0 -c Release -v q $game }
 }
-# These load the built mod and the game's assemblies, so they take the repo root and the game folder.
-foreach ($t in 'Telemetry', 'ProbeHooks') {
-    Step $t {
-        dotnet build "tests/$t/$t.csproj" -c Release --nologo -warnaserror -v q $game
-        if (-not $LASTEXITCODE) { & "tests/$t/bin/Release/net48/$t.exe" $PSScriptRoot ($GameDir -replace '\\', '/') }
-    }
-}
-
-# The recorder harness writes synthetic sessions into a new folder, removed afterwards.
+# The recorder harness writes synthetic sessions into a new folder, removed afterwards. It runs before ProbeHooks,
+# which loads the dev recorder DLL this step builds.
 Step 'Recorder' {
     $work = Join-Path $PSScriptRoot "artifacts\build-check\recorder-$([guid]::NewGuid().ToString('N').Substring(0, 8))"
     dotnet build tools/testing/Recorder/Recorder.csproj -c Release --nologo -warnaserror -v q $game
@@ -36,6 +34,13 @@ Step 'Recorder' {
     $code = $LASTEXITCODE
     if ([IO.Directory]::Exists($work)) { [IO.Directory]::Delete($work, $true) }
     $global:LASTEXITCODE = $code
+}
+# These load the built mod and the game's assemblies, so they take the repo root and the game folder.
+foreach ($t in 'Telemetry', 'ProbeHooks') {
+    Step $t {
+        dotnet build "tests/$t/$t.csproj" -c Release --nologo -warnaserror -v q $game
+        if (-not $LASTEXITCODE) { & "tests/$t/bin/Release/net48/$t.exe" $PSScriptRoot ($GameDir -replace '\\', '/') }
+    }
 }
 if ($failed.Count) { throw "$($failed.Count) step(s) failed: $($failed -join ', ')" }
 'build and offline tests passed'

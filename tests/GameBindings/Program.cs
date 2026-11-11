@@ -98,11 +98,6 @@ namespace ArtOfSimRally.Mod
     public static class Main { public static bool SettingsVisible=true;public static void CloseSettings()=>SettingsVisible=false;public static void ToggleSettings()=>SettingsVisible=!SettingsVisible; }
     public static class GameState { public static bool IsDriving; }
     public static class SettingsPanel { public static bool Editing; }
-    public static class WheelInput
-    {
-        public enum Channel { SettingsButton }
-        public static float Value(Channel channel)=>0;
-    }
     public static class StockUiInput
     {
         public static int Resets;public static bool HandoffIsHeld;

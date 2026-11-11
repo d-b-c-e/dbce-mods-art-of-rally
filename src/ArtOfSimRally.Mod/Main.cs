@@ -63,7 +63,6 @@ namespace ArtOfSimRally.Mod
 
             SharedInputStartup.Prepare(modEntry.Path); // frozen profile/FFB target inspection, before recovery or reader qualification
             SharedInputStartup.ForceSettled = () => !ForceReconnect.Pending;
-            WheelInput.LoadBindings();
             FrameHealthPersistence.Initialize();
 
             modEntry.OnGUI       = OnGUI;
@@ -98,10 +97,6 @@ namespace ArtOfSimRally.Mod
 
             Enabled = true;
 
-            // A shared profile owns the shifter; Art's own reader never opens alongside it.
-            if (!SharedInputStartup.HoldsShifter && Settings.ShifterEnabled && Settings.ShifterDeviceIndex >= 0)
-                Shifter.Open(Settings.ShifterDeviceIndex);
-
             // Releases the wheel and parks telemetry when the game stops driving
             // or exits, independently of whether any patched object is still
             // ticking. See ModWatchdog.
@@ -114,7 +109,7 @@ namespace ArtOfSimRally.Mod
             UiHostHook.Load(modEntry.Path, Settings.GetPath(modEntry)); // the F6 panel (dbce_ui.dll beside the mod)
 
             ModLog.Info(
-                $"Loaded - directSteering={Settings.DirectSteering}, " +
+                $"Loaded - directSteering={Settings.DirectSteering}, sharedProfile={SharedInputStartup.RequestedAtStartup}, " +
                 $"ffb={Settings.ForceFeedbackEnabled}, telemetry={Settings.TelemetryEnabled}");
             return true;
         }
@@ -161,7 +156,7 @@ namespace ArtOfSimRally.Mod
             CameraKeys.Cancel();
             GameBindings.CancelPending();
             ModWatchdog.Shutdown(unloading: true);
-            WheelInput.Close();
+            WheelReaders.Close();
             _harmony?.UnpatchAll(modEntry.Info.Id);
             return true;
         }
@@ -185,11 +180,11 @@ namespace ArtOfSimRally.Mod
             // while native Ready stays true. Reopening reader slots alone keeps
             // referring to that handle. Use the existing focused/idle, strict-
             // identity reconnect path after a sustained failed read instead.
-            if (Enabled && Settings != null && Settings.ForceFeedbackEnabled && Settings.WheelInputEnabled &&
+            if (Enabled && Settings != null && Settings.ForceFeedbackEnabled &&
                 FfbNative.Ready && !ForceReconnect.Pending &&
                 FfbSelection.TryTarget(Settings, out _, out _, out var readGuid, out _))
             {
-                if (ForceReadRecovery.Observe(Time.realtimeSinceStartup, readGuid, WheelInput.DeviceReadHealth(readGuid)))
+                if (ForceReadRecovery.Observe(Time.realtimeSinceStartup, readGuid, WheelReaders.DeviceReadHealth(readGuid)))
                 {
                     ModLog.Warning("Selected FFB wheel stopped responding to input; scheduling bounded recovery while focused and paused/in menus.");
                     ForceReconnect.Request();
@@ -200,7 +195,7 @@ namespace ArtOfSimRally.Mod
             // now instead of waiting for the stage to end (owner report 2026-10-31: turned on mid-race, never started).
             if (!ForceReconnect.TryBegin(Time.realtimeSinceStartup,
                 Enabled && Settings.ForceFeedbackEnabled, GameState.IsDriving && !SettingsVisible,
-                WheelInput.Assigning.HasValue, FfbNative.FocusedGameWindow())) return;
+                FfbNative.FocusedGameWindow())) return;
             if (!FfbSelection.TryTarget(Settings, out var targetName, out var targetIndex, out var targetGuid, out var reason))
             {
                 FfbNative.Shutdown(); FfbNative.SelectionUnavailable(reason);
@@ -208,8 +203,7 @@ namespace ArtOfSimRally.Mod
             }
             // Reader slots may share the old FFB handle. Reopen them after the
             // device switch, and release nonexclusive readers before acquiring FFB.
-            WheelInput.ReleaseForForceReconnect();
-            Shifter.Close();
+            WheelReaders.ReleaseForForceReconnect();
             try
             {
                 ForceReconnect.Complete(FfbNative.Reinitialise(_modEntry.Path,
@@ -220,9 +214,7 @@ namespace ArtOfSimRally.Mod
             catch (Exception ex) { ModLog.Warning("FFB recovery failed: " + ex.Message); }
             finally
             {
-                if (Enabled) WheelInput.ReopenAfterForceReconnect();
-                if (Enabled && !SharedInputStartup.HoldsShifter && Settings.ShifterEnabled && Settings.ShifterDeviceIndex >= 0)
-                    Shifter.Open(Settings.ShifterDeviceIndex);
+                if (Enabled) WheelReaders.ReopenAfterForceReconnect();
             }
         }
 

@@ -2,8 +2,8 @@ using System.Collections.Generic;
 
 namespace ArtOfSimRally.Mod.Shim
 {
-    // What the settings panel says about the opt-in shared profile. Pure text from observed facts,
-    // so every state, refusal and transmission mismatch is stated rather than silently ignored.
+    // What the settings panel says about the shared profile, the mod's one input route. Pure text from
+    // observed facts, so every state, refusal and transmission mismatch is stated rather than silently ignored.
     internal static class SharedInputStatus
     {
         internal enum Phase { Off, Waiting, Isolating, Attached, Refused, CleanupFailed }
@@ -16,8 +16,8 @@ namespace ArtOfSimRally.Mod.Shim
             internal bool? CarAutomatic { get; set; } // the current car while driving; null otherwise
         }
         // Select has no Art action, so its shared row is hidden rather than described here.
-        internal const string ArtOnly = "Camera tuning keys and buttons keep Art bindings; so do the handbrake button, repair puncture, quick restart and look left, right and forward while Use assigned controls is On. An Art binding on a control the shared profile maps is not used.";
-        internal const string Editors = "Shared controls are edited under Shared profile (Bind, Clear, Save bindings) and apply after a restart; the handbrake, camera, repair, restart and look-direction buttons stay editable here. Plugging in or changing devices also needs a restart.";
+        internal const string Editors = "Shared controls are edited under Shared profile (Bind, Clear, Save bindings) and apply after a restart. Plugging in or changing devices also needs a restart.";
+        internal const string NoProfile = "No shared profile: the mod reads no wheel controls, and the game's own controls apply. Set up a profile for art of rally in Wheelkit, then restart the game.";
         // After a stop the car gets no driving input at all: the game's combined values cannot separate
         // keyboard from a re-enabled wheel. Menus keep the keyboard.
         internal const string StoppedEffect = ". Driving input, wheel and keyboard alike, stays neutral until the game restarts; menus still take the keyboard.";
@@ -31,21 +31,21 @@ namespace ArtOfSimRally.Mod.Shim
             var lines = new List<string>();
             switch (f.Phase)
             {
-                case Phase.Off: lines.Add("Shared profile is off; Art bindings are used."); break;
+                case Phase.Off: lines.Add(NoProfile); break;
                 case Phase.Refused:
                     // SharedInputStartup preserves the qualification reason. Only this exact identity
                     // refusal gets the workaround; other failures and incomplete cleanup keep their text.
                     if (f.Reason != null && f.Reason.StartsWith("native isolation unqualified: Rewired joystick identity unavailable:", System.StringComparison.Ordinal))
                     {
-                        lines.Add("Shared profile was not used for this session because a controller could not be identified. This prevents duplicate wheel input. Art bindings are used.");
+                        lines.Add("Shared profile was not used for this session because a controller could not be identified. This prevents duplicate wheel input. The game's own controls apply.");
                         lines.Add("Restart the game with that controller disconnected. If you use Steam Input, disable it for art of rally before restarting; Steam Input may be the cause.");
                         lines.Add("Details: " + f.Reason);
                     }
-                    else lines.Add("Shared profile not used: " + f.Reason + " Art bindings are used. Restart to try again.");
+                    else lines.Add("Shared profile not used: " + f.Reason + " The game's own controls apply. Restart to try again.");
                     break;
                 case Phase.CleanupFailed:
                     lines.Add("Shared profile not used: " + f.Reason + " The game's own input for the isolated wheel is still off (" + f.RestoreStatus + "); " +
-                        (f.Retrying ? "retrying in the menus." : "restart the game to restore it.") + " Art's shifter stays closed until then.");
+                        (f.Retrying ? "retrying in the menus." : "restart the game to restore it."));
                     break;
                 case Phase.Waiting: lines.Add("Shared profile: waiting in the menus for " + (string.IsNullOrEmpty(f.WaitingFor) ? "the wheel readers" : f.WaitingFor) + "."); if (details) lines.Add(Editors); break;
                 case Phase.Isolating: lines.Add("Shared profile: isolating the wheel from the game's own input."); if (details) lines.Add(Editors); break;
@@ -63,7 +63,6 @@ namespace ArtOfSimRally.Mod.Shim
                     }
                     lines.Add("Shared profile '" + (string.IsNullOrEmpty(f.ProfileName) ? "unnamed" : f.ProfileName) + "' drives the wheel, pedals, menu buttons, look back, recover car, horn, shortcuts and gears. Keyboard stays native.");
                     if (f.Devices != null && f.Devices.Length > 0) lines.Add("Isolated from the game's own input: " + string.Join(", ", f.Devices) + ".");
-                    lines.Add(ArtOnly);
                     lines.Add(Gears(f.Transmission, f.ArtTransmissionMode, f.CarAutomatic));
                     lines.Add(Editors);
                     break;

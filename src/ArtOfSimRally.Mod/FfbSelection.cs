@@ -23,20 +23,14 @@ namespace ArtOfSimRally.Mod
             reason = "";
             if (FollowsSteering(cfg))
             {
-                if (sharedRequested)
-                {
-                    name = sharedName; index = -1; guid = sharedGuid;
-                    Guid sharedIdentity;
-                    if (!Guid.TryParse(guid, out sharedIdentity) || sharedIdentity == Guid.Empty)
-                    { name = ""; guid = ""; reason = sharedReason; return false; }
-                    name = String.IsNullOrWhiteSpace(name) ? "Shared steering wheel (" + sharedIdentity.ToString("D") + ")" : name;
-                    guid = sharedIdentity.ToString("D");
-                    return true;
-                }
-                var steering = WheelInput.Binding.Parse(cfg.SteerBinding);
-                if (steering == null || steering.IsButton)
-                { reason = "Bind Steering in Controls, or select an FFB device explicitly."; return false; }
-                name = steering.Device; index = steering.DeviceIndex; guid = steering.InstanceGuid?.ToString("D") ?? "";
+                // The shared profile's steering wheel; with no profile there is nothing to follow.
+                name = ""; index = -1; guid = "";
+                if (!sharedRequested) { reason = "No shared profile names a steering wheel. Select the FFB device explicitly."; return false; }
+                Guid sharedIdentity;
+                if (!Guid.TryParse(sharedGuid, out sharedIdentity) || sharedIdentity == Guid.Empty) { reason = sharedReason; return false; }
+                name = String.IsNullOrWhiteSpace(sharedName) ? "Shared steering wheel (" + sharedIdentity.ToString("D") + ")" : sharedName;
+                guid = sharedIdentity.ToString("D");
+                return true;
             }
             Guid identity;
             if (!Guid.TryParse(guid, out identity) || identity == Guid.Empty)

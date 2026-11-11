@@ -54,7 +54,7 @@ namespace ArtOfSimRally.Mod
         private bool Editable => draft != null && canEdit() && flow.HasFreshObservation;
         public SharedBindingAccess Access { get { Refresh(); return draft == null ? (error == null ? SharedBindingAccess.Missing : SharedBindingAccess.ReadOnly) : Editable ? SharedBindingAccess.Editable : SharedBindingAccess.ReadOnly; } }
         public string AccessReason => draft == null
-            ? error ?? "No shared profile is available. Turn off Use shared profile, restart, and bind your controls on this page."
+            ? error ?? "No shared profile is available. Set one up for art of rally in Wheelkit, then restart the game."
             : Editable ? "Shared binding edits are a draft. Save bindings, then restart the game to use them."
             : "Shared binding capture needs the mod settings open in the main menu and a qualified, connected reader. New or unavailable devices need a restart.";
         public string ActiveSource => draft == null ? (error == null ? "No active shared profile" : "Startup profile unavailable to this editor") : draft.Active.Name + " · " +

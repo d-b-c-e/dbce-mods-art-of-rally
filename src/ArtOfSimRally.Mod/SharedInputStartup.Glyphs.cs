@@ -9,13 +9,11 @@ namespace ArtOfSimRally.Mod
     {
         // Presentation reads the already admitted startup binding and identity
         // witnesses. It never polls, re-qualifies, changes a map or reads a file.
-        internal static bool TryGlyphBinding(Joystick controller, string action, out ControlBinding binding)
+        internal static bool TryGlyphBinding(Joystick controller, int action, out ControlBinding binding)
         {
             binding = null;
-            if (action == null) return false;
-            int index = Array.IndexOf(ShimFrame.Names, action);
-            if (index < 0 || !ShimInput.Consumer.Owns(index)) return false;
-            if (!SharedBindingCaptureHost.Instance.TryActiveBinding(action, out var active) || active == null ||
+            if (action < 0 || action >= ShimFrame.Count || !ShimInput.Consumer.Owns(action)) return false;
+            if (!SharedBindingCaptureHost.Instance.TryActiveBinding(ShimFrame.Names[action], out var active) || active == null ||
                 !TryGlyphDevice(controller, active.Device, active.Product)) return false;
             binding = active;
             return true;

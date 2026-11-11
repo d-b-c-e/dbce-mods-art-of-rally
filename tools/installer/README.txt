@@ -1,7 +1,7 @@
 art of sim rally - @RELEASE@
 ============================
 
-Wheel force feedback, direct USB controls, bonnet/bumper views and SimHub telemetry
+Wheel force feedback, shared-profile wheel controls, bonnet/bumper views and SimHub telemetry
 for the 64-bit Windows game. Tested on Steam; other stores are not confirmed.
 Version @RELEASE@ includes Simple/Advanced settings. No SDK, separate toolkit
 download or SimHub helper is needed. Some hardware scenarios remain untested.
@@ -27,8 +27,8 @@ Before updating, keep the previous ZIP and back up Settings.xml, TripleScreen.xm
 desired-layout.json and dbce-controls.ini from Mods\ArtOfSimRally if present.
 The installer preserves settings but does not create a backup or automatically
 undo a failed copy. If copying fails, keep the game closed until the full install
-succeeds or you restore your previous package. Shared-profile downgrade steps
-are in the shared-input section when that flavor is included.
+succeeds or you restore your previous package. Downgrade steps are in the
+SHARED PROFILE section below.
 
 FIRST DRIVE
 -----------
@@ -36,40 +36,32 @@ Pause before setting up. Opening settings stops mod controls/FFB but does not
 promise to pause the game simulation. Keep a mouse/keyboard available for F6.
 Simple is the first view; Advanced adds tuning to the same saved values.
 
-* Controls: keep working game bindings. For a missing axis, center/release it,
-  click Bind, move only that control through its full range, then release.
-  Steering needs both full locks and center. Check the preview, inversion and
-  deadzone, then Save calibration. Cancel/timeout/save failure keeps the old
-  binding. Explicitly calibrated ranges do not learn themselves during a drive.
-  Calibrate adjusts the saved axis; Bind chooses a new one. Check the status at
-  the top of Controls if no input appears. Use assigned controls must remain On
-  when driving with a separately bound USB handbrake.
+* Controls: the wheel, pedals, handbrake, shifter, menu buttons and shortcuts
+  come from one shared profile: the one Wheelkit assigns to art of rally, or a
+  dbce-controls.ini beside the mod. Set it up before launch. With no profile the
+  mod reads no wheel controls and the game's own controls apply. The status at
+  the top of Controls (Ctrl+F10) says whether the profile attached, and why not.
+  Each control can come from a different USB device, such as a separate
+  handbrake or pedals. See SHARED PROFILE below to edit bindings in the game.
 
-* Separate USB handbrake/TSS: select handbrake mode on the device, then bind
-  Handbrake (axis) as above. It should read 0-100% with partial travel. If the
-  device reports only a button, use Handbrake (button). Axis, button and game
-  input coexist by taking the largest value. Each row can use a different USB
-  device. TSS physical travel on this new UI still needs an attended check.
-
-* FFB: choose On and Use steering wheel, or explicitly select the physical wheel.
-  Follow mode uses the mod's saved Steering binding. If you use only the game's
-  steering binding, choose the FFB wheel explicitly. Missing/unverified selections
-  stay unavailable; Refresh/retry while paused. Saved Off remains Off.
+* FFB: choose On. "Follow the shared profile's steering wheel" uses the
+  profile's wheel; with no profile, select the physical wheel explicitly.
+  Missing/unverified selections stay unavailable; Refresh/retry while paused.
+  Saved Off remains Off.
   Strength defaults to 50. Force builds from 3 to 12 km/h; test while moving.
   Advanced includes direction and smoothing (20% = the old 0.20 setting).
   Higher smoothing softens rapid force changes but adds delay.
 
 * Stop FFB: F8 or the header button stops feedback and saves Off. Choose On in
-  FFB explicitly to resume. Controls > Mod buttons also binds optional USB
-  Settings and Stop FFB buttons; these work with assigned driving controls Off.
+  FFB explicitly to resume. The profile's Mute force feedback and Mod menu
+  buttons work too, if it binds them.
 
-* Driving/menu buttons: Open game bindings uses the game's existing controls
+* Gearbox: Controls > Transmission chooses Follow game, Automatic, Sequential or
+  H-pattern; the profile supplies the shift buttons or H-pattern gates.
+
+* Keyboard and controller: Open game bindings uses the game's existing controls
   screen and action maps. Release the click/key used to open it before navigating.
-  If unavailable in this scene, use Options > Controls from the main menu. A
-  device unreadable by the game's Raw Input route still needs keyboard/pad for
-  those actions; direct axes/mod buttons remain available.
-  Shifter is an expandable Controls group: select the device and sequential or
-  H-pattern mode, then Bind its buttons. Clear unwanted duplicate game bindings.
+  If unavailable in this scene, use Options > Controls from the main menu.
 
 * Landing vibration: Advanced > FFB, on by default at 5 (range 0-40).
   Crash kick: experimental, off by default at 50 (range 0-100). It uses a finite
@@ -89,7 +81,7 @@ Simple is the first view; Advanced adds tuning to the same saved values.
 CAMERAS
 -------
 Bonnet/Bumper On includes those views in the game's Change camera cycle.
-Adjustment bindings in Simple support keyboard keys and USB buttons:
+Adjustment bindings in Simple are keyboard keys:
 8/2 forward/back, 9/3 up/down, 4/6 left/right, 7/1 tilt down/up, +/- FOV, 5 reset.
 Defaults use the numpad. Bind/Clear work without a numpad. Close settings and
 release captured/held controls before adjusting a view. F8/F10 and the Settings

@@ -52,13 +52,11 @@ static class Program
     {
         Recovery();
         Calls.Log.Clear(); ModWatchdog.Shutdown();
-        int disk=Calls.Log.IndexOf("save");
+        int disk=Calls.Log.IndexOf("camera-save");
         Check(Calls.Log.IndexOf("native-input-close")<Calls.Log.IndexOf("diagnostic-save"),"diagnostics saved before outputs released");
-        Check(Calls.Log.IndexOf("native-input-close")<Calls.Log.IndexOf("shifter-save"),"shifter selection saved before outputs released");
         Check(Calls.Log[0]=="force:0", "shutdown did not zero force first");
-        foreach(string call in new[] {"filter-reset","landing-stop","native-close","telemetry-park","telemetry-close","shifter-close","input-close","native-input-close"})
-            Check(Calls.Log.IndexOf(call)>=0 && Calls.Log.IndexOf(call)<disk &&
-                Calls.Log.IndexOf(call)<Calls.Log.IndexOf("camera-save"), call+" happened after save");
+        foreach(string call in new[] {"filter-reset","landing-stop","native-close","telemetry-park","telemetry-close","input-close","native-input-close"})
+            Check(Calls.Log.IndexOf(call)>=0 && Calls.Log.IndexOf(call)<disk, call+" happened after save");
         var watchdog=new ModWatchdog(); Calls.Log.Clear(); ArtOfSimRally.Mod.Main.Enabled=true; GameState.IsDriving=true;
         typeof(ModWatchdog).GetMethod("OnApplicationFocus",BindingFlags.NonPublic|BindingFlags.Instance).Invoke(watchdog,new object[]{false});
         Check(Calls.Log.SequenceEqual(new[]{"buttons-reset"}),"focus loss did not invalidate buttons without an Update"); Calls.Log.Clear();
@@ -69,11 +67,10 @@ static class Program
         Check(!Calls.Log.Contains("telemetry-prepare") && Calls.Log.Contains("telemetry-stop-disabled"), "driving watchdog connected/did not check telemetry disable");
         Check(!Calls.Log.Contains("force-recover"), "driving watchdog attempted FFB acquisition");
         Check(Calls.Log.Contains("landing-tick"), "landing lifecycle not observed during driving");
-        Check(!Calls.Log.Contains("save") && !Calls.Log.Contains("camera-save") && !Calls.Log.Contains("diagnostic-save") && !Calls.Log.Contains("shifter-save"),"watchdog saved while driving");
+        Check(!Calls.Log.Contains("camera-save") && !Calls.Log.Contains("diagnostic-save"),"watchdog saved while driving");
         GameState.IsDriving=false;
         Calls.Log.Clear();
         typeof(ModWatchdog).GetMethod("Update",BindingFlags.NonPublic|BindingFlags.Instance).Invoke(watchdog,null);
-        Check(Calls.Log.IndexOf("force:0")<Calls.Log.IndexOf("save"),"idle save preceded release");
         Check(Calls.Log.IndexOf("telemetry-prepare")>Calls.Log.IndexOf("force:0"),"connection setup preceded force release");
         Check(Calls.Log.IndexOf("force-recover")>Calls.Log.IndexOf("force:0"), "FFB acquisition preceded force release");
         Check(Calls.Log.IndexOf("landing-tick")>Calls.Log.IndexOf("force:0"), "landing preparation preceded force release");
@@ -90,22 +87,21 @@ static class Program
     {
         var retry = new FfbReconnect(); var window = new IntPtr(123);
         retry.Request();
-        Check(!retry.TryBegin(0,true,false,false,IntPtr.Zero), "acquired without game window");
-        Check(!retry.TryBegin(1,true,false,false,window), "unstable startup window acquired");
-        Check(!retry.TryBegin(2,true,true,false,window), "acquired during driving");
-        Check(!retry.TryBegin(3,true,false,false,window), "driving interruption did not reset stability");
-        Check(retry.TryBegin(3.5,true,false,false,window), "idle startup attempt missing");
+        Check(!retry.TryBegin(0,true,false,IntPtr.Zero), "acquired without game window");
+        Check(!retry.TryBegin(1,true,false,window), "unstable startup window acquired");
+        Check(!retry.TryBegin(2,true,true,window), "acquired during driving");
+        Check(!retry.TryBegin(3,true,false,window), "driving interruption did not reset stability");
+        Check(retry.TryBegin(3.5,true,false,window), "idle startup attempt missing");
         retry.Complete(false);
-        Check(!retry.TryBegin(8.49,true,false,false,window), "failed acquisition retried too soon");
-        Check(retry.TryBegin(8.5,true,false,false,window), "transient failure did not retry");
+        Check(!retry.TryBegin(8.49,true,false,window), "failed acquisition retried too soon");
+        Check(retry.TryBegin(8.5,true,false,window), "transient failure did not retry");
         retry.Complete(true);
-        Check(!retry.TryBegin(100,true,false,false,window), "successful acquisition reopened wheel");
+        Check(!retry.TryBegin(100,true,false,window), "successful acquisition reopened wheel");
         retry.Request();
-        Check(!retry.TryBegin(101,true,false,true,window), "axis assignment interrupted");
-        Check(!retry.TryBegin(102,false,false,false,window), "disabled FFB acquired");
-        Check(!retry.TryBegin(103,true,false,false,window), "request skipped stability interval");
-        for (int i=0; i<5; i++) Check(retry.TryBegin(104+i*5,true,false,false,window), "retry budget lost");
-        Check(!retry.Pending && !retry.TryBegin(500,true,false,false,window), "retry budget unbounded");
+        Check(!retry.TryBegin(102,false,false,window), "disabled FFB acquired");
+        Check(!retry.TryBegin(103,true,false,window), "request skipped stability interval");
+        for (int i=0; i<5; i++) Check(retry.TryBegin(104+i*5,true,false,window), "retry budget lost");
+        Check(!retry.Pending && !retry.TryBegin(500,true,false,window), "retry budget unbounded");
         retry.Request(); retry.Cancel();
         Check(!retry.Pending, "shutdown retained a pending acquisition");
 
@@ -114,10 +110,9 @@ static class Program
         Check(!health.Observe(0,id,true) && !health.Observe(1,id,false), "brief failed read requested recovery");
         Check(!health.Observe(2.99,id,false) && health.Observe(3,id,false), "sustained input failure did not request recovery");
         retry.Request();
-        Check(!retry.TryBegin(3,true,false,false,IntPtr.Zero), "health recovery acquired in background");
-        Check(!retry.TryBegin(4,true,true,false,window), "health recovery acquired during driving");
-        Check(!retry.TryBegin(5,true,false,true,window), "health recovery interrupted assignment");
-        Check(!retry.TryBegin(6,true,false,false,window) && retry.TryBegin(6.5,true,false,false,window), "health recovery bypassed focused idle delay");
+        Check(!retry.TryBegin(3,true,false,IntPtr.Zero), "health recovery acquired in background");
+        Check(!retry.TryBegin(4,true,true,window), "health recovery acquired during driving");
+        Check(!retry.TryBegin(6,true,false,window) && retry.TryBegin(6.5,true,false,window), "health recovery bypassed focused idle delay");
         Check(!health.Observe(7,id,null) && !health.Observe(8,id,false) && !health.Observe(99,id,false), "reader close replenished outage recovery");
         Check(!health.Observe(100,id,true) && !health.Observe(100.1,id,false), "single good read reset outage latch");
         Check(!health.Observe(102.1,id,false), "intermittent read enabled endless recovery");

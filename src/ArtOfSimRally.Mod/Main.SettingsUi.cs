@@ -84,8 +84,9 @@ namespace ArtOfSimRally.Mod
         internal static void TickSettingsUi()
         {
             if (Settings == null) return;
-            bool stopButton = WheelInput.ShortcutPressed(WheelInput.Channel.StopFfbButton);
-            bool settingsButton = WheelInput.ShortcutPressed(WheelInput.Channel.SettingsButton);
+            // The shared profile's Mute force feedback and Mod menu buttons (read every frame so an edge is never stale).
+            bool stopButton = ProfileButtons.Pressed(ProfileButtons.MuteFfb);
+            bool settingsButton = ProfileButtons.Pressed(ProfileButtons.ModMenu);
             if (Application.isFocused && (Input.GetKeyDown(KeyCode.F8) || (!SettingsPanel.Editing && stopButton))) StopFeedback();
             // The shared panel draws F6 and opens on F6 itself; the wheel's Settings button goes to it.
             if (HookPanelTick != null) HookPanelTick(settingsButton);
@@ -94,14 +95,12 @@ namespace ArtOfSimRally.Mod
                 if (!SettingsPanel.Editing) ToggleSettings();
             }
             if (!Application.isFocused) SettingsPanel.CancelPendingEdit();
-            if (SettingsVisible || !Application.isFocused) Shifter.SuppressUntilRelease();
             if (SettingsVisible && !_settingsWereVisible) FfbNative.StopOutputs();
             if (!SettingsVisible && _settingsWereVisible)
             { SettingsPanel.CancelPendingEdit(); DraftCloseGuard.Reset(); CameraTuner.SuppressUntilRelease(); FlushUiSettings(true); }
             _settingsWereVisible = SettingsVisible;
             GameBindings.Tick();
             CameraKeys.Tick();
-            CameraTuner.ReadResetButton();
             FlushUiSettings();
         }
     }

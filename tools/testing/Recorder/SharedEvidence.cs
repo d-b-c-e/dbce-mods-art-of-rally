@@ -114,8 +114,7 @@ namespace ArtOfSimRally.Testing
                 : "unknown");
             Add("inputModSha256", () => HashOrAbsent(Path.Combine(mod ?? modDirectory(), "ArtOfSimRally.Mod.dll")));
             Add("settingsRead", () => { settings = Find("ArtOfSimRally.Mod.Main") is Type main ? Setting(main) : null; return settings == null ? "unknown" : "true"; });
-            foreach (var name in new[] { "SharedInput", "WheelInputEnabled", "ShifterEnabled", "ForceFeedbackEnabled" })
-                Add("setting" + name, () => settings == null ? "unknown" : Flag(settings, name));
+            Add("settingForceFeedbackEnabled", () => settings == null ? "unknown" : Flag(settings, "ForceFeedbackEnabled"));
             Add("sharedInputRequested", () => shared == null ? "unknown" : shared.Requested ? "true" : "false");
             Add("sharedEvidence", () => shared != null ? "bound" : "unavailable: " + bindFailure);
             // shared.tape's composition columns belong to lastFrame, not frame (see Header).

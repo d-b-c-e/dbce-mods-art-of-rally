@@ -1,5 +1,4 @@
-// Fake device transport and game boundary, with production assignment,
-// normalization, binding serialization and input override linked unchanged.
+// Fake device transport and game boundary; the shared route's production sources are linked unchanged (SharedInput.csproj).
 public sealed class SplashScreenControl
 {
     public static SplashScreenControl Instance;
@@ -31,14 +30,8 @@ namespace Dbce.Wheel.Ffb
         public static DeviceInfo[] Devices = { new DeviceInfo() };
         public static readonly int[] Axes = new int[8];
         public static readonly byte[] Buttons = new byte[128];
-        public static readonly int[] Hats = { -1, -1, -1, -1 };
         public static bool ReadOk = true, ThrowRead = false, FailOpen = false;
         public static int Reads, Enumerations, Closes, Opens;
-        public static int LastAuxIndex=-1;
-        public static DeviceInfo Aux;
-        public static bool OpenAux(int index) { Aux=Devices.SingleOrDefault(d=>d.Index==index); LastAuxIndex=index; return Aux!=null && !Aux.CannotOpen; }
-        public static void CloseAux() { Aux=null; }
-        public static int ReadAux(byte[] buttons) { if(Aux==null || !Aux.Connected) return 0; Array.Copy(Buttons,buttons,Buttons.Length); return Buttons.Length; }
         private static readonly Dictionary<int, DeviceInfo> slots = new();
         public static DeviceInfo[] ListAllDevices() { Enumerations++; return Devices; }
         public static int OpenRead(int index)
@@ -110,7 +103,7 @@ namespace Rewired.Platforms.Windows.RawInput
 {
     public sealed class RawInputControllerExtension { public string devicePath; public Guid productGuid; }
 }
-// The pinned DualShock 4 identity's compile surface only: the stub joystick has no extension, so these never run here
+// The DualShock 4 interface path reader's compile surface only: the stub joystick has no extension, so these never run here
 // (tests/ShimInput's Ds4IdentityTests drives the reader and the lease).
 namespace Rewired.ControllerExtensions
 {
@@ -125,29 +118,15 @@ public class AxisCarController
 {
     public string steerAxis = "Horizontal";
     public float SteeringOutOfAlignmentEffect = 0;
-    public static float ProcessDeadzoneForInput(float value, float deadzone) => value;
 }
 public class Drivetrain
 {
-    public bool automatic, changingGear, RefuseShift;
-    public int gear=2; public float[] gearRatios=new float[7]; public int Shifts;
-    public void Shift(int selected,bool force) { if(!RefuseShift) gear=selected; Shifts++; }
-}
-public static class SettingsManager
-{
-    public static float GetSteeringDeadzone() => 0;
-    public static float GetThrottleDeadzone() => 0;
-    public static float GetBrakingDeadzone() => 0;
+    public bool automatic;
 }
 namespace ArtOfSimRally.Mod
 {
     internal static class FfbNative { internal static string RequestedPath = ""; }
     internal static class Time { public static float realtimeSinceStartup = 100; public static int frameCount; }
-    internal static class WheelPovInput
-    {
-        public static bool Read(int slot, int[] axes, byte[] buttons, int[] hats)
-        { Array.Copy(Dbce.Wheel.Ffb.WheelFfbNative.Hats, hats, 4); return Dbce.Wheel.Ffb.WheelFfbNative.Read(slot, axes, buttons); }
-    }
     internal static class Application { public static bool isFocused = true; }
     internal static class GameState
     {
@@ -163,14 +142,13 @@ namespace ArtOfSimRally.Mod
         public static bool SaveSettings() { Saves++; SettingsPersistence.Write(Settings, Path); return true; }
         internal static bool HasFocus() => Application.isFocused; // as Main.SettingsUi
     }
-    // The UI's legacy-editor lock, read by SharedInputStartup's host editability callback. Of the production
-    // expression only the Art assignment exists in this fixture; camera keys, panels and the settings key are UI.
-    internal static class SettingsPanel { internal static bool LegacyEditing => WheelInput.Assigning.HasValue; }
+    // The panel's key/connection edit lock, read by SharedInputStartup's host editability callback. Those edits are UI only.
+    internal static class SettingsPanel { internal static bool KeyOrConnectionEditing => false; }
     internal static class ModLog
     {
         public static Action<string> Observe;
         public static void Info(string message) { Observe?.Invoke(message); }
-        public static void Warning(string message) { }
-        public static void Error(string message) { }
+        public static void Warning(string message) { Observe?.Invoke(message); }
+        public static void Error(string message) { Observe?.Invoke(message); }
     }
 }

@@ -27,14 +27,6 @@ internal static class Program
             var mod = Assembly.LoadFrom(Path.Combine(paths[0], "ArtOfSimRally.Mod.dll"));
             var force = Assembly.LoadFrom(Path.Combine(paths[0], "Dbce.Wheel.Ffb.dll"));
             var probe = Assembly.LoadFrom(probePath);
-            if (args.Length > 2 && args[2] == "raw")
-            {
-                bool mono = Type.GetType("Mono.Runtime") != null;
-                if (mono) CheckRawProbe(mod, force, probe);
-                else CheckManagedRawObservers(probe);
-                Console.WriteLine("{\"status\":\"passed\",\"assertions\":" + assertions + ",\"runtime\":\"" + (mono ? "Unity Mono" : "CLR") + "\",\"scope\":\"" + (mono ? "actual full raw-controls attach/guards/unpatch" : "actual managed raw observers attach/unpatch; full Attach requires Unity Mono") + "; no input arming or hardware\"}");
-                return 0;
-            }
             var recorder = probe.GetType("ArtOfSimRally.Testing.RecorderMain", true);
             bool collisionOnly = args.Length > 2 && args[2] == "collision";
             // CLR refuses to JIT the game's collision callback's Unity ECalls.
@@ -61,7 +53,7 @@ internal static class Program
                 foreach (string type in new[] { "RewiredStandaloneInputModule", "PanelManager", "ModsPanel", "PauseScreen", "ReplayManager" })
                     Check(uiMethods.Any(m=>m.DeclaringType.Name==type),"stock input hook missing: "+type);
                 Check(uiMethods.Any(m => m.DeclaringType.FullName == "Rewired.Player" && m.Name == "GetAnyButtonDown"), "continue hook missing");
-                var carHook = uiHarmony.GetType().GetMethod("CreateClassProcessor").Invoke(uiHarmony, new object[] { mod.GetType("ArtOfSimRally.Mod.WheelInputPatch", true) });
+                var carHook = uiHarmony.GetType().GetMethod("CreateClassProcessor").Invoke(uiHarmony, new object[] { mod.GetType("ArtOfSimRally.Mod.CarInputPatch", true) });
                 carHook.GetType().GetMethod("Patch").Invoke(carHook, null);
                 uiMethods = ((System.Collections.IEnumerable)uiHarmony.GetType().GetMethod("GetPatchedMethods").Invoke(uiHarmony,null)).Cast<MethodBase>();
                 Check(uiMethods.Any(m => m.DeclaringType.Name == "AxisCarController" && m.Name == "GetInput"), "car input hook missing after patching");
@@ -86,7 +78,6 @@ internal static class Program
                 var nativeType = force.GetType("Dbce.Wheel.Ffb.WheelFfbNative", true);
                 Check(!(bool)nativeType.GetProperty("Ready").GetValue(null), "unexpected hardware initialization");
                 collisionPatches.GetType().GetMethod("UnpatchAll").Invoke(collisionPatches, new object[] { "ArtOfSimRally.DevRecorder" });
-                CheckRawProbe(mod,force,probe);
                 Console.WriteLine("{\"status\":\"passed\",\"assertions\":" + assertions + ",\"runtime\":\"Unity Mono\",\"scope\":\"actual game collision patch attach/unpatch; no event execution or hardware\"}");
                 return 0;
             }
@@ -157,63 +148,4 @@ internal static class Program
         }
         catch (Exception ex) { Console.Error.WriteLine(ex); return 1; }
     }
-    // Full Attach patches Shifter.PollForBinding, whose Unity Input ECall cannot
-    // be JITed on CLR. Keep that actual full lifecycle check on Unity Mono.
-    // CLR checks the changed managed observer seams with their actual postfixes.
-    static void CheckManagedRawObservers(Assembly probe)
-    {
-        var rawProbe = probe.GetType("ArtOfSimRally.Testing.ControlsProbe", true);
-        var player = Assembly.Load("Rewired_Core").GetType("Rewired.Player", true);
-        var harmony = new Harmony("ArtOfSimRally.RawManagedFixture");
-        var names = new[] { "GetAxis", "GetButton", "GetButtonDown", "GetButtonUp", "GetNegativeButton", "GetNegativeButtonDown" };
-        try
-        {
-            foreach (var name in names)
-            {
-                var original = player.GetMethod(name, new[] { typeof(int) });
-                Check(original != null && original.ReturnType == (name == "GetAxis" ? typeof(float) : typeof(bool)), "managed seam missing: " + name);
-                var observer = rawProbe.GetMethod(name == "GetAxis" ? "ObserveAxis" : "ObserveButton", Static);
-                harmony.Patch(original, postfix: new HarmonyMethod(observer) { priority = Priority.Last });
-            }
-            var patched = harmony.GetPatchedMethods().ToArray();
-            Check(patched.Length == names.Length && names.All(name => patched.Any(m => m.Name == name)), "managed observer attachment incomplete");
-            Check(!(bool)rawProbe.GetField("_armed", Static).GetValue(null) && !(bool)rawProbe.GetField("_requested", Static).GetValue(null), "managed observer fixture armed input");
-        }
-        finally { harmony.GetType().GetMethod("UnpatchAll").Invoke(harmony, new object[] { harmony.Id }); }
-        Check(!harmony.GetPatchedMethods().Any(), "managed observer hooks remain after unpatch");
-    }
-
-    static void CheckRawProbe(Assembly mod,Assembly force,Assembly probe)
-    {
-            var rawProbe = probe.GetType("ArtOfSimRally.Testing.ControlsProbe", true);
-            rawProbe.GetMethod("Attach", Static).Invoke(null, new object[] { mod });
-            var rawHarmony = rawProbe.GetField("_patches", Static).GetValue(null);
-            var rawMethods = ((System.Collections.IEnumerable)rawHarmony.GetType().GetMethod("GetPatchedMethods").Invoke(rawHarmony,null)).Cast<MethodBase>().ToArray();
-            Check(rawMethods.Any(m=>m.DeclaringType.Name=="WheelPovInput" && m.Name=="Read"),"raw reader observer missing");
-            var downstream = rawMethods.Where(m => m.DeclaringType.FullName == "Rewired.Player").ToArray();
-            var expected = new[] { "GetAxis", "GetButton", "GetButtonDown", "GetButtonUp", "GetNegativeButton", "GetNegativeButtonDown" };
-            Check(downstream.Length == expected.Length && expected.All(name => downstream.Any(m => m.Name == name && m.GetParameters().Length == 1 && m.GetParameters()[0].ParameterType == typeof(int))), "actual downstream observer seams changed");
-            Check(rawMethods.Any(m=>m.DeclaringType.Name=="AxisCarController" && m.Name=="GetInput"),"actual car input observer missing");
-            Check(rawMethods.Any(m=>m.Name=="BeginAssign") && rawMethods.Any(m=>m.Name=="BeginCalibration") && rawMethods.Any(m=>m.Name=="SaveCalibration"),"assignment/calibration guards missing");
-            Check(!(bool)rawProbe.GetField("_armed",Static).GetValue(null),"metadata attach unexpectedly armed input");
-            rawProbe.GetField("_requested",Static).SetValue(null,true);
-            var wheel=mod.GetType("ArtOfSimRally.Mod.WheelInput",true);
-            var channel=Enum.ToObject(wheel.GetNestedType("Channel"),0);
-            // Actual patched entry points must return before engine/device APIs.
-            wheel.GetMethod("BeginAssign",Static).Invoke(null,new[]{channel});
-            wheel.GetMethod("BeginCalibration",Static).Invoke(null,new object[]{channel,false});
-            Check(!(bool)wheel.GetMethod("SaveCalibration",Static).Invoke(null,null),"save calibration accepted synthetic capture");
-            Check(wheel.GetProperty("Assigning",Static).GetValue(null)==null,"assignment was opened");
-            Check(((string)wheel.GetProperty("Status",Static).GetValue(null)).Contains("disabled"),"test block not explained");
-            foreach(var open in force.GetType("Dbce.Wheel.Ffb.WheelFfbNative",true).GetMethods().Where(m=>m.Name=="Initialise"))
-            {
-                var a=open.GetParameters().Select(p=>p.ParameterType.IsValueType?Activator.CreateInstance(p.ParameterType):null).ToArray();
-                Check(!(bool)open.Invoke(null,a),"force open was not refused by the test guard");
-            }
-            rawProbe.GetField("_requested",Static).SetValue(null,false);
-            rawHarmony.GetType().GetMethod("UnpatchAll").Invoke(rawHarmony,new object[]{"ArtOfSimRally.DevRecorder.RawControls"});
-            var remaining = ((System.Collections.IEnumerable)rawHarmony.GetType().GetMethod("GetPatchedMethods").Invoke(rawHarmony, null)).Cast<MethodBase>();
-            Check(!remaining.Any(), "raw observer hooks remain after unpatch");
-    }
-
 }

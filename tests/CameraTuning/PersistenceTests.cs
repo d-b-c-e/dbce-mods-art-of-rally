@@ -165,7 +165,7 @@ static partial class Program
         ChaseFov.Apply(rig,cfg);VectorNear(cam.transform.position,stock+new V(.02f,0,0),"chase Realistic pose lost in XML reload");ChaseFov.Remove();
         ViewSets.Realistic=false;rig.target=Car("chase A");rig.CurrentCameraAngle=rig.CameraAnglesList[0];ChaseFov.Apply(rig,cfg);
         VectorNear(cam.transform.position,stock+new V(0,.02f,0),"chase A pose not restored across car/set/view/reload");ChaseFov.Remove();
-        WheelInput.Pressed.Add(WheelInput.Channel.CameraReset);CameraTuner.ReadResetButton();ChaseFov.Apply(rig,cfg);
+        Keys.Pressed.Add(cfg.KeyReset);ChaseFov.Apply(rig,cfg);Keys.Release();
         VectorNear(cam.transform.position,stock,"chase reset retained pose offset");Near(cam.fieldOfView,80,"chase reset retained shared FOV offset");ChaseFov.Remove();
         Check(cfg.ChaseCameraPoses.Any(p=>p.Car=="chase B"&&p.View==1&&p.Realistic)&&cfg.ChaseCameraPoses.Any(p=>p.Car=="chase B"&&p.View==1&&!p.Realistic),"reset erased another car/view/set");
         Host.SaveSettings();var resetSaved=Saved();
@@ -184,15 +184,15 @@ static partial class Program
     static void ChasePoseControls()
     {
         int[] field={1,1,2,2,0,0,3,3};float[] sign={1,-1,1,-1,-1,1,1,-1};
-        for(int channel=0;channel<8;channel++)foreach(bool wheel in new[]{false,true})
+        for(int channel=0;channel<8;channel++)
         {
             var(rig,cam)=ChaseFixture();var cfg=Host.Settings;rig.target=Car("pose controls");rig.target.rotation=Q.Euler(0,90,0);
             cam.transform.position=new V(10,20,30);var stock=cam.transform.position;
             ChaseFov.Apply(rig,cfg);ChaseFov.Remove();
-            if(wheel)WheelInput.Held.Add(WheelInput.CameraChannel(channel));else Keys.Held.Add(CameraKeys.Bindings[channel].Get(cfg));
-            ChaseFov.Apply(rig,cfg);Keys.Release();WheelInput.Held.Clear();
+            Keys.Held.Add(CameraKeys.Bindings[channel].Get(cfg));
+            ChaseFov.Apply(rig,cfg);Keys.Release();
             var pose=cfg.ChaseCameraPoses.Single();float[] v={pose.Side,pose.Height,pose.Forward,pose.Pitch};
-            for(int i=0;i<4;i++)Near(v[i],i==field[channel]?sign[channel]*(channel<6?cfg.CameraMoveStep:cfg.CameraTiltStep):0,"chase keyboard/USB mapping wrong");
+            for(int i=0;i<4;i++)Near(v[i],i==field[channel]?sign[channel]*(channel<6?cfg.CameraMoveStep:cfg.CameraTiltStep):0,"chase keyboard mapping wrong");
             var expected=stock+rig.target.rotation*new V(pose.Side,pose.Height,pose.Forward);
             VectorNear(cam.transform.position,expected,"chase translation not in car axes");
             if(channel==2)Near(cam.transform.position.x-stock.x,.02f,"car-relative forward did not follow ninety-degree yaw");

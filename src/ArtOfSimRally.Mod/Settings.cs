@@ -27,13 +27,10 @@ namespace ArtOfSimRally.Mod
         public int SettingsPage = 0;
         public bool SettingsFollowHostScale = true;
         public KeyCode SettingsKey = KeyCode.F6;
-        public string SettingsButtonBinding = "";
-        public string StopFfbButtonBinding = "";
-        // Same action order as CameraKeys.Bindings; separate from keyboard keys.
-        public string[] CameraButtonBindings = new string[11];
-        // "explicit" targets PreferredDeviceGuid; otherwise FFB follows Steering unless a GUID was picked.
+        // "explicit" targets PreferredDeviceGuid; otherwise FFB follows the shared profile's steering unless a GUID was picked.
         public string FfbDeviceMode = "";
         // ---- Steering -------------------------------------------------------
+        // Wheel, pedals, buttons and gears come from the shared profile (SharedInputStartup); these fix the game's own handling of a wheel.
 
         public bool DirectSteering = true;
 
@@ -41,44 +38,20 @@ namespace ArtOfSimRally.Mod
 
         public bool BindAnyDevice = true;
 
-        /// <summary>
-        /// Opt-in candidate: drive the wheel, pedals, menu buttons, shortcuts and
-        /// gears from the shared Wheelkit profile (dbce-controls.ini beside the mod)
-        /// through the copied input provider. Off keeps Art's own bindings. Read at
-        /// startup only; never migrates bindings, tune or force settings.
-        /// </summary>
-        public bool SharedInput = false;
-
-        // ---- Direct wheel input (bypasses the game's input library) ---------
-        /// <summary>Read steering and pedals straight from the device. See WheelInput.cs.</summary>
-        public bool WheelInputEnabled = false;
-        /// <summary>"device|index|axis:N|rest|far[|guid:instance]" per channel; empty = not bound.</summary>
-        public string SteerBinding = "";
-        public string ThrottleBinding = "";
-        public string BrakeBinding = "";
-        public string ClutchBinding = "";
-        public string HandbrakeBinding = "";
-        public string HandbrakeButtonBinding = "";
-        public string CameraSwitchBinding = "";
-        public string ConfirmBinding = "";
-        public string BackBinding = "";
-        public string StartBinding = "";
-        public string NavUpBinding = "";
-        public string NavDownBinding = "";
-        public string NavLeftBinding = "";
-        public string NavRightBinding = "";
-        // Native in-stage actions. Recover, repair and quick restart keep the game's one-second hold.
-        public string HornBinding = "";
-        public string LookBackBinding = "";
-        public string RecoverCarBinding = "";
-        public string RepairPunctureBinding = "";
-        public string QuickRestartBinding = "";
-        public string LookLeftBinding = "";
-        public string LookRightBinding = "";
-        public string LookForwardBinding = "";
+        // ---- Transmission ---------------------------------------------------
         // Follow game preserves every existing install; explicit profile choice
         // uses the same drivetrain switch as the game's transmission preference.
         public string TransmissionMode = "Follow game";
+
+        /// <summary>Step past neutral when shifting sequentially.</summary>
+        /// <remarks>
+        /// The game steps one index at a time through [reverse, neutral, 1st, ...],
+        /// exactly as its own ShiftUp/ShiftDown do, so reverse to first takes two
+        /// presses with a useless stop in between. Real sequential boxes do have
+        /// neutral there, but nobody wants to press through it, and the game
+        /// auto-clutches anyway.
+        /// </remarks>
+        public bool SkipNeutral = true;
 
         // ---- Force feedback -------------------------------------------------
 
@@ -211,73 +184,6 @@ namespace ArtOfSimRally.Mod
         public KeyCode KeyFovUp     = KeyCode.KeypadMinus;
         public KeyCode KeyFovDown   = KeyCode.KeypadPlus;
         public KeyCode KeyReset     = KeyCode.Keypad5;
-
-        // ---- Shifter --------------------------------------------------------
-
-        public bool ShifterEnabled = false;
-
-        public bool ShifterIsHPattern = false;
-
-        // Chosen in the panel's device list rather than typed.
-        public int ShifterDeviceIndex = -1;
-        public string ShifterDeviceName = "";
-        public string ShifterDeviceGuid = "";
-
-        // Button index per gate; -1 means unbound. Stored flat rather than as an
-        // array because UnityModManager's XML settings round-trip simple fields
-        // far more reliably than collections.
-        // Sequential shifters have two controls, not seven gates. Kept separate
-        // from the gear buttons so switching mode does not discard either set.
-        /// <summary>Step past neutral when shifting sequentially.</summary>
-        /// <remarks>
-        /// The game steps one index at a time through [reverse, neutral, 1st, ...],
-        /// exactly as its own ShiftUp/ShiftDown do, so reverse to first takes two
-        /// presses with a useless stop in between. Real sequential boxes do have
-        /// neutral there, but nobody wants to press through it, and the game
-        /// auto-clutches anyway.
-        /// </remarks>
-        public bool SkipNeutral = true;
-
-        public int ShiftUpButton = -1;
-        public int ShiftDownButton = -1;
-
-        public int GearReverseButton = -1;
-        public int Gear1Button = -1;
-        public int Gear2Button = -1;
-        public int Gear3Button = -1;
-        public int Gear4Button = -1;
-        public int Gear5Button = -1;
-        public int Gear6Button = -1;
-
-        /// <summary>Button bound to a gear, 1-6. Returns -1 when unbound.</summary>
-        public int GearButton(int gear)
-        {
-            switch (gear)
-            {
-                case 1: return Gear1Button;
-                case 2: return Gear2Button;
-                case 3: return Gear3Button;
-                case 4: return Gear4Button;
-                case 5: return Gear5Button;
-                case 6: return Gear6Button;
-                default: return -1;
-            }
-        }
-
-        /// <summary>Binds a button to a gear, 1-6, or -1 for reverse.</summary>
-        public void SetGearButton(int gear, int button)
-        {
-            switch (gear)
-            {
-                case -1: GearReverseButton = button; break;
-                case 1:  Gear1Button = button; break;
-                case 2:  Gear2Button = button; break;
-                case 3:  Gear3Button = button; break;
-                case 4:  Gear4Button = button; break;
-                case 5:  Gear5Button = button; break;
-                case 6:  Gear6Button = button; break;
-            }
-        }
 
         // ---- Telemetry ------------------------------------------------------
 

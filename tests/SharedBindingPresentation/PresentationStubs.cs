@@ -6,8 +6,8 @@ namespace ArtOfSimRally.Mod
     {
         private static RecordingWidgets W = new();
         private static Dbce.Wheel.Input.ISharedBindingHost Bindings;
-        internal static bool LegacyEditing;
-        internal static void Reset() { SharedDeviceSelection.SelectSaved(); LegacyEditing = false; }
+        internal static bool KeyOrConnectionEditing;
+        internal static void Reset() { SharedDeviceSelection.SelectSaved(); KeyOrConnectionEditing = false; }
         internal static RecordingWidgets Draw(Dbce.Wheel.Input.ISharedBindingHost host, string click = null, int pick = -1)
         { Bindings = host; W = new RecordingWidgets { Click = click, Pick = pick }; SharedBindings(); return W; }
         private static void Heading(string text) => W.Texts.Add(text);

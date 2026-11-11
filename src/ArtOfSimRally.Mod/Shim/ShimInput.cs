@@ -29,7 +29,7 @@ namespace ArtOfSimRally.Mod.Shim
             ref float handbrake, ref float clutch, ref bool startEngine)
         {
             if (!Consumer.Started || !Main.Enabled) return false;
-            // Match the existing direct-input handoff to the stock finishing driver.
+            // The game hands the car to its own driver for the finishing animation (and zeroes input): leave that alone.
             try
             {
                 var manager = GameState.ExistingManager;
@@ -38,7 +38,7 @@ namespace ArtOfSimRally.Mod.Shim
             catch { return true; }
             // The car can read input before the watchdog runs; publish this frame's shared
             // snapshot first so Compose never sees a previous frame as current.
-            WheelInput.EnsureSharedFrame();
+            WheelReaders.EnsureSharedFrame();
             var values = new DrivingValues { Throttle = throttle, Brake = brake, Steer = steer,
                 Handbrake = handbrake, Clutch = clutch, StartEngine = startEngine };
             int frame = Time.frameCount;
@@ -46,8 +46,6 @@ namespace ArtOfSimRally.Mod.Shim
             // A frame without isolation proof never asks.
             var keyboard = Consumer.AsksKeyboard(isolated) ? KeyboardSteering.Query(car.steerAxis) : KeyboardSteer.NotQueried;
             Consumer.Compose(frame, isolated, car.SteeringOutOfAlignmentEffect, ref values, keyboard);
-            // Art-only: the handbrake button keeps Art's binding on this frame's shared copy.
-            values.Handbrake = Mathf.Max(values.Handbrake, WheelInput.ArtOnlyValue(WheelInput.Channel.HandbrakeButton));
             throttle = values.Throttle; brake = values.Brake; steer = values.Steer;
             handbrake = values.Handbrake; clutch = values.Clutch; startEngine = values.StartEngine;
             Last = new Composition { Frame = frame, SteerLive = Consumer.Live(0, frame), Alignment = car.SteeringOutOfAlignmentEffect,

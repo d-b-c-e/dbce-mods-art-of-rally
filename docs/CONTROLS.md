@@ -4,10 +4,11 @@ For setup steps, start with [wheel/pedals](SETUP.md#wheel-and-pedals) or
 [a separate USB handbrake](SETUP.md#separate-usb-handbrake). The reference below
 includes the original game-input investigations and dated fixes.
 
-**October 9 source candidate:** Wheelkit can translate axes/shifter fields and,
-with the new package capability, camera/menu buttons and POV directions into
-this mod's F6 XML. Read the candidate scope and qualification limits
-before relying on it; live post-Apply input qualification is still pending.
+**Since 0.4.6 the mod has one wheel input route:** the shared profile (the one
+Wheelkit assigns to the game, or `dbce-controls.ini` beside the mod), read through
+`dbce_shim.dll`. Art's own bindings, calibration and shifter reader were deleted
+(ART-G). With no profile the mod reads no wheel controls and the game's own
+controls apply. The sections below keep the original game-input investigations.
 
 **Short answer: no binding utility is needed.** art of rally has a proper
 native rebinding UI with split-axis support, and Rewired already recognises
@@ -195,31 +196,28 @@ never in the panel and was removed from the code on 2026-11-07.**
 ### The fix that shipped: read the wheel directly (2026-09-03)
 
 Instead of making Rewired see the device, the mod stops needing Rewired for
-the wheel. The native plugin already enumerates every DirectInput controller
-for the shifter; `OpenReadDevice` / `ReadDeviceState` open each one
-non-exclusively for reading (the force-feedback wheel is read through the
-exclusive handle already held) with axes requested in 0..65535.
-`WheelInput` binds Steer, Throttle, Brake, Clutch and Handbrake to an axis or
-button by "Assign, then move it": the value at rest and the value it moved
-to are recorded, the far end keeps extending as the control is used. Steering
-assignment is direction-independent (lower raw values negative, higher positive;
-use Flip if the device is reversed), and pedals map rest
-to 0 and the moved direction to 1 (so pedals that idle at the top of their
-range work too). A postfix on `AxisCarController.GetInput` writes bound
-channels over the game's values after its own deadzone processing and keeps
-the steering-alignment effect, so direct steering, steer assist and telemetry
-all see what they would from a wheel Rewired understood. Unbound channels
-are untouched; menus still use keyboard or pad.
+the wheel. The native plugin opens each DirectInput controller non-exclusively
+for reading (the force-feedback wheel is read through the exclusive handle
+already held) with axes requested in 0..65535. From 0.2 to 0.4.5 Art's own
+`WheelInput` bound and calibrated each channel ("Assign, then move it"). Since
+0.4.6 the shared profile owns binding and processing, and Art only reads:
 
-For an Art-local clutch binding, zero means released and one means fully
-pressed. A local axis value through 3% after saved calibration is treated as
-exactly zero to tolerate rest jitter; values above that keep their travel,
-including a full press of one. The delivered clutch is the greater of the
-game's value and the local pedal value, on both direct reads and the local
-fallback beside a shared profile. This preserves the game's start-line clutch
-hold and its auto-clutch behavior at rest. A clutch owned by the shared profile
-keeps that profile's processing. These corrections have source/fixture coverage;
-they have not yet been observed at the rig (KI-49/KI-50).
+- `WheelReaders` opens one read slot per profile device. `SharedInputSession`
+  joins those slots to Rewired's joysticks (`IdentityJoin`: exact interface path
+  and product identity, never name or index) and isolates them, so the game does
+  not read the wheel a second time.
+- `ShimBridge` hands each Unity frame's raw device state to `dbce_shim.dll`,
+  which returns the profile's actions (`ShimFrame`).
+- `CarInputPatch`, a postfix on `AxisCarController.GetInput`, writes the owned
+  axes over the game's values after its own deadzone processing and keeps the
+  steering-alignment effect, so direct steering, steer assist and telemetry see
+  what they would from a wheel Rewired understood. Unowned channels are untouched.
+- `ProfileButtons` and `GameButtonInput` route the profile's menu and driving
+  buttons into the game's Rewired actions; `ProfileGears` applies its gears.
+
+During a stage the delivered clutch is the greater of the game's value and the
+profile's clutch. This preserves the game's start-line clutch hold and its
+auto-clutch behavior at rest (KI-49/KI-50).
 
 Verified 2026-09-03 on the MOZA rig: all three controllers open, the base
 reads through the FFB handle (steering centred at 32669), pedals on the base
@@ -228,24 +226,11 @@ the direct read, once the steering assignment was made direction-independent
 (a left turn during Assign had made left positive). Fanatec verification is
 still outstanding — [KI-3](KNOWN-ISSUES.md#ki-3--fanatec-fixes-are-unverified-on-fanatec-hardware).
 
-### Version 0.2.5 identity and recovery
+### Device identity
 
-Direct channels may come from different USB devices. A new assignment stores
-`device|index|axis:N|rest|far|guid:<instance-guid>` (or `button:N`). Legacy
-five-field bindings remain readable and migrate after a successful, unambiguous
-read. Missing strict GUIDs stay neutral; same-name ambiguity requires Assign.
-Calibration and Flip retain the identity. Malformed GUIDs never trigger fallback.
-
-Reader recovery/discovery runs at most every five seconds while idle, including
-when another reader remains open. Begin Assign while paused to refresh a newly
-plugged device. Resuming cancels an unfinished assignment. Binding edits and
-learned endpoints persist when idle, retaining failed-write retries.
-
-The separate shifter picker stores `ShifterDeviceGuid`, resolves it against a
-fresh list before opening, and upgrades a unique legacy device name. An old
-index alone is insufficient to identify a shifter. Reopen clears gear latches;
-native automatic shifter hotplug recovery is not claimed. All these changes
-have offline coverage; hardware and same-name TSS/Fanatec tests remain pending.
+Profile channels may come from different USB devices; the profile names each by
+instance GUID. The device set is read at startup, so plugging in or changing a
+device needs a restart. Same-name TSS/Fanatec hardware is untested.
 
 ### Why the device presents unusually
 
@@ -321,7 +306,8 @@ All four questions this section originally posed are answered:
    written, and holds calibration as well as maps.
 4. Multi-device **is** anticipated and does work, but only one device at a time
    is bindable through the stock screen — hence `BindAnyDevice`, and hence the
-   shifter and wheel being read directly rather than bound.
+   shifter and wheel being read directly (now through the shared profile) rather
+   than bound.
 
 What is *not* verified is any of this on a Fanatec base, which is the one class
 of device known to defeat Rewired entirely. See

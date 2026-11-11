@@ -4,50 +4,12 @@
   <SettingsPage>0</SettingsPage>
   <SettingsFollowHostScale>true</SettingsFollowHostScale>
   <SettingsKey>F6</SettingsKey>
-  <SettingsButtonBinding />
-  <StopFfbButtonBinding />
-  <CameraButtonBindings>
-    <string xsi:nil="true" />
-    <string xsi:nil="true" />
-    <string xsi:nil="true" />
-    <string xsi:nil="true" />
-    <string xsi:nil="true" />
-    <string xsi:nil="true" />
-    <string xsi:nil="true" />
-    <string xsi:nil="true" />
-    <string xsi:nil="true" />
-    <string xsi:nil="true" />
-    <string xsi:nil="true" />
-  </CameraButtonBindings>
   <FfbDeviceMode />
   <DirectSteering>true</DirectSteering>
   <ZeroAxisDeadzone>true</ZeroAxisDeadzone>
   <BindAnyDevice>true</BindAnyDevice>
-  <SharedInput>false</SharedInput>
-  <WheelInputEnabled>false</WheelInputEnabled>
-  <SteerBinding />
-  <ThrottleBinding />
-  <BrakeBinding />
-  <ClutchBinding />
-  <HandbrakeBinding />
-  <HandbrakeButtonBinding />
-  <CameraSwitchBinding />
-  <ConfirmBinding />
-  <BackBinding />
-  <StartBinding />
-  <NavUpBinding />
-  <NavDownBinding />
-  <NavLeftBinding />
-  <NavRightBinding />
-  <HornBinding />
-  <LookBackBinding />
-  <RecoverCarBinding />
-  <RepairPunctureBinding />
-  <QuickRestartBinding />
-  <LookLeftBinding />
-  <LookRightBinding />
-  <LookForwardBinding />
   <TransmissionMode>Follow game</TransmissionMode>
+  <SkipNeutral>true</SkipNeutral>
   <ForceFeedbackEnabled>true</ForceFeedbackEnabled>
   <Strength>50</Strength>
   <FyReference>19166.666</FyReference>
@@ -99,21 +61,6 @@
   <KeyFovUp>KeypadMinus</KeyFovUp>
   <KeyFovDown>KeypadPlus</KeyFovDown>
   <KeyReset>Keypad5</KeyReset>
-  <ShifterEnabled>false</ShifterEnabled>
-  <ShifterIsHPattern>false</ShifterIsHPattern>
-  <ShifterDeviceIndex>-1</ShifterDeviceIndex>
-  <ShifterDeviceName />
-  <ShifterDeviceGuid />
-  <SkipNeutral>true</SkipNeutral>
-  <ShiftUpButton>-1</ShiftUpButton>
-  <ShiftDownButton>-1</ShiftDownButton>
-  <GearReverseButton>-1</GearReverseButton>
-  <Gear1Button>-1</Gear1Button>
-  <Gear2Button>-1</Gear2Button>
-  <Gear3Button>-1</Gear3Button>
-  <Gear4Button>-1</Gear4Button>
-  <Gear5Button>-1</Gear5Button>
-  <Gear6Button>-1</Gear6Button>
   <TelemetryEnabled>true</TelemetryEnabled>
   <TelemetryHost>127.0.0.1</TelemetryHost>
   <TelemetryPort>8000</TelemetryPort>

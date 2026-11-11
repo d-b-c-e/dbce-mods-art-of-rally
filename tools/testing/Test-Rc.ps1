@@ -51,30 +51,15 @@ try {
     $result = Run 'regression' 'dotnet' @('run','--project','tests/Regression/Regression.csproj','-c','Release','--','--native','lib/toolkit/native/WheelFfb.dll')
     $regression = $result | Select-Object -Last 1 | ConvertFrom-Json
     Assert ($regression.status -eq 'passed' -and $regression.assertions -gt 0) 'Regression runner ran no assertions'
-    $result = Run 'wheel-input' 'dotnet' @('run','--project','tests/WheelInput/WheelInput.csproj','-c','Release')
-    $wheelInput = $result | Select-Object -Last 1 | ConvertFrom-Json
-    Assert ($wheelInput.status -eq 'passed' -and $wheelInput.assertions -gt 0) 'Wheel input runner ran no assertions'
-    $result = Run 'shim-shared-read' 'dotnet' @('run','--project','tests/WheelInput/WheelInput.csproj','-c','Release','--','--shim-read-only')
-    $shimRead = $result | Select-Object -Last 1 | ConvertFrom-Json
-    Assert ($shimRead.status -eq 'passed' -and $shimRead.assertions -gt 0) 'Shared read runner ran no assertions'
-    $result = Run 'shim-shared-actions' 'dotnet' @('run','--project','tests/WheelInput/WheelInput.csproj','-c','Release','--','--shim-actions-only')
-    $shimActions = $result | Select-Object -Last 1 | ConvertFrom-Json
-    Assert ($shimActions.status -eq 'passed' -and $shimActions.assertions -gt 0) 'Shared actions runner ran no assertions'
-    $result = Run 'shared-input-startup' 'dotnet' @('run','--project','tests/WheelInput/WheelInput.csproj','-c','Release','--','--shared-startup-only')
-    $sharedStartup = $result | Select-Object -Last 1 | ConvertFrom-Json
-    Assert ($sharedStartup.status -eq 'passed' -and $sharedStartup.assertions -gt 0) 'Shared input startup runner ran no assertions'
-    $result = Run 'shared-input-lifecycle' 'dotnet' @('run','--project','tests/WheelInput/WheelInput.csproj','-c','Release','--','--shared-lifecycle-only')
-    $sharedLifecycle = $result | Select-Object -Last 1 | ConvertFrom-Json
-    Assert ($sharedLifecycle.status -eq 'passed' -and $sharedLifecycle.assertions -gt 0) 'Shared input lifecycle runner ran no assertions'
-    $result = Run 'ordinary-fallback' 'dotnet' @('run','--project','tests/WheelInput/WheelInput.csproj','-c','Release','--','--ordinary-fallback-only')
-    $ordinaryFallback = $result | Select-Object -Last 1 | ConvertFrom-Json
-    Assert ($ordinaryFallback.status -eq 'passed' -and $ordinaryFallback.assertions -gt 0) 'Ordinary fallback runner ran no assertions'
-    $result = Run 'keyboard-steering' 'dotnet' @('run','--project','tests/WheelInput/WheelInput.csproj','-c','Release','--','--keyboard-steering-only')
-    $keyboardSteering = $result | Select-Object -Last 1 | ConvertFrom-Json
-    Assert ($keyboardSteering.status -eq 'passed' -and $keyboardSteering.assertions -gt 0) 'Keyboard steering runner ran no assertions'
-    $result = Run 'shared-input-transport' 'dotnet' @('run','--project','tests/WheelInput/WheelInput.csproj','-c','Release','--','--shared-transport-only')
-    $sharedTransport = $result | Select-Object -Last 1 | ConvertFrom-Json
-    Assert ($sharedTransport.status -eq 'passed' -and $sharedTransport.assertions -gt 0) 'Shared input transport runner ran no assertions'
+    # The shared profile route, one scenario per process (each attaches the process-wide shared consumer).
+    $null = Run 'shared-input-build' 'dotnet' @('build','tests/SharedInput/SharedInput.csproj','-c','Release','--nologo','-warnaserror')
+    $sharedInput = 0
+    foreach ($scenario in 'read', 'actions', 'buttons', 'startup', 'ffb', 'lifecycle', 'transport', 'ordinary', 'keyboard', 'consumer', 'isolation') {
+        $result = Run "shared-input-$scenario" 'dotnet' @('run','--no-build','--project','tests/SharedInput/SharedInput.csproj','-c','Release','--',$scenario)
+        $shared = $result | Select-Object -Last 1 | ConvertFrom-Json
+        Assert ($shared.status -eq 'passed' -and $shared.assertions -gt 0) "Shared input $scenario ran no assertions"
+        $sharedInput += $shared.assertions
+    }
     $result = Run 'shim-axis-consumer' 'dotnet' @('run','--project','tests/ShimInput/ShimInput.csproj','-f','net8.0','-c','Release')
     $shimInput = $result | Select-Object -Last 1 | ConvertFrom-Json
     Assert ($shimInput.status -eq 'passed' -and $shimInput.assertions -gt 0) 'Shared input consumer runner ran no assertions'
@@ -103,7 +88,7 @@ try {
     $result = Run 'game-bindings' 'dotnet' @('run','--project','tests/GameBindings/GameBindings.csproj','-c','Release')
     $gameBindings = $result | Select-Object -Last 1 | ConvertFrom-Json
     Assert ($gameBindings.status -eq 'passed' -and $gameBindings.assertions -gt 0) 'Game binding route runner ran no assertions'
-    Checkpoint 'regression' ($regression.assertions+$wheelInput.assertions+$support.assertions+$settingsUi.assertions+$gameBindings.assertions+$shimInput.assertions+$shimMono.assertions+$shimRead.assertions)
+    Checkpoint 'regression' ($regression.assertions+$sharedInput+$support.assertions+$settingsUi.assertions+$gameBindings.assertions+$shimInput.assertions+$shimMono.assertions)
     $result = Run 'lifecycle' 'dotnet' @('run','--project','tests/Lifecycle/Lifecycle.csproj','-c','Release')
     $lifecycle = $result | Select-Object -Last 1 | ConvertFrom-Json
     Assert ($lifecycle.status -eq 'passed' -and $lifecycle.assertions -gt 0) 'Lifecycle runner ran no assertions'

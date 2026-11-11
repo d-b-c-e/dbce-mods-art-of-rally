@@ -48,28 +48,28 @@ internal static class Program
         SharedInputStartup.Fixture(admitted);
         ArtOfSimRally.Mod.Shim.ShimInput.Consumer.Owned.Add(1);
         SharedBindingCaptureHost.Instance.Active["throttle"] = binding;
-        Check(SharedInputStartup.TryGlyphBinding(wheel, "throttle", out var actual) && ReferenceEquals(actual, binding), "wheel-selected row resolves active separate pedal by path/product, across distinct GUID namespaces");
-        Check(!SharedInputStartup.TryGlyphBinding(gamepad, "throttle", out _), "unrelated gamepad keeps its native prompt");
+        Check(SharedInputStartup.TryGlyphBinding(wheel, 1, out var actual) && ReferenceEquals(actual, binding), "wheel-selected row resolves active separate pedal by path/product, across distinct GUID namespaces");
+        Check(!SharedInputStartup.TryGlyphBinding(gamepad, 1, out _), "unrelated gamepad keeps its native prompt");
         admitted.Isolation.Tokens.Add(gamepad);
-        Check(!SharedInputStartup.TryGlyphBinding(gamepad, "throttle", out _), "disabled ownership without exact admitted object is insufficient");
-        Check(!SharedInputStartup.TryGlyphBinding(wheel, "clutch", out _), "unowned action keeps native mapping");
+        Check(!SharedInputStartup.TryGlyphBinding(gamepad, 1, out _), "disabled ownership without exact admitted object is insufficient");
+        Check(!SharedInputStartup.TryGlyphBinding(wheel, 2, out _), "unowned action keeps native mapping");
         admitted.Owned[0].Product = Guid.NewGuid();
-        Check(!SharedInputStartup.TryGlyphBinding(wheel, "throttle", out _), "product mismatch refuses label");
+        Check(!SharedInputStartup.TryGlyphBinding(wheel, 1, out _), "product mismatch refuses label");
         admitted.Owned[0].Product = Product; admitted.Before[1].InterfacePath = "other-pedal-path";
-        Check(!SharedInputStartup.TryGlyphBinding(wheel, "throttle", out _), "name/index cannot substitute for exact path");
+        Check(!SharedInputStartup.TryGlyphBinding(wheel, 1, out _), "name/index cannot substitute for exact path");
         admitted.Before[1].InterfacePath = "PEDAL-PATH";
-        Check(SharedInputStartup.TryGlyphBinding(wheel, "throttle", out _), "only path case folding is allowed");
+        Check(SharedInputStartup.TryGlyphBinding(wheel, 1, out _), "only path case folding is allowed");
         admitted.Inventory.ConnectionEpoch++;
-        Check(!SharedInputStartup.TryGlyphBinding(wheel, "throttle", out _), "connection epoch invalidation refuses old witness");
+        Check(!SharedInputStartup.TryGlyphBinding(wheel, 1, out _), "connection epoch invalidation refuses old witness");
         admitted.Inventory.ConnectionEpoch--; pedals.isConnected = false;
-        Check(!SharedInputStartup.TryGlyphBinding(wheel, "throttle", out _), "disconnected bound device refuses label");
+        Check(!SharedInputStartup.TryGlyphBinding(wheel, 1, out _), "disconnected bound device refuses label");
         pedals.isConnected = true; admitted.Isolation.Tokens.Remove(pedals);
-        Check(!SharedInputStartup.TryGlyphBinding(wheel, "throttle", out _), "restored device cannot retain shared label");
+        Check(!SharedInputStartup.TryGlyphBinding(wheel, 1, out _), "restored device cannot retain shared label");
         admitted.Isolation.Tokens.Add(pedals); SharedInputStartup.Stopped = true;
-        Check(!SharedInputStartup.TryGlyphBinding(wheel, "throttle", out _), "stopped shared session cannot advertise active prompt");
+        Check(!SharedInputStartup.TryGlyphBinding(wheel, 1, out _), "stopped shared session cannot advertise active prompt");
         SharedInputStartup.Stopped = false;
         admitted.Owned = new[] { admitted.Owned[0], admitted.Owned[0] };
-        Check(!SharedInputStartup.TryGlyphBinding(wheel, "throttle", out _), "ambiguous admitted bindings refuse label");
+        Check(!SharedInputStartup.TryGlyphBinding(wheel, 1, out _), "ambiguous admitted bindings refuse label");
         admitted.Owned = new[] { admitted.Owned[0] };
         AdapterChecks(wheel, gamepad);
     }
@@ -121,19 +121,14 @@ internal static class Program
         ButtonPromptLabel.ShowNameWhenNoGlyph(PadManager.GetPlayer(), wheel, action, ControllerButtonDisplay.AxisPolarity.NONE, image, text, badge, glyphs);
         Check(image.enabled && !badge.enabled && text.text == "mod off", "a disabled mod changed the stock prompt");
         ArtOfSimRally.Mod.Main.Enabled = true;
-        var legacy = WheelInput.Binding.Parse("Fixture device|4|axis:2|0|65535|guid:" + Device.ToString("D"));
-        WheelInput.Fixture(WheelInput.Channel.Throttle, legacy);
+        // Only the profile's own Active binding labels a prompt: an unowned action, or an owned one with no Active
+        // binding, keeps the game's prompt.
+        Check(OwnedPromptGlyph.TryLabel(PadManager.GetPlayer(), wheel, action, false, out var owned) && owned == "Y", "owned shared throttle not labelled from its Active binding");
         ArtOfSimRally.Mod.Shim.ShimInput.Consumer.Owned.Remove(1);
-        Check(OwnedPromptGlyph.TryLabel(PadManager.GetPlayer(), wheel, action, false, out var fallback) && fallback == "Z", "unowned shared throttle labels actual loaded Art fallback, not native X or shared Y");
-        WheelInput.Duplicate = "brake";
-        Check(!OwnedPromptGlyph.TryLabel(PadManager.GetPlayer(), wheel, action, false, out _), "shared collision suppresses legacy fallback label");
-        WheelInput.Duplicate = null;
+        Check(!OwnedPromptGlyph.TryLabel(PadManager.GetPlayer(), wheel, action, false, out _), "an unowned action was labelled");
         ArtOfSimRally.Mod.Shim.ShimInput.Consumer.Owned.Add(1);
         SharedBindingCaptureHost.Instance.Active.Remove("throttle");
-        Check(!OwnedPromptGlyph.TryLabel(PadManager.GetPlayer(), wheel, action, false, out _), "owned shared throttle with missing Active witness cannot advertise legacy binding");
-        ArtOfSimRally.Mod.Shim.ShimInput.Consumer.Owned.Remove(1);
-        legacy.InstanceGuid = null;
-        Check(!OwnedPromptGlyph.TryLabel(PadManager.GetPlayer(), wheel, action, false, out _), "legacy name/index-only binding cannot claim an exact owned device");
+        Check(!OwnedPromptGlyph.TryLabel(PadManager.GetPlayer(), wheel, action, false, out _), "owned shared throttle with missing Active witness advertised a binding");
         maps.Clear();
     }
 }

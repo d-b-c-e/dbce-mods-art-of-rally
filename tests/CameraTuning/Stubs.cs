@@ -2,14 +2,6 @@ using UnityEngine;
 
 namespace ArtOfSimRally.Mod
 {
-    internal static class WheelInput
-    {
-        internal enum Channel { CameraUp, CameraDown, CameraForward, CameraBack, CameraLeft, CameraRight, CameraPitchDown, CameraPitchUp, CameraFovUp, CameraFovDown, CameraReset }
-        internal static readonly HashSet<Channel> Held = new(), Pressed = new();
-        internal static Channel CameraChannel(int index) => (Channel)index;
-        internal static float Value(Channel c) => Held.Contains(c) ? 1 : 0;
-        internal static bool ShortcutPressed(Channel c) => Pressed.Remove(c);
-    }
     // These test-only names shadow Unity's native input/clock ECalls when linking
     // the production tuner. No Unity scene, GUI or physical input is simulated.
     internal static class Input

@@ -140,9 +140,9 @@ and the recording continues.
   - `inputModVersion`, the loaded mod assembly's informational version. The package build
     pins it to the same identity, so it stays right where a hand-staged copy carries a
     stale `build.json`;
-  - the mod's `SharedInput`, `WheelInputEnabled`, `ShifterEnabled` and
-    `ForceFeedbackEnabled` settings;
-  - `sharedInputRequested` and `sharedEvidence`;
+  - the mod's `ForceFeedbackEnabled` setting (before 0.4.6 also `SharedInput`,
+    `WheelInputEnabled` and `ShifterEnabled`, which no longer exist);
+  - `sharedInputRequested` (a shared profile was found at startup) and `sharedEvidence`;
   - the `dbce-controls.ini` hash plus its `Profile`, `Revision` and `Transmission`;
   - the shim and loaded native hashes.
 - While shared input was requested, `shared.tape` holds one row per rendered frame:
@@ -161,17 +161,18 @@ and the recording continues.
 - Mod-internal shortcuts (settings, stop force, camera) appear only as held shared
   buttons. They are not replayed.
 
-**Replay reads no input or force device.** After the recorded environment is applied,
-`Session.ps1` sets these off for the replay process only:
-- `SharedInput`;
-- `WheelInputEnabled` and `ShifterEnabled`;
-- the settings, stop-force and camera shortcut bindings;
-- `ForceFeedbackEnabled`.
+**Replay sends no force.** After the recorded environment is applied, `Session.ps1` sets
+`ForceFeedbackEnabled` off for the replay process only. The tape supplies every input,
+and replay captures no forces. The recorded value is kept in `replay-input.json`; the
+tape's own copy is never edited, and the owner's settings are restored as before. A
+malformed or ambiguous settings file is refused before launch.
 
-Turning off `SharedInput` alone would just reopen the mod's direct wheel reader. The tape
-supplies every input, and replay captures no forces. The recorded values are kept in
-`replay-input.json`; the tape's own copy is never edited, and the owner's settings are
-restored as before. A malformed or ambiguous settings file is refused before launch.
+Since 0.4.6 the mod reads wheel controls only through the shared profile, which
+Settings.xml cannot switch off (before, replay also turned off `SharedInput`,
+`WheelInputEnabled`, `ShifterEnabled` and the USB shortcut bindings). The replay car
+still gets only taped input: the recorder's `GetInput` postfix runs last and replaces
+every car input. Live wheel buttons could still reach menus and mod shortcuts, so leave
+the wheel alone during a replay, or replay with no shared profile in place.
 
 **Partial outcome.** Sometimes every recorded driving row plays and passes, but a later
 menu marker is never reached, for example a best-time or unlock screen the current save

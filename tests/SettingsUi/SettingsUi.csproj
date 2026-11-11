@@ -20,7 +20,6 @@
     <Compile Include="../../src/ArtOfSimRally.Mod/StockUiInput.cs" Link="StockUiInput.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/SettingsDisplayPolicy.cs" Link="SettingsDisplayPolicy.cs" />
     <Reference Include="0Harmony"><HintPath>../../lib/umm/0Harmony.dll</HintPath></Reference>
-    <Compile Include="../../src/ArtOfSimRally.Mod/WheelInput.Binding.cs" Link="WheelInput.Binding.cs" />
     <Reference Include="UnityEngine.CoreModule"><HintPath>$(GameDir)/artofrally_Data/Managed/UnityEngine.CoreModule.dll</HintPath></Reference>
   </ItemGroup>
   <!-- Triple.Settings overrides GetPath; adapt the existing loader fixture without changing production source. -->

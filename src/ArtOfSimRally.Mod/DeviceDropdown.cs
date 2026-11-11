@@ -4,7 +4,7 @@ using UnityEngine;
 namespace ArtOfSimRally.Mod
 {
     /// <summary>
-    /// A dropdown for choosing a controller, shared by the wheel and shifter.
+    /// A dropdown for choosing a controller (the force feedback wheel).
     /// </summary>
     /// <remarks>
     /// <para>
@@ -22,8 +22,7 @@ namespace ArtOfSimRally.Mod
     /// </remarks>
     internal static class DeviceDropdown
     {
-        // Which dropdown is open, by caller-supplied id. Only one at a time, so
-        // opening the shifter list closes the wheel list.
+        // Which dropdown is open, by caller-supplied id. Only one at a time.
         private static string _openId;
 
         /// <summary>

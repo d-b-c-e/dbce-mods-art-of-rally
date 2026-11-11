@@ -1,4 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <!-- The shared profile route with its production sources linked unchanged: readers, startup, bridge, consumer,
+       button edges, car-input and Rewired postfixes, force feedback target selection. Device, Rewired and game
+       types are stubs (Stubs.cs). Each scenario attaches the process-wide consumer, so build.ps1 runs one per process. -->
   <PropertyGroup>
     <OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings><Nullable>disable</Nullable>
@@ -7,24 +10,19 @@
   <ItemGroup>
     <Compile Include="../ShimInput/BridgeTests.cs" Link="BridgeTests.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/Shim/*.cs" Link="Shim/%(Filename)%(Extension)" />
-    <Compile Include="../../src/ArtOfSimRally.Mod/Shifter.cs" Link="Shifter.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/SharedInputStartup.cs" Link="SharedInputStartup.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/NativeDiagnostics.cs" Link="NativeDiagnostics.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/StoreProfileSource.cs" Link="StoreProfileSource.cs" />
     <Compile Include="../../lib/toolkit/shared/mod/DbceModFile.cs;../../lib/toolkit/shared/mod/DbceStore.cs;../../lib/toolkit/shared/mod/DbceStoreControls.cs" Link="Toolkit/%(Filename)%(Extension)" />
     <Compile Include="../../src/ArtOfSimRally.Mod/FfbSelection.cs" Link="FfbSelection.cs" />
-    <Compile Include="../../src/ArtOfSimRally.Mod/WheelInput.cs" Link="WheelInput.cs" />
-    <Compile Include="../../src/ArtOfSimRally.Mod/WheelInput.Shim.cs" Link="WheelInput.Shim.cs" />
-    <Compile Include="../../src/ArtOfSimRally.Mod/WheelInput.Binding.cs" Link="WheelInput.Binding.cs" />
-    <Compile Include="../../src/ArtOfSimRally.Mod/WheelInput.Calibration.cs" Link="WheelInput.Calibration.cs" />
-    <Compile Include="../../src/ArtOfSimRally.Mod/WheelInput.GameButtons.cs" Link="WheelInput.GameButtons.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/WheelReaders.cs" Link="WheelReaders.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/ProfileButtons.cs" Link="ProfileButtons.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/CarInputPatch.cs" Link="CarInputPatch.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/GameButtonInput.cs" Link="GameButtonInput.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/TransmissionInput.cs" Link="TransmissionInput.cs" />
-    <Compile Include="../../src/ArtOfSimRally.Mod/DeferredSave.cs" Link="DeferredSave.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/Settings.cs" Link="Settings.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/SettingsPersistence.cs" Link="SettingsPersistence.cs" />
-    <Compile Include="../../src/ArtOfSimRally.Mod/SettingsCommit.cs" Link="SettingsCommit.cs" />
-    <!-- The real shared binding host that WheelInput.Shim and SharedInputStartup call, with the same closure as
+    <!-- The real shared binding host that WheelReaders and SharedInputStartup call, with the same closure as
          tests/SharedBindings (BindingSampleClock comes with Shim/*.cs above). -->
     <Compile Include="../../src/ArtOfSimRally.Mod/SharedBindingCaptureHost.cs" Link="SharedBindingCaptureHost.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/SharedBindingDraft.cs" Link="SharedBindingDraft.cs" />

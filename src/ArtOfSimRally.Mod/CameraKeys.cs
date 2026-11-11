@@ -36,15 +36,12 @@ namespace ArtOfSimRally.Mod
         internal static bool Reserved(Settings cfg, KeyCode key) => key == KeyCode.F7 || key == KeyCode.F8 ||
             key == KeyCode.F10 || key == cfg.SettingsKey;
         // A saved/imported reserved key stays saved, but cannot also tune the camera.
-        // Wheel channels remain independent of the keyboard reservation.
-        internal static bool Held(int index) => (!Reserved(Main.Settings, Bindings[index].Get(Main.Settings)) &&
-            Input.GetKey(Bindings[index].Get(Main.Settings))) ||
-            WheelInput.Value(WheelInput.CameraChannel(index)) > .5f;
+        internal static bool Held(int index) => !Reserved(Main.Settings, Bindings[index].Get(Main.Settings)) &&
+            Input.GetKey(Bindings[index].Get(Main.Settings));
         internal static bool Pressed(int index) => !Reserved(Main.Settings, Bindings[index].Get(Main.Settings)) &&
             Input.GetKeyDown(Bindings[index].Get(Main.Settings));
-        internal static bool AnyButtonHeld { get { for (int i = 0; i < Bindings.Length; i++) if (WheelInput.Value(WheelInput.CameraChannel(i)) > .5f) return true; return false; } }
-        // Only the camera bindings (keys and wheel buttons). Input.anyKey also counts joystick buttons, and an H-pattern
-        // shifter in gear or a latched wheel switch holds one indefinitely (owner report 2026-10-31: keys stopped working).
+        // Only the camera keys. Input.anyKey also counts joystick buttons, and an H-pattern shifter in gear or a
+        // latched wheel switch holds one indefinitely (owner report 2026-10-31: keys stopped working).
         internal static bool AnyHeld { get { for (int i = 0; i < Bindings.Length; i++) if (Held(i)) return true; return false; } }
         public static string Name(KeyCode key) => key == KeyCode.None ? "Unbound" : key.ToString().Replace("Keypad", "Numpad ");
 
@@ -85,7 +82,7 @@ namespace ArtOfSimRally.Mod
         }
 
         // Returns whether the event belongs to a pending capture, even if invalid.
-        // Chords aren't represented by the legacy KeyCode fields, so reject them.
+        // Chords aren't represented by the KeyCode fields, so reject them.
         public static bool HandleKey(Settings cfg, KeyCode key, bool modified)
         {
             if (Listening < 0) return false;

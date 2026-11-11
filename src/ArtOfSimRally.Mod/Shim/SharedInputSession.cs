@@ -46,7 +46,7 @@ namespace ArtOfSimRally.Mod.Shim
         private bool observing;
 
         internal SharedInputSession(RewiredInputIsolation inventory) { Inventory = inventory ?? throw new ArgumentNullException(nameof(inventory)); }
-        internal static bool Ready(RewiredInputIsolation inventory) => inventory.Ready && WheelInput.SharedProbeSlots.Length > 0;
+        internal static bool Ready(RewiredInputIsolation inventory) => inventory.Ready && WheelReaders.Slots.Length > 0;
 
         // Opens Core with the exact profile, pins Art's existing readers by metadata and path, and joins
         // them to Rewired. Throws on any refusal; Close() releases whatever was acquired.
@@ -59,7 +59,7 @@ namespace ArtOfSimRally.Mod.Shim
             Source = new ExistingWheelSnapshots(FfbNative.RequestedPath);
             // Metadata only: no second physical poll or device acquisition.
             var owned = new List<OwnedDeviceIdentity>();
-            foreach (int slot in WheelInput.SharedProbeSlots)
+            foreach (int slot in WheelReaders.Slots)
             {
                 var bytes = new byte[ShimBridge.DeviceSize];
                 if (Source.Describe(slot, bytes) != 1 || BitConverter.ToUInt64(bytes, 8) == 0)
@@ -105,7 +105,7 @@ namespace ArtOfSimRally.Mod.Shim
         // Every use re-proves the pinned readers, the identity lease and the exact isolated objects.
         public bool VerifyIsolation()
         {
-            Source.VerifyPinned(WheelInput.SharedProbeSlots);
+            Source.VerifyPinned(WheelReaders.Slots);
             var observed = JoystickObservations.Capture(Inventory);
             var witnessed = lease.Verify(observed, Inventory.ConnectionEpoch, Isolation.OwnsDisabled);
             var current = IdentityJoin.Match(Instances, Owned, witnessed);

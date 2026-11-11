@@ -20,14 +20,12 @@ namespace UnityModManagerNet
 }
 namespace ArtOfSimRally.Mod
 {
-    internal static partial class WheelInput
+    // The shared profile's Mod menu and Mute force feedback buttons: one press edge each time a test adds it.
+    internal static class ProfileButtons
     {
-        static readonly string[] AxisNames={"X","Y","Z","Rx","Ry","Rz","Slider 1","Slider 2"};
-        public enum Channel { SettingsButton, StopFfbButton }
-        public static readonly HashSet<Channel> Pressed=new();
-        public static bool ShortcutPressed(Channel c)=>Pressed.Remove(c);
-        public static float SettingsHeld;
-        public static float Value(Channel c)=>c==Channel.SettingsButton?SettingsHeld:0;
+        public const int ModMenu=21, MuteFfb=22;
+        public static readonly HashSet<int> Down=new();
+        public static bool Pressed(int action)=>Down.Remove(action);
     }
     internal static class Input
     {
@@ -40,8 +38,7 @@ namespace ArtOfSimRally.Mod
     internal static class Application { public static bool isFocused=true; }
     internal static class GameState { public static bool IsDriving; }
     internal static class CameraKeys { public static bool Modified=false; public static bool ModifierHeld()=>Modified; public static void Tick(){} }
-    internal static class CameraTuner { public static int Suppressed; public static void SuppressUntilRelease()=>Suppressed++; public static void ReadResetButton(){} }
-    internal static class Shifter { public static void SuppressUntilRelease(){} }
+    internal static class CameraTuner { public static int Suppressed; public static void SuppressUntilRelease()=>Suppressed++; }
     internal static class GameBindings { public static void Tick(){} }
     internal static class SettingsPanel
     {

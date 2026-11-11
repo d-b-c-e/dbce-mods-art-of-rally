@@ -30,7 +30,7 @@ namespace ArtOfSimRally.Mod
         public static string Status { get; private set; } = "";
         private static WheelFfbNative.DeviceInfo[] _devices = new WheelFfbNative.DeviceInfo[0];
 
-        // Loading binds exports but does not acquire a wheel. Input and the shifter
+        // Loading binds exports but does not acquire a wheel. The wheel readers
         // need this even when force feedback is disabled.
         public static bool Load(string modDir)
         {
@@ -46,7 +46,6 @@ namespace ArtOfSimRally.Mod
             if (LogFiles.RotateIfLarge(log))
                 ModLog.Info("Force feedback log was over " + LogFiles.RotateBytes / (1024 * 1024) + " MB; kept as ffb.previous.log.");
             WheelFfbNative.LogTo(log);
-            WheelPovInput.Bind(RequestedPath);
             return true;
         }
 
@@ -91,8 +90,6 @@ namespace ArtOfSimRally.Mod
             _devices = WheelFfbNative.ListFfbDevices();
             return Array.ConvertAll(_devices, d => d.Name);
         }
-        public static string[] ListDeviceLabels(string[] names)
-            => Array.ConvertAll(_devices, d => d.Label);
         public static string DeviceGuid(int position)
             => position >= 0 && position < _devices.Length ? _devices[position].InstanceGuid?.ToString() ?? "" : "";
         public static int SelectedPosition(Settings settings)

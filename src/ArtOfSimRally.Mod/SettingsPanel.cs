@@ -18,21 +18,21 @@ namespace ArtOfSimRally.Mod
         private static readonly string[] PageIds = { "page-0", "page-1", "page-2", "page-3", "page-4" };
         private static readonly string[] ViewIds = { "view-Simple", "view-Advanced" }, Views = { "Simple", "Advanced" };
         private static Vector2 _scroll;
-        private static bool _shifter, _cameraKeys, _clutch, _settingsKey, _modButtons;
+        private static bool _cameraKeys, _settingsKey, _modButtons;
         private static float _keyDeadline;
         private static string _keyStatus = "";
         private static int _mount;
         private static readonly ConnectionEdit Connection = new ConnectionEdit();
         private static ISharedBindingHost Bindings => SharedBindingCaptureHost.Current;
-        /// <summary>Every edit except a shared-binding capture. The shared host's canEdit callback reads this, never
-        /// <see cref="Editing"/>, which itself asks the host for its capture (no recursion).</summary>
-        internal static bool LegacyEditing => WheelInput.Assigning.HasValue || CameraKeys.Listening >= 0 ||
-            Panel.BindingActive || Connection.Editing || _settingsKey;
-        internal static bool Editing => LegacyEditing || Bindings?.CapturingAction != null;
+        /// <summary>Every edit except a shared-binding capture: a camera or Settings key capture, or the telemetry
+        /// connection. The shared host's canEdit callback reads this, never <see cref="Editing"/>, which itself asks the
+        /// host for its capture (no recursion).</summary>
+        internal static bool KeyOrConnectionEditing => CameraKeys.Listening >= 0 || Connection.Editing || _settingsKey;
+        internal static bool Editing => KeyOrConnectionEditing || Bindings?.CapturingAction != null;
         internal static bool CancelPendingEdit()
         {
             bool editing = Editing;
-            WheelInput.CancelAssign(); CameraKeys.Cancel(); Panel.CancelBinding(); Connection.Cancel(); _settingsKey = false;
+            CameraKeys.Cancel(); Connection.Cancel(); _settingsKey = false;
             Bindings?.CancelCapture();
             DeviceDropdown.CloseAll();
             return editing;
@@ -128,49 +128,25 @@ namespace ArtOfSimRally.Mod
             }
             e.Use();
         }
+        // Controls come only from the shared profile (Wheelkit's, or dbce-controls.ini beside the mod), edited here
+        // under Shared profile; everything else on this page is the game's own controls and the mod's keys.
         private static void Controls(Settings c)
         {
+            bool advanced = SettingsViewPolicy.Advanced(c);
             if (GameState.IsDriving)
-                Help("Pause the stage before binding, calibrating or clearing controls. Opening Wheel settings does not pause the game.");
-            // Art02 pixels: the editor was below a viewport of switches and technical prose.
-            // Keep the actual shared host/widgets first; expose configuration and detail afterward.
-            bool shared = c.SharedInput || SharedInputStartup.RequestedAtStartup;
-            if (shared)
-            {
-                foreach (var line in SharedInputStartup.Lines(SharedCarAutomatic(), false)) Help(line);
-                SharedBindings();
-                if (!SettingsViewPolicy.Advanced(c) && LinkButton("Controls setup and details in Advanced >", 310)) Select(c, true, 0);
-            }
-            bool active = Toggle(c.WheelInputEnabled, "Use assigned controls");
-            if (active != c.WheelInputEnabled) { c.WheelInputEnabled = active; if (!active) WheelInput.CancelAssign(); }
-            if (!c.WheelInputEnabled)
-                Help("Assigned USB controls are Off, including a separate handbrake. Game-bound wheel and pedals may still work. Turn On to use the handbrake.");
-            if (!WheelInput.Assigning.HasValue) Help(WheelInput.Status);
-            // Players without a shared profile (no Wheelkit) bind everything below; the option stays out of their way.
+                Help("Pause the stage before binding controls. Opening Wheel settings does not pause the game.");
+            foreach (var line in SharedInputStartup.Lines(SharedCarAutomatic(), advanced)) Help(line);
             if (SharedInputStartup.FromStore)
                 Help("Profile from Wheelkit" + (SharedInputStartup.StoreProfileName == null ? "" : ": " + SharedInputStartup.StoreProfileName) +
                     ". Change it in Wheelkit before launch.");
-            else if (shared || c.SharedInput || SharedInputStartup.ProfilePresent)
-            {
-                c.SharedInput = Toggle(c.SharedInput, "Use shared profile");
-                if (c.SharedInput != SharedInputStartup.RequestedAtStartup) Help("Restart the game to " + (c.SharedInput ? "use" : "stop using") + " the shared profile.");
-                if (!shared || SettingsViewPolicy.Advanced(c))
-                    foreach (var line in SharedInputStartup.Lines(SharedCarAutomatic())) Help(line);
-            }
-            if (shared && SettingsViewPolicy.Advanced(c))
+            SharedBindings();
+            if (advanced)
             {
                 Help(Bindings?.ActiveSource);
                 Heading(SettingsViewPolicy.SetupHeading);
                 foreach (var line in SettingsViewPolicy.SetupGuidance) Help(line);
             }
-            Heading("Steering and pedals");
-            Axis(c, WheelInput.Channel.Steer, "Steering"); Axis(c, WheelInput.Channel.Throttle, "Throttle");
-            Axis(c, WheelInput.Channel.Brake, "Brake"); Axis(c, WheelInput.Channel.Handbrake, "Handbrake (axis)");
-            Axis(c, WheelInput.Channel.HandbrakeButton, "Handbrake (button)");
-            Help("Unbound controls keep the game's bindings.");
-            Help("Handbrake axis, button and game controls use the greater value; a held button contributes 100%.");
-            _clutch = Disclosure(_clutch, "clutch binding");
-            if (_clutch) Axis(c, WheelInput.Channel.Clutch, "Clutch");
+            else if (LinkButton("Controls setup and details in Advanced >", 310)) Select(c, true, 0);
             string[] transmissions = { "Follow game", "Automatic", "Sequential", "H-pattern" };
             int transmission = Math.Max(0, Array.IndexOf(transmissions, c.TransmissionMode));
             Heading("Transmission");
@@ -179,38 +155,16 @@ namespace ArtOfSimRally.Mod
             if (chosen >= 0 && chosen != transmission)
             {
                 c.TransmissionMode = transmissions[chosen];
-                if (chosen > 0) c.ShifterIsHPattern = chosen == 3;
                 SettingsManager.SetTransmission();
             }
-            Heading("Camera and menus");
-            Axis(c, WheelInput.Channel.CameraSwitch, "Change camera");
-            Axis(c, WheelInput.Channel.Confirm, "Confirm"); Axis(c, WheelInput.Channel.Back, "Back");
-            Axis(c, WheelInput.Channel.Start, "Start / pause");
-            Axis(c, WheelInput.Channel.NavUp, "Navigate up"); Axis(c, WheelInput.Channel.NavDown, "Navigate down");
-            Axis(c, WheelInput.Channel.NavLeft, "Navigate left"); Axis(c, WheelInput.Channel.NavRight, "Navigate right");
-            Help("Buttons and hat directions use the same saved bindings as the shared profile. Release after focus or device changes. Game keyboard and controller bindings remain available.");
-            _shifter = Disclosure(_shifter, "shifter bindings");
-            if (_shifter && SharedInputStartup.HoldsShifter)
-            {
-                Help(SharedInputStartup.Active ? "Gears come from the shared profile; Art's separate shifter stays closed. Turn the shared profile off and restart to use it."
-                    : "Art's separate shifter stays closed until the game's own wheel input is restored.");
-                if (!c.ShifterIsHPattern) c.SkipNeutral = Toggle(c.SkipNeutral, "Skip neutral");
-            }
-            else if (_shifter)
-            {
-                c.ShifterEnabled = Toggle(c.ShifterEnabled, "Separate shifter");
-                if (c.ShifterEnabled) Panel.DrawShifterBinding(c);
-                if (!c.ShifterIsHPattern) c.SkipNeutral = Toggle(c.SkipNeutral, "Skip neutral");
-            }
+            if (c.TransmissionMode != "H-pattern") c.SkipNeutral = Toggle(c.SkipNeutral, "Skip neutral");
             Heading("Driving and menu buttons");
-            Help("Keyboard and controller bindings remain available in the game's binding screen. Extra USB actions below keep their normal game behavior.");
+            Help("Keyboard and controller bindings remain available in the game's binding screen.");
             if (RightButton("Open game bindings", 180)) GameBindings.Open();
             Help(GameBindings.Status);
-            ArtActionBindings(c);
-            _modButtons = Disclosure(_modButtons, "mod buttons and Settings key");
+            _modButtons = Disclosure(_modButtons, "Settings key");
             if (_modButtons)
             {
-                Heading("Mod shortcuts");
                 string keyText = _settingsKey ? "Press a key; Escape cancels." : "Settings key: " + CameraKeys.Name(c.SettingsKey);
                 if (CommandRow(keyText, _settingsKey ? "Cancel capture" : "Bind", 110))
                 {
@@ -218,13 +172,11 @@ namespace ArtOfSimRally.Mod
                     else if (!Editing) { _settingsKey = true; _keyStatus = "Press a key within 10 seconds. Escape cancels."; _keyDeadline = Time.unscaledTime + 10; }
                 }
                 Help(_keyStatus);
-                Axis(c, WheelInput.Channel.SettingsButton, "Settings (button)");
-                Axis(c, WheelInput.Channel.StopFfbButton, "Stop FFB (button)");
-                Help("F8 always stops FFB. These optional device buttons work even with assigned driving controls Off. Release held buttons after reconnecting.");
+                Help("F8 always stops FFB. The shared profile's Mod menu and Mute force feedback buttons work as well.");
             }
-            if (!SettingsViewPolicy.Advanced(c) && SettingsViewPolicy.CustomControls(c) &&
+            if (!advanced && SettingsViewPolicy.CustomControls(c) &&
                 LinkButton("Review custom controls in Advanced >", 245)) Select(c, true, 0);
-            if (SettingsViewPolicy.Advanced(c))
+            if (advanced)
             {
                 Heading("Steering compatibility");
                 c.DirectSteering = Toggle(c.DirectSteering, "Direct steering");
@@ -233,159 +185,23 @@ namespace ArtOfSimRally.Mod
             }
         }
 
-        private static void Axis(Settings c, WheelInput.Channel channel, string label)
-        {
-            // A shared profile may set this control: no Art editor, which could reopen its readers.
-            if (WheelInput.SharedReadersRequired && !WheelInput.SharedArtOnly(channel))
-            { W.Caption(label); Help(WheelInput.SharedEditorText(channel)); GUILayout.Space(8 * SettingsPresentation.Scale); return; }
-            W.Caption(label + (WheelInput.IsBound(channel) ? " · Device input: " + InputText(channel) : ""));
-            Binding(c, channel, label, false);
-            GUILayout.Space(8 * SettingsPresentation.Scale);
-        }
-        private static void Binding(Settings c, WheelInput.Channel channel, string label, bool inputLabel = true)
-        {
-            bool bound = WheelInput.IsBound(channel);
-            W.Text(WheelInput.Describe(channel));
-            if (bound && WheelInput.Assigning != channel) Bar(channel, "Device input", inputLabel);
-            if (SettingsViewPolicy.Advanced(c) && !WheelInput.IsButtonChannel(channel) && bound)
-                Help(WheelInput.CalibrationDescription(channel));
-            if (WheelInput.Assigning == channel)
-            {
-                CalibrationEditor(c, label);
-                return;
-            }
-            Help(!WheelInput.IsButtonChannel(channel)
-                ? channel == WheelInput.Channel.Steer ? "Center first, then bind or calibrate." : "Release first, then bind or calibrate."
-                : "Release the button first, then bind.");
-            bool enabled = GUI.enabled;
-            string id = "art-" + channel;
-            GUILayout.BeginHorizontal(GUILayout.Width(SettingsPresentation.BodyWidth));
-            GUI.enabled = enabled && !Editing && !GameState.IsDriving;
-            if (W.Command(id + "-bind", "Bind " + label.ToLowerInvariant())) WheelInput.BeginCalibration(channel);
-            GUI.enabled = enabled && !Editing && !GameState.IsDriving && bound;
-            if (!WheelInput.IsButtonChannel(channel) && W.Command(id + "-calibrate", "Calibrate")) WheelInput.BeginCalibration(channel, true);
-            if (W.Command(id + "-clear", "Clear"))
-            { if (WheelInput.Clear(channel) && channel == WheelInput.Channel.Steer && FfbSelection.FollowsSteering(c)) Main.SelectForceDevice(); }
-            GUI.enabled = enabled;
-            W.Spacer();
-            GUILayout.EndHorizontal();
-        }
         private static void CameraAdjustmentBinding(Settings c, int index)
         {
             var binding = CameraKeys.Bindings[index];
-            bool keyboardListening = CameraKeys.Listening == index;
+            bool listening = CameraKeys.Listening == index;
             string keyboard = CameraKeys.Name(binding.Get(c));
-            if (keyboardListening) keyboard += "\n" + CameraKeys.Status;
-            var keyboardRow = BeginBindingRow(binding.Label + " (keyboard)", keyboard);
-            // Same capture lock and callbacks as the previous keyboard editor; reserved keys and checked saves
-            // stay in CameraKeys.HandleKey/Clear. A second input source must not steal a pending capture.
+            if (listening) keyboard += "\n" + CameraKeys.Status;
+            var row = BeginBindingRow(binding.Label, keyboard);
+            // Reserved keys and checked saves stay in CameraKeys.HandleKey/Clear; another edit must not steal a pending capture.
             bool enabled = GUI.enabled;
-            GUI.enabled = enabled && (!Editing || keyboardListening);
-            if (W.Command("camkey-bind-" + index, keyboardListening ? "Cancel" : "Bind key"))
-            { if (keyboardListening) CameraKeys.Cancel(); else CameraKeys.Begin(index); }
+            GUI.enabled = enabled && (!Editing || listening);
+            if (W.Command("camkey-bind-" + index, listening ? "Cancel" : "Bind key"))
+            { if (listening) CameraKeys.Cancel(); else CameraKeys.Begin(index); }
             if (W.Command("camkey-clear-" + index, "Clear")) CameraKeys.Clear(c, index);
             GUI.enabled = enabled;
-            W.EndRow(keyboardRow);
-
-            ArtButtonBinding(c, WheelInput.CameraChannel(index), binding.Label + " (USB button)");
+            W.EndRow(row);
         }
 
-        private static void ArtActionBindings(Settings c)
-        {
-            Heading("Other game actions");
-            Help("Release USB buttons before Bind. Game mode and stage conditions still apply.");
-            // Shared mode keeps one editor, but its read-only summaries must still reveal any effective Art fallback.
-            if (WheelInput.SharedReadersRequired)
-            {
-                Axis(c, WheelInput.Channel.Horn, "Horn");
-                Axis(c, WheelInput.Channel.LookBack, "Look back");
-                Axis(c, WheelInput.Channel.RecoverCar, "Recover car (hold)");
-            }
-            else
-            {
-                ArtButtonBinding(c, WheelInput.Channel.Horn, "Horn");
-                ArtButtonBinding(c, WheelInput.Channel.LookBack, "Look back");
-                ArtButtonBinding(c, WheelInput.Channel.RecoverCar, "Recover car (hold)", "Hold for 1 second, as in the game.");
-            }
-            ArtButtonBinding(c, WheelInput.Channel.RepairPuncture, "Repair puncture (hold)", "Hold for 1 second. Requires a punctured tire and a spare.");
-            ArtButtonBinding(c, WheelInput.Channel.QuickRestart, "Restart stage", "In career, hold for 1 second; other modes restart on press. Not in freeroam, daily or weekly.");
-            ArtButtonBinding(c, WheelInput.Channel.LookLeft, "Look left");
-            ArtButtonBinding(c, WheelInput.Channel.LookRight, "Look right");
-            ArtButtonBinding(c, WheelInput.Channel.LookForward, "Look forward");
-        }
-
-        private static void ArtButtonBinding(Settings c, WheelInput.Channel channel, string label, string note = null)
-        {
-            bool bound = WheelInput.IsBound(channel), listening = WheelInput.Assigning == channel;
-            string button = WheelInput.Describe(channel);
-            if (WheelInput.SharedReadersRequired && Shim.ShimInput.Consumer.Started)
-                button += "\n" + WheelInput.SharedEditorText(channel);
-            if (listening) button += "\n" + WheelInput.Status;
-            else if (!string.IsNullOrEmpty(note)) button += "\n" + note;
-            var buttonRow = BeginBindingRow(label, button);
-            bool enabled = GUI.enabled;
-            GUI.enabled = enabled && (listening || (!Editing && !GameState.IsDriving));
-            if (W.Command("art-" + channel + "-bind", listening ? "Cancel" : "Bind button"))
-            { if (listening) WheelInput.CancelAssign(); else WheelInput.BeginCalibration(channel); }
-            GUI.enabled = enabled && !Editing && !GameState.IsDriving && bound;
-            if (W.Command("art-" + channel + "-clear", "Clear")) WheelInput.Clear(channel);
-            GUI.enabled = enabled;
-            W.EndRow(buttonRow);
-            // The existing USB editor still owns pending digital capture, explicit Save binding and cancellation.
-            if (WheelInput.Assigning == channel) CalibrationEditor(c, label);
-            else if (WheelInput.IsBound(channel)) Bar(channel, "Device input");
-        }
-
-        private static void CalibrationEditor(Settings c, string label)
-        {
-            W.Caption("Binding " + label.ToLowerInvariant());
-            W.Text(WheelInput.Status);
-            var pending = WheelInput.PendingCalibration;
-            if (pending != null)
-            {
-                W.Text("Device input: " + (WheelInput.CalibrationValue * 100).ToString("F0") + "%");
-                if (!pending.IsDigital)
-                {
-                    pending.Inverted = Toggle(pending.Inverted, "Invert " + (WheelInput.Assigning == WheelInput.Channel.Handbrake ? "handbrake" : "axis"));
-                    pending.Deadzone = Slider(pending.Deadzone, 0, .1f, 0, "Deadzone", 100, "%");
-                }
-            }
-            Help("Escape cancels and keeps the previous binding.");
-            bool enabled = GUI.enabled;
-            GUILayout.BeginHorizontal(GUILayout.Width(SettingsPresentation.BodyWidth));
-            W.Spacer();
-            GUI.enabled = enabled && WheelInput.CanSaveCalibration;
-            if (W.Command("calibration-save", pending != null && pending.IsDigital ? "Save binding" : "Save calibration"))
-            {
-                string previous = c.SteerBinding;
-                if (WheelInput.SaveCalibration() && previous != c.SteerBinding && FfbSelection.FollowsSteering(c)) Main.SelectForceDevice();
-            }
-            GUI.enabled = enabled;
-            if (W.Command("calibration-cancel", "Cancel")) WheelInput.CancelAssign();
-            GUILayout.EndHorizontal();
-        }
-        private static string InputText(WheelInput.Channel channel)
-        {
-            float value = WheelInput.Value(channel);
-            return !WheelInput.IsBound(channel) ? "Game controls / not bound here" : channel == WheelInput.Channel.Steer
-                ? Math.Abs(value) < .005f ? "Center" : (value < 0 ? "Left " : "Right ") + (Math.Abs(value) * 100).ToString("F0") + "%"
-                : (value * 100).ToString("F0") + "%";
-        }
-        private static void Bar(WheelInput.Channel channel, string label, bool showLabel = true)
-        {
-            if (showLabel) W.Text(label + ": " + InputText(channel));
-            if (!WheelInput.IsBound(channel)) return;
-            float value = WheelInput.Value(channel);
-            var rect = GUILayoutUtility.GetRect(20, 8 * SettingsPresentation.Scale, GUILayout.Width(SettingsPresentation.BodyWidth));
-            F6Widgets.Fill(rect, F6Palette.Track);
-            var fill = rect;
-            bool steering = channel == WheelInput.Channel.Steer;
-            float travel = Math.Max(0, Math.Min(1, Math.Abs(value)));
-            fill.width *= steering ? travel * .5f : travel;
-            if (steering) fill.x += rect.width * .5f - (value < 0 ? fill.width : 0);
-            F6Widgets.Fill(fill, F6Palette.Accent);
-            if (steering) F6Widgets.Fill(new Rect(rect.x + rect.width * .5f, rect.y, 1, rect.height), F6Palette.Text);
-        }
         private static void Feedback(Settings c)
         {
             Heading("Force feedback");
@@ -436,7 +252,7 @@ namespace ArtOfSimRally.Mod
             {
                 Heading("Adjustment bindings");
                 c.CameraTuningKeys = Toggle(c.CameraTuningKeys, "Live adjustment shortcuts");
-                Help("Use keyboard keys or separate USB buttons; no numpad required. F7, F8, F10 and the Settings key are reserved. Release USB buttons before Bind, and use buttons not already assigned in the game.");
+                Help("Use keyboard keys; no numpad required. F7, F8, F10 and the Settings key are reserved.");
                 for (int i = 0; i < CameraKeys.Bindings.Length; i++)
                     CameraAdjustmentBinding(c, i);
                 bool enabled = GUI.enabled; GUI.enabled = enabled && !Editing;
@@ -517,7 +333,7 @@ namespace ArtOfSimRally.Mod
         {
             Heading("Recovery");
             W.Text("Art of Sim Rally " + Main.ModVersion);
-            Help("No FFB: pause, open FFB, check On and the selected wheel, then Refresh. Missing controls: bind them in Controls.");
+            Help("No FFB: pause, open FFB, check On and the selected wheel, then Refresh. Missing controls: check the shared profile under Controls.");
             IssueReportHelp();
             Heading("Interface scale");
             int textMode = Segmented(c.SettingsFollowHostScale ? 1 : 0, new[] { "Auto", "Use UMM scale" }, "Settings text size", 240);

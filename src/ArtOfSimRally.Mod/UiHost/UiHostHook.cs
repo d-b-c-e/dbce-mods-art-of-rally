@@ -47,9 +47,9 @@ namespace ArtOfSimRally.Mod
         private static void Tick(bool settingsButton)
         {
             // Read every frame so an edge is never stale when F6 opens.
-            bool up = WheelInput.ShortcutPressed(WheelInput.Channel.NavUp), down = WheelInput.ShortcutPressed(WheelInput.Channel.NavDown);
-            bool left = WheelInput.ShortcutPressed(WheelInput.Channel.NavLeft), right = WheelInput.ShortcutPressed(WheelInput.Channel.NavRight);
-            bool select = WheelInput.ShortcutPressed(WheelInput.Channel.Confirm), back = WheelInput.ShortcutPressed(WheelInput.Channel.Back);
+            bool up = ProfileButtons.Pressed(ProfileButtons.NavUp), down = ProfileButtons.Pressed(ProfileButtons.NavDown);
+            bool left = ProfileButtons.Pressed(ProfileButtons.NavLeft), right = ProfileButtons.Pressed(ProfileButtons.NavRight);
+            bool select = ProfileButtons.Pressed(ProfileButtons.Confirm), back = ProfileButtons.Pressed(ProfileButtons.Back);
             bool open = DbceUi.IsOpen;
             if (settingsButton && Main.Enabled && Application.isFocused) DbceUi.Navigate(open ? DbceUiNav.Close : DbceUiNav.Open);
             else if (open)

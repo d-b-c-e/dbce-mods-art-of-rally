@@ -34,12 +34,9 @@ static class Program
             "reference calibrated after output clipping");
     }
 
+    // The FFB picker shows and saves a wheel only by its GUID, never by a stale enumeration index or name.
     static void WheelIdentity()
     {
-        foreach (string invalid in new[] { "wheel|0|axis:8|0|65535", "wheel|0|button:128|0|1", "wheel|x|axis:0|0|1", "wheel|0|unknown:0|0|1", "wheel|0|axis:x|0|1", "wheel|0|axis:0|-2147483648|2147483647" })
-            Check(WheelInput.Binding.Parse(invalid)==null,"invalid binding could index device memory");
-        string legacy="wheel|0|axis:0|32767|65535";
-        Check(WheelInput.Binding.Parse(legacy)?.ToString()==legacy,"legacy input binding changed");
         var first=Guid.NewGuid(); var second=Guid.NewGuid();
         var snapshot=new[] {
             new WheelFfbNative.DeviceInfo { Index=0,Name="same wheel",ForceFeedback=true,InstanceGuid=second },
@@ -54,7 +51,7 @@ static class Program
         settings.PreferredDeviceGuid="invalid";
         Check(FfbNative.SelectedPosition(settings)==-1,"invalid GUID fell back in picker");
         settings.PreferredDeviceGuid="";
-        Check(FfbNative.SelectedPosition(settings)==-1,"legacy index shown as a verified device");
+        Check(FfbNative.SelectedPosition(settings)==-1,"a saved index without a GUID shown as a verified device");
     }
 
     static void Saves()

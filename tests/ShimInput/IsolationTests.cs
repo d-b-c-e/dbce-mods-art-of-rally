@@ -41,13 +41,13 @@ internal static class IsolationTests
         string refusalReason = isolation.Status + ".";
         var facts = new SharedInputStatus.Facts { Phase = SharedInputStatus.Phase.Refused, Reason = refusalReason };
         var guidance = SharedInputStatus.Lines(facts);
-        check(guidance.Length == 3 && guidance[0] == "Shared profile was not used for this session because a controller could not be identified. This prevents duplicate wheel input. Art bindings are used.", "production identity refusal missed reviewed explanation");
+        check(guidance.Length == 3 && guidance[0] == "Shared profile was not used for this session because a controller could not be identified. This prevents duplicate wheel input. The game's own controls apply.", "production identity refusal missed reviewed explanation");
         check(guidance[1] == "Restart the game with that controller disconnected. If you use Steam Input, disable it for art of rally before restarting; Steam Input may be the cause.", "production identity workaround differs from reviewed copy");
         check(guidance[2] == "Details: " + refusalReason, "production wrapped diagnostic changed");
         check(string.Join("|", SharedInputStatus.Lines(facts, false)) == string.Join("|", guidance), "compact production identity explanation differs");
         facts.Phase = SharedInputStatus.Phase.CleanupFailed; facts.RestoreStatus = "restore pending";
         var cleanupLines = SharedInputStatus.Lines(facts, false);
-        check(cleanupLines.Length == 1 && cleanupLines[0].Contains("still off") && !cleanupLines[0].Contains("Art bindings are used") && !cleanupLines[0].Contains("Steam Input"), "wrapped identity cleanup failure claims restored bindings");
+        check(cleanupLines.Length == 1 && cleanupLines[0].Contains("still off") && !cleanupLines[0].Contains("controls apply") && !cleanupLines[0].Contains("Steam Input"), "wrapped identity cleanup failure claims restored bindings");
         inventory.Items.RemoveAt(inventory.Items.Count - 1); check(isolation.Check(17), "requalified scan did not age out");
         first.ThrowGet = true; check(!isolation.Check(18), "throwing runtime getter marked clean"); first.ThrowGet = false;
         check(isolation.Check(19), "getter recovery did not requalify");

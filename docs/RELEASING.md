@@ -23,8 +23,7 @@ The config is grouped by feature so this reads clearly to a user:
 ```
 [Steering]  DirectSteering, ZeroAxisDeadzone, BindAnyDevice
 [ForceFeedback]  Enabled, Strength, FyReference, Smoothing, Invert, PreferredDevice(+Index/Guid), DiagnosticLogging
-[Shifter]  Enabled, IsHPattern, DeviceIndex/Name/Guid, SkipNeutral, gear and shift buttons
-[WheelInput]  Enabled, Steer/Throttle/Brake/Clutch/Handbrake bindings ("device|index|axis:N|rest|far|guid:<instance-guid>"; legacy five fields accepted)
+[Transmission]  TransmissionMode, SkipNeutral (wheel, pedal and shifter bindings live in the shared profile, not here)
 [Camera]  Bonnet* and Bumper*: Enabled, Height, Forward, Side, Pitch, FOV; BonnetLean
 [CameraTuning]  remappable keyboard hotkeys (numpad defaults)
 [Telemetry]  Enabled, Host, Port
@@ -196,7 +195,8 @@ probe dependencies to the player mod. Preserve original captures privately.
 
 One package per release (STD-040). It always carries the shared-input shim and native from `lib/toolkit`,
 with their pins and Wheelkit's controls contract (`tools/package/shared-input-controls.json`) in `build.json`
-under `sharedInputCandidate`, the key Wheelkit reads. Shared input stays off until the player opts in.
+under `sharedInputCandidate`, the key Wheelkit reads. Since 0.4.6 the shared profile is the mod's only wheel input
+route: with no profile (Wheelkit's store or `dbce-controls.ini` beside the mod) the game's own controls apply.
 
 The October 13 source/package notice audit of pinned helper `19a5897` found the
 declared .NET, WPF-UI and CommunityToolkit notice/license files, Art and toolkit

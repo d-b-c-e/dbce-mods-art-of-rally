@@ -143,16 +143,12 @@ namespace ArtOfSimRally.Mod
     {
         public static void Flush(bool shutdown=false) => Calls.Log.Add("diagnostic-save");
     }
-    internal static class WheelInput
+    internal static class WheelReaders
     {
-        public enum Channel { Steer, Throttle, Brake, Clutch, Handbrake }
-        public static bool Enabled => true;
-        public static float Value(Channel c) => 0;
         public static void EnsureUpdatedThisFrame() => Calls.Log.Add("input-snapshot");
         public static void Close() => Calls.Log.Add("input-close");
-        public static void ResetGameButtons() => Calls.Log.Add("buttons-reset");
-        public static void FlushLearnedRanges(bool shutdown=false) => Calls.Log.Add("save");
     }
+    internal static class ProfileButtons { public static void Reset() => Calls.Log.Add("buttons-reset"); }
     internal static class GameButtonInput { public static void TickTitle() => Calls.Log.Add("title-tick"); }
     internal static class FfbNative
     {
@@ -172,11 +168,6 @@ namespace ArtOfSimRally.Mod
         public static void StopIfDisabled() => Calls.Log.Add("telemetry-stop-disabled");
         public static void Park() => Calls.Log.Add("telemetry-park");
         public static void Shutdown() => Calls.Log.Add("telemetry-close");
-    }
-    internal static class Shifter
-    {
-        public static void Close() => Calls.Log.Add("shifter-close");
-        public static void FlushSelection(bool shutdown=false) => Calls.Log.Add("shifter-save");
     }
 }
 

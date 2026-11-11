@@ -25,7 +25,7 @@ namespace Rewired
 namespace ArtOfSimRally.Mod.Shim
 {
     internal static class SharedInputStatus { internal enum Phase { Off, Attached } }
-    internal static class ShimFrame { internal static readonly string[] Names = { "steer", "throttle", "clutch", "camera" }; }
+    internal static class ShimFrame { internal static readonly string[] Names = { "steer", "throttle", "clutch", "camera" }; internal const int Count = 4; }
     internal sealed class Consumer
     {
         internal bool Started = true;
@@ -72,33 +72,16 @@ namespace ArtOfSimRally.Mod
     internal static class Main
     {
         internal static bool Enabled = true;
-        internal static Settings Settings = new Settings();
     }
-    internal sealed class Settings { internal bool WheelInputEnabled = true; }
     internal static class GameButtonInput
     {
         internal static bool Primary(Rewired.Player player) => ReferenceEquals(player, PadManager.GetPlayer());
-        // Mapping behavior is Niru's action-router fixture's responsibility.
-        // This stub supplies only the routes needed to test glyph precedence.
-        internal static bool NativeAction(int id, bool negative, out string sharedId, out WheelInput.Channel? artChannel)
+        // The production table is tested in tests/SharedInput (buttons). This stub supplies only the routes needed to
+        // test glyph precedence, as indices into the stub ShimFrame.Names above.
+        internal static bool NativeAction(int id, bool negative, out int action)
         {
-            artChannel = id == 2 ? (WheelInput.Channel?)WheelInput.Channel.Throttle : null;
-            sharedId = id == 0 ? "steer" : id == 2 ? "throttle" : id == 5 ? "clutch" : id == 61 ? "camera" : null;
-            return sharedId != null;
+            action = id == 0 ? 0 : id == 2 ? 1 : id == 5 ? 2 : id == 61 ? 3 : -1;
+            return action >= 0;
         }
-    }
-    internal static partial class WheelInput
-    {
-        public enum Channel { Steer, Throttle, Brake, Clutch, Handbrake }
-        internal static bool Enabled = true;
-        private static readonly string[] AxisNames = { "X", "Y", "Z", "Rx", "Ry", "Rz", "Slider 1", "Slider 2" };
-        private static readonly Dictionary<Channel, Binding> _bindings = new Dictionary<Channel, Binding>();
-        private sealed class Device { internal bool Ok = true; internal Guid? InstanceGuid; }
-        private static Device fixtureDevice;
-        internal static string Duplicate;
-        internal static string SharedDuplicate(Channel channel) => Duplicate;
-        private static Device Resolve(Binding binding) => fixtureDevice;
-        internal static void Fixture(Channel channel, Binding binding)
-        { _bindings[channel] = binding; fixtureDevice = new Device { InstanceGuid = binding.InstanceGuid }; Duplicate = null; }
     }
 }

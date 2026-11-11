@@ -36,9 +36,6 @@ namespace ArtOfSimRally.Mod
         private static float _saveDueAt;
         private static readonly DeferredSave Save = new DeferredSave();
         private static bool _waitForRelease;
-        private static bool _resetButtonPressed;
-        internal static void ReadResetButton() => _resetButtonPressed = WheelInput.ShortcutPressed(WheelInput.Channel.CameraReset);
-        internal static bool TakeResetButton() { bool pressed = _resetButtonPressed; _resetButtonPressed = false; return pressed; }
         // Keep the final perspective lens away from its degenerate endpoints.
         // This never clips or rewrites the player's stored value/offset.
         internal static float LensFov(float degrees) => float.IsNaN(degrees) || float.IsInfinity(degrees)
@@ -92,7 +89,6 @@ namespace ArtOfSimRally.Mod
         /// </summary>
         public static void Update(BonnetCamera.View view)
         {
-            bool resetButton = TakeResetButton();
             var cfg = Main.Settings;
             if (!Main.Enabled || cfg == null || !cfg.CameraTuningKeys || view == BonnetCamera.View.None)
             {
@@ -129,7 +125,7 @@ namespace ArtOfSimRally.Mod
             }
             if (fovChanged) { changed = true; Triple.TripleScreen.ReannounceCamera(); }
 
-            if (CameraKeys.Pressed(10) || resetButton)
+            if (CameraKeys.Pressed(10))
             {
                 // A fresh instance carries the field initialisers, which are the
                 // single source of truth for defaults now that there is no config

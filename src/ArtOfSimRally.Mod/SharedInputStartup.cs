@@ -5,16 +5,16 @@ using UnityEngine;
 
 namespace ArtOfSimRally.Mod
 {
-    // Ordinary shared input: Wheelkit's store profile when the store exists, else the opt-in
-    // Settings.SharedInput with dbce-controls.ini (both read at startup). It qualifies once, idle in
-    // the menus; any refusal before the first accepted frame releases what it took and leaves Art's
-    // bindings in charge with a stated reason. After the first accepted frame a fault keeps the wheel
-    // neutral until restart (the shared consumer's existing rule).
+    // The mod's one input route: the shared profile, read at startup from Wheelkit's store when the store
+    // exists, else from dbce-controls.ini beside the mod. With neither, the mod reads no controls and the
+    // game's own bindings apply. The session qualifies once, idle in the menus; any refusal before the
+    // first accepted frame releases what it took and hands the wheel back to the game's own input with a
+    // stated reason. After the first accepted frame a fault keeps the wheel neutral until restart.
     internal static partial class SharedInputStartup
     {
         internal const string ProfileFileName = "dbce-controls.ini", ShimFileName = "dbce_shim.dll";
-        // Canonical toolkit shim c6594fa (built from 421bd4b): copied provider, fenced latched bridge,
-        // pure profile inspection. The package ships lib/toolkit/shim/dbce_shim.dll.
+        // Canonical toolkit shim c6594fa (built from 421bd4b): copied provider and pure profile inspection.
+        // The package ships lib/toolkit/shim/dbce_shim.dll.
         internal const string ExpectedShimSha256 = "7E4A1251AC733E34A393E28EA3453F3ED409C8356158FF82ADD4242348A0A9A1";
         // A failed joystick restore is retried in the menus about once a second, then left for a restart.
         internal const int RestoreRetries = 10, RestoreRetryFrames = 60;
@@ -34,17 +34,12 @@ namespace ArtOfSimRally.Mod
         private static int restoreAttempts, nextRestoreFrame;
         private static SharedInputStatus.Phase phase = SharedInputStatus.Phase.Off;
         internal static bool Active => phase == SharedInputStatus.Phase.Waiting || phase == SharedInputStatus.Phase.Isolating || phase == SharedInputStatus.Phase.Attached;
-        // The session has pinned Art's readers; force recovery waits these few frames instead of closing them.
         /// <summary>The attached Wheelkit profile's name, or null before one is attached.</summary>
         internal static string ProfileName => profileName;
+        // The session has pinned Art's readers; force recovery waits these few frames instead of closing them.
         internal static bool Qualifying => phase == SharedInputStatus.Phase.Isolating;
-        // Art's own shifter reader stays closed while shared input is pending or attached, and while a
-        // failed joystick restore is unresolved.
-        internal static bool HoldsShifter => Active || phase == SharedInputStatus.Phase.CleanupFailed;
-        // The setting as read at startup; a later change applies after a restart.
+        // A profile (store or file) was there at startup; a later change applies after a restart.
         internal static bool RequestedAtStartup { get; private set; }
-        // A shared profile was beside the mod at startup. Without one, F6 hides the shared-profile option (STD-040).
-        internal static bool ProfilePresent { get; private set; }
         // Wheelkit's profile store (%LOCALAPPDATA%\Wheelkit\store\profiles.json); tests point this elsewhere.
         internal static string StorePath = Dbce.Wheel.Mod.DbceStore.ProfilesPath();
         // The store decided art's profile at startup (Wheelkit is its editor), and that profile's name.
@@ -54,12 +49,12 @@ namespace ArtOfSimRally.Mod
         private static void Enter(SharedInputStatus.Phase next)
         {
             phase = next;
-            WheelInput.SharedReadersRequired = Active;
-            WheelInput.SharedReadersPinned = next == SharedInputStatus.Phase.Isolating;
+            WheelReaders.Required = Active;
+            WheelReaders.Pinned = next == SharedInputStatus.Phase.Isolating;
         }
 
-        // At mod load, before FFB selection or Art's own shifter could open. Files and pure profile
-        // inspection only; no host, provider, reader or force acquisition here.
+        // At mod load, before FFB selection. Files and pure profile inspection only; no host, provider,
+        // reader or force acquisition here.
         internal static void Prepare(string modDirectory)
         {
             string profilePath = Path.Combine(modDirectory, ProfileFileName);
@@ -71,8 +66,7 @@ namespace ArtOfSimRally.Mod
             StoreProfileName = store?.Name;
             ConfigureBindingHost(profilePath, null);
             session = null; reason = waitingFor = null; startedLogged = stopLogged = false; restoreAttempts = 0;
-            RequestedAtStartup = FromStore || Main.Settings != null && Main.Settings.SharedInput;
-            ProfilePresent = FromStore || File.Exists(profilePath);
+            RequestedAtStartup = FromStore || File.Exists(profilePath);
             FfbSelection.PrepareShared(RequestedAtStartup);
             if (!RequestedAtStartup) { Enter(SharedInputStatus.Phase.Off); return; }
             try
@@ -86,8 +80,6 @@ namespace ArtOfSimRally.Mod
                     if (store.Profile == null) { Refuse("the Wheelkit profile '" + store.Name + "' cannot be used: " + store.Why + "."); return; }
                     if (store.Gearbox != null && Main.Settings != null) Main.Settings.TransmissionMode = store.Gearbox;
                 }
-                // Without Wheelkit's store, players use this file or Art's own F6 bindings.
-                else if (!File.Exists(profilePath)) { Refuse("no shared profile beside the mod. Turn off Use shared profile, restart, and bind your controls in F6 Controls."); return; }
                 if (!File.Exists(shimPath)) { Refuse(ShimFileName + " is missing beside the mod."); return; }
                 if (!String.Equals(NativeDiagnostics.FileHash(shimPath), ExpectedShimSha256, StringComparison.OrdinalIgnoreCase)) { Refuse(ShimFileName + " is not the qualified build."); return; }
                 if (store != null) profile = store.Profile;
@@ -99,7 +91,7 @@ namespace ArtOfSimRally.Mod
                 }
                 ConfigureBindingHost(profilePath, profile);
                 // This byte array also goes to Begin later. Never reread the file after FFB selection,
-                // copy it into legacy SteerBinding, or schedule recovery after the readers attach.
+                // or schedule recovery after the readers attach.
                 string configuredTarget;
                 try
                 {
@@ -113,7 +105,7 @@ namespace ArtOfSimRally.Mod
                 ModLog.Info("Shared input: configured steering target " + configuredTarget.Replace('\r', ' ').Replace('\n', ' ') +
                     "; frozenProfileSha256=" + ShimProfileNative.ProfileHash(profile) + "; connection and force not verified.");
                 Enter(SharedInputStatus.Phase.Waiting);
-                ModLog.Info("Shared input: profile found; qualifying in the menus. Art's own shifter reader stays closed.");
+                ModLog.Info("Shared input: profile found; qualifying in the menus.");
             }
             catch (Exception ex) { Refuse("the shared profile could not be read: " + ex.Message); }
         }
@@ -121,7 +113,7 @@ namespace ArtOfSimRally.Mod
         // F6's shared binding editor edits dbce-controls.ini; a store profile is edited in Wheelkit only.
         private static void ConfigureBindingHost(string profilePath, byte[] active) =>
             SharedBindingCaptureHost.Configure(profilePath, active,
-                () => Time.realtimeSinceStartup, () => !FromStore && Main.Enabled && Main.SettingsVisible && !SettingsPanel.LegacyEditing && Main.HasFocus() &&
+                () => Time.realtimeSinceStartup, () => !FromStore && Main.Enabled && Main.SettingsVisible && !SettingsPanel.KeyOrConnectionEditing && Main.HasFocus() &&
                     !GameState.IsDriving && ShimInput.Consumer.Started);
 
         private static bool startedLogged, stopLogged;
@@ -155,8 +147,7 @@ namespace ArtOfSimRally.Mod
                 string neutral = session.NeutralFailure();
                 if (neutral != null) { Refuse("the isolated wheel did not read neutral (" + neutral + ")."); return; }
                 var attached = session;
-                WheelInput.AttachSharedInput(session.Source, session.Bridge, session.VerifyIsolation, () => attached.RestoreIsolation(), transmission,
-                    System.Text.Encoding.UTF8.GetString(profile));
+                WheelReaders.AttachShared(session.Source, session.Bridge, session.VerifyIsolation, () => attached.RestoreIsolation(), transmission);
                 Enter(SharedInputStatus.Phase.Attached);
                 ModLog.Info("Shared input: attached profile '" + profileName + "' (" + transmission + "); isolated " + String.Join(", ", devices) + ".");
             }
@@ -164,8 +155,8 @@ namespace ArtOfSimRally.Mod
         }
 
         // The first cause the shared session stopped for (the bridge keeps it), else the consumer's.
-        private static string StopReason => WheelInput.SharedStopReason ?? ShimInput.Consumer.Status;
-        private static bool Stopped => phase == SharedInputStatus.Phase.Attached && (ShimInput.Consumer.Terminal || WheelInput.SharedStopReason != null);
+        private static string StopReason => WheelReaders.SharedStopReason ?? ShimInput.Consumer.Status;
+        private static bool Stopped => phase == SharedInputStatus.Phase.Attached && (ShimInput.Consumer.Terminal || WheelReaders.SharedStopReason != null);
 
         private static void Report()
         {
@@ -180,13 +171,13 @@ namespace ArtOfSimRally.Mod
             if (!stopLogged && Stopped)
             {
                 stopLogged = true;
-                ModLog.Warning("Shared input stopped: " + StopReason + (WheelInput.SharedKeyboardRetained ? SharedInputStatus.StoppedKeyboardEffect : SharedInputStatus.StoppedEffect));
+                ModLog.Warning("Shared input stopped: " + StopReason + (WheelReaders.SharedKeyboardRetained ? SharedInputStatus.StoppedKeyboardEffect : SharedInputStatus.StoppedEffect));
             }
         }
 
         internal static void Shutdown()
         {
-            if (phase == SharedInputStatus.Phase.Attached) { WheelInput.StopSharedProbe(); session?.EndObservation(); }
+            if (phase == SharedInputStatus.Phase.Attached) { WheelReaders.StopShared(); session?.EndObservation(); }
             else if (phase == SharedInputStatus.Phase.CleanupFailed) session?.RetryRestore();
             else if (session != null) session.Close();
         }
@@ -197,7 +188,7 @@ namespace ArtOfSimRally.Mod
             {
                 Phase = phase, Reason = reason, WaitingFor = waitingFor, ProfileName = profileName, Transmission = transmission, Devices = devices,
                 ArtTransmissionMode = Main.Settings?.TransmissionMode, CarAutomatic = carAutomatic,
-                Stopped = Stopped, StopReason = StopReason, KeyboardRetained = WheelInput.SharedKeyboardRetained,
+                Stopped = Stopped, StopReason = StopReason, KeyboardRetained = WheelReaders.SharedKeyboardRetained,
                 RestoreStatus = session?.IsolationStatus, Retrying = restoreAttempts < RestoreRetries,
             }, details);
         }
@@ -209,24 +200,21 @@ namespace ArtOfSimRally.Mod
             if (session != null && session.RestorePending)
             {
                 // The game's own input for an isolated device is still off: keep the session and retry,
-                // never claim Art's bindings are back.
+                // never claim the game's controls are back.
                 restoreAttempts = 0; nextRestoreFrame = Time.frameCount + RestoreRetryFrames;
                 Enter(SharedInputStatus.Phase.CleanupFailed);
-                ModLog.Error("Shared input not used: " + reason + " Retrying the joystick restore in the menus; Art's shifter stays closed until it succeeds.");
+                ModLog.Error("Shared input not used: " + reason + " Retrying the joystick restore in the menus.");
                 return;
             }
             session = null;
             Release();
         }
 
-        // Only after a complete cleanup: Art's bindings and its own shifter reader take over again.
+        // Only after a complete cleanup: the game's own controls take over again.
         private static void Release()
         {
-            bool held = HoldsShifter;
             Enter(SharedInputStatus.Phase.Refused);
-            ModLog.Warning("Shared input not used: " + reason + " Art bindings remain.");
-            var cfg = Main.Settings;
-            if (held && Main.Enabled && cfg != null && cfg.ShifterEnabled && cfg.ShifterDeviceIndex >= 0 && !Shifter.IsOpen) Shifter.Open(cfg.ShifterDeviceIndex);
+            ModLog.Warning("Shared input not used: " + reason + " The game's own controls apply.");
         }
 
         private static void RetryCleanup()

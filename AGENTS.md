@@ -5,7 +5,7 @@ Portfolio rules: `E:\Source\dbce-project-mgmt\HOW-WE-WORK.md` (read first; it re
 ## Game and mod
 - art of rally, Steam app 550320, `D:\Program Files (x86)\Steam\steamapps\common\artofrally`. Unity 2019.4 Mono (not IL2CPP), Rewired input, 64-bit.
 - Loader: Unity Mod Manager (UMM); the release ZIP bundles it. Single mod assembly `src/ArtOfSimRally.Mod`, .NET Framework 4.8.
-- Wheel and pedals (direct input for devices Rewired cannot read), force feedback from the tyre model, Forza-format UDP telemetry, bonnet camera, F6 settings panel, triple screens. Public repo.
+- Wheel and pedals through the shared profile (dbce_shim; the only wheel input route since 0.4.6), force feedback from the tyre model, Forza-format UDP telemetry, bonnet camera, F6 settings panel, triple screens. Public repo.
 
 ## Build
 - **One command:** `pwsh build.ps1` at the repo root builds and runs every offline test, with no arguments. Run it before pushing.
