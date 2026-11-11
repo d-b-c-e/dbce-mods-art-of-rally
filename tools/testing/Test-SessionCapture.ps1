@@ -19,11 +19,11 @@ if (Test-Path -LiteralPath $tape) { throw 'Integration capture already exists.' 
 $backup = Join-Path $root ('results/session-integration-' + [Guid]::NewGuid().ToString('N'))
 Save-SessionEnvironment $backup
 try {
-    $prefs = Join-Path $source 'playerprefs-at-start.reg'
-    $sections = @(Get-Content -LiteralPath $prefs | Where-Object { $_ -match '^\[' })
-    if ($sections.Count -ne 1 -or $sections[0] -cne '[HKEY_CURRENT_USER\Software\Funselektor Labs\art of rally]') { throw 'Unexpected preference key.' }
-    & reg import $prefs | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw 'Could not set seed preferences.' }
+    $seedEnvironment = Join-Path $source 'environment-at-start'
+    $seedState = Get-Content -LiteralPath (Join-Path $seedEnvironment 'state.json') -Raw | ConvertFrom-Json
+    $seedPrefs = Get-SessionPrefs $seedEnvironment $seedState
+    Restore-RegistryState -Path $seedPrefs.path | Write-Host
+    if (-not (Compare-RegistryState -Path $seedPrefs.path)) { throw 'Could not set seed preferences.' }
     if (Test-Path -LiteralPath (Join-Path $source 'customrally-at-start')) { Copy-Item -LiteralPath (Join-Path $source 'customrally-at-start') -Destination $customRally -Force }
     elseif (Test-Path -LiteralPath (Join-Path $source 'customrally-absent-at-start')) { Remove-Item -LiteralPath $customRally -ErrorAction SilentlyContinue }
     Restore-SessionPresentation $backup

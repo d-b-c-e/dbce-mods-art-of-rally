@@ -110,11 +110,10 @@ switch ($PSCmdlet.ParameterSetName) {
         Assert-GameClosed
         Assert-TestSlot
         New-Item -ItemType Directory -Force -Path $tape | Out-Null
-        # Where this tape begins: the environment, a reference copy of the game's local preferences (stage/car choices
-        # may live here) and the custom rally state.
+        # Where this tape begins: the environment (including the game's local preferences, where stage/car choices may
+        # live) and the custom rally state.
         function Save-TapeStart {
             Save-SessionEnvironment (Join-Path $tape 'environment-at-start')
-            & reg export 'HKCU\Software\Funselektor Labs\art of rally' (Join-Path $tape 'playerprefs-at-start.reg') /y | Out-Null
             if (Test-Path -LiteralPath $customRally) { Copy-Item -LiteralPath $customRally (Join-Path $tape 'customrally-at-start') }
             else { New-Item -ItemType File (Join-Path $tape 'customrally-absent-at-start') | Out-Null }
         }

@@ -27,7 +27,7 @@ param(
     # Self-test plumbing only.
     [string]$ThrowawayRoot,
     [string]$GameArgs,
-    [ValidateSet('', 'regdelete', 'isolate', 'launch', 'cleanup')][string]$FailAt = ''
+    [ValidateSet('', 'regclear', 'isolate', 'launch', 'cleanup')][string]$FailAt = ''
 )
 $ErrorActionPreference = 'Stop'
 
@@ -79,9 +79,9 @@ function Invoke-Launch {
     $launched = $null
     try {
         $isolated = $true
-        if ($FailAt -ne 'regdelete') { & reg.exe delete $state.Key /f *> $null }
-        & reg.exe query $state.Key *> $null
-        if ($LASTEXITCODE -eq 0) { throw "The registry key is still present after delete: $($state.Key)" }
+        # The owner's values are already saved (key.json); the first run starts from an empty key, which is kept.
+        if ($FailAt -ne 'regclear') { Clear-KeyContents $state }
+        if ((Get-KeyContentCount $state) -ne 0) { throw "The registry key still has contents after clearing: $($state.Key)" }
         if ($FailAt -eq 'isolate') { throw 'injected failure during isolation' }
         foreach ($folder in $state.Folders.Values) {
             Assert-SafeTarget $state $folder
@@ -195,7 +195,8 @@ function Invoke-LaunchSelfTest {
     function Scenario([string]$name, [int]$expectExit, [hashtable]$extra, [scriptblock]$during, [scriptblock]$check) {
         $root = Join-Path $base $name
         $state = New-ThrowawayState $root
-        & reg.exe add $state.Key /v seeded /t REG_SZ /d $name /f *> $null
+        New-Item -Path (Get-PsKey $state) -Force | Out-Null
+        New-ItemProperty -LiteralPath (Get-PsKey $state) -Name seeded -PropertyType String -Value $name | Out-Null
         New-Item -ItemType Directory -Force $state.Folders.a | Out-Null
         Set-Content (Join-Path $state.Folders.a 'save.txt') $name
         $stateDir = Join-Path $root 'saved'
@@ -208,7 +209,7 @@ function Invoke-LaunchSelfTest {
         $ok = $code -eq $expectExit -and $equal -and (& $check $r)
         Write-Host ("{0} {1} (exit {2}, state equal {3})" -f ($(if ($ok) { 'PASS' } else { 'FAIL' })), $name, $code, $equal)
         if (-not $ok) { $failed.Add($name) }
-        & reg.exe delete $state.Key /f *> $null
+        Remove-Item -LiteralPath (Get-PsKey $state) -Recurse -ErrorAction SilentlyContinue
     }
     try {
         Scenario 'clean-exit' 0 @{ args = @('-GameArgs', '-n 3 127.0.0.1') } $null { param($r) $r.seenCopy -and $r.exited }
@@ -227,7 +228,7 @@ function Invoke-LaunchSelfTest {
         } { param($r) $r.conflicts.Count -ge 1 -and $r.ownerStateRestored -and -not $r.restorePending }
         # 192.0.2.1 (TEST-NET) never answers, so ping runs ~2 s and exits 1: a crash after the copy was seen.
         Scenario 'nonzero-exit' 1 @{ args = @('-GameArgs', '-n 3 -w 700 192.0.2.1') } $null { param($r) $r.seenCopy -and -not $r.exited -and $r.exitCode -ne 0 -and $r.ownerStateRestored }
-        Scenario 'key-not-deleted' 1 @{ args = @('-FailAt', 'regdelete', '-GameArgs', '-n 2 127.0.0.1') } $null { param($r) -not $r.seenCopy -and $r.ownerStateRestored -and ($r.log -match 'still present') }
+        Scenario 'key-not-cleared' 1 @{ args = @('-FailAt', 'regclear', '-GameArgs', '-n 2 127.0.0.1') } $null { param($r) -not $r.seenCopy -and $r.ownerStateRestored -and ($r.log -match 'still has contents') }
         # Cleanup throws while the timed-out copy still runs: the restore waits for it to close, then restores.
         Scenario 'cleanup-throws' 1 @{ args = @('-FailAt', 'cleanup', '-MaxSeconds', '3', '-ConflictWaitSeconds', '60', '-GameArgs', '-n 10 127.0.0.1') } $null {
             param($r) $r.timedOut -and $r.ownerStateRestored -and -not $r.restorePending -and ($r.log -match 'could not stop') }
@@ -236,19 +237,20 @@ function Invoke-LaunchSelfTest {
         function Refusal([string]$name, [string]$copyPath, [string]$stateDir) {
             $root = Join-Path $base $name
             $state = New-ThrowawayState $root
-            & reg.exe add $state.Key /v seeded /t REG_SZ /d $name /f *> $null
+            $psKey = Get-PsKey $state
+            New-Item -Path $psKey -Force | Out-Null
+            New-ItemProperty -LiteralPath $psKey -Name seeded -PropertyType String -Value $name | Out-Null
             New-Item -ItemType Directory -Force $state.Folders.a | Out-Null
             Set-Content (Join-Path $state.Folders.a 'save.txt') $name
             if (-not $stateDir) { $stateDir = Join-Path $root 'saved' }
             & pwsh -NoProfile -File $PSCommandPath -Copy $copyPath -StateDir $stateDir -ThrowawayRoot $root -GameArgs '-n 2 127.0.0.1' *> $null
             $code = $LASTEXITCODE
-            & reg.exe query $state.Key /v seeded *> $null
-            $untouched = $LASTEXITCODE -eq 0 -and (Get-Content (Join-Path $state.Folders.a 'save.txt')) -eq $name -and
+            $untouched = (Get-ItemProperty -LiteralPath $psKey -ErrorAction SilentlyContinue).seeded -eq $name -and (Get-Content (Join-Path $state.Folders.a 'save.txt')) -eq $name -and
                 -not (Test-Path -LiteralPath (Join-Path $stateDir 'manifest.json'))
             $ok = $code -ne 0 -and $untouched
             Write-Host ("{0} {1} (exit {2}, untouched {3})" -f ($(if ($ok) { 'PASS' } else { 'FAIL' })), $name, $code, $untouched)
             if (-not $ok) { $failed.Add($name) }
-            & reg.exe delete $state.Key /f *> $null
+            Remove-Item -LiteralPath $psKey -Recurse -ErrorAction SilentlyContinue
         }
         $alias = Join-Path $base 'copy-alias'
         New-Item -ItemType Junction -Path $alias -Target $copy | Out-Null

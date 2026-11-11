@@ -4,9 +4,13 @@
 # 550320 is snapshotted for comparison only and never restored.
 #   -Save <dir>     export to a new directory and verify the backup bytes against the live state
 #   -Compare <dir>  exit 0 only when the live state equals the saved one byte for byte
-#   -Restore <dir>  verify the backup, put it back (key replaced, folders mirrored), then compare
+#   -Restore <dir>  verify the backup, put it back (registry values put back, folders mirrored), then compare
 #   -SelfTest       prove every path, including refusals, on throwaway state under a new -Root; no game state
+# The registry key is saved as key.json and restored value by value (toolkit RegistryState.ps1), never through the reg.exe
+# export-and-import route, which loses long binary values and malformed DWORDs. The key itself is never deleted.
+# Save folders holding key.reg (the old format) are refused.
 # Dot-source it (. .\ArtUserState.ps1) to reuse the functions without running an action.
+#requires -Version 7
 param(
     [string]$Save,
     [string]$Compare,
@@ -15,6 +19,12 @@ param(
     [string]$Root = (Join-Path $env:TEMP ('art-user-state-selftest-' + [guid]::NewGuid().ToString('n')))
 )
 $ErrorActionPreference = 'Stop'
+
+$registryState = Join-Path $PSScriptRoot '..\..\..\_toolkits\dbce-wheel-mod-toolkit\tools\powershell\RegistryState.ps1'
+if (-not (Test-Path -LiteralPath $registryState)) {
+    throw "Toolkit file not found: $registryState. Clone dbce-wheel-mod-toolkit to E:\Source\game-modding\_toolkits\dbce-wheel-mod-toolkit."
+}
+. $registryState
 
 function Get-OwnerState {
     $steamUserdata = 'D:\Program Files (x86)\Steam\userdata'
@@ -31,11 +41,24 @@ function Get-OwnerState {
     }
 }
 
-function Export-Key([string]$key, [string]$file) {
-    & reg.exe query $key *> $null
-    if ($LASTEXITCODE -ne 0) { Set-Content -LiteralPath $file -Value 'ABSENT' -NoNewline; return }
-    & reg.exe export $key $file /y *> $null
-    if ($LASTEXITCODE -ne 0) { throw "reg export failed for $key" }
+function Get-PsKey($state) { $state.Key -replace '^HKCU\\', 'HKCU:\' }
+
+# Values plus subkeys in the live key (0 when empty or absent).
+function Get-KeyContentCount($state) {
+    $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey(($state.Key -replace '^HKCU\\', ''))
+    if (-not $key) { return 0 }
+    try { $key.ValueCount + $key.SubKeyCount } finally { $key.Dispose() }
+}
+
+# The first-run state: every value and subkey removed, the key itself kept (never deleted). Call only after Save-State.
+function Clear-KeyContents($state) {
+    $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey(($state.Key -replace '^HKCU\\', ''), $true)
+    if (-not $key) { return }
+    try {
+        foreach ($n in $key.GetValueNames()) { $key.DeleteValue($n) }
+        foreach ($n in $key.GetSubKeyNames()) { $key.DeleteSubKeyTree($n) }
+    }
+    finally { $key.Dispose() }
 }
 
 function Tree-Hashes([string]$folder) {
@@ -90,8 +113,8 @@ function Assert-NoReparse([string]$path) {
 function Save-State($state, [string]$dir) {
     if (Test-Path -LiteralPath $dir) { throw "$dir already exists; never overwrite a saved state." }
     New-Item -ItemType Directory -Path $dir | Out-Null
-    Export-Key $state.Key (Join-Path $dir 'key.reg')
-    $manifest = [ordered]@{ key = $state.Key; keySha256 = (Get-FileHash -LiteralPath (Join-Path $dir 'key.reg') -Algorithm SHA256).Hash
+    Save-RegistryState -Key $state.Key -Path (Join-Path $dir 'key.json') | Write-Host
+    $manifest = [ordered]@{ key = $state.Key; keySha256 = (Get-FileHash -LiteralPath (Join-Path $dir 'key.json') -Algorithm SHA256).Hash
         folders = [ordered]@{}; compareOnly = [ordered]@{} }
     foreach ($name in $state.Folders.Keys) {
         $folder = $state.Folders[$name]
@@ -112,22 +135,22 @@ function Save-State($state, [string]$dir) {
     Write-Host "saved $dir"
 }
 
-# The saved bytes themselves: every folder copy must equal its manifest and the registry export must be readable.
+# The saved bytes themselves: every folder copy must equal its manifest and the registry snapshot must be readable.
 function Test-Backup($state, [string]$dir) {
     $diffs = [System.Collections.Generic.List[string]]::new()
     $manifestFile = Join-Path $dir 'manifest.json'
-    $keyFile = Join-Path $dir 'key.reg'
+    $keyFile = Join-Path $dir 'key.json'
+    if (Test-Path -LiteralPath (Join-Path $dir 'key.reg')) { $diffs.Add('old backup format (key.reg); it is refused, never imported. Save a new one.'); return $diffs }
     if (-not (Test-Path -LiteralPath $manifestFile) -or -not (Test-Path -LiteralPath $keyFile)) { $diffs.Add('backup incomplete'); return $diffs }
     $manifest = Get-Content -LiteralPath $manifestFile -Raw | ConvertFrom-Json
     if ($manifest.key -ne $state.Key) { $diffs.Add("backup is for $($manifest.key)") }
-    if ((Get-FileHash -LiteralPath $keyFile -Algorithm SHA256).Hash -ne $manifest.keySha256) { $diffs.Add('registry export changed since save') }
-    $keyText = [IO.File]::ReadAllText($keyFile)
-    if ($keyText -ne 'ABSENT') {
-        # The export's first section must be this key (reg export writes HKEY_CURRENT_USER for HKCU).
-        $header = '[' + ($state.Key -replace '^HKCU', 'HKEY_CURRENT_USER') + ']'
-        $first = $keyText -split "`r?`n" | Where-Object { $_.StartsWith('[') } | Select-Object -First 1
-        if (-not $keyText.StartsWith('Windows Registry Editor') -or $first -ne $header) { $diffs.Add('registry export is not for this key') }
+    if ((Get-FileHash -LiteralPath $keyFile -Algorithm SHA256).Hash -ne $manifest.keySha256) { $diffs.Add('registry snapshot changed since save') }
+    try {
+        $snap = Get-Content -LiteralPath $keyFile -Raw | ConvertFrom-Json
+        if ($snap.schema -ne 'dbce.registry-state@1') { $diffs.Add('registry snapshot is not a registry-state file') }
+        elseif ($snap.key -ne $state.Key) { $diffs.Add('registry snapshot is not for this key') }
     }
+    catch { $diffs.Add('registry snapshot is unreadable') }
     $names = @($manifest.folders.PSObject.Properties | ForEach-Object Name)
     foreach ($name in $state.Folders.Keys) { if ($names -notcontains $name) { $diffs.Add("backup lacks folder $name") } }
     $compareNames = @($manifest.compareOnly.PSObject.Properties | ForEach-Object Name)
@@ -146,12 +169,7 @@ function Test-Backup($state, [string]$dir) {
 function Compare-State($state, [string]$dir) {
     $manifest = Get-Content -LiteralPath (Join-Path $dir 'manifest.json') -Raw | ConvertFrom-Json
     $diffs = [System.Collections.Generic.List[string]]::new()
-    $now = Join-Path $env:TEMP ('art-key-' + [guid]::NewGuid().ToString('n') + '.reg')
-    try {
-        Export-Key $state.Key $now
-        if ([IO.File]::ReadAllText($now) -cne [IO.File]::ReadAllText((Join-Path $dir 'key.reg'))) { $diffs.Add("registry $($state.Key)") }
-    }
-    finally { Remove-Item -LiteralPath $now -ErrorAction SilentlyContinue }
+    foreach ($d in @(Compare-RegistryState -Path (Join-Path $dir 'key.json') -List)) { $diffs.Add("registry $d") }
     foreach ($group in @('folders', 'compareOnly')) {
         foreach ($entry in $manifest.$group.PSObject.Properties) {
             foreach ($d in (Compare-Hashes (As-Map $entry.Value.hashes) (Tree-Hashes $entry.Value.path) $entry.Name)) { $diffs.Add($d) }
@@ -165,13 +183,7 @@ function Restore-State($state, [string]$dir) {
     if ($bad.Count) { throw "Refusing restore, the backup is not intact: $($bad -join '; ')" }
     $manifest = Get-Content -LiteralPath (Join-Path $dir 'manifest.json') -Raw | ConvertFrom-Json
     foreach ($entry in $manifest.folders.PSObject.Properties) { Assert-SafeTarget $state $entry.Value.path }
-    $saved = Join-Path $dir 'key.reg'
-    & reg.exe query $state.Key *> $null
-    if ($LASTEXITCODE -eq 0) { & reg.exe delete $state.Key /f *> $null; if ($LASTEXITCODE -ne 0) { throw 'reg delete failed' } }
-    if ([IO.File]::ReadAllText($saved) -ne 'ABSENT') {
-        & reg.exe import $saved *> $null
-        if ($LASTEXITCODE -ne 0) { throw "reg import failed; the saved export is still at $saved" }
-    }
+    Restore-RegistryState -Path (Join-Path $dir 'key.json') | Write-Host
     foreach ($entry in $manifest.folders.PSObject.Properties) {
         $folder = $entry.Value.path
         if ($entry.Value.present) {
@@ -187,7 +199,7 @@ function Restore-State($state, [string]$dir) {
 function New-ThrowawayState([string]$root) {
     $live = Join-Path $root 'live'
     [ordered]@{
-        Key = 'HKCU\Software\DBCE-ArtUserStateSelfTest-' + (Split-Path -Leaf $root)
+        Key = 'HKCU\Software\DBCE-ArtUserStateSelfTest-' + [Convert]::ToHexString([Security.Cryptography.SHA1]::HashData([Text.Encoding]::UTF8.GetBytes($root))).Substring(0, 16)   # same root, same key
         Folders = [ordered]@{ a = (Join-Path $live 'a'); b = (Join-Path $live 'b') }
         CompareOnly = [ordered]@{}
     }
@@ -202,8 +214,10 @@ function Invoke-SelfTest([string]$root) {
     function Expect([bool]$ok, [string]$name) { if ($ok) { Write-Host "PASS $name" } else { Write-Host "FAIL $name"; $failed.Add($name) } }
     function Throws([scriptblock]$block) { try { & $block; $false } catch { $true } }
     try {
-        & reg.exe add $state.Key /v keep /t REG_SZ /d one /f *> $null
-        & reg.exe add $state.Key /v change /t REG_DWORD /d 1 /f *> $null
+        $psKey = $state.Key -replace '^HKCU\\', 'HKCU:\'   # throwaway key only
+        New-Item -Path $psKey -Force | Out-Null
+        New-ItemProperty -LiteralPath $psKey -Name keep -PropertyType String -Value one | Out-Null
+        New-ItemProperty -LiteralPath $psKey -Name change -PropertyType DWord -Value 1 | Out-Null
         New-Item -ItemType Directory -Force (Join-Path $live 'a\sub') | Out-Null
         Set-Content (Join-Path $live 'a\keep.txt') 'keep'; Set-Content (Join-Path $live 'a\change.txt') 'v1'; Set-Content (Join-Path $live 'a\sub\gone.txt') 'x'
         $saved = Join-Path $root 'saved'
@@ -212,9 +226,9 @@ function Invoke-SelfTest([string]$root) {
         Expect ((Test-Backup $state $saved).Count -eq 0) 'backup bytes verified'
         Expect (Throws { Save-State $state $saved }) 'existing backup is never overwritten'
 
-        & reg.exe add $state.Key /v change /t REG_DWORD /d 2 /f *> $null
-        & reg.exe add $state.Key /v added /t REG_SZ /d new /f *> $null
-        & reg.exe delete $state.Key /v keep /f *> $null
+        Set-ItemProperty -LiteralPath $psKey -Name change -Value 2
+        New-ItemProperty -LiteralPath $psKey -Name added -PropertyType String -Value new | Out-Null
+        Remove-ItemProperty -LiteralPath $psKey -Name keep
         Set-Content (Join-Path $live 'a\change.txt') 'v2'; Remove-Item (Join-Path $live 'a\sub\gone.txt'); Set-Content (Join-Path $live 'a\new.txt') 'n'
         New-Item -ItemType Directory -Force (Join-Path $live 'b') | Out-Null; Set-Content (Join-Path $live 'b\appeared.txt') 'n'
         Expect ((Compare-State $state $saved).Count -ge 4) 'mutations detected'
@@ -230,23 +244,37 @@ function Invoke-SelfTest([string]$root) {
         Expect (Test-Path (Join-Path $live 'a\marker.txt')) 'refused restore left live state alone'
         Remove-Item (Join-Path $live 'a\marker.txt')
 
-        # A valid-looking registry export for another key is refused, even with its hash re-pinned.
+        # A registry snapshot for another key is refused, even with its hash re-pinned.
         $otherKey = Join-Path $root 'other-key'
         Copy-Item -LiteralPath $saved -Destination $otherKey -Recurse
-        $keyCopy = Join-Path $otherKey 'key.reg'
-        [IO.File]::WriteAllText($keyCopy, [IO.File]::ReadAllText($keyCopy).Replace('DBCE-ArtUserStateSelfTest', 'DBCE-SomethingElse'), [Text.Encoding]::Unicode)
+        $keyCopy = Join-Path $otherKey 'key.json'
+        [IO.File]::WriteAllText($keyCopy, [IO.File]::ReadAllText($keyCopy).Replace('DBCE-ArtUserStateSelfTest', 'DBCE-SomethingElse'))
         $m = Get-Content (Join-Path $otherKey 'manifest.json') -Raw | ConvertFrom-Json
         $m.keySha256 = (Get-FileHash -LiteralPath $keyCopy -Algorithm SHA256).Hash
         $m | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $otherKey 'manifest.json') -Encoding UTF8
-        Expect ((Test-Backup $state $otherKey).Count -gt 0) 'registry export for another key refused'
-        Expect (Throws { Restore-State $state $otherKey }) 'restore from another key''s export refused'
+        Expect ((Test-Backup $state $otherKey).Count -gt 0) 'registry snapshot for another key refused'
+        Expect (Throws { Restore-State $state $otherKey }) 'restore from another key snapshot refused'
 
-        # A registry export edited after save (valid content, wrong hash) is refused.
+        # A registry snapshot edited after save (wrong hash) is refused.
         $edited = Join-Path $root 'edited-key'
         Copy-Item -LiteralPath $saved -Destination $edited -Recurse
-        $keyCopy = Join-Path $edited 'key.reg'
-        [IO.File]::WriteAllText($keyCopy, [IO.File]::ReadAllText($keyCopy).Replace('"keep"="one"', '"keep"="two"'), [Text.Encoding]::Unicode)
-        Expect ((Test-Backup $state $edited) -contains 'registry export changed since save') 'edited registry export refused'
+        [IO.File]::AppendAllText((Join-Path $edited 'key.json'), ' ')
+        Expect ((Test-Backup $state $edited) -contains 'registry snapshot changed since save') 'edited registry snapshot refused'
+
+        # An old backup folder with key.reg is refused, never imported.
+        $old = Join-Path $root 'old-format'
+        Copy-Item -LiteralPath $saved -Destination $old -Recurse
+        Set-Content (Join-Path $old 'key.reg') 'Windows Registry Editor Version 5.00'
+        Expect (Throws { Restore-State $state $old }) 'old key.reg backup refused'
+
+        # Raw values survive, and clearing for a first run empties the key without deleting it.
+        New-ItemProperty -LiteralPath $psKey -Name raw -PropertyType Binary -Value ([byte[]](1, 0, 0, 0, 2, 0, 0, 0)) | Out-Null
+        $rawSaved = Join-Path $root 'saved-raw'
+        Save-State $state $rawSaved
+        Clear-KeyContents $state
+        Expect ((Test-Path -LiteralPath $psKey) -and (Get-KeyContentCount $state) -eq 0) 'clearing empties the key and keeps it'
+        Restore-State $state $rawSaved
+        Expect (((Get-ItemProperty -LiteralPath $psKey).raw -join ',') -eq '1,0,0,0,2,0,0,0') 'binary value restored byte for byte after clearing'
 
         # A manifest that drops the expected folders is refused.
         $partial = Join-Path $root 'partial'
@@ -276,7 +304,7 @@ function Invoke-SelfTest([string]$root) {
         Expect (Throws { Invoke-SelfTest $root }) 'existing self-test root refused'
     }
     finally {
-        & reg.exe delete $state.Key /f *> $null
+        if ($psKey -and $psKey -like 'HKCU:\Software\DBCE-ArtUserStateSelfTest-*') { Remove-Item -LiteralPath $psKey -Recurse -ErrorAction SilentlyContinue }
         $leftover = Join-Path $live 'b'
         if (Test-Path -LiteralPath $leftover) { (Get-Item -LiteralPath $leftover -Force).Delete() }
         Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue

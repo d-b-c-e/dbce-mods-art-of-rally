@@ -113,11 +113,14 @@ If restoration is pending, close the game and use `Session.ps1 -RestoreEnvironme
 with the explicit `replay-*/owner-environment` backup. Keep that backup until its
 restoration receipt exists. Preference import is restricted to the game key.
 
-New environment snapshots retain every preference's original type and bytes in
-`playerprefs-raw.json`, verify the names/count and hash before restoration, then
-read back every restored value. Windows `reg export` was observed omitting 21
-of 58 values without an error, so the `.reg` reference copy alone is not treated
-as a complete new-format backup. Older captures retain their legacy limitations.
+Environment snapshots save the game's preference key with the toolkit's
+`RegistryState.ps1` (`playerprefs.json`): every value's name, type and exact
+bytes, read back and compared with the live key before the run. Restore writes
+values back one by one, removes only what the run added, never deletes the key,
+and then verifies the key equals the snapshot. `reg.exe` export and import are
+not used for this key (export was observed omitting 21 of 58 values without an
+error). Backups from the older formats (`playerprefs.reg`, `playerprefs-raw.json`)
+are refused, never imported; save a new one.
 
 Playback retains the current rig's resolution, fullscreen mode, monitor, frame
 cap, VSync and triple-screen settings while restoring the recorded stage/car

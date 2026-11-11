@@ -1,14 +1,25 @@
 # Launch-scoped game state. Keep this adapter's paths explicit; never restore arbitrary paths from a tape.
-# reg.exe export was observed silently omitting Unity PlayerPrefs values.
-# Preserve exact registry bytes; the native helper can access only this game's key.
+# The game's PlayerPrefs key is saved and restored value by value as raw bytes (toolkit RegistryState.ps1, which never
+# deletes the key). reg.exe export was observed silently omitting Unity PlayerPrefs values, so reg.exe is not used for
+# this key; environment backups holding playerprefs.reg or playerprefs-raw.json (schema 3 and older) are refused.
+$registryState = Join-Path $PSScriptRoot '..\..\..\_toolkits\dbce-wheel-mod-toolkit\tools\powershell\RegistryState.ps1'
+if (-not (Test-Path -LiteralPath $registryState)) {
+    throw "Toolkit file not found: $registryState. Clone dbce-wheel-mod-toolkit to E:\Source\game-modding\_toolkits\dbce-wheel-mod-toolkit."
+}
+. $registryState
+$script:PrefsKey = 'HKCU\Software\Funselektor Labs\art of rally'   # the offline test points this at a scratch key
+$script:PrefsDisplayPattern = '^(Screenmanager |UnitySelectMonitor_|SETTINGS_(RESOLUTION_|FULLSCREEN_|VSYNC_|FRAMERATE_CAP_))'
+function Get-SessionPrefsPsKey { $script:PrefsKey -replace '^HKCU\\', 'HKCU:\' }
+
+# Single-value access for the display preferences the presentation restore writes; the key comes from $script:PrefsKey.
 function Initialize-SessionRegistry {
-    if ('ArtSessionRegistry' -as [type]) { return }
-    Add-Type -TypeDefinition @'
+    if (-not ('ArtSessionRegistry' -as [type])) {
+        Add-Type -TypeDefinition @'
 using System;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 public static class ArtSessionRegistry {
-    const string Path = @"Software\Funselektor Labs\art of rally";
+    public static string Path = @"Software\Funselektor Labs\art of rally";
     [DllImport("advapi32.dll", CharSet=CharSet.Unicode)] static extern int RegOpenKeyEx(IntPtr key,string path,int options,int access,out IntPtr result);
     [DllImport("advapi32.dll", CharSet=CharSet.Unicode)] static extern int RegQueryValueEx(IntPtr key,string name,IntPtr reserved,out uint type,byte[] data,ref uint size);
     [DllImport("advapi32.dll", CharSet=CharSet.Unicode)] static extern int RegSetValueEx(IntPtr key,string name,int reserved,uint type,byte[] data,int size);
@@ -30,17 +41,29 @@ public static class ArtSessionRegistry {
     }
 }
 '@
+    }
+    [ArtSessionRegistry]::Path = $script:PrefsKey -replace '^HKCU\\', ''
 }
 function Get-SessionRegistryValue([string]$Name) { Initialize-SessionRegistry; [ArtSessionRegistry]::Read($Name) }
 function Set-SessionRegistryValue($Value) { Initialize-SessionRegistry; [ArtSessionRegistry]::Write($Value.name, $Value.type, $Value.data) }
-function Get-SessionRegistryBackup([string]$Directory, $State) {
-    if (-not $State.prefsRawHash) { return @() }
-    $path = Join-Path $Directory 'playerprefs-raw.json'
-    if ((Get-FileHash -LiteralPath $path).Hash -ne $State.prefsRawHash) { throw 'Raw preference backup changed.' }
-    $values = @(Get-Content -LiteralPath $path -Raw | ConvertFrom-Json)
-    if (@(Compare-Object @($State.prefsNames | Sort-Object) @($values.name | Sort-Object)).Count -ne 0) { throw 'Incomplete raw preference backup.' }
-    foreach ($value in $values) { $null = [Convert]::FromBase64String($value.data); if ($value.name.Contains([char]0)) { throw 'Invalid preference name.' } }
-    return $values
+
+# The verified registry snapshot of an environment backup (or a tape's environment-at-start): the right format, the
+# right key, unchanged since it was saved. Returns its path and its values as { name; type; data (base64) } objects.
+function Get-SessionPrefs([string]$Directory, $State) {
+    if ($State.schema -ne 4 -or -not $State.prefsHash) { throw 'Old environment backup format (reg export); it is refused, never imported. Save a new one.' }
+    $path = Join-Path $Directory 'playerprefs.json'
+    if ((Get-FileHash -LiteralPath $path).Hash -ne $State.prefsHash) { throw 'Preference backup changed.' }
+    $doc = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json -AsHashtable -Depth 64
+    if ($doc.schema -ne 'dbce.registry-state@1' -or $doc.key -cne $script:PrefsKey) { throw 'Unexpected preference key.' }
+    $values = @()
+    if ($doc.tree) {
+        foreach ($name in $doc.tree.values.Keys) {
+            $null = [Convert]::FromBase64String($doc.tree.values[$name].data)
+            if ($name.Contains([char]0)) { throw 'Invalid preference name.' }
+            $values += [pscustomobject]@{ name = $name; type = [uint32]$doc.tree.values[$name].type; data = $doc.tree.values[$name].data }
+        }
+    }
+    [pscustomobject]@{ path = $path; values = $values }
 }
 function Get-SessionFiles {
     @{
@@ -51,7 +74,7 @@ function Get-SessionFiles {
 }
 function Save-SessionEnvironment([string]$Directory) {
     New-Item -ItemType Directory -Force -Path $Directory | Out-Null
-    $state = @{ schema = 3 }
+    $state = @{ schema = 4 }
     foreach ($entry in (Get-SessionFiles).GetEnumerator()) {
         $exists = Test-Path -LiteralPath $entry.Value -PathType Leaf
         $hash = $null
@@ -61,52 +84,29 @@ function Save-SessionEnvironment([string]$Directory) {
         }
         $state[$entry.Key] = @{ exists = $exists; sha256 = $hash }
     }
-    & reg export 'HKCU\Software\Funselektor Labs\art of rally' (Join-Path $Directory 'playerprefs.reg') /y | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw 'Could not snapshot game preferences.' }
-    $state['prefsHash'] = (Get-FileHash -LiteralPath (Join-Path $Directory 'playerprefs.reg')).Hash
-    $state['prefsNames'] = @((Get-Item -LiteralPath 'HKCU:\Software\Funselektor Labs\art of rally').GetValueNames())
-    $raw = @($state.prefsNames | ForEach-Object { Get-SessionRegistryValue $_ })
-    $rawPath = Join-Path $Directory 'playerprefs-raw.json'
-    ConvertTo-Json -InputObject $raw -Depth 4 | Set-Content -LiteralPath $rawPath -Encoding UTF8
-    $state['prefsRawHash'] = (Get-FileHash -LiteralPath $rawPath).Hash
+    # Save-RegistryState reads the file back and compares it with the live key before it returns.
+    $prefs = Join-Path $Directory 'playerprefs.json'
+    Save-RegistryState -Key $script:PrefsKey -Path $prefs | Write-Host
+    $state['prefsHash'] = (Get-FileHash -LiteralPath $prefs).Hash
     $state | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $Directory 'state.json') -Encoding UTF8
 }
 function Restore-SessionEnvironment([string]$Directory, [switch]$NoReceipt) {
     Assert-GameClosed
     $state = Get-Content -LiteralPath (Join-Path $Directory 'state.json') -Raw | ConvertFrom-Json
-    $raw = @(Get-SessionRegistryBackup $Directory $state)
-    if ($state.schema -eq 3 -and -not $state.prefsRawHash) { throw 'Missing raw preference backup.' }
     # Validate every backup before touching the live environment.
+    $prefs = Get-SessionPrefs $Directory $state
     foreach ($entry in (Get-SessionFiles).GetEnumerator()) {
         $saved = $state.($entry.Key)
-        # Older sessions predate triple-setting snapshots. Leave that file alone.
-        if ($null -eq $saved -and $entry.Key -eq 'triplesettings' -and $state.schema -notin @(2,3)) { continue }
         if ($null -eq $saved) { throw 'Incomplete environment backup.' }
         if ($saved.exists -and (Get-FileHash -LiteralPath (Join-Path $Directory $entry.Key)).Hash -ne $saved.sha256) { throw "Backup changed: $($entry.Key)" }
     }
-    $prefs = Join-Path $Directory 'playerprefs.reg'
-    if ((Get-FileHash -LiteralPath $prefs).Hash -ne $state.prefsHash) { throw 'Preference backup changed.' }
-    $sections = @(Get-Content -LiteralPath $prefs | Where-Object { $_ -match '^\[' })
-    if ($sections.Count -ne 1 -or $sections[0] -cne '[HKEY_CURRENT_USER\Software\Funselektor Labs\art of rally]') { throw 'Unexpected preference key.' }
     foreach ($entry in (Get-SessionFiles).GetEnumerator()) {
-        if ($null -eq $state.($entry.Key)) { continue }
         if ($state.($entry.Key).exists) { Copy-Item -LiteralPath (Join-Path $Directory $entry.Key) -Destination $entry.Value -Force }
         elseif (Test-Path -LiteralPath $entry.Value) { Remove-Item -LiteralPath $entry.Value }
     }
-    $key = Get-Item -LiteralPath 'HKCU:\Software\Funselektor Labs\art of rally'
-    foreach ($name in $key.GetValueNames()) {
-        if ($name -notin $state.prefsNames) { Remove-ItemProperty -LiteralPath 'HKCU:\Software\Funselektor Labs\art of rally' -Name $name }
-    }
-    if ($state.prefsRawHash) {
-        foreach ($value in $raw) { Set-SessionRegistryValue $value }
-        foreach ($value in $raw) {
-            $actual = Get-SessionRegistryValue $value.name
-            if ($actual.type -ne $value.type -or $actual.data -cne $value.data) { throw 'Preference restore verification failed.' }
-        }
-    } else {
-        & reg import $prefs | Out-Null
-        if ($LASTEXITCODE -ne 0) { throw 'Could not restore game preferences; backup retained.' }
-    }
+    # Value by value; values the run added are removed, the key is never deleted. Throws unless the key then equals the snapshot.
+    Restore-RegistryState -Path $prefs.path | Write-Host
+    if (-not (Compare-RegistryState -Path $prefs.path)) { throw 'Preference restore verification failed.' }
     foreach ($entry in (Get-SessionFiles).GetEnumerator()) {
         if ($state.($entry.Key).exists -and (Get-FileHash -LiteralPath $entry.Value).Hash -ne $state.($entry.Key).sha256) { throw "Restore verification failed: $($entry.Key)" }
     }
@@ -114,34 +114,22 @@ function Restore-SessionEnvironment([string]$Directory, [switch]$NoReceipt) {
 }
 
 # Stage/car preferences belong to the tape; presentation belongs to this rig.
-# Import only explicit DWORD display preferences from the verified owner backup.
+# Write back only the display preferences from the verified owner backup.
 function Restore-SessionPresentation([string]$Directory) {
     Assert-GameClosed
     $state = Get-Content -LiteralPath (Join-Path $Directory 'state.json') -Raw | ConvertFrom-Json
-    $raw = @(Get-SessionRegistryBackup $Directory $state)
-    if ($state.schema -eq 3 -and -not $state.prefsRawHash) { throw 'Missing raw preference backup.' }
-    $prefs = Join-Path $Directory 'playerprefs.reg'
-    if ((Get-FileHash -LiteralPath $prefs).Hash -ne $state.prefsHash) { throw 'Preference backup changed.' }
-    $lines = @(Get-Content -LiteralPath $prefs)
-    $sections = @($lines | Where-Object { $_ -match '^\[' })
-    if ($sections.Count -ne 1 -or $sections[0] -cne '[HKEY_CURRENT_USER\Software\Funselektor Labs\art of rally]') { throw 'Unexpected preference key.' }
-    $pattern = '^(Screenmanager |UnitySelectMonitor_|SETTINGS_(RESOLUTION_|FULLSCREEN_|VSYNC_|FRAMERATE_CAP_))'
-    $display = @($lines | Where-Object { $_ -match '^"([^"\\]+)"=dword:[0-9a-fA-F]{8}$' -and $Matches[1] -match $pattern })
-    $names = @($display | ForEach-Object { ($_ -split '"')[1] })
-    if ($state.prefsRawHash) { $names = @($raw | Where-Object { $_.name -match $pattern } | ForEach-Object { $_.name }) }
+    $display = @((Get-SessionPrefs $Directory $state).values | Where-Object { $_.name -match $script:PrefsDisplayPattern })
     $triple = (Get-SessionFiles).triplesettings
     if ($state.triplesettings.exists -and (Get-FileHash -LiteralPath (Join-Path $Directory 'triplesettings')).Hash -ne $state.triplesettings.sha256) { throw 'Triple settings backup changed.' }
-    $key = 'HKCU:\Software\Funselektor Labs\art of rally'
+    $key = Get-SessionPrefsPsKey
+    if (-not (Test-Path -LiteralPath $key)) { New-Item -Path $key -Force | Out-Null }
     foreach ($name in (Get-Item -LiteralPath $key).GetValueNames()) {
-        if ($name -match $pattern -and $name -notin $names) { Remove-ItemProperty -LiteralPath $key -Name $name }
+        if ($name -match $script:PrefsDisplayPattern -and $name -notin $display.name) { Remove-ItemProperty -LiteralPath $key -Name $name }
     }
-    if ($state.prefsRawHash) {
-        foreach ($value in $raw | Where-Object { $_.name -match $pattern }) { Set-SessionRegistryValue $value }
-    } else {
-        $presentation = Join-Path $Directory 'presentation.reg'
-        @('Windows Registry Editor Version 5.00','',$sections[0]) + $display | Set-Content -LiteralPath $presentation -Encoding Unicode
-        & reg import $presentation | Out-Null
-        if ($LASTEXITCODE -ne 0) { throw 'Could not restore display preferences.' }
+    foreach ($value in $display) { Set-SessionRegistryValue $value }
+    foreach ($value in $display) {
+        $actual = Get-SessionRegistryValue $value.name
+        if ($actual.type -ne $value.type -or $actual.data -cne $value.data) { throw 'Display preference restore verification failed.' }
     }
     if ($null -ne $state.triplesettings) {
         if ($state.triplesettings.exists) { Copy-Item -LiteralPath (Join-Path $Directory 'triplesettings') -Destination $triple -Force }
