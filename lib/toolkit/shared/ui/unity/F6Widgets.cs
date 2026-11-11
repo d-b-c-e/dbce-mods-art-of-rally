@@ -1,6 +1,7 @@
 // MIT. Optional Unity IMGUI (GUILayout) widgets for the family F6 panel. Keep out of engine-independent assemblies.
-// C# 7.3 and Unity APIs present in Unity 2019.4 and 6000.x Mono (art of rally, #DRIVE Rally). Stripped IL2CPP hosts
+// C# 8 (nullable-oblivious, so hosts with nullable enabled compile it unchanged) and Unity APIs present in Unity 2019.4 and 6000.x Mono (art of rally, #DRIVE Rally). Stripped IL2CPP hosts
 // without GUILayout use the same F6Style rules with their own renderer.
+#nullable disable
 using System;
 using System.Collections.Generic;
 using UnityEngine;
