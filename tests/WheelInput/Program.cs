@@ -373,7 +373,7 @@ static class Program
     static void SharedLatchedSuppression()
     {
         const ArtOfSimRally.Mod.Shim.ShimStatus L = ArtOfSimRally.Mod.Shim.ShimStatus.Live;
-        Setup(""); GameButtonCompatibility.Allowed = true;
+        Setup("");
         // Art's handbrake button is pressed on the same copied read; a latched trial must not pass it.
         Host.Settings.HandbrakeButtonBinding = "TSS fixture|0|button:0|0|1"; WheelInput.LoadBindings();
         Clock.frameCount = 9500; WheelInput.Update();

@@ -111,7 +111,7 @@ static partial class Program
         Check(!cfg.CameraMounts.Any(x=>x.Car=="donor+custom"),"unknown package identity became a persistent key");
         CameraFixture.CustomId=null;
     }
-    static void LateBodyAndLegacy()
+    static void LateBody()
     {
         FreshCameraFixture();var cfg=Host.Settings;var target=Car("late body",measured:false);Track(target,cfg);
         Near(cfg.BonnetHeight,.95f,"unmeasured car did not start from defaults");cfg.BonnetHeight+=.3f;CameraTuner.MarkDirty();
@@ -120,13 +120,6 @@ static partial class Program
         Track(target,cfg,true);cfg.BonnetFOV+=5;CameraTuner.MarkDirty();ViewSets.RealisticStartDegrees=42.38;
         Track(target,cfg,true);Near(cfg.BonnetFOV,47.4f,"changed seat calculation lost offset or kept stale baseline");
         Near(FieldDefault(cfg,false,4),42.4f,"F6 Default did not follow current seat calculation");ViewSets.RealisticStartDegrees=34;
-        FreshCameraFixture();cfg=Host.Settings;var legacy=Car("legacy");
-        cfg.CameraMounts.Add(new CameraMount{Car="legacy",Tuned=true,Values=new[]{.3f,1.8f,2.3f,7f,120f,-.2f,.8f,3f,-4f,110f}});
-        Track(legacy,cfg);Near(cfg.BonnetHeight,1.8f,"legacy absolute pose migration changed owner value");
-        Near(cfg.BonnetFOV,75,"legacy absolute FOV was copied into new shared offsets");
-        Check(cfg.CameraMounts.Single(x=>x.Car=="legacy").Offsets.Length==8,"production legacy migration missing");
-        CameraTuner.MarkDirty();CameraTuner.Flush(shutdown:true);Host.Settings=Saved();cfg=Host.Settings;Track(Car("legacy"),cfg);
-        Near(cfg.BonnetHeight,1.8f,"legacy offset migration lost after real XML reload");
     }
     static void CalculatedFieldDefaults()
     {
@@ -209,5 +202,5 @@ static partial class Program
         }
     }
     static void Persistence()
-    {MountedSwitch();MountedLastEdit();MountedPersistence();CustomIdentity();LateBodyAndLegacy();CalculatedFieldDefaults();ChasePosePersistence();ChasePoseControls();}
+    {MountedSwitch();MountedLastEdit();MountedPersistence();CustomIdentity();LateBody();CalculatedFieldDefaults();ChasePosePersistence();ChasePoseControls();}
 }

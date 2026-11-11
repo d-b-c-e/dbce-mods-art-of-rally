@@ -4,8 +4,8 @@ using Rewired;
 namespace ArtOfSimRally.Mod
 {
     /// <summary>
-    /// Shows the consumed shared binding for an owned joystick, or the native
-    /// element name when that joystick's artwork is missing.
+    /// The game's controls screen: shows the consumed shared binding for an owned
+    /// joystick, or the native element name when that joystick's artwork is missing.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -31,15 +31,13 @@ namespace ArtOfSimRally.Mod
     /// </para>
     /// </remarks>
     [HarmonyPatch(typeof(ControlsRemapper), "RefreshDisplayedGlyph")]
-    internal static class GlyphFallback
+    internal static class ControlsScreenLabel
     {
         [HarmonyPostfix]
         internal static void ShowNameWhenNoGlyph(ControlsRemapper.UIActionSet uiData, InputAction action,
             ActionElementMap aem, Controller ___activeController)
         {
-            var cfg = Main.Settings;
-            if (!Main.Enabled || cfg == null || !cfg.GlyphTextFallback) return;
-            if (uiData == null || aem == null) return;
+            if (!Main.Enabled || uiData == null || aem == null) return;
 
             try
             {
@@ -54,7 +52,8 @@ namespace ArtOfSimRally.Mod
 
                 uiData.glyphImage.enabled = false;
                 uiData.keyboardGlyph.SetActive(true);
-                uiData.keyboardText.text = owned ? label : Shorten(aem.elementIdentifierName);
+                // Badge-sized: "Button 12" becomes "B12" (PromptGlyphLabel.Element); a wheel can report over a hundred buttons.
+                uiData.keyboardText.text = owned ? label : PromptGlyphLabel.Element(aem.elementIdentifierName);
                 uiData.keyboardText.enabled = true;
             }
             catch
@@ -62,15 +61,5 @@ namespace ArtOfSimRally.Mod
                 // Cosmetic only - never break the controls screen over a label.
             }
         }
-
-        /// <summary>
-        /// Compresses Rewired's element names to fit a badge sized for "F12".
-        /// </summary>
-        /// <remarks>
-        /// "Button 12" becomes "B12" and "X Axis" becomes "X"; anything else is
-        /// truncated. A wheel can report over a hundred buttons, so the long form
-        /// would overflow the badge on most of them.
-        /// </remarks>
-        internal static string Shorten(string name) => PromptGlyphLabel.Element(name);
     }
 }

@@ -63,12 +63,6 @@ namespace ArtOfSimRally.Mod
 
             SharedInputStartup.Prepare(modEntry.Path); // frozen profile/FFB target inspection, before recovery or reader qualification
             SharedInputStartup.ForceSettled = () => !ForceReconnect.Pending;
-            if (CameraKeys.MigratePreviousDefaults(Settings))
-            {
-                ModLog.Info("Camera keys were an earlier default set; moved to the numpad layout " +
-                    "8/2 forward/back, 9/3 up/down, 4/6 left/right, 7/1 tilt, +/- FOV, 5 reset.");
-                MarkSettingsDirty();
-            }
             WheelInput.LoadBindings();
             FrameHealthPersistence.Initialize();
 

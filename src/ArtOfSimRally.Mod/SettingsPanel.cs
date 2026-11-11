@@ -230,9 +230,6 @@ namespace ArtOfSimRally.Mod
                 c.DirectSteering = Toggle(c.DirectSteering, "Direct steering");
                 c.ZeroAxisDeadzone = Toggle(c.ZeroAxisDeadzone, "Remove hidden deadzone");
                 c.BindAnyDevice = Toggle(c.BindAnyDevice, "Bind whichever device you touch");
-                c.GlyphTextFallback = Toggle(c.GlyphTextFallback, "Show button names without icons");
-                c.DisableSteerAssist = Toggle(c.DisableSteerAssist, "Legacy steering limiter override");
-                Help("The legacy override affects car behavior on spawn, not the game's numeric assist setting. Keep Off and use the game's assist controls.");
             }
         }
 

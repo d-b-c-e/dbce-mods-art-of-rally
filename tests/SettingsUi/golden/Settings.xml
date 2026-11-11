@@ -22,9 +22,7 @@
   <FfbDeviceMode />
   <DirectSteering>true</DirectSteering>
   <ZeroAxisDeadzone>true</ZeroAxisDeadzone>
-  <GlyphTextFallback>true</GlyphTextFallback>
   <BindAnyDevice>true</BindAnyDevice>
-  <DisableSteerAssist>false</DisableSteerAssist>
   <SharedInput>false</SharedInput>
   <WheelInputEnabled>false</WheelInputEnabled>
   <SteerBinding />

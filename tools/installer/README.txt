@@ -86,8 +86,6 @@ Simple is the first view; Advanced adds tuning to the same saved values.
   gearbox. Landing and crash cues take priority. This is new in 0.2.7;
   its feel on real wheels has not yet been accepted.
 
-Leave the legacy steering limiter override Off; use the game's assist settings.
-
 CAMERAS
 -------
 Bonnet/Bumper On includes those views in the game's Change camera cycle.

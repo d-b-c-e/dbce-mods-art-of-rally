@@ -39,11 +39,7 @@ namespace ArtOfSimRally.Mod
 
         public bool ZeroAxisDeadzone = true;
 
-        public bool GlyphTextFallback = true;
-
         public bool BindAnyDevice = true;
-
-        public bool DisableSteerAssist = false;
 
         /// <summary>
         /// Opt-in candidate: drive the wheel, pedals, menu buttons, shortcuts and
@@ -202,8 +198,7 @@ namespace ArtOfSimRally.Mod
         // Family numpad layout (toolkit STD-005): 8/2 forward/back, 9/3 up/down,
         // 4/6 left/right, 7/1 tilt forward (look down) / back (look up), +/- FOV,
         // 5 reset. A larger pitch looks down (BonnetCamera: Euler X), so
-        // KeyPitchDown raises pitch and sits on 7. Older untouched default sets are
-        // moved here on load by CameraKeys.MigratePreviousDefaults.
+        // KeyPitchDown raises pitch and sits on 7.
         public KeyCode KeyUp        = KeyCode.Keypad9;
         public KeyCode KeyDown      = KeyCode.Keypad3;
         public KeyCode KeyForward   = KeyCode.Keypad8;
@@ -335,10 +330,6 @@ namespace ArtOfSimRally.Mod
     {
         public string Car;
         public float[] Offsets;
-        // Before 0.4.4-rc.25: absolute values (CameraMountFit order) and whether the player adjusted them; read once to
-        // migrate an adjusted set to offsets.
-        public float[] Values;
-        public bool Tuned;
     }
 
     public sealed class ChaseCameraPose

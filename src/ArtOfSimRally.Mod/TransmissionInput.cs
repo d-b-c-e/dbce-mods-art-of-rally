@@ -8,7 +8,7 @@ namespace ArtOfSimRally.Mod
         [HarmonyPostfix]
         internal static void Apply(Drivetrain __instance)
         {
-            if (!Main.Enabled || Main.Settings == null || !GameButtonCompatibility.Allowed) return;
+            if (!Main.Enabled || Main.Settings == null) return;
             var mode = Main.Settings.TransmissionMode;
             if (mode == "Automatic") __instance.automatic = true;
             else if (mode == "Sequential" || mode == "H-pattern") __instance.automatic = false;

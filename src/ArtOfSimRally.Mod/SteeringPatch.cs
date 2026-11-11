@@ -34,8 +34,8 @@ namespace ArtOfSimRally.Mod
     /// </para>
     /// <para>
     /// This is not a physics change and not an advantage: it is exactly what a
-    /// player with a recognised G29 already gets. See <c>steerAssistance</c>
-    /// below for the setting that genuinely does cross that line.
+    /// player with a recognised G29 already gets. The car's steering limiter
+    /// (<c>steerAssistance</c>) is left to the game's own assist option.
     /// </para>
     /// </remarks>
     [HarmonyPatch(typeof(CarController), "Start")]
@@ -59,14 +59,6 @@ namespace ArtOfSimRally.Mod
             __instance.veloSteerTime         = 0f;
             __instance.veloSteerReleaseTime  = 0f;
             __instance.steerCorrectionFactor = 1f;
-
-            // Legacy spawn-only override of the boolean steering limiter. This
-            // does not edit a saved numeric assist setting or restore the car on
-            // untick; prefer the game's own controls. SmoothSteer's recognized-
-            // wheel branch already returns before its limiter. Do not extend this
-            // into a live assist controller: physics/assist changes are out of scope.
-            if (cfg.DisableSteerAssist)
-                __instance.steerAssistance = false;
 
             ModLog.Info(
                 $"Direct steering applied to {__instance.GetType().Name} " +

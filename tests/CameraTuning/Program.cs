@@ -142,44 +142,19 @@ static partial class Program
         using var reader = new StringReader(xml);
         return (Settings)new XmlSerializer(typeof(Settings)).Deserialize(reader);
     }
-    static void Migration()
+    // Saved keys load exactly as saved; settings without key fields get the numpad layout (STD-005).
+    static void Layout()
     {
         var current = KeysOf(new Settings());
-        var layout1 = new[] { KeyCode.Keypad8, KeyCode.Keypad2, KeyCode.Keypad9, KeyCode.Keypad7, KeyCode.Keypad4,
+        var saved = new[] { KeyCode.Keypad8, KeyCode.Keypad2, KeyCode.Keypad9, KeyCode.Keypad7, KeyCode.Keypad4,
             KeyCode.Keypad6, KeyCode.Keypad1, KeyCode.Keypad3, KeyCode.KeypadPlus, KeyCode.KeypadMinus, KeyCode.Keypad0 };
-        var swapped = (KeyCode[])layout1.Clone(); (swapped[6], swapped[7]) = (swapped[7], swapped[6]);
-        var layout2 = new[] { KeyCode.Keypad9, KeyCode.Keypad3, KeyCode.Keypad8, KeyCode.Keypad2, KeyCode.KeypadDivide,
-            KeyCode.KeypadMultiply, KeyCode.Keypad6, KeyCode.Keypad4, KeyCode.KeypadPlus, KeyCode.KeypadMinus, KeyCode.Keypad5 };
-        var layout3 = new[] { KeyCode.Keypad9, KeyCode.Keypad3, KeyCode.Keypad8, KeyCode.Keypad2, KeyCode.Keypad4,
-            KeyCode.Keypad6, KeyCode.Keypad7, KeyCode.Keypad1, KeyCode.KeypadPlus, KeyCode.KeypadMinus, KeyCode.Keypad5 };
-        foreach (var old in new[] { layout1, swapped, layout2, layout3 })
-        {
-            var cfg = LoadKeys(old);
-            Check(KeysOf(cfg).SequenceEqual(old), "fixture XML did not load saved keys");
-            Check(CameraKeys.MigratePreviousDefaults(cfg) && KeysOf(cfg).SequenceEqual(current) && cfg.BonnetHeight == 1.25f,
-                "untouched earlier default set not migrated, or other settings touched");
-            Check(CameraKeys.Status.Contains("7/1"), "migration not announced in the bindings panel");
-            Check(!CameraKeys.MigratePreviousDefaults(cfg) && KeysOf(cfg).SequenceEqual(current), "migration not idempotent");
-        }
-        // One customised key keeps the whole set, including the earlier layout's other keys.
-        for (int i = 0; i < layout1.Length; i++)
-        {
-            var custom = (KeyCode[])layout1.Clone(); custom[i] = KeyCode.F2;
-            var cfg = LoadKeys(custom);
-            Check(!CameraKeys.MigratePreviousDefaults(cfg) && KeysOf(cfg).SequenceEqual(custom), "customised set was migrated (index " + i + ")");
-        }
-        var cleared = (KeyCode[])layout1.Clone(); cleared[10] = KeyCode.None;
-        var c2 = LoadKeys(cleared);
-        Check(!CameraKeys.MigratePreviousDefaults(c2) && KeysOf(c2).SequenceEqual(cleared), "cleared key treated as default");
-        // Settings saved before any key fields get the current layout from the field initialisers.
+        var cfg = LoadKeys(saved);
+        Check(KeysOf(cfg).SequenceEqual(saved) && cfg.BonnetHeight == 1.25f, "saved keys did not load as saved");
         using (var xml = new StringReader("<Settings><BonnetHeight>1.25</BonnetHeight></Settings>"))
         {
-            var legacy = (Settings)new XmlSerializer(typeof(Settings)).Deserialize(xml);
-            Check(KeysOf(legacy).SequenceEqual(current) && !CameraKeys.MigratePreviousDefaults(legacy), "keyless settings not on current layout");
+            var keyless = (Settings)new XmlSerializer(typeof(Settings)).Deserialize(xml);
+            Check(KeysOf(keyless).SequenceEqual(current), "keyless settings not on the current layout");
         }
-        // Never migrate a camera key onto the Settings key.
-        var clash = LoadKeys(layout1); clash.SettingsKey = KeyCode.Keypad5;
-        Check(!CameraKeys.MigratePreviousDefaults(clash) && KeysOf(clash).SequenceEqual(layout1), "migration created a Settings-key conflict");
         // Tilt forward (look down) raises pitch and is numpad 7.
         Check(CameraKeys.Bindings[6].Label.Contains("look down") && new Settings().KeyPitchDown == KeyCode.Keypad7, "tilt forward not on numpad 7");
         CameraKeys.Cancel();
@@ -551,7 +526,7 @@ static partial class Program
             else if (mode == "--chase-pose") ChasePosePersistence();
             else if (mode == "--persistence") Persistence();
             else if (mode != null) throw new ArgumentException("Unknown fixture mode");
-            else { Saves(); Bindings(); Migration(); NativeKeyboardConflicts(); KeyEffects(); UsbCameraButtons(); Steps(); F7Capture(); F7Dispatch(); FovLimits(); ChaseReset(); Persistence(); }
+            else { Saves(); Bindings(); Layout(); NativeKeyboardConflicts(); KeyEffects(); UsbCameraButtons(); Steps(); F7Capture(); F7Dispatch(); FovLimits(); ChaseReset(); Persistence(); }
             Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
         }
         catch (Exception ex) { Console.Error.WriteLine(ex); return 1; }

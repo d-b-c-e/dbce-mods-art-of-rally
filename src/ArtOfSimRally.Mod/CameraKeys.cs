@@ -29,56 +29,6 @@ namespace ArtOfSimRally.Mod
             new Binding("Reset active mount", s => s.KeyReset, (s,k) => s.KeyReset=k)
         };
 
-        // Earlier family default sets in Bindings order (up, down, forward, back,
-        // left, right, tilt forward/look down, tilt back/look up, wider, narrower,
-        // reset). A saved set equal to one of these records no player choice.
-        private static readonly KeyCode[][] PreviousDefaults =
-        {
-            // Layout 1, shipped by this mod up to 0.4.0, and with the tilt pair swapped.
-            new[] { KeyCode.Keypad8, KeyCode.Keypad2, KeyCode.Keypad9, KeyCode.Keypad7, KeyCode.Keypad4, KeyCode.Keypad6,
-                KeyCode.Keypad1, KeyCode.Keypad3, KeyCode.KeypadPlus, KeyCode.KeypadMinus, KeyCode.Keypad0 },
-            new[] { KeyCode.Keypad8, KeyCode.Keypad2, KeyCode.Keypad9, KeyCode.Keypad7, KeyCode.Keypad4, KeyCode.Keypad6,
-                KeyCode.Keypad3, KeyCode.Keypad1, KeyCode.KeypadPlus, KeyCode.KeypadMinus, KeyCode.Keypad0 },
-            // Layout 2, the family's interim set (iRacing Arcade fc35102), either tilt order.
-            new[] { KeyCode.Keypad9, KeyCode.Keypad3, KeyCode.Keypad8, KeyCode.Keypad2, KeyCode.KeypadDivide, KeyCode.KeypadMultiply,
-                KeyCode.Keypad6, KeyCode.Keypad4, KeyCode.KeypadPlus, KeyCode.KeypadMinus, KeyCode.Keypad5 },
-            new[] { KeyCode.Keypad9, KeyCode.Keypad3, KeyCode.Keypad8, KeyCode.Keypad2, KeyCode.KeypadDivide, KeyCode.KeypadMultiply,
-                KeyCode.Keypad4, KeyCode.Keypad6, KeyCode.KeypadPlus, KeyCode.KeypadMinus, KeyCode.Keypad5 },
-            // Layout 3, the STD-005 numpad set up to 0.4.4-rc.31, with + widening the view.
-            new[] { KeyCode.Keypad9, KeyCode.Keypad3, KeyCode.Keypad8, KeyCode.Keypad2, KeyCode.Keypad4, KeyCode.Keypad6,
-                KeyCode.Keypad7, KeyCode.Keypad1, KeyCode.KeypadPlus, KeyCode.KeypadMinus, KeyCode.Keypad5 },
-        };
-
-        /// <summary>
-        /// Moves an untouched earlier default key set to the current family layout
-        /// (toolkit STD-005). Any customised key keeps the whole set. Called on the
-        /// loaded XML values before anything reads them; true when it changed keys.
-        /// </summary>
-        public static bool MigratePreviousDefaults(Settings cfg)
-        {
-            if (cfg == null) return false;
-            var saved = Array.ConvertAll(Bindings, b => b.Get(cfg));
-            bool match = false;
-            foreach (var layout in PreviousDefaults)
-            {
-                bool same = true;
-                for (int i = 0; i < saved.Length && same; i++) same = saved[i] == layout[i];
-                if (same) { match = true; break; }
-            }
-            if (!match) return false;
-            var defaults = new Settings();
-            // Never move a camera action onto Settings or Stop FFB.
-            foreach (var binding in Bindings)
-            {
-                var key = binding.Get(defaults);
-                if (Reserved(cfg, key)) return false;
-            }
-            foreach (var binding in Bindings) binding.Set(cfg, binding.Get(defaults));
-            Status = "Camera keys moved to the numpad layout: 8/2 forward/back, 9/3 up/down, 4/6 left/right, " +
-                "7/1 tilt forward/back, + zoom in / - zoom out, 5 reset. Rebind any of them here.";
-            return true;
-        }
-
         public static int Listening { get; private set; } = -1;
         private static float _deadline;
         public static string Status { get; private set; } = "";

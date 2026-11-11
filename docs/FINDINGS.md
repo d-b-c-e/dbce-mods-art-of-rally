@@ -90,8 +90,8 @@ The owner's drive had a strong hitch near a crowd; the causal timing is unproven
 Later feedback review records the
 CameraMod 0.3.1 slot conflict and support/telemetry corrections. In build 17584229,
 `SettingsManager.SetSteerAssist` reads a saved boolean; `SetSteerCorrection` uses
-a separate numeric setting. Our legacy `DisableSteerAssist` is a one-way Start
-postfix field assignment, not a numeric temporary override. `SmoothSteer` returns
+a separate numeric setting. (The mod's old `DisableSteerAssist` override, a one-way
+Start postfix field assignment, was deleted in 0.4.6.) `SmoothSteer` returns
 before its limiter for a recognized wheel. Keep these separate when answering
 the user's unidentified "20" assist option; do not infer UI equivalence.
 

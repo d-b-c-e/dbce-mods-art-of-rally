@@ -57,15 +57,7 @@ namespace ArtOfSimRally.Mod
             CameraMountFit.KeepOutside(_base, _extent);
             var saved = cfg.CameraMounts.LastOrDefault(m => m.Car == _key);
             var offsets = saved?.Offsets?.Length == Positions.Length ? saved.Offsets : null;
-            string how = "calculated";
-            // Migration: a set adjusted under the old absolute values keeps its position as an offset; FOV starts from stock.
-            if (offsets == null && saved != null && saved.Tuned && saved.Values?.Length == CameraMountFit.Values)
-            {
-                offsets = Positions.Select(i => saved.Values[i] - _base[i]).ToArray();
-                Store(cfg, offsets); how = "calculated + migrated adjustment";
-            }
-            else if (offsets == null && saved != null) cfg.CameraMounts.Remove(saved);   // an old fitted set, never adjusted
-            else if (offsets != null) how = "calculated + saved adjustment";
+            string how = offsets == null ? "calculated" : "calculated + saved adjustment";
             var v = (float[])_base.Clone();
             if (offsets != null) for (int i = 0; i < Positions.Length; i++) v[Positions[i]] += offsets[i];
             v[4] += FovOffset(cfg, false); v[9] += FovOffset(cfg, true);

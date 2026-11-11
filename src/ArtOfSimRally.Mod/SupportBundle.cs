@@ -184,7 +184,6 @@ namespace ArtOfSimRally.Mod
                     sb.AppendLine("live car steering limiter=" + car.steerAssistance + "; correction factor=" + car.steerCorrectionFactor);
             }
             catch { sb.AppendLine("live car state unavailable"); }
-            sb.AppendLine("DisableSteerAssist is a legacy spawn-only boolean override, not a saved numeric assist value.");
             sb.AppendLine();
         }
 

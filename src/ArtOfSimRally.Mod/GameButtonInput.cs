@@ -15,7 +15,7 @@ namespace ArtOfSimRally.Mod
         private static int _horizontal = -1, _vertical = -1, _submit = -1, _cancel = -1;
         internal static void Observe(int horizontal, int vertical, int submit, int cancel)
         { _horizontal = horizontal; _vertical = vertical; _submit = submit; _cancel = cancel; }
-        internal static bool Primary(Player player) => WheelInput.Enabled && GameButtonCompatibility.Allowed && ReferenceEquals(player, PadManager.GetPlayer());
+        internal static bool Primary(Player player) => WheelInput.Enabled && ReferenceEquals(player, PadManager.GetPlayer());
         // Only inside a latched Core test session (current frame): its injected actions replace the
         // primary player's native results. Ordinary sessions OR shared buttons into native input.
         internal static bool Suppressed => Shim.ShimInput.Consumer.LatchedDelivery(Time.frameCount);
@@ -33,7 +33,7 @@ namespace ArtOfSimRally.Mod
             // The title uses a Rewired ButtonJustReleased delegate, not GetButton.
             // Match its release semantics through the same guarded reader. Do not
             // synthesize Rewired events globally or make pedals skip the title.
-            if (!WheelInput.Enabled || !GameButtonCompatibility.Allowed ||
+            if (!WheelInput.Enabled ||
                 !(WheelInput.GameButtonReleased(WheelInput.Channel.Start) || WheelInput.GameButtonReleased(WheelInput.Channel.Confirm))) return;
             var splash = SplashScreenControl.Instance;
             var panels = UIManager.Instance == null ? null : UIManager.Instance.PanelManager;

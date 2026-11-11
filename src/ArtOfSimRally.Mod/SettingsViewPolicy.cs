@@ -19,8 +19,7 @@ namespace ArtOfSimRally.Mod
         public static bool CustomFfb(Settings c) => c.Smoothing != .2f || c.Invert || c.FyReference != Settings.DefaultFyReference ||
             !c.LandingEffectsEnabled || c.LandingStrength != 5 || c.CrashEffectsEnabled || c.CrashStrength != 50 ||
             c.ShiftEffectsEnabled || c.ShiftStrength != 5;
-        public static bool CustomControls(Settings c) => !c.DirectSteering || !c.ZeroAxisDeadzone ||
-            !c.BindAnyDevice || !c.GlyphTextFallback || c.DisableSteerAssist;
+        public static bool CustomControls(Settings c) => !c.DirectSteering || !c.ZeroAxisDeadzone || !c.BindAnyDevice;
         public static bool CustomCamera(Settings c) => c.BonnetHeight != .95f || c.BonnetForward != 1f || c.BonnetSide != 0 ||
             c.BonnetPitch != 3 || c.BonnetFOV != 75 || c.BonnetLean != .1f || c.BumperHeight != .45f ||
             c.BumperForward != 1.9f || c.BumperSide != 0 || c.BumperPitch != 2 || c.BumperFOV != 80 ||

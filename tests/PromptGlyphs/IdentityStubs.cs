@@ -75,7 +75,7 @@ namespace ArtOfSimRally.Mod
         internal static bool Enabled = true;
         internal static Settings Settings = new Settings();
     }
-    internal sealed class Settings { internal bool GlyphTextFallback = true, WheelInputEnabled = true; }
+    internal sealed class Settings { internal bool WheelInputEnabled = true; }
     internal static class GameButtonInput
     {
         internal static bool Primary(Rewired.Player player) => ReferenceEquals(player, PadManager.GetPlayer());

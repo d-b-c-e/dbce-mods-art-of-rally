@@ -21,7 +21,7 @@ deliberate rather than lazy packaging:
 The config is grouped by feature so this reads clearly to a user:
 
 ```
-[Steering]  DirectSteering, ZeroAxisDeadzone, BindAnyDevice, GlyphTextFallback, DisableSteerAssist
+[Steering]  DirectSteering, ZeroAxisDeadzone, BindAnyDevice
 [ForceFeedback]  Enabled, Strength, FyReference, Smoothing, Invert, PreferredDevice(+Index/Guid), DiagnosticLogging
 [Shifter]  Enabled, IsHPattern, DeviceIndex/Name/Guid, SkipNeutral, gear and shift buttons
 [WheelInput]  Enabled, Steer/Throttle/Brake/Clutch/Handbrake bindings ("device|index|axis:N|rest|far|guid:<instance-guid>"; legacy five fields accepted)
@@ -227,6 +227,5 @@ Two things to state plainly, because both will otherwise generate complaints:
    recognise, which is likely every modern direct-drive base, but that is
    reasoning rather than testing. `FyReference` will need tuning per wheel.
 2. **Leaderboards.** `DirectSteering` and `ZeroAxisDeadzone` restore what a
-   recognised wheel already gets and are fair-play neutral. `DisableSteerAssist`
-   genuinely changes driving aids and is off by default. Say so, so nobody enables
-   it by accident and posts a time.
+   recognised wheel already gets and are fair-play neutral. The mod has no setting
+   that changes driving aids; assists stay the game's own options.

@@ -19,11 +19,11 @@ namespace ArtOfSimRally.Mod
     /// <para>
     /// Prefer the effective Active shared binding for an exactly owned joystick,
     /// even when the stock method supplied generic gamepad artwork. Otherwise,
-    /// retain native artwork and the original missing-artwork fallback.
+    /// keep native artwork, and show the element name where the wheel has none.
     /// </para>
     /// </remarks>
     [HarmonyPatch(typeof(ControllerButtonDisplay), "SetupGlpyh")]
-    internal static class PromptGlyphFallback
+    internal static class ButtonPromptLabel
     {
         // UpdateGlyph runs every frame in menus; reuse one list (main thread only).
         private static readonly List<ActionElementMap> Maps = new List<ActionElementMap>();
@@ -33,8 +33,7 @@ namespace ArtOfSimRally.Mod
             ControllerButtonDisplay.AxisPolarity ___axisPolarity, Image ___displayImage, Text ___displayText,
             Image ___keyboardImage, ControllerGlyphs ___controllerGlyphs)
         {
-            var cfg = Main.Settings;
-            if (!Main.Enabled || cfg == null || !cfg.GlyphTextFallback) return;
+            if (!Main.Enabled) return;
             try
             {
                 var joystick = controller as Joystick;
@@ -52,7 +51,7 @@ namespace ArtOfSimRally.Mod
                         return;
                     }
                     if (___controllerGlyphs != null && ___controllerGlyphs.GetGlyph(joystick.hardwareTypeGuid, aem.elementIdentifierId, aem.axisRange) != null) return;
-                    label = GlyphFallback.Shorten(aem.elementIdentifierName);
+                    label = PromptGlyphLabel.Element(aem.elementIdentifierName);
                 }
 
                 ___displayImage.enabled = false;

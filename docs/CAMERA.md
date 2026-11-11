@@ -105,11 +105,9 @@ one. Single-screen players are unaffected (F7 needs triples). Candidate portfoli
 Defaults follow the family layout (toolkit STD-005): 8/2 forward/back, 9/3
 up/down, 4/6 left/right, 7/1 tilt forward (look down) / back (look up), +/−
 field of view, 5 reset. A larger `BonnetPitch`/`BumperPitch` looks down, so
-`KeyPitchDown` is on 7. Up to 0.4.0 the mod shipped 8/2 up-down, 9/7
-forward-back, 1/3 tilt and 0 reset. On load, `CameraKeys.MigratePreviousDefaults`
-moves a saved set that exactly equals that set (either tilt order) or the
-family's interim set to the current layout, logs it and shows it once under
-adjustment bindings; one changed key keeps the whole saved set.
+`KeyPitchDown` is on 7. Saved keys load exactly as saved; settings without key
+fields get this layout. (Up to 0.4.5 an earlier untouched default set was moved to
+this layout on load; that migration is gone.)
 
 Each press moves one step (STD-006): `CameraMoveStep` 0.02 m, `CameraTiltStep`
 1°, `CameraFovStep` 2°, set in Advanced → Cameras with **Default steps**.

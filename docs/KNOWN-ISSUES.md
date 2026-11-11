@@ -198,10 +198,10 @@ Cause (decompiled 2026-10-07): the prompts are `ControllerButtonDisplay`. For a
 joystick its `SetupGlpyh` switches the text off and asks `ControllerGlyphs` for
 artwork by `hardwareTypeGuid`; an unrecognised wheel has none, and the method
 then changes nothing else, so the image keeps its last (gamepad) sprite and the
-keyboard badge stays as the keyboard left it. **Fix candidate (unreleased,
-`PromptGlyphFallback`, not yet seen in game):** with no artwork, the stale image
-is hidden and the badge shows the bound wheel element ("B12"), as `GlyphFallback`
-does on the controls screen. Severity: cosmetic.
+keyboard badge stays as the keyboard left it. **Fix (`ButtonPromptLabel`, named
+`PromptGlyphFallback` before 0.4.6):** with no artwork, the stale image is hidden and
+the badge shows the bound wheel element ("B12"), as `ControlsScreenLabel` does on the
+controls screen. Since 0.4.6 it has no off switch. Severity: cosmetic.
 
 **Still seen 2026-10-28 on 0.4.4-rc.1 with the shared profile:** one screen first shows the
 PlayStation triangle over a "Space" badge instead of the wheel button. With shared input the
@@ -1313,5 +1313,5 @@ wheel — see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
 
 art of rally has online leaderboards. Force feedback, cameras and telemetry are
 fair-play neutral; grip, assists and car behaviour are not. Keeping that line
-bright is what lets the mod be shared without argument. `DisableSteerAssist`
-does change driving aids, which is why it is off by default and labelled.
+bright is what lets the mod be shared without argument. The mod has no setting
+that changes driving aids (the old `DisableSteerAssist` override was deleted in 0.4.6).

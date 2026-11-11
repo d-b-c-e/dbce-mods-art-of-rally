@@ -45,7 +45,6 @@ static class GameButtonTests
         Check(!GameButtonInput.Button(62,false,true), "unrelated action got camera");
         Check(!GameButtonInput.Button(61,true,true), "negative camera action emitted");
         Check(GameButtonInput.Primary(PadManager.Player) && !GameButtonInput.Primary(new Rewired.Player()), "other player accepted");
-        GameButtonCompatibility.Allowed=false; Check(!GameButtonInput.Primary(PadManager.Player),"unknown build routed action IDs"); GameButtonCompatibility.Allowed=true;
         Tick(); Check(!Down(Channel.CameraSwitch) && Held(Channel.CameraSwitch), "held camera repeated");
         foreach(var (angle,channel,action,negative) in new[] { (0,Channel.NavUp,13,false), (18000,Channel.NavDown,13,true), (27000,Channel.NavLeft,12,true), (9000,Channel.NavRight,12,false) })
         {
@@ -129,7 +128,7 @@ static class GameButtonTests
         Check(GameButtonInput.Prepare(PadManager.Player) && SplashScreenControl.Instance.Ends==0, "input query changed scene");
         WheelInput.EnsureUpdatedThisFrame(); GameButtonInput.TickTitle();
         Check(SplashScreenControl.Instance.Ends==1, "watchdog lost early sampled title release");
-        foreach(var gate in new[] {"read","focus","panel","build","wrong-screen","inactive","startup-held"})
+        foreach(var gate in new[] {"read","focus","panel","wrong-screen","inactive","startup-held"})
         {
             SplashScreenControl.Instance=new SplashScreenControl();
             UIManager.Instance.PanelManager.Current=UIManager.Instance.PanelManager.SplashScreenPanel;
@@ -137,12 +136,11 @@ static class GameButtonTests
             if(gate=="read") Device.ReadOk=false;
             if(gate=="focus") Application.isFocused=false;
             if(gate=="panel") Main.SettingsVisible=true;
-            if(gate=="build") GameButtonCompatibility.Allowed=false;
             if(gate=="wrong-screen") UIManager.Instance.PanelManager.Current=new object();
             if(gate=="inactive") SplashScreenControl.Instance.isActiveAndEnabled=false;
             if(gate=="startup-held") { WheelInput.ResetGameButtons(); Tick(); }
             Device.Buttons[31]=0; Tick(); Check(SplashScreenControl.Instance.Ends==0,"title gate leaked release: "+gate);
-            Device.ReadOk=true; Application.isFocused=true; Main.SettingsVisible=false; GameButtonCompatibility.Allowed=true;
+            Device.ReadOk=true; Application.isFocused=true; Main.SettingsVisible=false;
             Tick(); Check(SplashScreenControl.Instance.Ends==0,"title recovery manufactured release: "+gate);
         }
         SplashScreenControl.Instance=new SplashScreenControl();
@@ -180,20 +178,19 @@ static class GameButtonTests
         }
         Device.Hats[0]=18000; Tick(); Check(!Continue(), "navigation skipped intro");
         Device.Hats[0]=-1; Tick();
-        foreach (string gate in new[] {"read","focus","panel","build","disabled","assignment","startup-held"})
+        foreach (string gate in new[] {"read","focus","panel","disabled","assignment","startup-held"})
         {
             Device.Buttons[31]=0; Tick();
             if(gate=="read") Device.ReadOk=false;
             if(gate=="focus") Application.isFocused=false;
             if(gate=="panel") Main.SettingsVisible=true;
-            if(gate=="build") GameButtonCompatibility.Allowed=false;
             if(gate=="disabled") Main.Enabled=false;
             if(gate=="assignment") WheelInput.BeginCalibration(Channel.NavUp);
             Device.Buttons[31]=1; Time.frameCount++;
             if(gate=="startup-held") WheelInput.ResetGameButtons();
             Check(!Continue() && Continue(true), "continue gate changed native input or leaked: "+gate);
             Device.ReadOk=true; Application.isFocused=true; Main.SettingsVisible=false;
-            GameButtonCompatibility.Allowed=true; Main.Enabled=true; WheelInput.CancelAssign();
+            Main.Enabled=true; WheelInput.CancelAssign();
             Device.Buttons[31]=0; Tick();
         }
         WheelInput.Close(); Array.Clear(Device.Buttons); Array.Fill(Device.Hats,-1);
