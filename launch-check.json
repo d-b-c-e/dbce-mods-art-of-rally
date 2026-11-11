@@ -93,7 +93,8 @@
     "\\[ArtOfSimRally\\] Loaded - directSteering",
     "Triple screens: loaded",
     "F6 panel: drawn in the game by dbce_ui\\.dll",
-    "dbce_ui: Art of Rally Wheel Mod 0\\.4\\.5"
+    "dbce_ui: Art of Rally Wheel Mod \\d+\\.\\d+\\.\\d+",
+    "Shared input: first frame accepted"
   ],
   "forbid": [
     "Harmony patching failed",
