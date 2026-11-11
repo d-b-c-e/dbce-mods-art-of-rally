@@ -59,6 +59,21 @@ namespace Dbce.Wheel.Mod
         public List<string> Steps = new List<string>();
         public List<SelfTestProbe> Probes = new List<SelfTestProbe>();
     }
+    public sealed class TestLaunch { public long SteamAppId; public string Exe = ""; public List<string> Args = new List<string>(); }
+    public sealed class TestState { public string State = "", Field = "", Is = "", Text = "", Picture = ""; }
+    public sealed class TestEntry { public string Command = "", Route = ""; }
+    public sealed class RouteStep { public string Key = "", Input = "", WaitState = "", WaitText = ""; public long Timeout; }
+    public sealed class TestQuit { public string Command = "", Key = "", Input = ""; }
+    public sealed class ModTest
+    {
+        public TestLaunch Launch;
+        public List<string> Protect = new List<string>();
+        public FromTo TestSave;
+        public List<TestState> States = new List<TestState>();
+        public TestEntry Entry;
+        public List<RouteStep> Route = new List<RouteStep>();
+        public TestQuit Quit;
+    }
     public sealed class InstalledFile { public string Path = "", Sha256 = ""; }
     public sealed class ModInstalled
     {
@@ -79,6 +94,7 @@ namespace Dbce.Wheel.Mod
         public ModControls Controls;
         public List<CameraStart> Cameras = new List<CameraStart>();
         public ModSelfTest SelfTest;
+        public ModTest Test;
         public ModInstalled Installed;
 
         public static DbceModFile Load(string path) { return Parse(System.IO.File.ReadAllText(path, Encoding.UTF8)); }
@@ -150,6 +166,22 @@ namespace Dbce.Wheel.Mod
             {
                 m.SelfTest = new ModSelfTest { Folder = t.Str("folder"), Steps = t.Strings("steps") };
                 foreach (var pr in t.Items("probes")) m.SelfTest.Probes.Add(new SelfTestProbe { Id = pr.Str("id"), Type = pr.Str("type"), Label = pr.Str("label") });
+            }
+            var tt = j.Get("test");
+            if (tt != null && !tt.IsNull)
+            {
+                var mt = m.Test = new ModTest { Protect = tt.Strings("protect") };
+                var la = tt.Get("launch");
+                if (la != null && !la.IsNull)
+                    mt.Launch = new TestLaunch { SteamAppId = (long)la.Num("steamAppId", 0), Exe = la.Str("exe"), Args = la.Strings("args") };
+                var ts = tt.Get("testSave");
+                if (ts != null && !ts.IsNull) mt.TestSave = new FromTo { From = ts.Str("from"), To = ts.Str("to") };
+                foreach (var st in tt.Items("states")) mt.States.Add(new TestState { State = st.Str("state"), Field = st.Str("field"), Is = st.Str("is"), Text = st.Str("text"), Picture = st.Str("picture") });
+                var en = tt.Get("entry");
+                if (en != null && !en.IsNull) mt.Entry = new TestEntry { Command = en.Str("command"), Route = en.Str("route") };
+                foreach (var r in tt.Items("route")) mt.Route.Add(new RouteStep { Key = r.Str("key"), Input = r.Str("input"), WaitState = r.Str("waitState"), WaitText = r.Str("waitText"), Timeout = (long)r.Num("timeout", 0) });
+                var qu = tt.Get("quit");
+                if (qu != null && !qu.IsNull) mt.Quit = new TestQuit { Command = qu.Str("command"), Key = qu.Str("key"), Input = qu.Str("input") };
             }
             var i = j.Get("installed");
             if (i != null && !i.IsNull)
@@ -293,6 +325,35 @@ namespace Dbce.Wheel.Mod
                     string q = "selfTest.probes[" + k + "]";
                     w.S(q + ".id", SelfTest.Probes[k].Id); w.S(q + ".type", SelfTest.Probes[k].Type); w.S(q + ".label", SelfTest.Probes[k].Label);
                 }
+            }
+            if (Test == null) w.Null("test");
+            else
+            {
+                var tt = Test;
+                if (tt.Launch == null) w.Null("test.launch");
+                else { w.N("test.launch.steamAppId", tt.Launch.SteamAppId); w.S("test.launch.exe", tt.Launch.Exe); w.L("test.launch.args", tt.Launch.Args); }
+                w.L("test.protect", tt.Protect);
+                if (tt.TestSave == null) w.Null("test.testSave");
+                else { w.S("test.testSave.from", tt.TestSave.From); w.S("test.testSave.to", tt.TestSave.To); }
+                w.N("test.states.count", tt.States.Count);
+                for (int k = 0; k < tt.States.Count; k++)
+                {
+                    string q = "test.states[" + k + "]";
+                    w.S(q + ".state", tt.States[k].State); w.S(q + ".field", tt.States[k].Field); w.S(q + ".is", tt.States[k].Is);
+                    w.S(q + ".text", tt.States[k].Text); w.S(q + ".picture", tt.States[k].Picture);
+                }
+                if (tt.Entry == null) w.Null("test.entry");
+                else { w.S("test.entry.command", tt.Entry.Command); w.S("test.entry.route", tt.Entry.Route); }
+                w.N("test.route.count", tt.Route.Count);
+                for (int k = 0; k < tt.Route.Count; k++)
+                {
+                    string q = "test.route[" + k + "]";
+                    w.S(q + ".key", tt.Route[k].Key); w.S(q + ".input", tt.Route[k].Input);
+                    w.S(q + ".waitState", tt.Route[k].WaitState); w.S(q + ".waitText", tt.Route[k].WaitText);
+                    w.N(q + ".timeout", tt.Route[k].Timeout);
+                }
+                if (tt.Quit == null) w.Null("test.quit");
+                else { w.S("test.quit.command", tt.Quit.Command); w.S("test.quit.key", tt.Quit.Key); w.S("test.quit.input", tt.Quit.Input); }
             }
             if (Installed == null) w.Null("installed");
             else

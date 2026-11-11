@@ -44,6 +44,17 @@ A recording shows REC, a timer and the stop hint through title, menus, loading,
 driving and pause, on the center display with triples. No armed session means no
 banner. Tests: `dotnet run --project tests/SessionStatus`.
 
+## Frame-rate readout
+
+`unity/FrameRateReadout.cs` is the STD-023/024 readout for Unity Mono plugins, taken from art of rally and DRIVE
+Rally: it owns a `FrameRateMonitor` (Dbce.Wheel.Telemetry), so the game calls `Tick(now, frameSeconds)` every frame,
+reads `Summary` and `WindowCompleted` for its panel and log, and calls `Draw(right)` from OnGUI while its own "show
+frame rate" setting is on, `right` being the center screen's right edge. It uses `GUIStyle` setters, so IL2CPP games
+with stripped interop need their own renderer.
+
+`dotnet build dotnet/Dbce.Wheel.UnityUi` compiles every renderer in `unity/` against Unity's managed modules
+(UnityEngine.Modules 2021.3); `build.ps1` runs it.
+
 ## F6 panel rows
 
 `SharedBindingRowView.Applicability` defaults to `Supported` for existing hosts.

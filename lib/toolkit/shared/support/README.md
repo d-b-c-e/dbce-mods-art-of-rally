@@ -29,8 +29,8 @@ selection and browser handoff contract below. It has no managed-runtime or UI
 dependency; native IO/report qualification is recorded with that component.
 
 `SupportReport.cs` is the single portable C# 7.3 implementation for standalone
-mod Help tabs and Wheelkit's report adapter. Vendor the exact file and toolkit
-MIT license with source commit/SHA-256 provenance. No Unity, loader, WPF,
+mod Help tabs and Wheelkit's report adapter. Mods vendor it through `Sync-Toolkit.ps1`; Wheelkit references the
+`Dbce.Wheel.Ui` project, which builds it. No Unity, loader, WPF,
 Wheelkit installation, HTTP client, token, clipboard or process API is required.
 The initial reader/redaction/composition behavior comes from Wheelkit Core's
 `Services/ProblemReport.cs`; authenticated submission stays in Wheelkit.

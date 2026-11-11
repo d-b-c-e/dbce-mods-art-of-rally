@@ -10,6 +10,6 @@ The optimizer writes desired state; the mod validates it and publishes observed 
 layout hash alone is not proof of three active cameras. Consumers must also check active capability
 and frame evidence. Writers use atomic replacement; readers reject unsupported schema versions.
 
-Camera behavior and the shared F7 comparison follow the
-[camera framing policy, revision 2](../docs/camera-framing-and-comparison-policy.md).
+Camera behavior follows the
+[camera framing policy, revision 4](../docs/camera-framing-and-comparison-policy.md).
 This is a consumer behavior policy; it does not change the v1 JSON schemas.
