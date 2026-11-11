@@ -85,10 +85,12 @@ internal static class TriplePanels
 
     /// <summary>
     /// As <see cref="Compute(TripleRig, double?)"/> for a renderer that redraws each view onto its curved panel: the
-    /// frustums cover each panel's chord source surface and <paramref name="warps"/> (left, center, right) give
-    /// <see cref="CurvedPanelWarp.SourceUv"/> for the redraw. With <paramref name="centerVerticalFov"/> the game-derived
-    /// virtual eye is taken to the glass (Art, Woden and DRIVE's contract), so the redrawn glass middle keeps that
-    /// field of view and the chord frustum is a little wider. Flat rigs get the plain frustums and flat warps.
+    /// frustums cover each panel's source surface and <paramref name="warps"/> (left, center, right) give
+    /// <see cref="CurvedPanelWarp.SourceUv"/> for the redraw. The views are framed exactly as <see cref="Compute(TripleRig, double?)"/>
+    /// frames them (eye to the panel-edge plane, STD-047, no curve depth added or taken off). The warp is always the
+    /// real eye's, the saved rig's, and samples the views on the rig they were drawn for (STD-041, triple-screen core
+    /// <see cref="CurvedPanelWarp.WithSourceOn"/>): a warp built for the virtual eye bows straight edges on 1500R.
+    /// This is art of rally's curve (ProjectionController). Flat rigs get the plain frustums and flat warps.
     /// </summary>
     public static PanelFrustum[] ComputeWarped(TripleRig rig, double? centerVerticalFov, out CurvedPanelWarp[] warps) =>
         Compute(rig, centerVerticalFov, out warps, true);
@@ -99,21 +101,20 @@ internal static class TriplePanels
         double eye = rig.EyeDistanceMm;
         if (centerVerticalFov is double fov)
         {
-            if (!(fov > 1 && fov < 179)) throw new ArgumentOutOfRangeException(nameof(centerVerticalFov));
-            // Eye distances are to the plane through the panel edges (STD-047), where the builder puts each chord.
-            // Without the redraw the picture is drawn on that plane, so it gets the game's field of view; with it, the
-            // picture ends up on the glass, one curve depth further away, so the glass gets it.
-            double framing = TripleRigDefinition.EyeDistanceForVerticalFov(rig.PanelHeightMm, fov);
-            eye = warped ? framing - rig.CurveDepth() : framing;
+            // Any lens a game can show, 1 and 179 degrees included (the family's zoom limits).
+            if (!(fov > 0 && fov < 180)) throw new ArgumentOutOfRangeException(nameof(centerVerticalFov));
+            // Eye distances are to the plane through the panel edges (STD-047), where the builder puts each chord, so
+            // the center panel's chord keeps the game's vertical field of view, with or without the redraw.
+            eye = TripleRigDefinition.EyeDistanceForVerticalFov(rig.PanelHeightMm, fov);
         }
-        var definition = new TripleRigDefinition(rig.PanelWidthMm, rig.PanelHeightMm, eye, rig.SideAngle, rig.SideAngle, 0, rig.BezelMm, rig.CurveRadiusMm);
         var result = new PanelFrustum[3];
         warps = new CurvedPanelWarp[3];
-        var surfaces = TripleRigBuilder.Build(definition);
+        var surfaces = TripleRigBuilder.Build(Definition(rig, eye));
+        var seat = eye == rig.EyeDistanceMm ? surfaces : TripleRigBuilder.Build(Definition(rig, rig.EyeDistanceMm));
         var origin = new Vector3d(0, 0, 0);
         for (int i = 0; i < 3; i++)
         {
-            warps[i] = CurvedPanelWarp.Create(surfaces[i], origin, rig.CurveRadiusMm);
+            warps[i] = CurvedPanelWarp.Create(seat[i], origin, rig.CurveRadiusMm).WithSourceOn(surfaces[i]);
             // The core works with the eye looking along -Z; Unity camera space looks along +Z with the same right and up.
             var projection = ProjectionCalculator.Calculate(warped ? warps[i].SourceSurface : surfaces[i], origin, 1, 2);
             var forward = projection.CameraForward;
@@ -122,6 +123,9 @@ internal static class TriplePanels
         }
         return result;
     }
+
+    private static TripleRigDefinition Definition(TripleRig rig, double eye) =>
+        new(rig.PanelWidthMm, rig.PanelHeightMm, eye, rig.SideAngle, rig.SideAngle, 0, rig.BezelMm, rig.CurveRadiusMm);
 
     /// <summary>The vertical field of view a frustum shows, as Unity's Camera.fieldOfView reports it.</summary>
     public static double VerticalFov(PanelFrustum frustum) =>

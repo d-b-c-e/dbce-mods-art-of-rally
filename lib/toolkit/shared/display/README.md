@@ -120,6 +120,11 @@ frusta are left/center/right, with yaw and near-plane-one tangents in +Z camera
 space; OffCenterProjection uses the existing OpenGL/Unity projection convention.
 Near/far require 0 < near < far. The solver keeps the 89-degree side-angle bound.
 The width gate uses RacingRowPolicy.SurroundAspect rather than a second constant.
+TriplePanels.ComputeWarped (curved panels, 2026-11-10) frames the views exactly as
+Compute does (eye to the panel-edge plane, STD-047, no curve depth) and keeps the
+warp the real eye's, sampled on the rig the views were drawn for (STD-041,
+CurvedPanelWarp.WithSourceOn), as art of rally and DRIVE Rally do. `pwsh build.ps1`
+runs tests/TripleSettings.
 
 Consumers supply their complete defaults (rig dimensions, Mode/Span and
 MatchGameFov). There is no shared owner-rig or chase-framing default.
