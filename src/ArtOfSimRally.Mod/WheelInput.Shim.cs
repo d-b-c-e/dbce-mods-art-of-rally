@@ -47,7 +47,7 @@ namespace ArtOfSimRally.Mod
                 return ShimInput.Consumer.Started && SharedDuplicate(channel) != null;
             }
             EnsureSharedFrame();
-            available = ShimInput.Consumer.Live(action, Time.frameCount) || ShimInput.Consumer.KnownNeutral(action, Time.frameCount);
+            available = ShimInput.Consumer.Live(action, Time.frameCount);
             value = ShimInput.Consumer.Value(action, Time.frameCount);
             return true;
         }
@@ -160,7 +160,7 @@ namespace ArtOfSimRally.Mod
         {
             var consumer = ShimInput.Consumer; int frame = Time.frameCount;
             var cfg = Main.Settings;
-            if (cfg == null || !cfg.WheelInputEnabled || !consumer.Fresh(frame) || consumer.LatchedDelivery(frame) || ShimInput.IsolatedFrame != frame) return;
+            if (cfg == null || !cfg.WheelInputEnabled || !consumer.Fresh(frame) || ShimInput.IsolatedFrame != frame) return;
             try
             {
                 var manager = GameState.ExistingManager;

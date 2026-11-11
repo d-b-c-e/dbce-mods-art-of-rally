@@ -75,17 +75,17 @@ internal static class Ds4IdentityTests
         internal Hashes(string core, string windows) { Values = new[] { core, windows }; }
         internal string Next(Assembly ignored) => Values[Calls++ % 2];
     }
-    private static PinnedDs4Identity Reader(Hashes hashes = null, (bool, string)[] types = null, string[] fields = null) =>
-        new PinnedDs4Identity(Here, Here, (hashes ?? new Hashes(PinnedDs4Identity.CoreSha256, PinnedDs4Identity.WindowsSha256)).Next,
-            types ?? PinnedDs4Identity.Types, fields ?? PinnedDs4Identity.Fields);
-    private static RewiredIdentity Read(PinnedDs4Identity reader, DualShock4Extension pad) => reader.Read(pad, () => pad.Vendor, () => pad.Product);
+    private static Ds4InterfacePath Reader(Hashes hashes = null, (bool, string)[] types = null, string[] fields = null) =>
+        new Ds4InterfacePath(Here, Here, (hashes ?? new Hashes(Ds4InterfacePath.CoreSha256, Ds4InterfacePath.WindowsSha256)).Next,
+            types ?? Ds4InterfacePath.Types, fields ?? Ds4InterfacePath.Fields);
+    private static RewiredIdentity Read(Ds4InterfacePath reader, DualShock4Extension pad) => reader.Read(pad, () => pad.Vendor, () => pad.Product);
 
     // The joystick view's DualShock 4 branch: identity from the production reader on every query.
     private sealed class Joystick : IRawIsolationJoystick, IRawIdentityDiagnostic, IIdentityLifetimeDiagnostic
     {
         internal Guid Id = Guid.NewGuid();
         internal DualShock4Extension Extension = Pad();
-        internal PinnedDs4Identity Reader = Ds4IdentityTests.Reader();
+        internal Ds4InterfacePath Reader = Ds4IdentityTests.Reader();
         internal bool On = true, Present = true;
         public object Token => this;
         public Guid Instance => Id;
@@ -128,7 +128,7 @@ internal static class Ds4IdentityTests
         internal Inventory Inventory = new Inventory();
         internal OwnedDeviceIdentity[] Owned;
         internal Guid[] Required, Mapped;
-        internal ProbeIdentityLease Lease;
+        internal IdentityLease Lease;
         internal NativeInputIsolation Isolation;
         internal Session(bool bindPad = true)
         {
@@ -140,15 +140,15 @@ internal static class Ds4IdentityTests
         }
         internal Session Begin()
         {
-            var before = ProbeObservation.Capture(Inventory);
-            Mapped = ProbeIdentityMapper.Match(Required, Owned, before);
-            Lease = new ProbeIdentityLease(before, Mapped, 7);
+            var before = JoystickObservations.Capture(Inventory);
+            Mapped = IdentityJoin.Match(Required, Owned, before);
+            Lease = new IdentityLease(before, Mapped, 7);
             Isolation = new NativeInputIsolation(Mapped, Inventory);
             return this;
         }
-        // SharedInputSession.VerifyIsolation's join, then IdentityRestored's.
-        internal Guid[] Verify() => ProbeIdentityMapper.Match(Required, Owned, Lease.Verify(ProbeObservation.Capture(Inventory), 7, Isolation.OwnsDisabled));
-        internal Guid[] Restored() => ProbeIdentityMapper.Match(Required, Owned, Lease.Verify(ProbeObservation.Capture(Inventory), 7, token => false));
+        // SharedInputSession.VerifyIsolation's join, then the same join after the objects are re-enabled.
+        internal Guid[] Verify() => IdentityJoin.Match(Required, Owned, Lease.Verify(JoystickObservations.Capture(Inventory), 7, Isolation.OwnsDisabled));
+        internal Guid[] Restored() => IdentityJoin.Match(Required, Owned, Lease.Verify(JoystickObservations.Capture(Inventory), 7, token => false));
     }
 
     internal static int Run()
@@ -158,16 +158,16 @@ internal static class Ds4IdentityTests
         Func<Action, string> refusal = act => { try { act(); return Admitted; } catch (Exception ex) { return ex.Message; } };
 
         // The reviewed pair and chain are exactly diag-03's.
-        check(PinnedDs4Identity.CoreSha256 == "2DD147A1E7EA3A8ED7FECE35EA6554784ED3F039F5E291F3F0B6F877379B0655" &&
-              PinnedDs4Identity.WindowsSha256 == "4389BCA4D00D68B600972FCD2A0D5A21208517DF7893A6A4602E740D6691417C", "reviewed hashes changed");
-        check(String.Join("|", Array.ConvertAll(PinnedDs4Identity.Types, t => (t.Core ? "core:" : "windows:") + t.Type)) ==
+        check(Ds4InterfacePath.CoreSha256 == "2DD147A1E7EA3A8ED7FECE35EA6554784ED3F039F5E291F3F0B6F877379B0655" &&
+              Ds4InterfacePath.WindowsSha256 == "4389BCA4D00D68B600972FCD2A0D5A21208517DF7893A6A4602E740D6691417C", "reviewed hashes changed");
+        check(String.Join("|", Array.ConvertAll(Ds4InterfacePath.Types, t => (t.Core ? "core:" : "windows:") + t.Type)) ==
               "core:Rewired.ControllerExtensions.DualShock4Extension|core:Rewired.ControllerExtensions.DualShock4Extension+bCAGPoVsjuhfnJyRuyREpdPDdAUT|" +
               "windows:Rewired.HID.Drivers.DualShock4Driver|windows:aTbFSaxgzEWBvObtdpuQSYzCiioT+hGVykObfUvbkhQHpTnWBQJESEppf|windows:eOjwogCoQuQOjGajnUgPmfeWSfsn", "reviewed chain types changed");
-        check(String.Join("|", PinnedDs4Identity.Fields) == "sUHnBwREVEYFPxdqqIRaVAMCiTIW|QYKkhsALSllcmVrwQkNAjMiAhLuHA|oNZzuYgyerFmIKdVWnZydeacAQSD|oNZzuYgyerFmIKdVWnZydeacAQSD" &&
-              PinnedDs4Identity.PathField == "dCANkCDaitOZGMJDNGKkRJJgljXi", "reviewed chain fields changed");
+        check(String.Join("|", Ds4InterfacePath.Fields) == "sUHnBwREVEYFPxdqqIRaVAMCiTIW|QYKkhsALSllcmVrwQkNAjMiAhLuHA|oNZzuYgyerFmIKdVWnZydeacAQSD|oNZzuYgyerFmIKdVWnZydeacAQSD" &&
+              Ds4InterfacePath.PathField == "dCANkCDaitOZGMJDNGKkRJJgljXi", "reviewed chain fields changed");
 
         // The pinned read: the exact path, the extension as token, product in the owned readers' layout.
-        var pad = Pad(); var hashes = new Hashes(PinnedDs4Identity.CoreSha256, PinnedDs4Identity.WindowsSha256); var reader = Reader(hashes);
+        var pad = Pad(); var hashes = new Hashes(Ds4InterfacePath.CoreSha256, Ds4InterfacePath.WindowsSha256); var reader = Reader(hashes);
         var id = Read(reader, pad);
         check(id.Path == Path && ReferenceEquals(id.Token, pad) && id.Product == "05c4054c-0000-0000-0000-504944564944", "pinned DualShock 4 identity not read exactly");
         pad.Vendor = 0x346E; pad.Product = 0x0006;
@@ -178,8 +178,8 @@ internal static class Ds4IdentityTests
         check(reader.Validations == 1 && hashes.Calls == 2, "assembly pair hashed per read, not once");
 
         // Hash gate: refused by name before any chain field is read, and the refusal is cached.
-        foreach (var (core, windows, named) in new[] { ("00", PinnedDs4Identity.WindowsSha256, "Rewired_Core"), (PinnedDs4Identity.CoreSha256, "00", "Rewired_Windows"),
-                                                      (PinnedDs4Identity.WindowsSha256, PinnedDs4Identity.CoreSha256, "Rewired_Core") })
+        foreach (var (core, windows, named) in new[] { ("00", Ds4InterfacePath.WindowsSha256, "Rewired_Core"), (Ds4InterfacePath.CoreSha256, "00", "Rewired_Windows"),
+                                                      (Ds4InterfacePath.WindowsSha256, Ds4InterfacePath.CoreSha256, "Rewired_Core") })
         {
             var wrong = new Hashes(core, windows); var gated = Reader(wrong); var broken = Pad(); broken.sUHnBwREVEYFPxdqqIRaVAMCiTIW = null;
             string why = refusal(() => Read(gated, broken));
@@ -207,12 +207,12 @@ internal static class Ds4IdentityTests
         check(Read(reader, p).Path == Path.ToUpperInvariant(), "adapter normalized the path (the mapper alone folds case)");
 
         // Members: an absent type, field or a non-String path refuses by name, once.
-        var types = (((bool, string)[])PinnedDs4Identity.Types.Clone()); types[3] = (false, "aTbFSaxgzEWBvObtdpuQSYzCiioT+absent");
+        var types = (((bool, string)[])Ds4InterfacePath.Types.Clone()); types[3] = (false, "aTbFSaxgzEWBvObtdpuQSYzCiioT+absent");
         check(refusal(() => Read(Reader(null, types), Pad())) == "DualShock 4 identity refused: type aTbFSaxgzEWBvObtdpuQSYzCiioT+absent absent", "absent type not named");
-        var fields = (string[])PinnedDs4Identity.Fields.Clone(); fields[1] = "renamed";
+        var fields = (string[])Ds4InterfacePath.Fields.Clone(); fields[1] = "renamed";
         var renamed = Reader(null, null, fields);
         check(refusal(() => Read(renamed, Pad())).EndsWith("DualShock4Extension+bCAGPoVsjuhfnJyRuyREpdPDdAUT.renamed absent") && renamed.Validations == 1, "absent member not named");
-        types = (((bool, string)[])PinnedDs4Identity.Types.Clone()); types[4] = (false, typeof(IntPath).FullName);
+        types = (((bool, string)[])Ds4InterfacePath.Types.Clone()); types[4] = (false, typeof(IntPath).FullName);
         check(refusal(() => Read(Reader(null, types), Pad())).EndsWith("absent or not a String"), "non-String path member admitted");
 
         // The production mapper and lease with the DualShock 4 bound: enabled, owned-disabled, restored.
@@ -245,7 +245,7 @@ internal static class Ds4IdentityTests
             "lease refusal lost the DualShock 4 reason");
 
         // Refusals stay refusals at the join, with the reason named.
-        s = new Session(); s.Pad.Reader = Reader(new Hashes(PinnedDs4Identity.CoreSha256, "00"));
+        s = new Session(); s.Pad.Reader = Reader(new Hashes(Ds4InterfacePath.CoreSha256, "00"));
         string hashRefusal = refusal(() => s.Begin());
         check(hashRefusal.StartsWith("Rewired identity/path unavailable (DualShock 4 identity refused: Rewired_Windows 00 is not the reviewed 4389BCA4)"), "hash refusal unnamed at the join: " + hashRefusal);
         s = new Session(); s.Pad.Extension.Product = 0x09CC;

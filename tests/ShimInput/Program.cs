@@ -49,7 +49,7 @@ internal static class Program
         byte[] bytes = Frame();
         Check(ShimFrame.TryDecode(bytes, out frame, out why), why);
         Check(frame.Sequence == 1 && frame.TickMicroseconds == 1000 && frame.Down == 1UL << 30 && frame.Up == 1UL << 5 && frame.SampleCount == 3, "source fields lost");
-        Same(frame[0].Value, -.4f, "steer wire value"); Check(frame[4].Injected, "injection provenance lost");
+        Same(frame[0].Value, -.4f, "steer wire value");
         bytes[48] = 0; bytes[49] = 0; bytes[50] = 0; bytes[51] = 0;
         Same(frame[0].Value, -.4f, "source buffer mutation changed accepted frame");
         Check(!ShimFrame.TryDecode(null, out frame, out why), "null frame accepted");
@@ -106,17 +106,8 @@ internal static class Program
         Check(!sink.KeyboardSteered, "keyboard flag without isolation");
         var old = new DrivingValues { Steer = 1.02f }; sink.Compose(2, false, .02f, ref old, KeyboardSteer.Present);
         Same(old.Steer, 0f, "stale frame kept native or wheel steer"); Check(!sink.KeyboardSteered, "keyboard flag on a stale frame");
-        var latched = new ShimAxisConsumer { AcceptLatched = true };
-        var bytes = Actions(1, 0, (0, L, .25f)); bytes[40] = 3; bytes[41] = 1; bytes[42] = 1; bytes[48 + 5] = 1;
-        Check(latched.Publish(bytes, 1, out why), why);
-        var suppressed = new DrivingValues { Steer = 1.02f, Throttle = .9f }; latched.Compose(1, true, .02f, ref suppressed, KeyboardSteer.Present);
-        Same(suppressed.Steer, .27f, "latched session kept keyboard steer"); Check(suppressed.Throttle < .9f, "latched session kept native throttle");
-        Check(!latched.KeyboardSteered, "keyboard flag in a latched session");
-        // The query gate follows the session kind fixed at open, not delivery freshness (sana 35766).
+        // The query gate is this frame's isolation proof, not delivery freshness (sana 35766).
         Check(sink.AsksKeyboard(true) && !sink.AsksKeyboard(false), "ordinary query gate");
-        Check(latched.LatchedDelivery(1) && !latched.AsksKeyboard(true), "delivering latched session asks");
-        Check(!latched.LatchedDelivery(2) && !latched.AsksKeyboard(true), "stale latched session asks");
-        latched.Stop(); Check(latched.Terminal && !latched.AsksKeyboard(true), "stopped latched session asks");
         sink.Stop(); Check(sink.Terminal && sink.AsksKeyboard(true), "stopped ordinary session lost its keyboard query");
     }
     private static void StatusesAndFailures()
@@ -227,26 +218,15 @@ internal static class Program
         Check(ShimTransmission.Step(6, 1, false, 6) == null && ShimTransmission.Step(0, -1, false, 6) == null, "out-of-range step clamped");
         Check(ShimTransmission.Step(3, 0, false, 6) == null && ShimTransmission.Step(3, 1, false, -1) == null, "no step or no ratios shifted");
 
-        // Latched Core sessions: accepted only when the opener asked for them; every frame latched;
-        // a delivery mask keeps owned actions undelivered; native input suppressed while latched.
-        byte[] Latched(ulong n, ulong down, params (int Action, ShimStatus Status, float Value)[] a)
-        { var b = Actions(n, down, a); b[40] = 3; b[41] = 1; b[42] = 1; foreach (var x in a) b[48 + x.Action * 8 + 5] = 1; return b; }
-        var ordinary = new ShimAxisConsumer();
-        Check(!ordinary.Publish(Latched(1, 0), 1, out why) && ordinary.Terminal, "ordinary consumer accepted a latched frame");
-        var trial = new ShimAxisConsumer { AcceptLatched = true }; trial.DeliverOnly(13, 14);
-        Check(trial.Publish(Latched(1, 0, (9, L, 1f), (13, L, 0f), (14, L, 1f), (5, L, 0f)), 1, out why), why);
-        Check(trial.LatchedDelivery(1) && trial.Live(14, 1) && trial.Value(14, 1) == 1f && trial.Injected(14, 1), "injected navDown not delivered");
-        Check(trial.Owns(9) && !trial.Live(9, 1) && trial.Value(9, 1) == 0f, "masked confirm delivered (progression)");
-        var suppressed = Keyboard(); trial.Compose(1, true, .05f, ref suppressed);
-        Same(suppressed, default(DrivingValues), "latched session kept keyboard or masked axes");
-        Check(trial.Publish(Latched(2, 1UL << 5, (9, L, 1f), (13, L, 0f), (14, L, 0f), (5, L, 1f)), 2, out why) && trial.TakeShift() == 0, "masked shift edge queued");
-        bool fixedLatch = false, fixedMask = false;
-        try { trial.AcceptLatched = false; } catch (InvalidOperationException) { fixedLatch = true; }
-        try { trial.DeliverOnly(9); } catch (InvalidOperationException) { fixedMask = true; }
-        Check(fixedLatch && fixedMask, "latched acceptance or mask changed after open");
-        Check(!trial.Publish(Actions(3, 0, (9, L, 1f), (13, L, 0f), (14, L, 0f), (5, L, 0f)), 3, out why) && trial.Terminal, "latched consumer accepted an ordinary frame");
+        // Core's latched test sessions (run state, latched, native suppressed, injected) are never accepted.
+        foreach (int flag in new[] { 40, 41, 42 })
+        {
+            var b = Actions(1, 0, (9, L, 1f)); b[flag] = flag == 40 ? (byte)3 : (byte)1;
+            var refusing = new ShimAxisConsumer();
+            Check(!refusing.Publish(b, 1, out why) && refusing.Terminal && !refusing.Started, "a latched test frame was accepted: byte " + flag);
+        }
         var plainSession = new ShimAxisConsumer(); Check(plainSession.Publish(Actions(1, 0, (9, L, 1f)), 1, out why), why);
-        Check(!plainSession.LatchedDelivery(1) && plainSession.Live(9, 1), "ordinary session suppressed or masked");
+        Check(plainSession.Live(9, 1) && plainSession.Value(9, 1) == 1f, "ordinary session suppressed");
 
         // Transmission policy: the profile's own mode only, never an automatic gearbox, one change per step.
         var S = ShimTransmission.Mode.Sequential; var H = ShimTransmission.Mode.HPattern; var N = ShimTransmission.Mode.None;
@@ -317,80 +297,6 @@ internal static class Program
         Check(SharedInputStatus.Gears("H-pattern", "H-pattern", true).Contains("automatic now"), "automatic car not flagged");
         Check(SharedInputStatus.Gears("Automatic", "Sequential", false).Contains("not used") && SharedInputStatus.Gears(null, "Sequential", false).Contains("names no transmission"), "non-manual profile claimed gears");
         Check(SharedInputStatus.Gears("H-pattern", "Sequential", false).Contains("Gears follow the profile (H-pattern)"), "manual mismatch text");
-    }
-    private static void ProbeRequestChecks()
-    {
-        // Trial runs only on the reviewed latched build.
-        string Refusal(string shim)
-        {
-            try { new ProbeRequest { Schema = 1, Mode = "Trial", Nonce = Guid.NewGuid().ToString("N"), ShimSha256 = shim, ExpiresUtc = DateTime.UtcNow.AddMinutes(5).ToString("o") }.Validate(DateTime.UtcNow, "x", "y", "z", "w"); return ""; }
-            catch (Exception e) { return e.Message; }
-        }
-        Check(Refusal(BridgeTests.OrdinaryShim).Contains("reviewed latched bridge build") && !Refusal(ProbeRequest.LatchedShimSha256).Contains("reviewed latched bridge build"), "Trial shim pin");
-        string advanceApply;
-        try { new ProbeRequest { Schema = 1, Mode = "Apply", Nonce = Guid.NewGuid().ToString("N"), AdvanceTitle = true, ExpiresUtc = DateTime.UtcNow.AddMinutes(5).ToString("o") }.Validate(DateTime.UtcNow, "x", "y", "z", "w"); advanceApply = ""; }
-        catch (Exception e) { advanceApply = e.Message; }
-        Check(advanceApply.Contains("only a Trial may advance the title"), "title advance accepted outside a Trial: " + advanceApply);
-        // Whole-file replacement while a reader holds the old file the way Core does (read + delete sharing).
-        string folder = Path.Combine(Path.GetTempPath(), "art-trial-replace-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(folder);
-        string batch = Path.Combine(folder, "shim-batch.txt");
-        ProbeRequest.Replace(batch, "one\n");
-        using (var held = new FileStream(batch, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete))
-        {
-            ProbeRequest.Replace(batch, "two\n");
-            Check(new StreamReader(held).ReadToEnd() == "one\n", "held reader saw a torn or replaced object");
-        }
-        Check(File.ReadAllText(batch) == "two\n" && Directory.GetFiles(folder).Length == 1, "replacement incomplete or temp file left");
-        // A Core-style reader opening the batch concurrently never meets a sharing violation or a torn file.
-        int refused = 0, torn = 0, reads = 0; bool stop = false;
-        var reader = new Thread(() =>
-        {
-            while (!Volatile.Read(ref stop))
-            {
-                try { using (var r = new FileStream(batch, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete)) { reads++; var t = new StreamReader(r).ReadToEnd(); if (!t.StartsWith("batch ") || !t.EndsWith(" end\n")) torn++; } }
-                catch (FileNotFoundException) { refused++; }
-                catch (IOException) { refused++; }
-            }
-        });
-        // Background reader, always stopped: a failed replacement is reported, never a hung process.
-        reader.IsBackground = true;
-        string replaceError = null;
-        ProbeRequest.Replace(batch, "batch 0 end\n"); reader.Start();
-        try { for (int i = 1; i <= 400; i++) ProbeRequest.Replace(batch, "batch " + i + " " + new string('x', i % 97) + " end\n"); }
-        catch (Exception e) { replaceError = e.GetType().Name + ": " + e.Message; }
-        finally { Volatile.Write(ref stop, true); reader.Join(); }
-        Check(replaceError == null, "replacement failed under a concurrent reader: " + replaceError);
-        Check(refused == 0 && torn == 0 && reads > 0 && Directory.GetFiles(folder).Length == 1, "concurrent reader refused " + refused + " / torn " + torn + " of " + reads);
-    }
-    // Preserved repro (romi 29497): a Core-style reader (GENERIC_READ, FILE_SHARE_READ|DELETE, as
-    // art-shim-bridge windows/host/control_snapshot.hpp SnapshotFile) against 400 whole-file
-    // replacements by File.Replace (ReplaceFileW, as tests/shim_first_loop/run.py replace_file) and by
-    // ProbeRequest.Replace (POSIX-semantics rename). Reports counts; asserts nothing about the first.
-    private static string ReplaceRace(string writer, Action<string, string> replace)
-    {
-        string folder = Path.Combine(Path.GetTempPath(), "art-replace-race-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(folder);
-        string batch = Path.Combine(folder, "inject.txt");
-        File.WriteAllText(batch, "batch 0 end\n");
-        int refused = 0, torn = 0, reads = 0; bool stop = false;
-        var reader = new Thread(() =>
-        {
-            while (!Volatile.Read(ref stop))
-            {
-                try { using (var r = new FileStream(batch, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete)) { reads++; var t = new StreamReader(r).ReadToEnd(); if (!t.StartsWith("batch ") || !t.EndsWith(" end\n")) torn++; } }
-                catch (IOException) { refused++; }
-            }
-        });
-        reader.IsBackground = true; reader.Start();
-        string failed = null;
-        try { for (int i = 1; i <= 400; i++) replace(batch, "batch " + i + " " + new string('x', i % 97) + " end\n"); }
-        catch (Exception e) { failed = e.GetType().Name + ": " + e.Message; }
-        finally { Volatile.Write(ref stop, true); reader.Join(); }
-        if (failed != null) return "\"" + writer + "\":{\"writerFailed\":\"" + failed.Replace("\"", "'") + "\",\"refused\":" + refused + ",\"reads\":" + reads + "}";
-        return "\"" + writer + "\":{\"refused\":" + refused + ",\"torn\":" + torn + ",\"reads\":" + reads + "}";
-    }
-    private static void FileReplace(string path, string text)
-    {
-        string temp = path + "." + Guid.NewGuid().ToString("N") + ".tmp"; File.WriteAllText(temp, text); File.Replace(temp, path, null);
     }
     // The profile's physical controls, for refusing Art fallbacks that would make one control drive two actions.
     private static void ProfileControls()
@@ -600,11 +506,6 @@ internal static class Program
     }
     private static int Main(string[] args)
     {
-        if (args.Length == 1 && args[0] == "--replace-race")
-        {
-            Console.WriteLine("{\"status\":\"measured\"," + ReplaceRace("replaceFileW", FileReplace) + "," + ReplaceRace("posixRename", ProbeRequest.Replace) + "}");
-            return 0;
-        }
         try
         {
             if (args.Length == 2 && args[0] == "--qualification-only")
@@ -622,17 +523,16 @@ internal static class Program
                 Console.WriteLine("PASS " + assertions + " focused shared input status checks; no native, device, game or file writes.");
                 return 0;
             }
-            Decode(); Consumption(); KeyboardSteerRule(); StatusesAndFailures(); SharedActions(); SharedStatus(); ProbeRequestChecks(); ProfileControls(); ControlsContractMatches();
+            Decode(); Consumption(); KeyboardSteerRule(); StatusesAndFailures(); SharedActions(); SharedStatus(); ProfileControls(); ControlsContractMatches();
             AcceptedSnapshots();
             assertions += BridgeTests.Fake();
             assertions += IsolationTests.Run();
-            assertions += ProbeTests.Run();
+            assertions += NeutralAndJoinTests.Run();
             assertions += IdentityLeaseTests.Run();
             assertions += Ds4IdentityTests.Run();
             assertions += ProfileInfoTests.Decode();
             if (args.Length == 2 && args[0] == "--abi") assertions += AbiProbe.Check(args[1]);
             if (args.Length == 2 && args[0] == "--bridge") assertions += BridgeTests.Actual(args[1]);
-            if (args.Length == 2 && args[0] == "--bridge-latched") assertions += BridgeTests.ActualLatchedSession(args[1]);
             if (args.Length == 2 && args[0] == "--profile-info") assertions += ProfileInfoTests.Actual(args[1]);
             Console.WriteLine("{\"status\":\"passed\",\"assertions\":" + assertions + "}"); return 0;
         }

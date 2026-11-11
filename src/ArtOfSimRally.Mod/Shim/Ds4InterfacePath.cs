@@ -19,11 +19,11 @@ namespace ArtOfSimRally.Mod.Shim
     // For the reviewed Rewired_Core/Rewired_Windows pair only, this reads the
     // path the driver opened through the exact private chain observed at
     // runtime (diag-03): fields only, no getter, method or handle. The path
-    // must still equal an owned reader's path exactly in ProbeIdentityMapper;
-    // the product, from the public HID vendor/product getters, is the second
+    // must still equal an owned reader's path exactly in IdentityJoin; the
+    // product, from the public HID vendor/product getters, is the second
     // check. Any other hash, member, type or an empty path refuses by name.
     // No other controller family is read here.
-    internal sealed class PinnedDs4Identity
+    internal sealed class Ds4InterfacePath
     {
         internal const string CoreSha256 = "2DD147A1E7EA3A8ED7FECE35EA6554784ED3F039F5E291F3F0B6F877379B0655";
         internal const string WindowsSha256 = "4389BCA4D00D68B600972FCD2A0D5A21208517DF7893A6A4602E740D6691417C";
@@ -53,8 +53,8 @@ namespace ArtOfSimRally.Mod.Shim
 
         // One instance per loaded assembly pair: the files are hashed once, on
         // the first DualShock 4 read, never per frame.
-        internal PinnedDs4Identity(Assembly core, Assembly windows) : this(core, windows, FileSha256, Types, Fields) { }
-        internal PinnedDs4Identity(Assembly core, Assembly windows, Func<Assembly, string> hash, (bool Core, string Type)[] types, string[] fields)
+        internal Ds4InterfacePath(Assembly core, Assembly windows) : this(core, windows, FileSha256, Types, Fields) { }
+        internal Ds4InterfacePath(Assembly core, Assembly windows, Func<Assembly, string> hash, (bool Core, string Type)[] types, string[] fields)
         {
             this.core = core; this.windows = windows; this.hash = hash ?? throw new ArgumentNullException(nameof(hash));
             this.types = types; this.fields = fields;

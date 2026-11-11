@@ -14,9 +14,8 @@ namespace ArtOfSimRally.Mod.Shim
     {
         internal readonly float Value;
         internal readonly ShimStatus Status;
-        internal readonly bool Injected;
-        internal ShimAction(float value, ShimStatus status, bool injected)
-        { Value = value; Status = status; Injected = injected; }
+        internal ShimAction(float value, ShimStatus status)
+        { Value = value; Status = status; }
         internal bool Owned => Status != ShimStatus.Unbound && Status != ShimStatus.Invalid && Status != ShimStatus.Unsupported;
         internal float Applied => Status == ShimStatus.Live ? Value : 0f;
     }
@@ -59,7 +58,8 @@ namespace ArtOfSimRally.Mod.Shim
                 reason = "invalid shim action " + Names[i];
                 if (bytes[at + 4] > (byte)ShimStatus.TestNeutral || bytes[at + 5] > 1 || bytes[at + 6] != 0 || bytes[at + 7] != 0 ||
                     float.IsNaN(value) || float.IsInfinity(value) || value < (i == 0 ? -1f : 0f) || value > 1f) return false;
-                values[i] = new ShimAction(value, (ShimStatus)bytes[at + 4], bytes[at + 5] != 0);
+                // bytes[at + 5] is Core's injected flag, set only in latched test sessions, which Art refuses.
+                values[i] = new ShimAction(value, (ShimStatus)bytes[at + 4]);
             }
             frame = new ShimFrame(bytes, values); reason = ""; return true;
         }

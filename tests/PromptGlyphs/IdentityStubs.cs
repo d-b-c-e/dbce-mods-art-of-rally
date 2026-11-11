@@ -32,7 +32,6 @@ namespace ArtOfSimRally.Mod.Shim
         internal bool Terminal = false;
         internal readonly HashSet<int> Owned = new HashSet<int>();
         internal bool Owns(int index) => Owned.Contains(index);
-        internal bool LatchedDelivery(int frame) => false;
     }
     internal static class ShimInput { internal static readonly Consumer Consumer = new Consumer(); }
     internal sealed class JoystickObservation

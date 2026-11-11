@@ -30,7 +30,7 @@ namespace ArtOfSimRally.Mod.Shim
             observing = false;
         }
         // The loaded pair, validated once on the first DualShock 4 read.
-        private static readonly PinnedDs4Identity Ds4 = new PinnedDs4Identity(typeof(DualShock4Extension).Assembly, typeof(RawInputControllerExtension).Assembly);
+        private static readonly Ds4InterfacePath Ds4 = new Ds4InterfacePath(typeof(DualShock4Extension).Assembly, typeof(RawInputControllerExtension).Assembly);
         private sealed class JoystickView : IRawIsolationJoystick, IRawIdentityDiagnostic, IIdentityLifetimeDiagnostic
         {
             private readonly Joystick joystick;
@@ -57,7 +57,7 @@ namespace ArtOfSimRally.Mod.Shim
             public float[] ReadRawAxes()
             {
                 int count = joystick.axisCount;
-                if (count < 0 || count > 256) throw new InvalidOperationException("Rewired axis count outside probe bound");
+                if (count < 0 || count > 256) throw new InvalidOperationException("Rewired axis count outside the 256 bound");
                 var values = new float[count];
                 for (int i = 0; i < count; i++) values[i] = joystick.GetAxisRaw(i);
                 return values;

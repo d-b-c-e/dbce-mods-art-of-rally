@@ -6,11 +6,10 @@ using UnityEngine;
 namespace ArtOfSimRally.Mod
 {
     // Ordinary shared input: Wheelkit's store profile when the store exists, else the opt-in
-    // Settings.SharedInput with dbce-controls.ini (both read at startup). Never active with the
-    // diagnostic probe and never constructed otherwise. It qualifies once, idle in the menus, with the
-    // same sequence the probe qualified; any refusal before the first accepted frame releases what it
-    // took and leaves Art's bindings in charge with a stated reason. After the first accepted frame a
-    // fault keeps the wheel neutral until restart (the shared consumer's existing rule).
+    // Settings.SharedInput with dbce-controls.ini (both read at startup). It qualifies once, idle in
+    // the menus; any refusal before the first accepted frame releases what it took and leaves Art's
+    // bindings in charge with a stated reason. After the first accepted frame a fault keeps the wheel
+    // neutral until restart (the shared consumer's existing rule).
     internal static partial class SharedInputStartup
     {
         internal const string ProfileFileName = "dbce-controls.ini", ShimFileName = "dbce_shim.dll";
@@ -90,7 +89,7 @@ namespace ArtOfSimRally.Mod
                 // Without Wheelkit's store, players use this file or Art's own F6 bindings.
                 else if (!File.Exists(profilePath)) { Refuse("no shared profile beside the mod. Turn off Use shared profile, restart, and bind your controls in F6 Controls."); return; }
                 if (!File.Exists(shimPath)) { Refuse(ShimFileName + " is missing beside the mod."); return; }
-                if (!String.Equals(ProbeRequest.Hash(shimPath), ExpectedShimSha256, StringComparison.OrdinalIgnoreCase)) { Refuse(ShimFileName + " is not the qualified build."); return; }
+                if (!String.Equals(NativeDiagnostics.FileHash(shimPath), ExpectedShimSha256, StringComparison.OrdinalIgnoreCase)) { Refuse(ShimFileName + " is not the qualified build."); return; }
                 if (store != null) profile = store.Profile;
                 else
                 {

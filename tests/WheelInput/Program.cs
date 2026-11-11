@@ -287,10 +287,6 @@ static class Program
             {
                 KeyboardSteering(); Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
             }
-            if (args.Contains("--shim-latched-only"))
-            {
-                SharedLatchedSuppression(); Console.WriteLine(JsonSerializer.Serialize(new { status = "passed", assertions })); return 0;
-            }
             if (args.Contains("--resume-assignment-only")) AssignmentResume();
             else if (args.Contains("--shifter-only")) assertions+=ShifterIdentityTests.Run();
             else if (args.Contains("--identity-only")) DeviceIdentity();
@@ -330,7 +326,7 @@ static class Program
     sealed class ActionNative : ArtOfSimRally.Mod.Shim.IShimBridge
     {
         internal Func<(int Action, ArtOfSimRally.Mod.Shim.ShimStatus Status, float Value)[]> Script = () => Array.Empty<(int, ArtOfSimRally.Mod.Shim.ShimStatus, float)>();
-        internal int Ticks, Stops; internal bool Latched, Refuse;
+        internal int Ticks, Stops; internal bool Refuse;
         internal int[] AxesOwned = { 0, 1, 2, 3, 4 };
         public bool Devices(byte[] bytes, int count) => true;
         public bool Tick(byte[] samples, int count, byte[] frame)
@@ -339,8 +335,7 @@ static class Program
             if (Refuse) return false;
             BitConverter.GetBytes(296).CopyTo(frame, 0); frame[4] = 2; BitConverter.GetBytes((ulong)Ticks).CopyTo(frame, 8); BitConverter.GetBytes((long)Ticks).CopyTo(frame, 16);
             for (int i = 0; i < 31; i++) frame[52 + i * 8] = (byte)(i < 5 && Array.IndexOf(AxesOwned, i) >= 0 ? ArtOfSimRally.Mod.Shim.ShimStatus.Live : ArtOfSimRally.Mod.Shim.ShimStatus.Unbound);
-            foreach (var a in Script()) { BitConverter.GetBytes(a.Value).CopyTo(frame, 48 + a.Action * 8); frame[52 + a.Action * 8] = (byte)a.Status; if (Latched && a.Status == ArtOfSimRally.Mod.Shim.ShimStatus.Live) frame[53 + a.Action * 8] = 1; }
-            if (Latched) { frame[40] = 3; frame[41] = 1; frame[42] = 1; } // Running, latched, native suppressed
+            foreach (var a in Script()) { BitConverter.GetBytes(a.Value).CopyTo(frame, 48 + a.Action * 8); frame[52 + a.Action * 8] = (byte)a.Status; }
             return true;
         }
         public void Stop() => Stops++;
@@ -367,57 +362,6 @@ static class Program
         object[] args = { player, native };
         typeof(GameContinuePatch).GetMethod("After", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic).Invoke(null, args);
         return (bool)args[1];
-    }
-    // A latched Core trial: injected nav is the only input for the primary player; native keyboard
-    // results are replaced, masked confirm never progresses, other players are untouched.
-    static void SharedLatchedSuppression()
-    {
-        const ArtOfSimRally.Mod.Shim.ShimStatus L = ArtOfSimRally.Mod.Shim.ShimStatus.Live;
-        Setup("");
-        // Art's handbrake button is pressed on the same copied read; a latched trial must not pass it.
-        Host.Settings.HandbrakeButtonBinding = "TSS fixture|0|button:0|0|1"; WheelInput.LoadBindings();
-        Clock.frameCount = 9500; WheelInput.Update();
-        var source = new BridgeTests.Source(); float down = 0;
-        var native = new ActionNative { Latched = true, Script = () => new[] { (9, L, 1f), (13, L, 0f), (14, L, down) } };
-        ArtOfSimRally.Mod.Shim.ShimInput.Consumer.AcceptLatched = true; ArtOfSimRally.Mod.Shim.ShimInput.Consumer.DeliverOnly(13, 14);
-        WheelInput.AttachSharedInput(source, native, () => true, () => true);
-        GameButtonInput.Observe(12, 13, 16, 17);
-        void Frame() { Clock.frameCount++; WheelInput.EnsureUpdatedThisFrame(); }
-        Frame(); Frame();
-        Check(ArtOfSimRally.Mod.Shim.ShimInput.Consumer.LatchedDelivery(Clock.frameCount), "latched trial not delivering");
-        Check(!Query(PadManager.Player, "GetButtonDown", 16, true) && !Query(PadManager.Player, "GetButton", 16, true), "native submit or masked confirm reached the game");
-        Check(!Query(PadManager.Player, "GetButton", 13, true), "native vertical (keyboard) kept during latched delivery");
-        Check(!Query(PadManager.Player, "GetButtonDown", 99, true) && !ContinueQuery(PadManager.Player, true), "unmapped/continue native input kept");
-        Check(AxisQuery(13, .7f) == 0f, "native vertical axis kept during latched delivery");
-        Check(Query(new Rewired.Player(), "GetButtonDown", 16, true), "another player's native input suppressed");
-        down = 1; Frame();
-        Check(Query(PadManager.Player, "GetNegativeButtonDown", 13, false) && Query(PadManager.Player, "GetNegativeButton", 13, false), "injected navDown missing from vertical");
-        Check(AxisQuery(13, 0f) == -1f, "injected navDown missing from the vertical axis");
-        Check(!Query(PadManager.Player, "GetButtonDown", 16, false), "confirm progressed during the trial");
-        Clock.frameCount++; float t = 0, b = 0, s = 0, h = 0, c = 0; bool e = false;
-        ArtOfSimRally.Mod.Shim.ShimInput.TryOverride(new AxisCarController(), ref t, ref b, ref s, ref h, ref c, ref e);
-        Check(h == 0f, "Art's handbrake button reached the car during latched delivery");
-        // Keyboard steering (sana 35373) is ordinary input only: a latched session never asks and never keeps it.
-        Rewired.ReInput.isReady = true; Rewired.Player.KeyboardAction = "Horizontal"; int queries = Rewired.Player.Queries;
-        Clock.frameCount++; s = .9f;
-        ArtOfSimRally.Mod.Shim.ShimInput.TryOverride(new AxisCarController(), ref t, ref b, ref s, ref h, ref c, ref e);
-        var last = ArtOfSimRally.Mod.Shim.ShimInput.Last;
-        Check(s == 0f && Rewired.Player.Queries == queries && last.Keyboard == ArtOfSimRally.Mod.Shim.KeyboardSteer.NotQueried && !last.KeyboardSteered,
-            "latched delivery asked for or kept keyboard steering: " + s + " " + last.Keyboard);
-        // A transport stop leaves this frame's isolation stamped but ends latched delivery: still a latched
-        // session, so it never asks, on the stopping frame or after it (sana 35766).
-        native.Refuse = true;
-        for (int i = 0; i < 2; i++)
-        {
-            Clock.frameCount++; s = .9f;
-            ArtOfSimRally.Mod.Shim.ShimInput.TryOverride(new AxisCarController(), ref t, ref b, ref s, ref h, ref c, ref e);
-            last = ArtOfSimRally.Mod.Shim.ShimInput.Last;
-            Check(ArtOfSimRally.Mod.Shim.ShimInput.Consumer.Terminal && ArtOfSimRally.Mod.Shim.ShimInput.IsolatedFrame == Clock.frameCount &&
-                !ArtOfSimRally.Mod.Shim.ShimInput.Consumer.LatchedDelivery(Clock.frameCount), "stopped latched fixture " + i);
-            Check(s == 0f && Rewired.Player.Queries == queries && last.Keyboard == ArtOfSimRally.Mod.Shim.KeyboardSteer.NotQueried && !last.KeyboardSteered,
-                "stopped latched session asked for or kept keyboard steering " + i + ": " + s + " " + last.Keyboard);
-        }
-        WheelInput.Close();
     }
     // The opt-in ordinary startup: every preflight refusal keeps Art's bindings, qualification waits for
     // the menus and ready readers, and a refusal during qualification (here: the real dbce_shim with no

@@ -16,11 +16,10 @@
     <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ShimBridgeNative.cs" Link="ShimBridgeNative.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ShimProfileNative.cs" Link="ShimProfileNative.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/Shim/NativeInputIsolation.cs" Link="NativeInputIsolation.cs" />
-    <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ProbeObservation.cs" Link="ProbeObservation.cs" />
-    <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ProbeRequest.cs" Link="ProbeRequest.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/Shim/JoystickObservation.cs" Link="JoystickObservation.cs" />
     <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ProfileObjects.cs" Link="ProfileObjects.cs" />
-    <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ProbeIdentityMapper.cs" Link="ProbeIdentityMapper.cs" />
-    <Compile Include="../../src/ArtOfSimRally.Mod/Shim/ProbeIdentityLease.cs" Link="ProbeIdentityLease.cs" />
-    <Compile Include="../../src/ArtOfSimRally.Mod/Shim/PinnedDs4Identity.cs" Link="PinnedDs4Identity.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/Shim/IdentityJoin.cs" Link="IdentityJoin.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/Shim/IdentityLease.cs" Link="IdentityLease.cs" />
+    <Compile Include="../../src/ArtOfSimRally.Mod/Shim/Ds4InterfacePath.cs" Link="Ds4InterfacePath.cs" />
   </ItemGroup>
 </Project>

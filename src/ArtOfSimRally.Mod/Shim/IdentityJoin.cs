@@ -1,34 +1,19 @@
 using System;
 using System.Collections.Generic;
-using System.Runtime.Serialization;
 
 namespace ArtOfSimRally.Mod.Shim
 {
-    [DataContract]
+    // One of Art's open read slots: the DirectInput instance and product, the slot's generation and its interface path.
     internal sealed class OwnedDeviceIdentity
     {
-        [DataMember] public Guid Instance = Guid.Empty, Product = Guid.Empty;
-        [DataMember] public ulong Generation = 0;
-        [DataMember] public string InterfacePath = null;
+        public Guid Instance = Guid.Empty, Product = Guid.Empty;
+        public ulong Generation = 0;
+        public string InterfacePath = null;
     }
-    internal static class ProbeIdentityMapper
+
+    // Which Rewired joysticks are the devices the shared profile binds.
+    internal static class IdentityJoin
     {
-        internal static bool SameBindings(OwnedDeviceIdentity[] before, OwnedDeviceIdentity[] current)
-        {
-            if (before == null || current == null || before.Length != current.Length) return false;
-            var seen = new HashSet<Guid>();
-            foreach (var item in before)
-            {
-                if (item == null || item.Generation == 0 || !seen.Add(item.Instance)) return false;
-                int matches = 0;
-                foreach (var now in current)
-                    if (now != null && now.Generation != 0 && item.Instance == now.Instance && item.Product == now.Product &&
-                        !String.IsNullOrEmpty(item.InterfacePath) && String.Equals(item.InterfacePath, now.InterfacePath, StringComparison.OrdinalIgnoreCase)) matches++;
-                if (matches != 1) return false;
-            }
-            // Source generations legitimately differ between cold processes.
-            return true;
-        }
         // DirectInput and RawInput instance GUIDs are separate namespaces.
         // Join only exact owned-handle interface path AND product identity.
         // Ordinal case folding is the sole path normalization: no substrings,

@@ -16,7 +16,7 @@ namespace ArtOfSimRally.Mod
             var consumer = ShimInput.Consumer;
             int index = sharedId == null ? -1 : Array.IndexOf(ShimFrame.Names, sharedId);
             if (!Enabled || Main.Settings == null || !Main.Settings.WheelInputEnabled || !consumer.Started || consumer.Terminal ||
-                consumer.LatchedDelivery(Time.frameCount) || index >= 0 && consumer.Owns(index) ||
+                index >= 0 && consumer.Owns(index) ||
                 !_bindings.TryGetValue(channel, out var binding) || !binding.InstanceGuid.HasValue || SharedDuplicate(channel) != null) return false;
             var device = Resolve(binding); // existing reader cache only
             if (device == null || !device.Ok || device.InstanceGuid != binding.InstanceGuid ||

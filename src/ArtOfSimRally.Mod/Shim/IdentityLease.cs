@@ -6,8 +6,8 @@ namespace ArtOfSimRally.Mod.Shim
     // RawInput's public identity getters intentionally return empty when the
     // joystick is disabled. Retain an explicitly admitted identity witness only
     // while its exact controller/extension/connection lifetime still holds.
-    // Returned rows are for joining only; raw diagnostic observations stay raw.
-    internal sealed class ProbeIdentityLease
+    // Returned rows are for joining only (IdentityJoin); raw observations stay raw.
+    internal sealed class IdentityLease
     {
         private sealed class References : IEqualityComparer<object>
         {
@@ -18,7 +18,7 @@ namespace ArtOfSimRally.Mod.Shim
         private readonly HashSet<Guid> owned;
         private readonly long epoch;
         private bool invalid;
-        internal ProbeIdentityLease(JoystickObservation[] rows, Guid[] owned, long epoch)
+        internal IdentityLease(JoystickObservation[] rows, Guid[] owned, long epoch)
         {
             if (rows == null || owned == null || rows.Length == 0) throw new ArgumentException("lease inventory required");
             this.owned = new HashSet<Guid>(owned); this.epoch = epoch;

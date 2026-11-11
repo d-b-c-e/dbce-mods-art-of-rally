@@ -11,7 +11,7 @@ using HarmonyLib;
 namespace ArtOfSimRally.Testing
 {
     /// <summary>Diagnostic only, opt-in by the request key identityProbe=1 (sana 45604/45712). Two read-only observations:
-    /// - the mod's identity mapper's own inputs: a Harmony prefix on ProbeIdentityMapper.Match records the owned identities
+    /// - the mod's identity join's own inputs: a Harmony prefix on IdentityJoin.Match records the owned identities
     ///   (instance, product, generation, interface path) and the Rewired rows it is given, then lets Match run unchanged;
     /// - for each Rewired joystick whose extension is the DualShock 4 one, the exact pinned private chain to the HID device
     ///   information object, read by field only (no property getter, no method, no IntPtr dereference), and its six String
@@ -44,7 +44,7 @@ namespace ArtOfSimRally.Testing
         internal static void Arm(Harmony harmony, Func<string> dir)
         {
             _dir = dir;
-            var match = AccessTools.Method("ArtOfSimRally.Mod.Shim.ProbeIdentityMapper:Match") ?? throw new MissingMethodException("ProbeIdentityMapper.Match");
+            var match = AccessTools.Method("ArtOfSimRally.Mod.Shim.IdentityJoin:Match") ?? throw new MissingMethodException("IdentityJoin.Match");
             harmony.Patch(match, prefix: new HarmonyMethod(typeof(IdentityProbe), nameof(ObserveMatch)) { priority = Priority.First });
         }
 

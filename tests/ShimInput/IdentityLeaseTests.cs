@@ -31,16 +31,16 @@ internal static class IdentityLeaseTests
         internal Device Wheel = new Device(), Other = new Device { Path = @"\\?\hid#other#col02" };
         internal Inventory Inventory = new Inventory();
         internal NativeInputIsolation Isolation;
-        internal ProbeIdentityLease Lease;
+        internal IdentityLease Lease;
         internal JoystickObservation[] Before;
         internal Fixture()
         {
             Inventory.Items.AddRange(new[] { Wheel, Other });
-            Before = ProbeObservation.Capture(Inventory);
-            Lease = new ProbeIdentityLease(Before, new[] { Wheel.Id }, 17);
+            Before = JoystickObservations.Capture(Inventory);
+            Lease = new IdentityLease(Before, new[] { Wheel.Id }, 17);
             Isolation = new NativeInputIsolation(new[] { Wheel.Id }, Inventory);
         }
-        internal JoystickObservation[] Verify(long epoch = 17) => Lease.Verify(ProbeObservation.Capture(Inventory), epoch, Isolation.OwnsDisabled);
+        internal JoystickObservation[] Verify(long epoch = 17) => Lease.Verify(JoystickObservations.Capture(Inventory), epoch, Isolation.OwnsDisabled);
     }
     internal static int Run()
     {
@@ -49,7 +49,7 @@ internal static class IdentityLeaseTests
         var f = new Fixture();
         check(f.Verify()[0].InterfacePath == f.Wheel.Path, "live admission unavailable");
         check(!f.Isolation.Check(1) && f.Isolation.OwnsDisabled(f.Wheel), "owned disabled witness not tied to actual setter");
-        var raw = ProbeObservation.Capture(f.Inventory);
+        var raw = JoystickObservations.Capture(f.Inventory);
         check(raw[0].InterfacePath == "" && raw[0].ProductGuid == Guid.Empty.ToString("D"), "fixture must hide identity like shipped RawInput getter");
         var joined = f.Lease.Verify(raw, 17, f.Isolation.OwnsDisabled);
         check(joined[0].InterfacePath == f.Wheel.Path && joined[0].ProductGuid == f.Wheel.Product.ToString("D"), "captured identity unavailable while same object disabled");
@@ -92,7 +92,7 @@ internal static class IdentityLeaseTests
         check(bad, "restore qualified without fresh original path");
         foreach (string malformed in new[] { "not-a-guid", null, "partial" })
         {
-            f = new Fixture(); f.Isolation.Check(1); var rows = ProbeObservation.Capture(f.Inventory);
+            f = new Fixture(); f.Isolation.Check(1); var rows = JoystickObservations.Capture(f.Inventory);
             if (malformed == "partial") rows[0].InterfacePath = f.Wheel.Path; else rows[0].ProductGuid = malformed;
             bad = false; try { f.Lease.Verify(rows, 17, f.Isolation.OwnsDisabled); } catch { bad = true; }
             check(bad, "unexpected hidden-identity representation admitted: " + malformed);

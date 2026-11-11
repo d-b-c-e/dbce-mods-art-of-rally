@@ -4,15 +4,14 @@ namespace ArtOfSimRally.Mod.Shim
 {
     internal static class ShimInput
     {
-        // Deliberately dormant until an explicitly prepared shared-handle bridge
-        // is attached. Native-source isolation has no production bootstrap yet.
+        // Dormant until SharedInputStartup attaches a qualified bridge.
         internal static readonly ShimAxisConsumer Consumer = new ShimAxisConsumer();
-        // Future adapter stamps this only after identity-based Rewired isolation
-        // has removed cached wheel values. Default refuses all native mixing.
+        // Stamped each frame only after identity-based Rewired isolation has been verified
+        // (cached wheel values gone). Default refuses all native mixing.
         internal static int IsolatedFrame = -1;
 
         // The last shared composition, stamped with its Unity frame: the shared applied values, the game's
-        // steering-alignment term and what GetInput returned. A drive probe pairs it with the car's fields.
+        // steering-alignment term and what GetInput returned. The dev recorder's shared tape reads it.
         internal struct Composition
         {
             internal int Frame;
@@ -44,13 +43,11 @@ namespace ArtOfSimRally.Mod.Shim
                 Handbrake = handbrake, Clutch = clutch, StartEngine = startEngine };
             int frame = Time.frameCount;
             bool isolated = IsolatedFrame == frame;
-            // Ordinary sessions only: a latched session (even stopped or stale) or a frame without isolation proof never asks.
+            // A frame without isolation proof never asks.
             var keyboard = Consumer.AsksKeyboard(isolated) ? KeyboardSteering.Query(car.steerAxis) : KeyboardSteer.NotQueried;
             Consumer.Compose(frame, isolated, car.SteeringOutOfAlignmentEffect, ref values, keyboard);
             // Art-only: the handbrake button keeps Art's binding on this frame's shared copy.
-            // A latched session's injected actions stay the only input.
-            if (!Consumer.LatchedDelivery(frame))
-                values.Handbrake = Mathf.Max(values.Handbrake, WheelInput.ArtOnlyValue(WheelInput.Channel.HandbrakeButton));
+            values.Handbrake = Mathf.Max(values.Handbrake, WheelInput.ArtOnlyValue(WheelInput.Channel.HandbrakeButton));
             throttle = values.Throttle; brake = values.Brake; steer = values.Steer;
             handbrake = values.Handbrake; clutch = values.Clutch; startEngine = values.StartEngine;
             Last = new Composition { Frame = frame, SteerLive = Consumer.Live(0, frame), Alignment = car.SteeringOutOfAlignmentEffect,

@@ -60,9 +60,6 @@ try {
     $result = Run 'shim-shared-actions' 'dotnet' @('run','--project','tests/WheelInput/WheelInput.csproj','-c','Release','--','--shim-actions-only')
     $shimActions = $result | Select-Object -Last 1 | ConvertFrom-Json
     Assert ($shimActions.status -eq 'passed' -and $shimActions.assertions -gt 0) 'Shared actions runner ran no assertions'
-    $result = Run 'shim-latched-suppression' 'dotnet' @('run','--project','tests/WheelInput/WheelInput.csproj','-c','Release','--','--shim-latched-only')
-    $shimLatched = $result | Select-Object -Last 1 | ConvertFrom-Json
-    Assert ($shimLatched.status -eq 'passed' -and $shimLatched.assertions -gt 0) 'Latched suppression runner ran no assertions'
     $result = Run 'shared-input-startup' 'dotnet' @('run','--project','tests/WheelInput/WheelInput.csproj','-c','Release','--','--shared-startup-only')
     $sharedStartup = $result | Select-Object -Last 1 | ConvertFrom-Json
     Assert ($sharedStartup.status -eq 'passed' -and $sharedStartup.assertions -gt 0) 'Shared input startup runner ran no assertions'

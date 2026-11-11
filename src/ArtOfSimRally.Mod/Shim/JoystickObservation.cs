@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Runtime.Serialization;
 
 namespace ArtOfSimRally.Mod.Shim
 {
@@ -19,17 +18,19 @@ namespace ArtOfSimRally.Mod.Shim
         object ExtensionToken { get; }
         bool Connected { get; }
     }
-    [DataContract]
+
+    // One Rewired joystick as the shared session sees it: identity, enabled state and raw axes.
     internal sealed class JoystickObservation
     {
-        [DataMember] public string Name, Instance, RawError, InterfacePath, ProductGuid, IdentityPathError;
-        [DataMember] public bool Enabled;
-        [DataMember] public bool Connected;
-        [DataMember] public float[] RawAxes;
+        public string Name, Instance, RawError, InterfacePath, ProductGuid, IdentityPathError;
+        public bool Enabled;
+        public bool Connected;
+        public float[] RawAxes;
         internal object Token;
         internal object ExtensionToken;
     }
-    internal static class ProbeObservation
+
+    internal static class JoystickObservations
     {
         internal static JoystickObservation[] Capture(IJoystickInventory inventory)
         {
@@ -60,43 +61,38 @@ namespace ArtOfSimRally.Mod.Shim
             }
             return result.ToArray();
         }
-        internal static void CompareDisabled(ProbeReceipt receipt, Guid[] owned)
+
+        // Null when every owned joystick is disabled and reads neutral, every other one kept its enabled state;
+        // otherwise what was seen. A nonzero axis that cleared on disable is evidence the isolation took hold.
+        internal static string NeutralFailure(JoystickObservation[] before, JoystickObservation[] disabled, Guid[] owned)
         {
             var ids = new HashSet<Guid>(owned); bool nonzero = false, axes = true, flags = true;
-            if (receipt.Before == null || receipt.Disabled == null || receipt.Before.Length != receipt.Disabled.Length) throw new InvalidOperationException("Rewired inventory changed during probe");
-            foreach (var before in receipt.Before)
+            if (before == null || disabled == null || before.Length != disabled.Length) throw new InvalidOperationException("Rewired inventory changed during isolation");
+            foreach (var prior in before)
             {
-                var after = Match(before, receipt.Disabled);
-                bool mapped = ids.Contains(Guid.Parse(before.Instance));
-                flags &= mapped ? !after.Enabled : before.Enabled == after.Enabled;
+                var after = Match(prior, disabled);
+                bool mapped = ids.Contains(Guid.Parse(prior.Instance));
+                flags &= mapped ? !after.Enabled : prior.Enabled == after.Enabled;
                 if (!mapped) continue;
-                if (before.RawAxes == null || after.RawAxes == null || before.RawAxes.Length != after.RawAxes.Length) { axes = false; continue; }
+                if (prior.RawAxes == null || after.RawAxes == null || prior.RawAxes.Length != after.RawAxes.Length) { axes = false; continue; }
                 for (int i = 0; i < after.RawAxes.Length; i++)
                 {
                     if (after.RawAxes[i] != 0f) axes = false;
-                    if (before.Enabled && before.RawAxes[i] != 0f && after.RawAxes[i] == 0f) nonzero = true;
+                    if (prior.Enabled && prior.RawAxes[i] != 0f && after.RawAxes[i] == 0f) nonzero = true;
                 }
             }
-            receipt.FlagsDisabled = flags;
-            receipt.RawAxesNeutralAfterDisable = axes;
-            receipt.NonzeroCacheClearObserved = axes && nonzero;
-            receipt.RawAxisQualification = !axes ? "unqualified: raw axes unavailable or nonzero after disable" :
+            if (flags && axes) return null;
+            return !axes ? "unqualified: raw axes unavailable or nonzero after disable" :
                 nonzero ? "observed: existing nonzero raw axis cleared after disable" : "inconclusive: raw axes neutral before and after; no movement requested";
         }
-        internal static bool Restored(JoystickObservation[] before, JoystickObservation[] after)
-        {
-            if (before == null || after == null || before.Length != after.Length) return false;
-            try { foreach (var row in before) if (row.Enabled != Match(row, after).Enabled) return false; }
-            catch { return false; }
-            return true;
-        }
+
         private static JoystickObservation Match(JoystickObservation before, JoystickObservation[] after)
         {
             JoystickObservation found = null;
             foreach (var candidate in after)
                 if (ReferenceEquals(before.Token, candidate.Token) && before.Instance == candidate.Instance)
                 { if (found != null) throw new InvalidOperationException("duplicate joystick token"); found = candidate; }
-            return found ?? throw new InvalidOperationException("joystick identity changed during probe");
+            return found ?? throw new InvalidOperationException("joystick identity changed during isolation");
         }
     }
 }

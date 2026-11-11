@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace ArtOfSimRally.Mod.Shim
 {
-    // What the opt-in startup needs from a qualification session. Production uses SharedInputSession;
+    // What the startup needs from a qualification session. Production uses SharedInputSession;
     // lifecycle fixtures replace only these hardware-facing steps.
     internal interface ISharedQualification
     {
@@ -26,10 +26,10 @@ namespace ArtOfSimRally.Mod.Shim
         void EndObservation();
     }
 
-    // The qualified copied-provider attach sequence, shared by the diagnostic probe and the opt-in
-    // ordinary backend: Core's profile identities, metadata-only pins of Art's owned read slots (no
-    // second physical read), the exact path/product join with Rewired, the identity lease and
-    // exact-object isolation. Callers decide what each refusal means; nothing here publishes a frame.
+    // The qualified copied-provider attach sequence: Core's profile identities, metadata-only pins of
+    // Art's owned read slots (no second physical read), the exact path/product join with Rewired, the
+    // identity lease and exact-object isolation. Callers decide what each refusal means; nothing here
+    // publishes a frame.
     internal sealed class SharedInputSession : ISharedQualification
     {
         internal readonly RewiredInputIsolation Inventory;
@@ -41,7 +41,7 @@ namespace ArtOfSimRally.Mod.Shim
         internal Guid[] RewiredInstances { get; private set; }
         internal JoystickObservation[] Before { get; private set; }
         internal long EpochBefore { get; private set; }
-        private ProbeIdentityLease lease;
+        private IdentityLease lease;
         private int beganFrame;
         private bool observing;
 
@@ -50,12 +50,12 @@ namespace ArtOfSimRally.Mod.Shim
 
         // Opens Core with the exact profile, pins Art's existing readers by metadata and path, and joins
         // them to Rewired. Throws on any refusal; Close() releases whatever was acquired.
-        internal void Begin(string shimPath, string runFolder, byte[] exactProfile, ShimBridgeNative.LatchedSession latched = null)
+        public void Begin(string shimPath, string runFolder, byte[] exactProfile)
         {
             Inventory.BeginIdentityObservation(); observing = true; EpochBefore = Inventory.ConnectionEpoch;
-            Native = new ShimBridgeNative(shimPath, runFolder, exactProfile, latched);
+            Native = new ShimBridgeNative(shimPath, runFolder, exactProfile);
             var expected = Native.BoundProducts(); var ids = new Guid[expected.Count]; expected.Keys.CopyTo(ids, 0); Instances = ids;
-            Before = ProbeObservation.Capture(Inventory);
+            Before = JoystickObservations.Capture(Inventory);
             Source = new ExistingWheelSnapshots(FfbNative.RequestedPath);
             // Metadata only: no second physical poll or device acquisition.
             var owned = new List<OwnedDeviceIdentity>();
@@ -75,11 +75,10 @@ namespace ArtOfSimRally.Mod.Shim
                 owned.Add(new OwnedDeviceIdentity { Instance = new Guid(id), Product = new Guid(product), Generation = generation, InterfacePath = path });
             }
             Owned = owned.ToArray();
-            RewiredInstances = ProbeIdentityMapper.Match(ids, Owned, Before);
-            lease = new ProbeIdentityLease(Before, RewiredInstances, EpochBefore);
+            RewiredInstances = IdentityJoin.Match(ids, Owned, Before);
+            lease = new IdentityLease(Before, RewiredInstances, EpochBefore);
         }
 
-        void ISharedQualification.Begin(string shimPath, string runFolder, byte[] exactProfile) => Begin(shimPath, runFolder, exactProfile);
         public string ProfileName => Native.ProfileValue("profile");
         public string Transmission => Native.Transmission();
         IPhysicalSnapshotSource ISharedQualification.Source => Source;
@@ -98,12 +97,7 @@ namespace ArtOfSimRally.Mod.Shim
             }
         }
         // The disabled objects' cached values must already read neutral before any frame is published.
-        public string NeutralFailure()
-        {
-            var check = new ProbeReceipt { Before = Before, Disabled = ProbeObservation.Capture(Inventory) };
-            ProbeObservation.CompareDisabled(check, RewiredInstances);
-            return check.FlagsDisabled && check.RawAxesNeutralAfterDisable ? null : check.RawAxisQualification;
-        }
+        public string NeutralFailure() => JoystickObservations.NeutralFailure(Before, JoystickObservations.Capture(Inventory), RewiredInstances);
 
         public void Isolate() { Isolation = new NativeInputIsolation(RewiredInstances, Inventory); beganFrame = Time.frameCount; }
         public bool IsolationOverdue(int frame) => frame > beganFrame + 5;
@@ -112,23 +106,15 @@ namespace ArtOfSimRally.Mod.Shim
         public bool VerifyIsolation()
         {
             Source.VerifyPinned(WheelInput.SharedProbeSlots);
-            var observed = ProbeObservation.Capture(Inventory);
+            var observed = JoystickObservations.Capture(Inventory);
             var witnessed = lease.Verify(observed, Inventory.ConnectionEpoch, Isolation.OwnsDisabled);
-            var current = ProbeIdentityMapper.Match(Instances, Owned, witnessed);
+            var current = IdentityJoin.Match(Instances, Owned, witnessed);
             if (!new HashSet<Guid>(current).SetEquals(RewiredInstances)) return false;
             bool clean = Isolation.Check(Time.frameCount);
             // A synchronous disable callback can itself signal a connection
             // change. Reject before publishing even within this same frame.
             if (Inventory.ConnectionEpoch != EpochBefore) throw new InvalidOperationException("Rewired connection epoch changed during isolation");
             return clean;
-        }
-
-        // A fresh exact join after the isolated objects were re-enabled.
-        internal bool IdentityRestored(JoystickObservation[] restored)
-        {
-            Source.VerifyPinned(WheelInput.SharedProbeSlots);
-            var current = lease.Verify(restored, Inventory.ConnectionEpoch, token => false);
-            return new HashSet<Guid>(ProbeIdentityMapper.Match(Instances, Owned, current)).SetEquals(RewiredInstances);
         }
 
         // Releases a session that never attached: Core stop, flags this session changed, observation.
