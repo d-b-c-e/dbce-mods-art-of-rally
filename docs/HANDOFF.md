@@ -1,7 +1,8 @@
 # Handoff
 
-2026-11-10, ART-G (one input route). Source 0.4.6-rc.1 (`14dba12`); Test-Rc passed offline and built `dist/ArtOfSimRally-0.4.6-rc.1.zip` (SHA-256 `0B5D32D0…7DF4B5`). Not yet installed or launch-checked; the rig still has 0.4.5-rc.1.
+2026-11-10, AD-6 (toolkit Unity layer, first piece). Source 0.4.6-rc.2 (`ffefc02`); Test-Rc passed offline (20 checks) and built `dist/ArtOfSimRally-0.4.6-rc.2.zip` (SHA-256 `EA159E63…595685`). Not installed or launch-checked; the rig has 0.4.6-rc.1.
 
-The shared profile (Wheelkit's store, or `dbce-controls.ini` beside the mod) is the only wheel input route: `SharedInputStartup` → `SharedInputSession` → `WheelReaders` → `ShimBridge` → `ShimAxisConsumer` → `CarInputPatch` / `ProfileButtons` / `GameButtonInput` / `ProfileGears`. No profile means the game's own controls. Art's own reader, bindings, calibration and shifter (`WheelInput*`, `Shifter*`, `WheelPovInput`), the probe-stage files, the camera migrations, `DisableSteerAssist`, `GameButtonCompatibility` and the glyph-label switch are deleted; `tests/SharedInput` runs 11 scenarios, one process each.
-- Own source 15,924 → 13,630 lines; the < 9,000 target needs work outside ART-G (mod core 8,286, Triple 2,959, Shim 1,600).
-- Left from ART-L: `lib/dbce-ui` waits for UI-10; `src/Dbce.TripleScreen.Protocol` is art's own code; `experiments/` holds only ignored build output; local branch `napo/art-std046-audit-20261104` left in place.
+- No change in play: the frame-rate monitor and counter come from the toolkit (`lib/toolkit/shared/ui/unity/FrameRateReadout.cs`); `FrameRate.cs` keeps the setting, the 30 s log line and the center-screen edge. `lib/toolkit` is re-synced (shared and triple) to toolkit `48cfd39`, triple `42da140`; the triple core is byte-identical, the rest additive.
+- DRIVE Rally is the second consumer of every extracted piece; it now compiles the same `lib/toolkit` sources.
+- Next for AD-6 (each changes what one game shows, so each needs an owner check): span window and window landing, menu centering, the curved presenter, the Help report page, FFB runtime last. Hub `CLEANUP-QUEUE.md` AD-6 `progress` has the reasons.
+- Own source 13,630 → 13,621 lines.
