@@ -7,6 +7,12 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed (0.4.6-rc.3, shared code)
+
+- No change in play. The span window across separate monitors, the window landing on the racing row and keeping
+  menus on the middle screen now come from the shared toolkit (the same code, moved), so #DRIVE Rally behaves the
+  same way. The vendored toolkit sources are current.
+
 ### Changed (0.4.6-rc.2, shared code)
 
 - No change in play. The frame-rate counter and its readout now come from the shared toolkit
