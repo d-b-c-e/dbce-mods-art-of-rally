@@ -7,6 +7,11 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed (0.4.6-rc.2, shared code)
+
+- No change in play. The frame-rate counter and its readout now come from the shared toolkit
+  (the same code, moved), and the vendored toolkit sources are current.
+
 ### Changed (0.4.6-rc.1, one input route)
 
 - The wheel, pedals, handbrake, shifter, menu buttons and wheel shortcuts come only
