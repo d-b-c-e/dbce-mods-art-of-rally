@@ -12,7 +12,7 @@ namespace ArtOfSimRally.Mod
         private static float _uiSaveAt;
         private static bool _settingsWereVisible;
         internal static bool SuppressHostClose;
-        /// <summary>Set only by UiHostHook when the developer switch loaded the core; null keeps the standard F6.</summary>
+        /// <summary>Set by UiHostHook once the shared panel has loaded; null means it could not, and F6 opens the UMM panel.</summary>
         internal static Action<bool> HookPanelTick { get; set; }
         public static string SettingsSaveStatus { get; private set; } = "Saved";
         internal static string ModVersion => _modEntry?.Info.Version ?? "Development build";
@@ -87,7 +87,7 @@ namespace ArtOfSimRally.Mod
             bool stopButton = WheelInput.ShortcutPressed(WheelInput.Channel.StopFfbButton);
             bool settingsButton = WheelInput.ShortcutPressed(WheelInput.Channel.SettingsButton);
             if (Application.isFocused && (Input.GetKeyDown(KeyCode.F8) || (!SettingsPanel.Editing && stopButton))) StopFeedback();
-            // [Dev] UiHost=hook: the toolkit core draws F6 and opens on F6 itself; the wheel's Settings button goes to it.
+            // The shared panel draws F6 and opens on F6 itself; the wheel's Settings button goes to it.
             if (HookPanelTick != null) HookPanelTick(settingsButton);
             else if (Enabled && Application.isFocused && (settingsButton || (!CameraKeys.ModifierHeld() && Input.GetKeyDown(Settings.SettingsKey))))
             {

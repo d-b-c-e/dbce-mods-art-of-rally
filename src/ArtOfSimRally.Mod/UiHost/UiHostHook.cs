@@ -6,12 +6,12 @@ using UnityEngine;
 namespace ArtOfSimRally.Mod
 {
     /// <summary>
-    /// Developer-only F6 drawn by the toolkit's panel core inside the game's own frames (UI-4 spike, host A of
-    /// docs/architecture/2026-11/00-overview.md section 3). Only with <c>[Dev] UiHost=hook</c> in <c>dbce-dev.ini</c>
-    /// beside the mod: it loads <c>dbce_ui.dll</c> (its present and input hooks start themselves), hands it the FFB and
-    /// Cameras pages, applies each change through the settings store with the single-element writer (STD-044), and
-    /// forwards the wheel's menu D-pad, Confirm and Back as navigation while F6 is open. Without the file nothing here
-    /// runs and F6 stays the UMM panel. Everything runs on the mod's own Update; the core never calls back.
+    /// The F6 panel: the toolkit's shared panel core (<c>dbce_ui.dll</c>, beside the mod) drawn inside the game's own frames,
+    /// the same panel every other mod shows (UI-10; hub docs/architecture/2026-11/00-overview.md section 3). The mod hands it
+    /// the runtime pages in <c>UiHost/art-hook.settings.json</c>, applies each change through the settings store with the
+    /// single-element writer (STD-044), and forwards the wheel's menu D-pad, Confirm and Back as navigation while F6 is open.
+    /// Everything runs on the mod's own Update; the core never calls back. Setup (bindings, devices, screens) belongs to
+    /// Wheelkit (STD-053); until Wheelkit covers all of it, those pages stay in the Unity Mod Manager window (Ctrl+F10).
     /// </summary>
     internal static class UiHostHook
     {
@@ -24,24 +24,23 @@ namespace ArtOfSimRally.Mod
 
         internal static void Load(string modDir, string settingsPath)
         {
-            if (!UiHostRows.HookRequested(modDir)) return;
             try
             {
                 if (!DbceUi.Load(Path.Combine(modDir, "dbce_ui.dll"), out string error))
-                { ModLog.Warning("UiHost=hook: " + error + "; F6 stays the standard panel."); return; }
+                { ModLog.Warning("F6 panel: " + error + "; F6 opens the Unity Mod Manager panel instead."); return; }
                 string json;
                 using (var stream = typeof(UiHostHook).Assembly.GetManifestResourceStream(DescriptorResource))
                 using (var reader = new StreamReader(stream))
                     json = reader.ReadToEnd().Replace("@VERSION@", Main.ModVersion);
                 // ffbStop off: F8 keeps the mod's own path (TickSettingsUi), exactly as in the standard build.
                 if (!DbceUi.Configure(json, Path.Combine(modDir, UiHostRows.DevFile), false, out error))
-                { ModLog.Warning("UiHost=hook: descriptor refused: " + error + "; F6 stays the standard panel."); return; }
+                { ModLog.Warning("F6 panel: page list refused: " + error + "; F6 opens the Unity Mod Manager panel instead."); return; }
                 _settingsPath = settingsPath;
                 Push();
                 Main.HookPanelTick = Tick;
-                ModLog.Info("UiHost=hook: F6 is drawn by dbce_ui.dll (developer switch in " + UiHostRows.DevFile + ").");
+                ModLog.Info("F6 panel: drawn in the game by dbce_ui.dll.");
             }
-            catch (Exception ex) { ModLog.Warning("UiHost=hook failed to start; F6 stays the standard panel: " + ex.Message); }
+            catch (Exception ex) { ModLog.Warning("F6 panel failed to start; F6 opens the Unity Mod Manager panel instead: " + ex.Message); }
         }
 
         /// <summary>Runs in place of the standard F6 toggle, from Main.TickSettingsUi.</summary>
@@ -71,9 +70,16 @@ namespace ArtOfSimRally.Mod
         private static void Apply(DbceUiEvent e)
         {
             var c = Main.Settings;
+            if (c != null && e.Type == DbceUiEventType.Action && e.Id == "help.report")
+            {
+                // The report is a file the player can read before sharing it; nothing is sent.
+                SupportBundle.Create();
+                DbceUi.ShowToast("Report saved", "It is in the mod folder. Read it before you share it.");
+                return;
+            }
             var row = UiHostRows.Find(e.Id);
             if (c == null || e.Type != DbceUiEventType.Changed || row == null)
-            { ModLog.Info("UiHost=hook: ignored " + e.Type + " " + e.Id); return; }
+            { ModLog.Info("F6 panel: ignored " + e.Type + " " + e.Id); return; }
             bool bumper = BumperDriven();
             var before = UiHostRows.Snapshot(c, row);
             double value = row.Kind == UiHostRows.Kind.Toggle ? (e.Toggle ? 1 : 0) : e.Number;
@@ -84,12 +90,12 @@ namespace ArtOfSimRally.Mod
             {
                 var written = UiHostRows.Save(_settingsPath, c, before);
                 DbceUi.NoteSaved(true);
-                ModLog.Info("UiHost=hook: " + row.Id + " = " + value + "; wrote " + (written.Count == 0 ? "nothing" : string.Join(", ", written.ToArray())));
+                ModLog.Info("F6 panel: " + row.Id + " = " + value + "; wrote " + (written.Count == 0 ? "nothing" : string.Join(", ", written.ToArray())));
             }
             catch (Exception ex)
             {
                 DbceUi.NoteSaved(false, "Could not save. Check the mod folder is writable.");
-                ModLog.Warning("UiHost=hook: could not save " + row.Id + ": " + ex.Message);
+                ModLog.Warning("F6 panel: could not save " + row.Id + ": " + ex.Message);
             }
             Push();
         }
@@ -107,6 +113,12 @@ namespace ArtOfSimRally.Mod
             DbceUi.SetText("ffb.status", !c.ForceFeedbackEnabled ? "Off" : FfbNative.Ready ? "On" : "Starts when you drive",
                 c.ForceFeedbackEnabled ? DbceUiTone.Normal : DbceUiTone.Warning);
             DbceUi.SetText("cameras.view", bumper ? "Adjusting the bumper camera" : "Adjusting the bonnet camera");
+            string endpoint = TelemetryPump.ActiveEndpoint;
+            DbceUi.SetText("telemetry.status", !c.TelemetryEnabled ? "Off" : endpoint == null ? "Starts when you drive" : "Sending to " + endpoint + " (in SimHub choose Forza Horizon 5)",
+                c.TelemetryEnabled && endpoint != null ? DbceUiTone.Good : DbceUiTone.Normal);
+            string profile = SharedInputStartup.ProfileName;
+            DbceUi.SetText("help.profile", string.IsNullOrEmpty(profile) ? "No Wheelkit profile in use. Choose one for this game in Wheelkit."
+                : "Wheelkit profile: " + profile + ". Change it in Wheelkit before you start the game.");
         }
 
         private static bool BumperDriven()

@@ -1,4 +1,4 @@
-// UI-4: [Dev] UiHost=hook. The dev switch is off without the file, every descriptor row maps to a Settings field with
+// The F6 panel (UiHostHook): every descriptor control row maps to a Settings field with
 // the same default, and a change writes only its own element of Settings.xml (STD-044 byte diff).
 using System.Text;
 using System.Text.Json;
@@ -11,19 +11,6 @@ string dir = Path.Combine(Path.GetTempPath(), "art-uihost-" + Guid.NewGuid().ToS
 Directory.CreateDirectory(dir);
 try
 {
-    // The developer switch: players have no dbce-dev.ini, so F6 stays the standard panel.
-    string ini = Path.Combine(dir, UiHostRows.DevFile);
-    Check(!UiHostRows.HookRequested(dir), "no dbce-dev.ini keeps the standard F6");
-    File.WriteAllText(ini, "[Dev]\r\nUiHost=hook\r\n");
-    Check(UiHostRows.HookRequested(dir), "[Dev] UiHost=hook selects the hook");
-    File.WriteAllText(ini, "[dev]\nuihost = Hook\n[Panel]\nPage=1\n");
-    Check(UiHostRows.HookRequested(dir), "section, key and value are case-insensitive");
-    File.WriteAllText(ini, "UiHost=hook\n[Panel]\nUiHost=hook\n");
-    Check(!UiHostRows.HookRequested(dir), "UiHost outside [Dev] is ignored");
-    File.WriteAllText(ini, "[Dev]\nUiHost=imgui\n");
-    Check(!UiHostRows.HookRequested(dir), "another UiHost value keeps the standard F6");
-    File.Delete(ini);
-
     // Every control row of the descriptor maps to one store row with the same kind and the store's default.
     var pages = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "art-hook.settings.json")))
         .RootElement.GetProperty("settings").GetProperty("pages");
@@ -33,7 +20,7 @@ try
     foreach (var row in page.Value.EnumerateArray())
     {
         string id = row.GetProperty("id").GetString(), kind = row.GetProperty("kind").GetString();
-        if (kind == "status") continue;
+        if (kind == "status" || kind == "action") continue;   // neither stores a value
         seen.Add(id);
         var mapped = UiHostRows.Find(id);
         if (mapped == null) { Check(false, id + " has no store row"); continue; }

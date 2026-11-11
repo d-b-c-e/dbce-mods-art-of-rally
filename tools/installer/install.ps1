@@ -88,7 +88,7 @@ if ($ummInstalled -and -not $Uninstall) { Ok "Unity Mod Manager present" }
 $modDir    = Join-Path $GameDir 'Mods\ArtOfSimRally'
 $nativeDir = Join-Path $GameDir 'artofrally_Data\Plugins\x86_64'
 $modFiles = 'ArtOfSimRally.Mod.dll', 'Dbce.Wheel.Telemetry.dll', 'Dbce.Wheel.Ffb.dll', 'UnityForceFeedback.dll',
-    'Dbce.TripleScreen.Core.dll', 'Dbce.TripleScreen.Protocol.dll', 'Info.json', 'build.json'
+    'Dbce.TripleScreen.Core.dll', 'Dbce.TripleScreen.Protocol.dll', 'dbce_ui.dll', 'DearImGui-MIT.txt', 'Info.json', 'build.json'
 # Only a shared-input candidate ships dbce_shim.dll. It is ours to replace or remove only while the
 # installed build.json pins exactly its bytes (romi 32767); any other copy - placed by hand, changed,
 # or left without a record - is preserved, and a candidate install refuses to overwrite it.

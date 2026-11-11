@@ -29,6 +29,16 @@
         { "id": "cameras.keys", "kind": "toggle", "label": "Camera keys", "default": true, "level": "advanced",
           "help": "Numpad moves the camera, + and - zoom, 5 resets." },
         { "id": "cameras.lean", "kind": "percent", "label": "Corner lean", "default": 10, "level": "developer" }
+      ],
+      "telemetry": [
+        { "id": "telemetry.status", "kind": "status", "text": "Off" },
+        { "id": "telemetry.enabled", "kind": "toggle", "label": "Telemetry", "default": true,
+          "help": "Live car data for dashboard apps such as SimHub." }
+      ],
+      "help": [
+        { "id": "help.profile", "kind": "status", "text": "No Wheelkit profile" },
+        { "id": "help.report", "kind": "action", "label": "Report a problem",
+          "help": "Saves a report file you can read before sharing it." }
       ]
     }
   }

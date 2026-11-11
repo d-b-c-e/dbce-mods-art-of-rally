@@ -117,7 +117,7 @@ namespace ArtOfSimRally.Mod
             try { TripleScreen.Load(modEntry); }
             catch (Exception ex) { ModLog.Warning("Triple screens failed to load: " + ex.Message); }
             ReportFeedbackOff = message => { ModLog.Info(message + "."); TripleScreen.Notify(message); };
-            UiHostHook.Load(modEntry.Path, Settings.GetPath(modEntry)); // developer switch only (dbce-dev.ini)
+            UiHostHook.Load(modEntry.Path, Settings.GetPath(modEntry)); // the F6 panel (dbce_ui.dll beside the mod)
 
             ModLog.Info(
                 $"Loaded - directSteering={Settings.DirectSteering}, " +

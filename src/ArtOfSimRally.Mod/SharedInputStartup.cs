@@ -36,6 +36,8 @@ namespace ArtOfSimRally.Mod
         private static SharedInputStatus.Phase phase = SharedInputStatus.Phase.Off;
         internal static bool Active => phase == SharedInputStatus.Phase.Waiting || phase == SharedInputStatus.Phase.Isolating || phase == SharedInputStatus.Phase.Attached;
         // The session has pinned Art's readers; force recovery waits these few frames instead of closing them.
+        /// <summary>The attached Wheelkit profile's name, or null before one is attached.</summary>
+        internal static string ProfileName => profileName;
         internal static bool Qualifying => phase == SharedInputStatus.Phase.Isolating;
         // Art's own shifter reader stays closed while shared input is pending or attached, and while a
         // failed joystick restore is unresolved.

@@ -97,6 +97,9 @@ Copy-Item (Join-Path $bin 'Dbce.TripleScreen.Protocol.dll') $modDir
 Copy-Item (Join-Path $root 'src\ArtOfSimRally.Mod\Info.json') $modDir
 Copy-Item (Join-Path $toolkit 'native\WheelFfb.dll') (Join-Path $modDir 'UnityForceFeedback.dll')   # the file name the mod P/Invokes
 Copy-Item -LiteralPath $toolkitShim -Destination (Join-Path $modDir 'dbce_shim.dll')
+# The shared F6 panel (lib/dbce-ui/PROVENANCE.md) and the license of the Dear ImGui it is built with.
+Copy-Item (Join-Path $root 'lib\dbce-ui\dbce_ui.dll') $modDir
+Copy-Item (Join-Path $root 'lib\dbce-ui\DearImGui-MIT.txt') $modDir
 Copy-Item (Join-Path $root 'LICENSE') $stage
 Copy-Item (Join-Path $root 'tools\installer\Install.bat')   $stage
 Copy-Item (Join-Path $root 'tools\installer\Uninstall.bat') $stage

@@ -7,7 +7,7 @@ using System.Xml;
 namespace ArtOfSimRally.Mod
 {
     /// <summary>
-    /// The rows of the developer-only hook F6 (UI-4, <c>[Dev] UiHost=hook</c>): which <see cref="Settings"/> field each
+    /// The rows of the F6 panel (UiHostHook): which <see cref="Settings"/> field each
     /// descriptor row of <c>UiHost/art-hook.settings.json</c> reads and writes, and the STD-044 save that writes only
     /// the elements a change touched. No Unity or dbce_ui calls here, so the mapping is tested off the game.
     /// </summary>
@@ -59,6 +59,7 @@ namespace ArtOfSimRally.Mod
             Toggle("cameras.bonnet", "BonnetCameraEnabled", c => c.BonnetCameraEnabled, (c, v) => c.BonnetCameraEnabled = v),
             Toggle("cameras.bumper", "BumperCameraEnabled", c => c.BumperCameraEnabled, (c, v) => c.BumperCameraEnabled = v),
             Toggle("cameras.keys", "CameraTuningKeys", c => c.CameraTuningKeys, (c, v) => c.CameraTuningKeys = v),
+            Toggle("telemetry.enabled", "TelemetryEnabled", c => c.TelemetryEnabled, (c, v) => c.TelemetryEnabled = v),
             new Row("cameras.lean", Kind.Number, new[] { "BonnetLean" }, (c, _) => Math.Round(c.BonnetLean * 100.0, 1),
                 (c, _, v) => c.BonnetLean = (float)(Math.Round(F(v, 0, 100)) / 100.0)),
         };
@@ -67,25 +68,6 @@ namespace ArtOfSimRally.Mod
         {
             foreach (var row in Rows) if (row.Id == id) return row;
             return null;
-        }
-
-        /// <summary>True when <c>dbce-dev.ini</c> beside the mod has <c>UiHost=hook</c> in its <c>[Dev]</c> section.
-        /// Players have no such file, so they keep the standard F6.</summary>
-        internal static bool HookRequested(string modDir)
-        {
-            string path = Path.Combine(modDir, DevFile);
-            if (!File.Exists(path)) return false;
-            bool dev = false;
-            foreach (string raw in File.ReadAllLines(path))
-            {
-                string line = raw.Trim();
-                if (line.StartsWith("[", StringComparison.Ordinal)) { dev = string.Equals(line, "[Dev]", StringComparison.OrdinalIgnoreCase); continue; }
-                int eq = line.IndexOf('=');
-                if (!dev || eq <= 0) continue;
-                if (string.Equals(line.Substring(0, eq).Trim(), "UiHost", StringComparison.OrdinalIgnoreCase))
-                    return string.Equals(line.Substring(eq + 1).Trim(), "hook", StringComparison.OrdinalIgnoreCase);
-            }
-            return false;
         }
 
         /// <summary>A field's text exactly as UMM's XmlSerializer writes it.</summary>

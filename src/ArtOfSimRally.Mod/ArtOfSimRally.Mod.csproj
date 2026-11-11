@@ -67,7 +67,7 @@
     </AssemblyAttribute>
   </ItemGroup>
 
-  <!-- The FFB and Cameras pages of the developer-only hook F6 (UiHost/UiHostHook.cs, [Dev] UiHost=hook). -->
+  <!-- The pages of the F6 panel (UiHost/UiHostHook.cs), embedded so the mod carries its own page list. -->
   <ItemGroup>
     <EmbeddedResource Include="UiHost\art-hook.settings.json" LogicalName="ArtOfSimRally.Mod.UiHost.settings.json" />
   </ItemGroup>
